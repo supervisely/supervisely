@@ -26,39 +26,7 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoObject(KeyObject):
-    """
-    VideoObject object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoObject<VideoObject>` object is immutable.
-
-    :param obj_class: VideoObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-    :type obj_class: ObjClass
-    :param tags: VideoObject :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`.
-    :type tags: VideoTagCollection, optional
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoObject belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VideoObject.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VideoObject was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VideoObject was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        obj_class_car = sly.ObjClass('car', sly.Rectangle)
-        video_obj_car = sly.VideoObject(obj_class_car)
-        video_obj_car_json = video_obj_car.to_json()
-        print(video_obj_car_json)
-        # Output: {
-        #     "key": "6b819f1840f84d669b32cdec225385f0",
-        #     "classTitle": "car",
-        #     "tags": []
-        # }
-    """
+    """Tracked object across video frames; obj_class plus optional tags. Immutable."""
 
     def __init__(
         self,
@@ -70,6 +38,33 @@ class VideoObject(KeyObject):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        :param obj_class: Object class (e.g. 'car' with Rectangle geometry).
+        :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :param tags: Tags for this object.
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param class_id: Server-side class ID.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the object.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp.
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp.
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                video_obj_car_json = video_obj_car.to_json()
+                print(video_obj_car_json)
+        """
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
@@ -92,25 +87,26 @@ class VideoObject(KeyObject):
         """
         ObjClass of the current VideoObject.
 
-        :return: ObjClass object
-        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
-        :Usage example:
+        :returns: ObjClass object
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            obj_car_json = video_obj_car.obj_class.to_json()
-            print(obj_car_json)
-            # Output: {
-            #     "title": "car",
-            #     "shape": "rectangle",
-            #     "color": "#8A0F7B",
-            #     "geometry_config": {},
-            #     "hotkey": ""
-            # }
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                obj_car_json = video_obj_car.obj_class.to_json()
+                print(obj_car_json)
+                # Output: {
+                #     "title": "car",
+                #     "shape": "rectangle",
+                #     "color": "#8A0F7B",
+                #     "geometry_config": {},
+                #     "hotkey": ""
+                # }
         """
         return self._obj_class
 
@@ -118,19 +114,21 @@ class VideoObject(KeyObject):
         """
         Object key.
 
-        :return: Object key
+        :returns: Object key
+        :rtype: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :rtype: uuid.UUID
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            key = video_obj_car.key()
-            print(key)
-            # Output: 158e6cf4f4ac4c639fc6994aad127c16
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                key = video_obj_car.key()
+                print(key)
+                # Output: 158e6cf4f4ac4c639fc6994aad127c16
         """
 
         return self._key
@@ -140,36 +138,37 @@ class VideoObject(KeyObject):
         """
         VideoTagCollection of the current VideoObject.
 
-        :return: VideoTagCollection object
-        :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
-        :Usage example:
+        :returns: VideoTagCollection object
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create VideoTagCollection
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            from supervisely.video_annotation.video_tag import VideoTag
-            car_tag = VideoTag(meta_car, value='acura')
-            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-            video_tags = VideoTagCollection([car_tag])
+                import supervisely as sly
 
-            # Create VideoObject
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car, video_tags)
+                # Create VideoTagCollection
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                from supervisely.video_annotation.video_tag import VideoTag
+                car_tag = VideoTag(meta_car, value='acura')
+                from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+                video_tags = VideoTagCollection([car_tag])
 
-            # Get VideoTagCollection
-            tags = video_obj_car.tags
-            tags_json = tags.to_json()
-            print(tags_json)
-            # Output: [
-            #     {
-            #         "name": "car_tag",
-            #         "value": "acura",
-            #         "key": "4f82fbcab74c44259d7a0e29d604602e"
-            #     }
-            # ]
+                # Create VideoObject
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car, video_tags)
+
+                # Get VideoTagCollection
+                tags = video_obj_car.tags
+                tags_json = tags.to_json()
+                print(tags_json)
+                # Output: [
+                #     {
+                #         "name": "car_tag",
+                #         "value": "acura",
+                #         "key": "4f82fbcab74c44259d7a0e29d604602e"
+                #     }
+                # ]
         """
         return self._tags.clone()
 
@@ -178,17 +177,18 @@ class VideoObject(KeyObject):
         """
         Object class ID.
 
-        :return: Object class ID.
+        :returns: Object class ID.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            class_id = video_obj_car.class_id
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                class_id = video_obj_car.class_id
         """
 
         return self._class_id
@@ -198,39 +198,40 @@ class VideoObject(KeyObject):
         Adds VideoTag to the current VideoObject.
 
         :param tag: VideoTag to be added.
-        :type tag: VideoTag
-        :return: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
-        :Usage example:
+        :type tag: :class:`~supervisely.video_annotation.video_tag.VideoTag`
+        :returns: VideoObject object
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create VideoObject
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
+                import supervisely as sly
 
-            # Create VideoTag
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            from supervisely.video_annotation.video_tag import VideoTag
-            car_tag = VideoTag(meta_car, value='acura')
+                # Create VideoObject
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
 
-            # Add VideoTag
-            new_obj_car = video_obj_car.add_tag(car_tag)
-            new_obj_car_json = new_obj_car.to_json()
-            print(new_obj_car_json)
-            # Output: {
-            #     "key": "1ab52285ee634c93b724fa655b785eae",
-            #     "classTitle": "car",
-            #     "tags": [
-            #         {
-            #             "name": "car_tag",
-            #             "value": "acura",
-            #             "key": "d9e52b275e074c538f162a6d679aed9e"
-            #         }
-            #     ]
-            # }
+                # Create VideoTag
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                from supervisely.video_annotation.video_tag import VideoTag
+                car_tag = VideoTag(meta_car, value='acura')
+
+                # Add VideoTag
+                new_obj_car = video_obj_car.add_tag(car_tag)
+                new_obj_car_json = new_obj_car.to_json()
+                print(new_obj_car_json)
+                # Output: {
+                #     "key": "1ab52285ee634c93b724fa655b785eae",
+                #     "classTitle": "car",
+                #     "tags": [
+                #         {
+                #             "name": "car_tag",
+                #             "value": "acura",
+                #             "key": "d9e52b275e074c538f162a6d679aed9e"
+                #         }
+                #     ]
+                # }
         """
         return self.clone(tags=self._tags.add(tag))
 
@@ -239,46 +240,47 @@ class VideoObject(KeyObject):
         Adds VideoTags to the current VideoObject.
 
         :param tag: List of VideoTags to be added.
-        :type tag: List[VideoTag]
-        :return: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
-        :Usage example:
+        :type tag: List[:class:`~supervisely.video_annotation.video_tag.VideoTag`]
+        :returns: VideoObject object
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create VideoObject
-            obj_class_vehicle = sly.ObjClass('vehicle', sly.Rectangle)
-            video_obj_vehicle = sly.VideoObject(obj_class_vehicle)
+                import supervisely as sly
 
-            # Create VideoTags
-            from supervisely.video_annotation.video_tag import VideoTag
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            car_tag = VideoTag(meta_car, value='acura')
-            meta_bus = sly.TagMeta('bus_tag', sly.TagValueType.ANY_STRING)
-            bus_tag = VideoTag(meta_bus, value='volvo')
+                # Create VideoObject
+                obj_class_vehicle = sly.ObjClass('vehicle', sly.Rectangle)
+                video_obj_vehicle = sly.VideoObject(obj_class_vehicle)
 
-            # Add VideoTags
-            new_obj_vehicle = video_obj_vehicle.add_tags([car_tag, bus_tag])
-            new_obj_vehicle_json = new_obj_vehicle.to_json()
-            print(new_obj_vehicle_json)
-            # Output: {
-            #     "key": "94055c5e8cb146368f627fc608fb6b44",
-            #     "classTitle": "vehicle",
-            #     "tags": [
-            #         {
-            #             "name": "car_tag",
-            #             "value": "acura",
-            #             "key": "6679f47c96734565919fbffc278532a1"
-            #         },
-            #         {
-            #             "name": "bus_tag",
-            #             "value": "volvo",
-            #             "key": "d0a60dc929de491a85a09fea59adb818"
-            #         }
-            #     ]
-            # }
+                # Create VideoTags
+                from supervisely.video_annotation.video_tag import VideoTag
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                car_tag = VideoTag(meta_car, value='acura')
+                meta_bus = sly.TagMeta('bus_tag', sly.TagValueType.ANY_STRING)
+                bus_tag = VideoTag(meta_bus, value='volvo')
+
+                # Add VideoTags
+                new_obj_vehicle = video_obj_vehicle.add_tags([car_tag, bus_tag])
+                new_obj_vehicle_json = new_obj_vehicle.to_json()
+                print(new_obj_vehicle_json)
+                # Output: {
+                #     "key": "94055c5e8cb146368f627fc608fb6b44",
+                #     "classTitle": "vehicle",
+                #     "tags": [
+                #         {
+                #             "name": "car_tag",
+                #             "value": "acura",
+                #             "key": "6679f47c96734565919fbffc278532a1"
+                #         },
+                #         {
+                #             "name": "bus_tag",
+                #             "value": "volvo",
+                #             "key": "d0a60dc929de491a85a09fea59adb818"
+                #         }
+                #     ]
+                # }
         """
         return self.clone(tags=self._tags.add_items(tags))
 
@@ -287,26 +289,26 @@ class VideoObject(KeyObject):
         Convert the VideoObject to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
-        :rtype: :class:`dict`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Json format as a dict
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
+                obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
 
-            obj_car_json = video_obj_car.to_json()
-            print(obj_car_json)
-            # Output: {
-            #     "key": "ce26e77a45bc45e88e3e17da1672d01f",
-            #     "classTitle": "vehicle",
-            #     "tags": []
-            # }
+                obj_car_json = video_obj_car.to_json()
+                print(obj_car_json)
+                # Output: {
+                #     "key": "ce26e77a45bc45e88e3e17da1672d01f",
+                #     "classTitle": "vehicle",
+                #     "tags": []
+                # }
         """
         data_json = {
             KEY: self.key().hex,
@@ -331,29 +333,26 @@ class VideoObject(KeyObject):
 
         :param data: Dict in json format.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if object class name is not found in the given project meta
-        :return: VideoObject object
-        :rtype: :class:`VideoObject`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :raises RuntimeError: if object class name is not found in the given project meta
+        :returns: VideoObject object
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_car_json = {
-                "classTitle": "vehicle",
-                "tags": []
-            }
-            obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
-            obj_collection = sly.ObjClassCollection([obj_class_car])
-            meta = sly.ProjectMeta(obj_classes=obj_collection)
+                obj_car_json = {"classTitle": "vehicle", "tags": []}
+                obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
+                obj_collection = sly.ObjClassCollection([obj_class_car])
+                meta = sly.ProjectMeta(obj_classes=obj_collection)
 
-            video_obj_from_json = sly.VideoObject.from_json(obj_car_json, meta)
+                video_obj_from_json = sly.VideoObject.from_json(obj_car_json, meta)
         """
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
@@ -411,7 +410,7 @@ class VideoObject(KeyObject):
         self,
         obj_class: Optional[ObjClass] = None,
         tags: Optional[VideoTagCollection] = None,
-        key: Optional[KeyIdMap] = None,
+        key: Optional[uuid.UUID] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -420,13 +419,13 @@ class VideoObject(KeyObject):
         """
         Makes a copy of VideoObject with new fields, if fields are given, otherwise it will use fields of the original VideoObject.
 
-        :param obj_class: VideoObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-        :type obj_class: ObjClass, optional
-        :param tags: VideoObject :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`.
-        :type tags: VideoTagCollection, optional
-        :param key: KeyIdMap object.
-        :type key: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoObject belongs.
+        :param obj_class: ObjClass object.
+        :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`, optional
+        :param tags: VideoTagCollection object.
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
+        :param key: UUID key associated with the object.
+        :type key: uuid.UUID, optional
+        :param class_id: ID of ObjClass to which VideoObject belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoObject.
         :type labeler_login: str, optional
@@ -434,42 +433,42 @@ class VideoObject(KeyObject):
         :type updated_at: str, optional
         :param created_at: Date and Time when VideoObject was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: VideoObject object
-        :rtype: :class:`VideoObject`
+        :returns: VideoObject object
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
+                from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
-            obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
+                obj_class_car = sly.ObjClass('vehicle', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
 
-            # New ObjClass to clone
-            obj_class_bus = sly.ObjClass('bus', sly.Rectangle)
+                # New ObjClass to clone
+                obj_class_bus = sly.ObjClass('bus', sly.Rectangle)
 
-            # New VideoTagCollection to clone
-            from supervisely.video_annotation.video_tag import VideoTag
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            car_tag = VideoTag(meta_car, value='acura')
-            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-            tags = VideoTagCollection([car_tag])
-            # Clone
-            new_obj_vehicle = video_obj_car.clone(obj_class=obj_class_bus, tags=tags)
-            new_obj_vehicle_json = new_obj_vehicle.to_json()
-            print(new_obj_vehicle_json)
-            # Output: {
-            #     "key": "39ae5b9ce1ca405c9f53544374b3f5be",
-            #     "classTitle": "bus",
-            #     "tags": [
-            #         {
-            #             "name": "car_tag",
-            #             "value": "acura",
-            #             "key": "3119b6e38fe24fe7a220e881154fd9ba"
-            #         }
-            #     ]
-            # }
+                # New VideoTagCollection to clone
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                car_tag = VideoTag(meta_car, value='acura')
+                tags = VideoTagCollection([car_tag])
+                # Clone
+                new_obj_vehicle = video_obj_car.clone(obj_class=obj_class_bus, tags=tags)
+                new_obj_vehicle_json = new_obj_vehicle.to_json()
+                print(new_obj_vehicle_json)
+                # Output: {
+                #     "key": "39ae5b9ce1ca405c9f53544374b3f5be",
+                #     "classTitle": "bus",
+                #     "tags": [
+                #         {
+                #             "name": "car_tag",
+                #             "value": "acura",
+                #             "key": "3119b6e38fe24fe7a220e881154fd9ba"
+                #         }
+                #     ]
+                # }
         """
         return self.__class__(
             obj_class=take_with_default(obj_class, self.obj_class),

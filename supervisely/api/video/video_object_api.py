@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with video objects via the Supervisely API."""
 
 # docs
 from typing import List, Optional
@@ -11,10 +12,14 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class VideoObjectApi(ObjectApi):
     """
-    :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    API for working with video objects.
     """
 
     def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         super().__init__(api)
         self.tag = VideoObjectTagApi(api)
 
@@ -25,40 +30,45 @@ class VideoObjectApi(ObjectApi):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> List[int]:
         """
-        Add Objects to Annotation Objects.
+        Add objects to annotation objects.
 
-        :param video_id: Video ID in Supervidely.
+        :param video_id: Video ID in Supervisely.
         :type video_id: int
-        :param objects: VideoAnnotation objects.
-        :type objects: VideoObjectCollection
+        :param objects: VideoObjectCollection objects collection.
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: List of objects IDs
-        :rtype: :class:`List[int]`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: List of object IDs
+        :rtype: List[int]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            project_id = 17209
-            video_id = 19402023
+                api = sly.Api.from_env()
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                project_id = 17209
+                video_id = 19402023
 
-            key_id_map = KeyIdMap()
-            ann_info = api.video.annotation.download(video_id)
-            ann = sly.VideoAnnotation.from_json(ann_info, project_meta, key_id_map)
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
 
-            api.video.object.append_bulk(video_id, ann.objects, key_id_map)
+                key_id_map = KeyIdMap()
+                ann_info = api.video.annotation.download(video_id)
+                ann = sly.VideoAnnotation.from_json(ann_info, project_meta, key_id_map)
+
+                api.video.object.append_bulk(video_id, ann.objects, key_id_map)
         """
 
         info = self._api.video.get_info_by_id(video_id)

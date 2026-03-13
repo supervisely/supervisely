@@ -1,4 +1,3 @@
-import imghdr
 import os
 
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
@@ -13,6 +12,7 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
+    """Imports Supervisely point cloud episode project format (PCD sequences + JSON annotations) from local folder."""
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY
@@ -71,7 +71,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                     continue
 
                 ext = get_file_ext(full_path)
-                recognized_ext = imghdr.what(full_path)
+                recognized_ext = self._get_image_subtype(full_path)
                 if file in JUNK_FILES:
                     continue
                 elif ext == self.ann_ext:

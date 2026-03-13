@@ -23,6 +23,8 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 
 class Hidable:
+    """Mixin that adds hide/show state synchronized to the app `DataJson`."""
+
     def __init__(self):
         self._hide = False
 
@@ -62,6 +64,8 @@ class Hidable:
 
 
 class Disableable:
+    """Mixin that adds enabled/disabled state synchronized to the app `DataJson`."""
+
     def __init__(self):
         self._disabled = False
 
@@ -96,6 +100,8 @@ class Disableable:
 
 
 class Loading:
+    """Mixin that adds a `loading` flag synchronized to the app `DataJson`."""
+
     def __init__(self):
         self._loading = False
 
@@ -130,7 +136,15 @@ def generate_id(cls_name=""):
 
 
 class Widget(Hidable, Disableable, Loading):
+    """Base class for Supervisely UI widgets rendered via Jinja templates and synced via `DataJson`/`StateJson`."""
+
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        """
+        :param widget_id: Unique widget identifier. Auto-generated if None.
+        :type widget_id: str, optional
+        :param file_path: Path to widget template directory.
+        :type file_path: str
+        """
         super().__init__()
         self._sly_app = _MainServer()
         self.widget_id = widget_id
@@ -241,9 +255,19 @@ class Widget(Hidable, Disableable, Loading):
 
 
 class ConditionalWidget(Widget):
+    """Widget that renders one of several items depending on the current selected value."""
+
     def __init__(
         self, items: List[ConditionalItem], widget_id: str = None, file_path: str = __file__
     ):
+        """
+        :param items: List of ConditionalItem (value, label, optional content).
+        :type items: List[ConditionalItem]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param file_path: Path to widget template directory.
+        :type file_path: str
+        """
         self._items = items
         super().__init__(widget_id=widget_id, file_path=file_path)
 
@@ -255,7 +279,17 @@ class ConditionalWidget(Widget):
 
 
 class ConditionalItem:
+    """A single selectable item for :class:`~supervisely.app.widgets.widget.ConditionalWidget`."""
+
     def __init__(self, value, label: str = None, content: Widget = None) -> ConditionalItem:
+        """
+        :param value: Item value (any JSON-serializable).
+        :type value: any
+        :param label: Display label. Defaults to str(value).
+        :type label: str, optional
+        :param content: Optional widget to show when selected.
+        :type content: Widget, optional
+        """
         self.value = value
         self.label = label
         if label is None:
@@ -267,8 +301,15 @@ class ConditionalItem:
 
 
 class DynamicWidget(Widget):
+    """Widget that can be reloaded dynamically by updating its template/state."""
 
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        """
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param file_path: Path to widget template directory.
+        :type file_path: str
+        """
         self.reload = self.update_template_for_offline_session(self.reload)
         super().__init__(widget_id=widget_id, file_path=file_path)
 

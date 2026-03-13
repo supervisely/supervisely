@@ -22,14 +22,20 @@ _SUPPORTED_CODECS = {"h264", "vp8", "vp9", "h265", "hevc", "av1"}
 
 
 class VideoExtensionError(Exception):
+    """Raised when a video file extension is not supported."""
+
     pass
 
 
 class UnsupportedVideoFormat(Exception):
+    """Raised when a video container/extension is not supported by the SDK."""
+
     pass
 
 
 class VideoReadException(Exception):
+    """Raised when a video file cannot be read or decoded."""
+
     pass
 
 
@@ -39,16 +45,17 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Video file extension.
     :type ext: str
-    :return: bool
-    :rtype: :class:`bool`
-    :Usage example:
+    :returns: bool
+    :rtype: bool
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        sly.video.is_valid_ext(".mp4")  # True
-        sly.video.is_valid_ext(".jpeg") # False
+            import supervisely as sly
+
+            sly.video.is_valid_ext(".mp4")  # True
+            sly.video.is_valid_ext(".jpeg") # False
     """
     return ext.lower() in ALLOWED_VIDEO_EXTENSIONS
 
@@ -59,16 +66,17 @@ def has_valid_ext(path: str) -> bool:
 
     :param path: Path to Video file.
     :type path: str
-    :return: bool
-    :rtype: :class:`bool`
-    :Usage example:
+    :returns: bool
+    :rtype: bool
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
-        sly.video.has_valid_ext(video_path) # True
+            import supervisely as sly
+
+            video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
+            sly.video.has_valid_ext(video_path) # True
     """
     return is_valid_ext(os.path.splitext(path)[1])
 
@@ -79,18 +87,19 @@ def validate_ext(ext: str):
 
     :param ext: Video extension. Available extensions: avi, mp4, 3gp, flv, webm, wmv, mov, mkv.
     :type ext: str
-    :raises: :class:`UnsupportedVideoFormat` if given video with extension that is not supported.
-    :return: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :raises :class:`~supervisely.video.video.UnsupportedVideoFormat`: if given video with extension that is not supported.
+    :returns: None
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-       import supervisely as sly
+        .. code-block:: python
 
-        sly.video.validate_ext(".jpeg")
-        # Unsupported video extension: .jpeg.
-        # Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
+            import supervisely as sly
+
+            sly.video.validate_ext(".jpeg")
+            # Unsupported video extension: .jpeg.
+            # Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
     """
     if not is_valid_ext(ext):
         raise UnsupportedVideoFormat(
@@ -106,18 +115,19 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
 
     :param path: Path to Video file.
     :type path: str
-    :return: Image size and number of Video frames.
-    :rtype: :class:`Tuple[Tuple[int, int], int]`
-    :Usage example:
+    :returns: Image size and number of Video frames.
+    :rtype: Tuple[Tuple[int, int], int]
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
-        video_info = sly.video.get_image_size_and_frames_count(video_path)
-        print(video_info)
-        # Output: ((720, 1280), 152)
+            import supervisely as sly
+
+            video_path = "/home/admin/work/videos/Cars/ds0/video/6x.mp4"
+            video_info = sly.video.get_image_size_and_frames_count(video_path)
+            print(video_info)
+            # Output: ((720, 1280), 152)
     """
     import cv2
 
@@ -140,18 +150,19 @@ def validate_format(path: str) -> None:
 
     :param path: Path to Video file.
     :type path: str
-    :raises: :class:`VideoReadException` if Video file from given path couldn't be read or file extension is not supported
-    :return: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :raises :class:`~supervisely.video.video.VideoReadException`: if :class:`~supervisely.app.widgets.video.video.Video` file from given path couldn't be read or file extension is not supported
+    :returns: None
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        video_path = "/home/paul/work/sphinx-docs/supervisely_py/docs/source/debug/video/Prius_360/ds0/video/video.jpg"
-        sly.video.validate_format(video_path)
-        # Unsupported video extension: .jpg. Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
+            import supervisely as sly
+
+            video_path = "/home/paul/work/sphinx-docs/supervisely_py/docs/source/debug/video/Prius_360/ds0/video/video.jpg"
+            sly.video.validate_format(video_path)
+            # Unsupported video extension: .jpg. Only the following extensions are supported: ['.avi', '.mp4', '.3gp', '.flv', '.webm', '.wmv', '.mov', '.mkv'].
     """
     try:
         get_image_size_and_frames_count(path)
@@ -171,16 +182,17 @@ def is_valid_format(path: str) -> bool:
 
     :param path: Path to Video file.
     :type path: str
-    :return: True if file format in list of supported video formats, False - in otherwise
-    :rtype: :class:`bool`
-    :Usage example:
+    :returns: True if file format in list of supported video formats, False - in otherwise
+    :rtype: bool
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        video_path = "/video/video.jpg"
-        sly.video.is_valid_format(video_path) # False
+            import supervisely as sly
+
+            video_path = "/video/video.jpg"
+            sly.video.is_valid_format(video_path) # False
     """
     try:
         validate_format(path)
@@ -194,7 +206,7 @@ def _check_video_requires_processing(video_info, stream_info):
     Check if video need container or codec processing
     :param video_info: dict
     :param stream_info: dict
-    :return: bool
+    :returns: bool
     """
     need_process_container = True
     for name in video_info["meta"]["formatName"].split(","):
@@ -220,8 +232,8 @@ def count_video_streams(all_streams: List[Dict]) -> int:
 
     :param all_streams: List of Video file audio and video streams.
     :type all_streams: List[dict]
-    :return: Number of video streams in Video file
-    :rtype: :class:`int`
+    :returns: Number of video streams in Video file
+    :rtype: int
     """
     count = 0
     for stream_info in all_streams:
@@ -236,8 +248,8 @@ def get_video_streams(all_streams: List[Dict]) -> List:
 
     :param all_streams: List of Video file audio and video streams.
     :type all_streams: List[dict]
-    :return: List of video streams in Video file.
-    :rtype: :class:`list`
+    :returns: List of video streams in Video file.
+    :rtype: list
     """
     video_streams = []
     for stream_info in all_streams:
@@ -254,8 +266,8 @@ def warn_video_requires_processing(file_name: str, logger: Optional[default_logg
     :type file_name: str
     :param logger: Logger object.
     :type logger: logger
-    :return: None
-    :rtype: :class:`NoneType`
+    :returns: None
+    :rtype: None
     """
     if logger is None:
         logger = default_logger
@@ -274,15 +286,16 @@ def gen_video_stream_name(file_name: str, stream_index: int) -> str:
     :type file_name: str
     :param stream_index: Stream index.
     :type stream_index: int
-    :return: str
+    :returns: str
     :rtype: str
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        stream_name = gen_video_stream_name('my_video.mp4', 2)
-        print(stream_name)
-        # Output: my_video_stream_2_CULxO.mp4
+        .. code-block:: python
+
+            stream_name = gen_video_stream_name('my_video.mp4', 2)
+            print(stream_name)
+            # Output: my_video_stream_2_CULxO.mp4
     """
     return "{}_stream_{}_{}{}".format(
         get_file_name(file_name), stream_index, rand_str(5), get_file_ext(file_name)
@@ -297,44 +310,46 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     :type video_path: str
     :param cpu_count: CPU count.
     :type cpu_count: int
-    :raises: :class:`ValueError` if no video streams found.
-    :return: Information about video
-    :rtype: :class:`Dict`
-    :Usage example:
+    :raises ValueError: if no video streams found.
+    :returns: Information about video
+    :rtype: Dict
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.video.video import get_info
-        video_info = get_info('/home/video/1.mp4')
-        print(json.dumps(video_info, indent=4))
-        # Output: {
-        #     "streams": [
-        #         {
-        #             "index": 0,
-        #             "width": 1920,
-        #             "height": 1080,
-        #             "duration": 16.666667,
-        #             "rotation": 0,
-        #             "codecName": "mpeg4",
-        #             "codecType": "video",
-        #             "startTime": 0,
-        #             "framesCount": 500,
-        #             "framesToTimecodes": [
-        #                 0.0,
-        #                 0.033333,
-        #                 0.066667,
-        #                 0.1,
-        #                   ...
-        #                 16.566667,
-        #                 16.6,
-        #                 16.633333
-        #             ]
-        #         }
-        #     ],
-        #     "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
-        #     "duration": 16.667,
-        #     "size": "61572600"
-        # }
+        .. code-block:: python
+
+            from supervisely.video.video import get_info
+
+            video_info = get_info('/home/video/1.mp4')
+            print(json.dumps(video_info, indent=4))
+            # Output: {
+            #     "streams": [
+            #         {
+            #             "index": 0,
+            #             "width": 1920,
+            #             "height": 1080,
+            #             "duration": 16.666667,
+            #             "rotation": 0,
+            #             "codecName": "mpeg4",
+            #             "codecType": "video",
+            #             "startTime": 0,
+            #             "framesCount": 500,
+            #             "framesToTimecodes": [
+            #                 0.0,
+            #                 0.033333,
+            #                 0.066667,
+            #                 0.1,
+            #                   ...
+            #                 16.566667,
+            #                 16.6,
+            #                 16.633333
+            #             ]
+            #         }
+            #     ],
+            #     "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+            #     "duration": 16.667,
+            #     "size": "61572600"
+            # }
     """
     import ast
     import math
@@ -473,35 +488,38 @@ def get_labeling_tool_url(
     :type link: Optional[bool]
     :param link_text: Text of the link, defaults to "open in labeling tool".
     :type link_text: Optional[str]
-    :return: Labeling tool url or html link to labeling tool.
+    :returns: Labeling tool url or html link to labeling tool.
     :rtype: str
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        dataset_id = 123
-        video_id = 456
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Get url to labeling tool for the 20 frame of the video
-        url = sly.video.get_labeling_tool_url(dataset_id, video_id, frame=20)
-        print(url)
-        # Output: http://your-supervisely-server.com/app/videos_v2/?datasetId=123&videoId=456&videoFrame=20
+            api = sly.Api.from_env()
 
-        # Get html link to labeling tool for the 20 frame of the video
-        link = sly.video.get_labeling_tool_url(dataset_id, video_id, frame=20, link=True)
-        print(link)
-        # Output: <a href="http://your-supervisely-server.com/app/videos_v2/?datasetId=123&videoId=456&videoFrame=20"
-        # rel="noopener noreferrer" target="_blank">open in labeling tool<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>
+            dataset_id = 123
+            video_id = 456
+
+            # Get url to labeling tool for the 20 frame of the video
+            url = sly.video.get_labeling_tool_url(dataset_id, video_id, frame=20)
+            print(url)
+            # Output: http://your-supervisely-server.com/app/videos_v2/?datasetId=123&videoId=456&videoFrame=20
+
+            # Get html link to labeling tool for the 20 frame of the video
+            link = sly.video.get_labeling_tool_url(dataset_id, video_id, frame=20, link=True)
+            print(link)
+            # Output: <a href="http://your-supervisely-server.com/app/videos_v2/?datasetId=123&videoId=456&videoFrame=20"
+            # rel="noopener noreferrer" target="_blank">open in labeling tool<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>
     """
     res = f"/app/videos_v2/?datasetId={dataset_id}&videoId={video_id}&videoFrame={frame}"
     if is_development():
@@ -518,14 +536,22 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
     :type url: str
     :param name: text of the link, defaults to "open in labeling tool".
     :type name: Optional[str]
-    :return: HTML link to labeling tool.
+    :returns: HTML link to labeling tool.
     :rtype: str
     """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
 
 
 class VideoFrameReader:
+    """Read video frames efficiently using Decord when available, with an OpenCV fallback."""
+
     def __init__(self, video_path: str, frame_indexes: List[int] = None):
+        """
+        :param video_path: Path to video file.
+        :type video_path: str
+        :param frame_indexes: Optional frame indices to read.
+        :type frame_indexes: List[int]
+        """
         self.video_path = video_path
         self.frame_indexes = frame_indexes
         self.vr = None

@@ -18,6 +18,7 @@ NESTED_DATASETS = "datasets"
 
 
 class SLYVideoConverter(VideoConverter):
+    """Imports Supervisely video project format (datasets/items/ann structure) from local folder."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

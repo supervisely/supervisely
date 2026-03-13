@@ -68,12 +68,13 @@ def camel_to_snake(name):
 
 
 def snake_to_human(snake_str: str) -> str:
-    """Return a human-readable string from a snake_case string.
+    """
+    Return a human-readable string from a snake_case string.
     E.g. 'hello_world' -> 'Hello World'
 
     :param snake_str: snake_case string
     :type snake_str: str
-    :return: Human-readable string
+    :returns: Human-readable string
     :rtype: str
     """
     components = snake_str.split("_")
@@ -126,6 +127,8 @@ def _dprint(json_data):
 
 
 class NpEncoder(json.JSONEncoder):
+    """JSON encoder that converts NumPy scalars/arrays to built-in Python types for serialization."""
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -238,7 +241,7 @@ def compress_image_url(
     """NOTE: This function is deprecated. Use resize_image_url instead.
     Returns a URL to a compressed image with given parameters.
 
-    :param url: Full Image storage URL, can be obtained from ImageInfo.
+    :param url: Full Image storage URL, can be obtained from :class:`~supervisely.api.image_api.ImageInfo`.
     :type url: str
     :param width: Width of the compressed image.
     :type width: int, optional
@@ -246,7 +249,7 @@ def compress_image_url(
     :type height: int, optional
     :param quality: Quality of the compressed image.
     :type quality: int, optional
-    :return: Full URL to a compressed image.
+    :returns: Full URL to a compressed image.
     :rtype: str
     """
     if width is None:
@@ -272,7 +275,7 @@ def resize_image_url(
     just compressed if the extension is jpeg to the given quality.
     Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
-    :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
+    :param full_storage_url: Full Image storage URL, can be obtained from :class:`~supervisely.api.image_api.ImageInfo`.
     :type full_storage_url: str
     :param ext: Image extension, jpeg or png.
     :type ext: Literal["jpeg", "png"], optional
@@ -284,25 +287,38 @@ def resize_image_url(
     :type height: int, optional
     :param quality: Quality of the resized image.
     :type quality: int, optional
-    :return: Full URL to a resized image.
+    :returns: Full URL to a resized image.
     :rtype: str
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely_utils import resize_image_url
+            import os
+            from dotenv import load_dotenv
 
-        api = sly.Api(server_address, token)
+            import supervisely as sly
+            from supervisely_utils import resize_image_url
 
-        image_id = 376729
-        img_info = api.image.get_info_by_id(image_id)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        img_resized_url = resize_image_url(
-            img_info.full_storage_url, ext="jpeg", method="fill", width=512, height=256)
-        print(img_resized_url)
-        # Output: https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:512:256:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+            api = sly.Api.from_env()
+
+            image_id = 376729
+            img_info = api.image.get_info_by_id(image_id)
+
+            img_resized_url = resize_image_url(
+                img_info.full_storage_url,
+                ext="jpeg",
+                method="fill",
+                width=512,
+                height=256,
+            )
+            print(img_resized_url)
+            # Output: https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:512:256:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
     """
     # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
     # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
@@ -333,7 +349,7 @@ def get_storage_url(
     :type entity_id: int
     :param source_type: Type of source ("original" or "preview")
     :type source_type: Literal["original", "preview"]
-    :return: Storage URL
+    :returns: Storage URL
     :rtype: str
     """
     relative_url = f"/storage-resources/{entity_type}/{source_type}/{entity_id}"
@@ -350,7 +366,7 @@ def get_image_storage_url(image_id: int, source_type: Literal["original", "previ
     :type image_id: int
     :param source_type: Type of source ("original" or "preview")
     :type source_type: Literal["original", "preview"]
-    :return: Storage URL for image
+    :returns: Storage URL for image
     :rtype: str
     """
     return get_storage_url("dataset-entities", image_id, source_type)
@@ -366,7 +382,7 @@ def get_dataset_storage_url(
     :type dataset_id: int
     :param source_type: Type of source ("original", "preview", or "raw")
     :type source_type: Literal["original", "preview", "raw"]
-    :return: Storage URL for dataset
+    :returns: Storage URL for dataset
     :rtype: str
     """
     return get_storage_url("dataset", dataset_id, source_type)
@@ -382,7 +398,7 @@ def get_project_storage_url(
     :type project_id: int
     :param source_type: Type of source ("original", "preview", or "raw")
     :type source_type: Literal["original", "preview", "raw"]
-    :return: Storage URL for project
+    :returns: Storage URL for project
     :rtype: str
     """
     return get_storage_url("project", project_id, source_type)
@@ -394,7 +410,7 @@ def get_file_storage_url(file_id: int) -> str:
 
     :param file_id: ID of the file
     :type file_id: int
-    :return: Storage URL for file
+    :returns: Storage URL for file
     :rtype: str
     """
     return get_storage_url("file-storage", file_id, "raw")
@@ -422,7 +438,7 @@ def get_readable_datetime(value: str) -> str:
 def get_unix_timestamp() -> int:
     """Return the current Unix timestamp.
 
-    :return: Current Unix timestamp.
+    :returns: Current Unix timestamp.
     :rtype: int
     """
     return int(time.time())
@@ -510,7 +526,7 @@ def compare_dicts(
     :type data: Dict[Any, Any]
     :param strict: If True, the keys of the template and data dictionaries must match exactly.
     :type strict: bool, optional
-    :return: A tuple containing a list of missing fields and a list of extra fields.
+    :returns: A tuple containing a list of missing fields and a list of extra fields.
     :rtype: Tuple[List[str], List[str]]
     """
     missing_fields = []
@@ -547,7 +563,7 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
     Get the current event loop or create a new one if it doesn't exist.
     Works for different Python versions and contexts.
 
-    :return: Event loop
+    :returns: Event loop
     :rtype: asyncio.AbstractEventLoop
     """
     try:
@@ -581,23 +597,23 @@ def run_coroutine(coroutine):
 
     :param coro: Asynchronous function.
     :type coro: Coroutine
-    :return: Result of the asynchronous function.
+    :returns: Result of the asynchronous function.
     :rtype: Any
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-            from supervisely._utils import run_coroutine
+                from supervisely._utils import run_coroutine
 
-            async def async_function():
-                await asyncio.sleep(1)
-                return "Hello, World!"
+                async def async_function():
+                    await asyncio.sleep(1)
+                    return "Hello, World!"
 
-            coroutine = async_function()
-            result = run_coroutine(coroutine)
-            print(result)
-            # Output: Hello, World!
+                coroutine = async_function()
+                result = run_coroutine(coroutine)
+                print(result)
+                # Output: Hello, World!
     """
 
     loop = get_or_create_event_loop()
@@ -647,21 +663,22 @@ def removesuffix(string, suffix):
     :type string: str
     :param suffix: The suffix to remove.
     :type suffix: str
-    :return: The string without the suffix or the original string.
+    :returns: The string without the suffix or the original string.
     :rtype: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely._utils import removesuffix
+        .. code-block:: python
 
-        original_string = "example.txt"
-        suffix_to_remove = ".txt"
+            from supervisely._utils import removesuffix
 
-        result = removesuffix(original_string, suffix_to_remove)
-        print(result)
+            original_string = "example.txt"
+            suffix_to_remove = ".txt"
 
-        # Output: example
+            result = removesuffix(original_string, suffix_to_remove)
+            print(result)
+
+            # Output: example
 
     """
     if string.endswith(suffix):
@@ -674,7 +691,7 @@ def remove_non_printable(text: str) -> str:
 
     :param text: Input string
     :type text: str
-    :return: String with non-printable characters removed
+    :returns: String with non-printable characters removed
     :rtype: str
     """
     return "".join(char for char in text if char.isprintable()).strip()
@@ -687,7 +704,7 @@ def get_latest_instance_version_from_json() -> Optional[str]:
     The versions.json file should contain a mapping of SDK versions to instance versions.
     This function returns the instance version from the last entry in the file.
 
-    :return: Latest instance version or None if not found
+    :returns: Latest instance version or None if not found
     :rtype: Optional[str]
     """
     import json

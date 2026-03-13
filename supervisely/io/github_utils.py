@@ -1,10 +1,18 @@
 # coding: utf-8
 import os
-import tarfile
-import requests
 import shutil
-from supervisely.io.fs import ensure_base_path, silent_remove, get_file_name, remove_dir, get_subdirs
+import tarfile
+
+import requests
+
 from supervisely.api.api import Api
+from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_name,
+    get_subdirs,
+    remove_dir,
+    silent_remove,
+)
 from supervisely.task.progress import Progress
 
 
@@ -26,7 +34,27 @@ def download(github_url, dest_dir, github_token=None, version="master", log_prog
     silent_remove(tar_path)
 
 
-def download_tar(github_url, tar_path, github_token=None, version="master", log_progress=True):
+def download_tar(
+    github_url: str,
+    tar_path: str,
+    github_token: str = None,
+    version: str = "master",
+    log_progress: bool = True,
+) -> None:
+    """
+    Download a tarball from a GitHub repository.
+
+    :param github_url: Github repository URL
+    :type github_url: str
+    :param tar_path: Path to save the downloaded tar file
+    :type tar_path: str
+    :param github_token: Github token for authentication
+    :type github_token: str
+    :param version: Branch or tag to download
+    :type version: str
+    :param log_progress: Whether to log progress during download
+    :type log_progress: bool
+    """
     headers = {}
     if github_token is not None:
         headers = {"Authorization": "token {}".format(github_token)}
@@ -40,8 +68,10 @@ def download_tar(github_url, tar_path, github_token=None, version="master", log_
     if r.status_code != requests.codes.ok:  # pylint: disable=no-member
         Api._raise_for_status(r)
 
-    progress = Progress("Downloading (KB)", len(r.content) / 1024)
+    if log_progress:
+        progress = Progress("Downloading (KB)", len(r.content) / 1024)
     with open(tar_path, 'wb') as f:
         for chunk in r.iter_content(chunk_size=8192):
             f.write(chunk)
-            progress.iters_done_report(len(chunk) / 1024)
+            if log_progress:
+                progress.iters_done_report(len(chunk) / 1024)

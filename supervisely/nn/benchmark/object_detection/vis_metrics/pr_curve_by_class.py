@@ -7,6 +7,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class PRCurveByClass(DetectionVisMetric):
+    """Per-class precision-recall curves for detection reports."""
+
     MARKDOWN = "pr_curve_by_class"
     CHART = "pr_curve_by_class"
 

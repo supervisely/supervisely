@@ -12,6 +12,8 @@ from supervisely.nn.inference import Session
 
 
 class ModelInfo(Widget):
+    """Shows connected model details (name, checkpoint, task type) for a given session or team."""
+
     def __init__(
         self,
         session_id: int = None,
@@ -19,6 +21,15 @@ class ModelInfo(Widget):
         widget_id: str = None,
         replace_none_with: Optional[str] = None,
     ):
+        """:param session_id: Deployed model session ID to display info for.
+        :type session_id: int, optional
+        :param team_id: Team ID. Defaults to env.team_id().
+        :type team_id: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param replace_none_with: String to replace None values in model info.
+        :type replace_none_with: str, optional
+        """
         self._api = Api()
         self._session_id = session_id
         self._team_id = team_id

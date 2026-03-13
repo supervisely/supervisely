@@ -40,6 +40,14 @@ class StrEnum(Enum):
 
     @classmethod
     def has_value(cls, value):
+        """
+        Check if a value is in the enum.
+
+        :param value: Value to check.
+        :type value: str
+        :returns: True if value is in the enum, False otherwise.
+        :rtype: bool
+        """
         for possible_value in cls:
             if value == str(possible_value.value):
                 return True
@@ -47,6 +55,7 @@ class StrEnum(Enum):
 
     @classmethod
     def values(cls):
+        """
+        Get all values of the enum.
+        """
         return [value.value for value in cls]
-
-
