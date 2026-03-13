@@ -124,7 +124,7 @@ INSTALL_REQUIRES = [
     "click",
     "imutils==0.5.4",
     "urllib3>=2.6.3, <3.0.0; python_version >= '3.10'",
-    "urllib3>=1.26.15, <2.0.0; python_version < '3.10'",
+    "urllib3>=1.26.15, <=2.2.3; python_version < '3.10'",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.23.0",
     "pyjwt>=2.1.0,<3.0.0",
