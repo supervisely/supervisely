@@ -2,6 +2,8 @@ from typing import Callable
 
 
 class BaseTrainLogger:
+    """Abstract base for training loggers with callbacks for train/epoch/step lifecycle events."""
+
     def __init__(self):
         self._on_train_started_callbacks = []
         self._on_train_finished_callbacks = []

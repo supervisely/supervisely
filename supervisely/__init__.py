@@ -1,12 +1,12 @@
 # coding: utf-8
 # isort: skip_file
-import pkg_resources  # isort: skip
 import os
+from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
-    __version__ = "development"
+    __version__ = version("supervisely")
+except PackageNotFoundError:
+    __version__ = "0.0.0.dev0" # "development"
 
 
 class _ApiProtoNotAvailable:
@@ -106,6 +106,7 @@ from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.cuboid_2d import Cuboid2d
+from supervisely.geometry.oriented_bbox import OrientedBBox
 
 from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.geometry.helpers import deserialize_geometry

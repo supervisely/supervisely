@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Optional, Union
 from urllib.parse import urlparse
 
 import cv2
@@ -10,11 +10,11 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.imaging.image import np_image_to_data_url_backup_rgb, read
+from supervisely.imaging.image import np_image_to_data_url, read
 
 
 def mask_to_heatmap(
-    mask: np.ndarray, colormap=cv2.COLORMAP_JET, transparent_low=False, vmin=None, vmax=None
+    mask: np.ndarray, colormap=cv2.COLORMAP_JET, transparent_low=False, vmin=None, vmax=None, blur_ksize=(5,5), blur_function: Optional[Callable[[np.ndarray], np.ndarray]] = None
 ):
     if mask.ndim == 3:
         mask_gray = mask.mean(axis=-1)
@@ -30,16 +30,18 @@ def mask_to_heatmap(
         mask_norm = np.full_like(mask_gray, 128, dtype=np.uint8)
     else:
         mask_norm = ((mask_gray - vmin) / (vmax - vmin) * 255).astype(np.uint8)
-    mask_norm = cv2.GaussianBlur(mask_norm, (5, 5), 0)
+    if transparent_low:
+        zeros = mask_norm == mask_norm.min()
+    if blur_function is not None:
+        mask_norm = blur_function(mask_norm)
+    elif blur_ksize is not None:
+        mask_norm = cv2.GaussianBlur(mask_norm, blur_ksize, 0)
     heatmap_bgr = cv2.applyColorMap(mask_norm, colormap)
     heatmap_bgra = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2BGRA)
-
     if transparent_low:
-        alpha = np.where(mask_norm == 0, 0, 255).astype(np.uint8)
+        alpha = np.where(zeros, 0, 255).astype(np.uint8)
         heatmap_bgra[..., 3] = alpha
-    heatmap_rgba = heatmap_bgra[..., [2, 1, 0, 3]]
-
-    return heatmap_rgba
+    return heatmap_bgra
 
 
 def colormap_to_hex_list(colormap=cv2.COLORMAP_JET, n=5):
@@ -60,55 +62,10 @@ def to_json_safe(val):
 
 
 class Heatmap(Widget):
-    """
-    Supervisely widget that displays an interactive heatmap overlay on top of a background image.
-
-    :param background_image: Background image to display under the heatmap. Can be a path to an image file or a NumPy array
-    :type background_image: Union[str, np.ndarray], optional
-    :param heatmap_mask: NumPy array representing the heatmap mask values
-    :type heatmap_mask: np.ndarray, optional
-    :param vmin: Minimum value for normalizing the heatmap. If None, it is inferred from the mask
-    :type vmin: Any, optional
-    :param vmax: Maximum value for normalizing the heatmap. If None, it is inferred from the mask
-    :type vmax: Any, optional
-    :param transparent_low: Whether to make low values in the heatmap transparent
-    :type transparent_low: bool, optional
-    :param colormap: OpenCV colormap used to colorize the heatmap (e.g., cv2.COLORMAP_JET)
-    :type colormap: int, optional
-    :param width: Width of the output heatmap in pixels
-    :type width: int, optional
-    :param height: Height of the output heatmap in pixels
-    :type height: int, optional
-    :param widget_id: Unique identifier for the widget instance
-    :type widget_id: str, optional
-
-    This widget provides an interactive visualization for numerical data as colored overlays.
-    Users can click on the heatmap to get exact values at specific coordinates.
-    The widget supports various colormaps, transparency controls, and value normalization.
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import numpy as np
-        from supervisely.app.widgets import Heatmap
-
-        # Create temperature heatmap
-        temp_data = np.random.uniform(-20, 40, size=(100, 100))
-        heatmap = Heatmap(
-            background_image="/path/to/background.jpg",
-            heatmap_mask=temp_data,
-            vmin=-20,
-            vmax=40,
-            colormap=cv2.COLORMAP_JET
-        )
-
-        @heatmap.click
-        def handle_click(y: int, x: int, value: float):
-            print(f"Temperature at ({x}, {y}): {value:.1f}°C")
-    """
+    """Interactive heatmap overlay on top of a background image. Supports colormaps, transparency, and blurring."""
 
     class Routes:
+        """Route name constants for this widget."""
         CLICK = "heatmap_clicked_cb"
 
     def __init__(
@@ -121,8 +78,53 @@ class Heatmap(Widget):
         colormap: int = cv2.COLORMAP_JET,
         width: int = None,
         height: int = None,
+        blur_ksize: Optional[Union[tuple, None]] = (5,5),
+        blur_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         widget_id: str = None,
     ):
+        """
+        :param background_image: Background image path or NumPy array
+        :type background_image: Union[str, np.ndarray], optional
+        :param heatmap_mask: NumPy array with heatmap mask values
+        :type heatmap_mask: np.ndarray, optional
+        :param vmin: Minimum value for normalization. If None, inferred from mask
+        :type vmin: Any, optional
+        :param vmax: Maximum value for normalization. If None, inferred from mask
+        :type vmax: Any, optional
+        :param transparent_low: Whether to make low values transparent
+        :type transparent_low: bool, optional
+        :param colormap: OpenCV colormap (e.g., cv2.COLORMAP_JET)
+        :type colormap: int, optional
+        :param width: Width in pixels
+        :type width: int, optional
+        :param height: Height in pixels
+        :type height: int, optional
+        :param blur_ksize: Gaussian blur kernel size. None to disable
+        :type blur_ksize: Optional[Union[tuple, None]], optional
+        :param blur_function: Custom blur function. Overrides blur_ksize if provided
+        :type blur_function: Optional[Callable[[np.ndarray], np.ndarray]], optional
+        :param widget_id: Unique identifier for the widget instance
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import numpy as np
+                from supervisely.app.widgets import Heatmap
+
+                temp_data = np.random.uniform(-20, 40, size=(100, 100))
+                heatmap = Heatmap(
+                    background_image="/path/to/background.jpg",
+                    heatmap_mask=temp_data,
+                    vmin=-20,
+                    vmax=40,
+                    colormap=cv2.COLORMAP_JET,
+                )
+                @heatmap.click
+                def handle_click(y: int, x: int, value: float):
+                    print(f"Temperature at ({x}, {y}): {value:.1f}°C")
+        """
         self._background_url = None
         self._heatmap_url = None
         self._mask_data = None  # Store numpy array for efficient value lookup
@@ -136,6 +138,9 @@ class Heatmap(Widget):
         self._opacity = 70
         self._min_value = 0
         self._max_value = 0
+        self._blur_ksize = blur_ksize
+        self._blur_function = blur_function
+
         super().__init__(widget_id, file_path=__file__)
 
         if background_image is not None:
@@ -187,27 +192,29 @@ class Heatmap(Widget):
 
         All images are converted to data URLs for efficient in-memory serving.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.app.widgets.heatmap import Heatmap
-            import numpy as np
-            heatmap = Heatmap()
+                from supervisely.app.widgets.heatmap import Heatmap
+                import numpy as np
+                heatmap = Heatmap()
 
-            # Using a local file path
-            heatmap.set_background("/path/to/image.jpg")
+                # Using a local file path
+                heatmap.set_background("/path/to/image.jpg")
 
-            # Using a NumPy array (RGB image)
-            bg_array = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
-            heatmap.set_background(bg_array)
+                # Using a NumPy array (RGB image)
+                bg_array = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
+                heatmap.set_background(bg_array)
 
-            # Using a remote URL
-            heatmap.set_background("https://example.com/background.png")
+                # Using a remote URL
+                heatmap.set_background("https://example.com/background.png")
         """
         try:
             if isinstance(background_image, np.ndarray):
-                self._background_url = np_image_to_data_url_backup_rgb(background_image)
+                # rgb or rgba to bgr or bgra
+                background_image = background_image[..., ::-1]
+                self._background_url = np_image_to_data_url(background_image)
             elif isinstance(background_image, str):
                 parsed = urlparse(background_image)
                 bg_image_path = Path(background_image)
@@ -217,7 +224,8 @@ class Heatmap(Widget):
                     self._background_url = background_image
                 elif bg_image_path.exists() and bg_image_path.is_file():
                     np_image = read(bg_image_path, remove_alpha_channel=False)
-                    self._background_url = np_image_to_data_url_backup_rgb(np_image)
+                    np_image = np_image[..., ::-1]  # rgb or rgba to bgr or bgra
+                    self._background_url = np_image_to_data_url(np_image)
                 else:
                     raise ValueError(f"Unable to find image at {background_image}")
             else:
@@ -241,22 +249,22 @@ class Heatmap(Widget):
 
         The heatmap is converted to a data URL for efficient in-memory serving.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.app.widgets.heatmap import Heatmap
-            import numpy as np
+                from supervisely.app.widgets.heatmap import Heatmap
+                import numpy as np
 
-            heatmap = Heatmap()
+                heatmap = Heatmap()
 
-            # Create probability heatmap (0.0 to 1.0)
-            probability_mask = np.random.uniform(0.0, 1.0, size=(100, 100))
-            heatmap.set_heatmap(probability_mask)
+                # Create probability heatmap (0.0 to 1.0)
+                probability_mask = np.random.uniform(0.0, 1.0, size=(100, 100))
+                heatmap.set_heatmap(probability_mask)
 
-            # Create temperature heatmap (-50 to 150)
-            temp_mask = np.random.uniform(-50, 150, size=(200, 300))
-            heatmap.set_heatmap(temp_mask)
+                # Create temperature heatmap (-50 to 150)
+                temp_mask = np.random.uniform(-50, 150, size=(200, 300))
+                heatmap.set_heatmap(temp_mask)
         """
         try:
             heatmap = mask_to_heatmap(
@@ -265,8 +273,10 @@ class Heatmap(Widget):
                 vmin=self._vmin,
                 vmax=self._vmax,
                 transparent_low=self._transparent_low,
+                blur_ksize=self._blur_ksize,
+                blur_function=self._blur_function,
             )
-            self._heatmap_url = np_image_to_data_url_backup_rgb(heatmap)
+            self._heatmap_url = np_image_to_data_url(heatmap)
             self._min_value = to_json_safe(mask.min())
             self._max_value = to_json_safe(mask.max())
 
@@ -302,7 +312,7 @@ class Heatmap(Widget):
         Creates and sets a heatmap from Supervisely annotations showing object density/overlaps.
 
         :param anns: List of Supervisely annotations to convert to heatmap
-        :type anns: List[Annotation]
+        :type anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
         :param object_name: Name of the object class to filter annotations by. If None, all objects are included
         :type object_name: str, optional
         :raises ValueError: If the annotations list is empty
@@ -314,17 +324,17 @@ class Heatmap(Widget):
             4. Areas with overlapping objects will have higher values (brighter in heatmap)
             5. Setting the resulting density mask as the heatmap
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.annotation.annotation import Annotation
+                from supervisely.annotation.annotation import Annotation
 
-            ann1 = Annotation.load_json_file("/path/to/ann1.json")
-            ann2 = Annotation.load_json_file("/path/to/ann2.json")
-            ann3 = Annotation.load_json_file("/path/to/ann3.json")
-            annotations = [ann1, ann2, ann3]
-            heatmap.set_heatmap_from_annotations(annotations, object_name="person")
+                ann1 = Annotation.load_json_file("/path/to/ann1.json")
+                ann2 = Annotation.load_json_file("/path/to/ann2.json")
+                ann3 = Annotation.load_json_file("/path/to/ann3.json")
+                annotations = [ann1, ann2, ann3]
+                heatmap.set_heatmap_from_annotations(annotations, object_name="person")
 
         """
         if len(anns) == 0:
@@ -510,13 +520,13 @@ class Heatmap(Widget):
             - x: column index (width axis)
             - value: clicked pixel value (fetched from server-side mask)
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            @heatmap.click
-            def handle_click(y: int, x: int, value: float):
-                print(f"Clicked at row {y}, col {x}, value: {value}")
+                @heatmap.click
+                def handle_click(y: int, x: int, value: float):
+                    print(f"Clicked at row {y}, col {x}, value: {value}")
 
         """
         self._click_callback = func

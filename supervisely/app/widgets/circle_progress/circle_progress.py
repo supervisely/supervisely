@@ -4,7 +4,15 @@ from supervisely.app.content import DataJson
 
 
 class CircleProgress(Widget):
+    """Circular progress indicator widget showing Progress status (success/exception/none)."""
+
     def __init__(self, progress: Progress, widget_id=None):
+        """
+        :param progress: Progress object to display status for.
+        :type progress: :class:`~supervisely.app.widgets.progress.Progress`
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self.progress = progress
         super().__init__(widget_id=widget_id, file_path=__file__)
 

@@ -18,6 +18,8 @@ except ImportError:
 
 
 class GridChart(Widget):
+    """Grid of line charts; displays multiple charts in columns for side-by-side comparison."""
+
     def __init__(
         self,
         data: List[Union[dict, str]] = [],
@@ -25,6 +27,16 @@ class GridChart(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
+        """
+        :param data: List of chart configs (dicts) or titles (str). Each dict is passed to LineChart.
+        :type data: List[Union[:class:`~supervisely.app.widgets.line_chart.line_chart.LineChart`, str]]
+        :param columns: Number of columns in the grid.
+        :type columns: int
+        :param gap: Gap between charts in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         # TODO maybe generalize LineChart -> ApexChart ???
         self._widgets = {}
         self._columns = columns

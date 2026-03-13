@@ -1,4 +1,4 @@
-FROM supervisely/base-py-sdk:6.73.137
+FROM supervisely/base-py-sdk:6.73.484
 
 ARG tag_ref_name
 
@@ -12,4 +12,3 @@ RUN pip install decord==0.6.0
 
 # Supervisely
 RUN pip install --upgrade supervisely==$tag_ref_name
-RUN pip install --upgrade supervisely[docs]==$tag_ref_name

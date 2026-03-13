@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Recall(DetectionVisMetric):
+    """Recall metrics and per-class recall chart for detection reports."""
+
     MARKDOWN = "recall"
     MARKDOWN_PER_CLASS = "recall_per_class"
     NOTIFICATION = "recall"

@@ -1,0 +1,78 @@
+.sly-activity-feed {
+  padding: 10px;
+}
+
+.sly-activity-feed-item {
+  display: flex;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.sly-activity-feed-item:last-child {
+  padding-bottom: 0;
+}
+
+.sly-activity-feed-item:not(:last-child) .sly-activity-feed-line {
+  display: block;
+}
+
+.sly-activity-feed-marker {
+  flex-shrink: 0;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.sly-activity-feed-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: white;
+  z-index: 1;
+}
+
+.sly-activity-feed-circle.completed {
+  background-color: #67C23A;
+}
+
+.sly-activity-feed-circle.failed {
+  background-color: #F56C6C;
+}
+
+.sly-activity-feed-circle.in_progress {
+  background-color: #409EFF;
+}
+
+.sly-activity-feed-circle.pending {
+  background-color: #909399;
+}
+
+.sly-activity-feed-line {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: calc(100% + 4px);
+  background-color: #E4E7ED;
+  display: none;
+}
+
+.sly-activity-feed-content {
+  flex: 1;
+  padding-left: 10px;
+  padding-top: 0px;
+}
+
+.sly-activity-feed-number {
+  font-size: 11px;
+  color: #909399;
+  margin-top: 4px;
+}

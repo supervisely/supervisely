@@ -1,20 +1,35 @@
-import numpy as np
 from collections import deque
 
-from . import matching
-from .gmc import GMC
-from .basetrack import BaseTrack, TrackState
-from .kalman_filter import KalmanFilter
+import numpy as np
 
-from supervisely.nn.tracker.botsort.osnet_reid.osnet_reid_interface import OsnetReIDInterface
+from supervisely.nn.tracker.botsort.osnet_reid.osnet_reid_interface import (
+    OsnetReIDInterface,
+)
+
+from . import matching
+from .basetrack import BaseTrack, TrackState
+from .gmc import GMC
+from .kalman_filter import KalmanFilter
 
 
 class STrack(BaseTrack):
+    """Single-object track with Kalman filtering and optional re-ID appearance features (BoT-SORT)."""
 
     shared_kalman = KalmanFilter()
 
     def __init__(self, tlwh, score, cls, feat=None, feat_history=50):
-
+        """
+        :param tlwh: Box [x,y,w,h].
+        :type tlwh: list
+        :param score: Detection score.
+        :type score: float
+        :param cls: Class.
+        :type cls: int
+        :param feat: ReID feature.
+        :type feat: np.ndarray
+        :param feat_history: Feature history size.
+        :type feat_history: int
+        """
         # wait activate
         self._tlwh = np.asarray(tlwh, dtype=float)
         self.kalman_filter = None
@@ -136,10 +151,12 @@ class STrack(BaseTrack):
     def update(self, new_track, frame_id):
         """
         Update a matched track
-        :type new_track: STrack
+        :param new_track: New track to update.
+        :type new_track: :class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`
+        :param frame_id: Frame ID.
         :type frame_id: int
-        :type update_feature: bool
-        :return:
+        :returns: Updated track.
+        :rtype: :class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`
         """
         self.frame_id = frame_id
         self.tracklet_len += 1
@@ -225,8 +242,15 @@ class STrack(BaseTrack):
 
 
 class BoTSORT(object):
-    def __init__(self, args, frame_rate=30):
+    """BoT-SORT multi-object tracker implementation used in the BotSORT tracking module."""
 
+    def __init__(self, args, frame_rate=30):
+        """
+        :param args: Tracker args (SimpleNamespace).
+        :type args: SimpleNamespace
+        :param frame_rate: Video frame rate.
+        :type frame_rate: int
+        """
         self.tracked_stracks = []  # type: list[STrack]
         self.lost_stracks = []  # type: list[STrack]
         self.removed_stracks = []  # type: list[STrack]

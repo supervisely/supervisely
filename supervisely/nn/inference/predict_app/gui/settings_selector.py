@@ -52,11 +52,15 @@ from supervisely.video_annotation.video_annotation import KeyIdMap, VideoAnnotat
 
 
 class InferenceMode:
+    """String constants for supported inference modes in the GUI."""
+
     FULL_IMAGE = "Full Image"
     SLIDING_WINDOW = "Sliding Window"
 
 
 class AddPredictionsMode:
+    """String constants describing how new predictions should be merged with existing annotations."""
+
     APPEND = "Merge with existing labels"
     REPLACE = "Replace existing labels"
     IOU_MERGE = "Merge by IoU threshold"
@@ -64,6 +68,8 @@ class AddPredictionsMode:
 
 
 class Preview:
+    """UI component that generates and displays a quick preview of model predictions on a random item."""
+
     lock_message = "Select previous step to unlock"
 
     def __init__(
@@ -74,6 +80,18 @@ class Preview:
         get_input_settings_fn: Callable[[], Dict[str, Any]],
         get_settings_fn: Callable[[], Dict[str, Any]],
     ):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param preview_dir: Output dir.
+        :type preview_dir: str
+        :param get_model_api_fn: Model API getter.
+        :type get_model_api_fn: Callable[[], ModelAPI]
+        :param get_input_settings_fn: Input settings getter.
+        :type get_input_settings_fn: Callable[[], Dict[str, Any]]
+        :param get_settings_fn: Settings getter. :param get_settings_fn: Settings getter.
+        :type get_settings_fn: Callable[[], Dict[str, Any]]
+        """
         self.api = api
         self.preview_dir = preview_dir
         self.get_model_api_fn = get_model_api_fn
@@ -502,7 +520,7 @@ class Preview:
             if pred_video_annotation is None:
                 raise RuntimeError("Model did not return video annotation")
             pred_video_annotation = VideoAnnotation.from_json(
-                pred_video_annotation, project_meta=project_meta
+                pred_video_annotation, project_meta=model_api.get_model_meta()
             )
             _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
                 self._project_meta,
@@ -573,6 +591,8 @@ class Preview:
 
 
 class SettingsSelector:
+    """Inference settings step for Predict App (mode selection, merge options, advanced settings and preview)."""
+
     title = "Inference (settings + preview)"
     description = "Select additional settings for model inference"
     lock_message = "Select previous step to unlock"
@@ -584,6 +604,16 @@ class SettingsSelector:
         input_selector: InputSelector,
         model_selector: ModelSelector,
     ):
+        """
+        :param api: Supervisely API.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param static_dir: Static dir.
+        :type static_dir: str
+        :param input_selector: InputSelector.
+        :type input_selector: :class:`~supervisely.nn.inference.predict_app.gui.input_selector.InputSelector`
+        :param model_selector: ModelSelector.
+        :type model_selector: :class:`~supervisely.nn.inference.predict_app.gui.model_selector.ModelSelector`
+        """
         # Init Step
         self.api = api
         self.static_dir = static_dir
@@ -774,11 +804,11 @@ class SettingsSelector:
         ]
 
     def set_inference_settings(self, settings: Dict[str, Any]):
-        settings = "# Inference settings\n" + settings
+        if isinstance(settings, dict):
+            settings = yaml.safe_dump(settings)
         if isinstance(settings, str):
+            settings = "# Inference settings\n" + settings
             self.inference_settings_editor.set_text(settings)
-        else:
-            self.inference_settings_editor.set_text(yaml.safe_dump(settings))
 
     def set_tracking_settings(self, settings: Dict[str, Any]):
         if self.input_selector.radio.get_value() != ProjectType.VIDEOS.value:
@@ -834,7 +864,7 @@ class SettingsSelector:
             "inference_settings": self.get_inference_settings(),
         }
         if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
-            settings["tracking_settings"] = self.get_tracking_settings()
+            settings["tracking_config"] = self.get_tracking_settings()
             if self.input_selector.get_settings().get("video_ids", None) is not None:
                 settings["tracking"] = self.tracking_checkbox.is_checked()
         return settings

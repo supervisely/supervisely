@@ -1,10 +1,8 @@
 """
-TrainApp module.
-
-This module contains the `TrainApp` class and related functionality to facilitate
-training workflows in a Supervisely application.
+High-level wrapper for building Supervisely training applications.
 """
 
+import os
 import shutil
 import subprocess
 import time
@@ -43,6 +41,7 @@ from supervisely import (
     logger,
 )
 from supervisely._utils import abs_url, get_filename_from_headers
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
@@ -72,26 +71,20 @@ from supervisely.project.download import (
     is_cached,
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
-from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 
 class TrainApp:
     """
-    A class representing the training application.
+    High-level wrapper for building Supervisely training applications.
 
-    This class initializes and manages the training workflow, including
-    handling inputs, hyperparameters, project management, and output artifacts.
+    Learn more about the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
 
-    :param framework_name: Name of the ML framework used.
-    :type framework_name: str
-    :param models: List of model configurations.
-    :type models: Union[str, List[Dict[str, Any]]]
-    :param hyperparameters: Path or string content of hyperparameters in YAML format.
-    :type hyperparameters: str
-    :param app_options: Options for the application layout and behavior.
-    :type app_options: Optional[Union[str, Dict[str, Any]]]
-    :param work_dir: Path to the working directory for storing intermediate files.
-    :type work_dir: Optional[str]
+    **It connects:**
+
+    - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)
+    - **Data preparation** (project download, optional conversion, splitting, collections creation)
+    - **Training lifecycle** (prepare data → run user training code → validate & upload artifacts)
+    - **Optional extras**: export (ONNX/TensorRT), model benchmark, TensorBoard
     """
 
     def __init__(
@@ -102,6 +95,46 @@ class TrainApp:
         app_options: Optional[Union[str, Dict[str, Any]]] = None,
         work_dir: Optional[str] = None,
     ):
+        """
+        :param framework_name: Name of the ML framework used (stored in experiment metadata).
+        :type framework_name: str
+        :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
+        :type models: Union[str, List[Dict[str, Any]]]
+        :param hyperparameters: Path to hyperparameters YAML file (``.yaml``/``.yml``). The GUI allows editing before training.
+        :type hyperparameters: str
+        :param app_options: Path to options YAML file or a dict with UI/behavior options.
+        :type app_options: Optional[Union[str, Dict[str, Any]]]
+        :param work_dir: Local working directory used to store downloaded data, model files, logs and output artifacts.
+        :type work_dir: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.nn.training.train_app import TrainApp
+
+                train_app = TrainApp(
+                    framework_name="My Framework", # e.g "YOLO"
+                    models="models.json",
+                    hyperparameters="hyperparameters.yaml",
+                    app_options="app_options.yaml",
+                )
+
+                @train_app.start
+                def train():
+                    # Access data via train_app.project_dir
+                    # Access hyperparameters via train_app.hyperparameters (dict)
+                    # Access model files via train_app.model_files (dict)
+                    # Train your model, save checkpoints locally, and return experiment_info.
+                    return {
+                        "model_name": train_app.model_name,
+                        "task_type": train_app.task_type,   # TaskType (string-like enum)
+                        "checkpoints": "/path/to/checkpoints_dir",  # or list of file paths
+                        "best_checkpoint": "checkpoint_best.pth",
+                        # optional: return config if model requires it
+                        # "model_files": {"config": "/path/to/config.yaml", ...},
+                    }
+        """
 
         # Init
         self._api = Api.from_env()
@@ -197,6 +230,8 @@ class TrainApp:
 
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
+        self._device_ids: List[int] = []
+        self._is_multi_gpu: bool = self._app_options.get("multi_gpu", False)
         if self._onnx_supported:
             self._convert_onnx_func = None
         if self._tensorrt_supported:
@@ -257,6 +292,10 @@ class TrainApp:
         state = self.gui._extract_state_from_env()
         logger.debug(f"State: {state}")
         gui_state_raw = state.get("guiState")
+
+        # Use for debugging guiState
+        # gui_state_raw = self.__debug_gui_state()
+
         if gui_state_raw is not None:
             logger.info("Loading GUI from state")
             logger.debug(f"GUI State: {gui_state_raw}")
@@ -311,6 +350,7 @@ class TrainApp:
         If True, the training will start automatically after the GUI is loaded and train server is started.
         """
         return self.gui._start_training
+
     # ----------------------------------------- #
 
     # Input Data
@@ -319,7 +359,7 @@ class TrainApp:
         """
         Returns the ID of the team.
 
-        :return: Team ID.
+        :returns: Team ID.
         :rtype: int
         """
         return self.gui.team_id
@@ -329,7 +369,7 @@ class TrainApp:
         """
         Returns the ID of the workspace.
 
-        :return: Workspace ID.
+        :returns: Workspace ID.
         :rtype: int
         """
         return self.gui.workspace_id
@@ -339,7 +379,7 @@ class TrainApp:
         """
         Returns the ID of the project.
 
-        :return: Project ID.
+        :returns: Project ID.
         :rtype: int
         """
         return self.gui.project_id
@@ -349,7 +389,7 @@ class TrainApp:
         """
         Returns the name of the project.
 
-        :return: Project name.
+        :returns: Project name.
         :rtype: str
         """
         return self.gui.project_info.name
@@ -357,10 +397,10 @@ class TrainApp:
     @property
     def project_info(self) -> ProjectInfo:
         """
-        Returns ProjectInfo object, which contains information about the project.
+        Returns :class:`~supervisely.api.project_api.ProjectInfo` object, which contains information about the project.
 
-        :return: Project name.
-        :rtype: str
+        :returns: Project info.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         return self.gui.project_info
 
@@ -369,8 +409,8 @@ class TrainApp:
         """
         Returns the project metadata.
 
-        :return: Project metadata.
-        :rtype: ProjectMeta
+        :returns: Project metadata.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self.gui.project_meta
 
@@ -382,7 +422,7 @@ class TrainApp:
         """
         Return whether the model is pretrained or custom.
 
-        :return: Model source.
+        :returns: Model source.
         :rtype: str
         """
         return self.gui.model_selector.get_model_source()
@@ -392,7 +432,7 @@ class TrainApp:
         """
         Returns the name of the model.
 
-        :return: Model name.
+        :returns: Model name.
         :rtype: str
         """
         return self.gui.model_selector.get_model_name()
@@ -400,10 +440,10 @@ class TrainApp:
     @property
     def model_info(self) -> dict:
         """
-        Returns a selected row in dict format from the models table.
+        Returns a selected row from the models table in dict format.
 
-        :return: Model name.
-        :rtype: str
+        :returns: Model configuration dict.
+        :rtype: dict
         """
         return self.gui.model_selector.get_model_info()
 
@@ -412,8 +452,8 @@ class TrainApp:
         """
         Returns the task type of the model.
 
-        :return: Task type.
-        :rtype: TaskType
+        :returns: Task type.
+        :rtype: :class:`~supervisely.nn.task_type.TaskType`
         """
         return self.gui.model_selector.get_selected_task_type()
 
@@ -422,10 +462,42 @@ class TrainApp:
         """
         Returns the selected device for training.
 
-        :return: Device name.
+        :returns: Device name.
         :rtype: str
         """
         return self.gui.training_process.get_device()
+
+    @property
+    def devices(self) -> List[str]:
+        """
+        Returns all devices used for training in multi-GPU mode.
+
+        :return: List of device strings (e.g. ["cuda:0", "cuda:1"]).
+        :rtype: List[str]
+        """
+        if not self.is_multi_gpu:
+            return [self.device]
+        return self.gui.training_process.get_devices()
+
+    @property
+    def device_ids(self) -> List[int]:
+        """
+        Returns the list of device IDs used for training in multi-GPU mode.
+
+        :return: List of device IDs (e.g. [0, 1] for "cuda:0" and "cuda:1").
+        :rtype: List[int]
+        """
+        return self._parse_device_ids(self.devices)
+
+    @property
+    def is_multi_gpu(self) -> bool:
+        """
+        Returns True if multi-GPU mode is enabled.
+
+        :return: True if multi-GPU is enabled.
+        :rtype: bool
+        """
+        return self._is_multi_gpu
 
     @property
     def base_checkpoint(self) -> str:
@@ -447,7 +519,7 @@ class TrainApp:
         """
         Returns the selected classes names for training.
 
-        :return: List of selected classes names.
+        :returns: List of selected classes names.
         :rtype: List[str]
         """
         if not self._has_classes_selector:
@@ -461,7 +533,7 @@ class TrainApp:
         """
         Returns the number of selected classes for training.
 
-        :return: Number of selected classes.
+        :returns: Number of selected classes.
         :rtype: int
         """
         if not self._has_classes_selector:
@@ -493,7 +565,7 @@ class TrainApp:
         """
         Returns the selected hyperparameters for training in dict format.
 
-        :return: Hyperparameters in dict format.
+        :returns: Hyperparameters in dict format.
         :rtype: Dict[str, Any]
         """
         return yaml.safe_load(self.hyperparameters_yaml)
@@ -503,7 +575,7 @@ class TrainApp:
         """
         Returns the selected hyperparameters for training in raw format as a string.
 
-        :return: Hyperparameters in raw format.
+        :returns: Hyperparameters in raw format.
         :rtype: str
         """
         return self.gui.hyperparameters_selector.get_hyperparameters()
@@ -514,8 +586,8 @@ class TrainApp:
         """
         Returns the main progress bar widget.
 
-        :return: Main progress bar widget.
-        :rtype: Progress
+        :returns: Main progress bar widget.
+        :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_main
 
@@ -524,8 +596,8 @@ class TrainApp:
         """
         Returns the secondary progress bar widget.
 
-        :return: Secondary progress bar widget.
-        :rtype: Progress
+        :returns: Secondary progress bar widget.
+        :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_secondary
 
@@ -534,7 +606,7 @@ class TrainApp:
         """
         Checks if model benchmarking is enabled based on application options and GUI settings.
 
-        :return: True if model benchmarking is enabled, False otherwise.
+        :returns: True if model benchmarking is enabled, False otherwise.
         :rtype: bool
         """
         return (
@@ -567,8 +639,27 @@ class TrainApp:
     @property
     def start(self):
         """
-        Decorator for the training function defined by user.
-        It wraps user-defined training function and prepares and finalizes the training process.
+        Decorator for the user-defined training function.
+
+        The decorated function is executed when the user clicks **Start training** in the GUI
+        (or when :meth:`start_in_thread` is used).
+
+        The function must return ``experiment_info`` dict with **required keys**:
+
+        - ``model_name``: str (name of the model used for training)
+        - ``task_type``: str (usually :class:`~supervisely.nn.task_type.TaskType`)
+        - ``checkpoints``: list[str] **or** path to directory (str) containing ``.pt``/``.pth`` files
+        - ``best_checkpoint``: str (file name; must be present in ``checkpoints``)
+
+        Optional keys:
+
+        - ``model_files``: dict[str, str] mapping additional files that model requires for inference (e.g model config)
+
+        ``TrainApp`` handles data preparation and (after your function returns) validates outputs and
+        uploads artifacts to Team Files.
+
+        :returns: A decorator that registers a training function.
+        :rtype: Callable
         """
 
         def decorator(func):
@@ -636,6 +727,25 @@ class TrainApp:
 
         # Step 7. Download Model files
         self._download_model()
+
+    def _parse_device_ids(self, value) -> Optional[List[int]]:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            ids = []
+            for v in value:
+                if isinstance(v, str) and v.startswith("cuda:"):
+                    v = v.split(":", 1)[1]
+                ids.append(int(v))
+            return ids
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return None
+            raw = raw.replace("cuda:", "")
+            parts = [p.strip() for p in raw.split(",") if p.strip()]
+            return [int(p) for p in parts]
+        return None
 
     def _finalize(self, experiment_info: dict) -> None:
         """
@@ -734,7 +844,9 @@ class TrainApp:
         self._upload_demo_files(remote_dir)
 
         # Step 10. Generate training output
-        output_file_info, experiment_info = self._generate_experiment_output(experiment_info, model_meta, session_link_file_info)
+        output_file_info, experiment_info = self._generate_experiment_output(
+            experiment_info, model_meta, session_link_file_info
+        )
 
         # Step 11. Set output widgets
         self._set_text_status("reset")
@@ -764,8 +876,8 @@ class TrainApp:
         :type experiment_info: dict
         :param remote_dir: Remote directory.
         :type remote_dir: str
-        :return: Best checkpoint info.
-        :rtype: FileInfo
+        :returns: Best checkpoint info.
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
         """
         best_checkpoint_name = experiment_info.get("best_checkpoint")
         remote_best_checkpoint_path = join(remote_dir, "checkpoints", best_checkpoint_name)
@@ -780,8 +892,8 @@ class TrainApp:
         """
         Registers an inference class for the training application to do model benchmarking.
 
-        :param inference_class: Inference class to be registered inherited from `supervisely.nn.inference.Inference`.
-        :type inference_class: Any
+        :param inference_class: Inference class to be registered (must be inherited from :class:`~supervisely.nn.inference.inference.Inference`).
+        :type inference_class: :class:`~supervisely.nn.inference.inference.Inference`
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
@@ -800,7 +912,7 @@ class TrainApp:
 
         :param experiment_info: Experiment info.
         :type experiment_info: dict
-        :return: Application state.
+        :returns: Application state.
         :rtype: dict
         """
         # Prepare optional sections depending on what selectors are enabled in GUI
@@ -845,39 +957,24 @@ class TrainApp:
         :param app_state: The state dictionary or path to the state file.
         :type app_state: Union[str, dict]
 
-        app_state example:
+        Example::
 
             app_state = {
-                "train_val_split": {
-                    "method": "random",
-                    "split": "train",
-                    "percent": 90
-                },
+                "train_val_split": {"method": "random", "split": "train", "percent": 90},
                 "classes": ["apple"],
-                # Pretrained model
+                # For Pretrained model
                 "model": {
                     "source": "Pretrained models",
-                    "model_name": "rtdetr_r50vd_coco_objects365"
+                    "model_name": "rtdetr_r50vd_coco_objects365",
                 },
-                # Custom model
-                # "model": {
-                #     "source": "Custom models",
-                #     "task_id": 555,
-                #     "checkpoint": "checkpoint_10.pth"
-                # },
-                "hyperparameters": hyperparameters, # yaml string
+                # For Custom model
+                # "model": {"source": "Custom models", "task_id": 555, "checkpoint": "checkpoint_10.pth"},
+                "hyperparameters": hyperparameters,  # yaml string
                 "options": {
                     "convert_class_shapes": True,
-                    "model_benchmark": {
-                        "enable": True,
-                        "speed_test": True
-                    },
+                    "model_benchmark": {"enable": True, "speed_test": True},
                     "cache_project": True,
-                    "export": {
-                        "enable": True,
-                        "ONNXRuntime": True,
-                        "TensorRT": True
-                    },
+                    "export": {"enable": True, "ONNXRuntime": True, "TensorRT": True},
                 },
                 "experiment_name": "My Experiment",
             }
@@ -892,7 +989,7 @@ class TrainApp:
 
         :param paths: List of paths to files or directories to be copied to the output directory.
         :type paths: List[str]
-        :return: None
+        :returns: None
         :rtype: None
         """
 
@@ -942,7 +1039,7 @@ class TrainApp:
 
         :param hyperparameters: Path to hyperparameters file.
         :type hyperparameters: str
-        :return: Hyperparameters in dict format.
+        :returns: Hyperparameters in dict format.
         :rtype: dict
         """
         if not isinstance(hyperparameters, str):
@@ -984,7 +1081,7 @@ class TrainApp:
 
         :param path: Path to the YAML file.
         :type path: str
-        :return: YAML file contents.
+        :returns: YAML file contents.
         :rtype: dict
         """
         with open(path, "r") as file:
@@ -1090,7 +1187,7 @@ class TrainApp:
         Downloads the project data from Supervisely without using the cache.
 
         :param dataset_infos: List of dataset information objects.
-        :type dataset_infos: List[DatasetInfo]
+        :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param total_images: Total number of images to download.
         :type total_images: int
         """
@@ -1117,7 +1214,7 @@ class TrainApp:
         Downloads the project data from Supervisely using the cache.
 
         :param dataset_infos: List of dataset information objects.
-        :type dataset_infos: List[DatasetInfo]
+        :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param total_images: Total number of images to download.
         :type total_images: int
         """
@@ -1201,7 +1298,9 @@ class TrainApp:
 
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
-        self._train_split, self._val_split = self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        self._train_split, self._val_split = (
+            self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        )
         self._train_split_ids, self._val_split_ids = [], []
         self._train_split_item_ids, self._val_split_item_ids = set(), set()
 
@@ -1275,7 +1374,13 @@ class TrainApp:
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
                     self.progress_bar_secondary.show()
-                    move_files(split, split_name, paths[dataset], image_name_formats[dataset], second_pbar)
+                    move_files(
+                        split,
+                        split_name,
+                        paths[dataset],
+                        image_name_formats[dataset],
+                        second_pbar,
+                    )
                     main_pbar.update(1)
                 self.progress_bar_secondary.hide()
             self.progress_bar_main.hide()
@@ -1295,7 +1400,10 @@ class TrainApp:
         with self.progress_bar_main(message="Processing splits", total=2) as pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                shutil.move(paths[dataset]["split_path"], train_ds_path if dataset == "train" else val_ds_path)
+                shutil.move(
+                    paths[dataset]["split_path"],
+                    train_ds_path if dataset == "train" else val_ds_path,
+                )
                 pbar.update(1)
             self.progress_bar_main.hide()
 
@@ -1464,7 +1572,7 @@ class TrainApp:
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :return: Experiment info with task_type key.
+        :returns: Experiment info with task_type key.
         :rtype: dict
         """
         task_type = experiment_info.get("task_type", None)
@@ -1492,7 +1600,7 @@ class TrainApp:
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :return: Tuple of success status and reason for failure.
+        :returns: Tuple of success status and reason for failure.
         :rtype: tuple
         """
         if not isinstance(experiment_info, dict):
@@ -1560,7 +1668,7 @@ class TrainApp:
 
         :param project_id: ID of the ground truth project for model benchmark. Provide only when cv task convertion is required.
         :type project_id: Optional[int]
-        :return: Splits data.
+        :returns: Splits data.
         :rtype: dict
         """
         val_dataset_ids = None
@@ -1829,7 +1937,16 @@ class TrainApp:
 
     def create_model_meta(self, task_type: str):
         """
-        Convert project meta according to task type.
+        Create a model meta for the trained model according to task type.
+
+        This method takes the input project's :class:`~supervisely.project.project_meta.ProjectMeta`,
+        removes classes that are not selected in the GUI, and then converts meta to a CV-task-specific
+        format (detection/segmentation).
+
+        :param task_type: CV task type of the trained model.
+        :type task_type: str
+        :returns: Model meta to be saved as ``model_meta.json``.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         names_to_delete = [
             c.name for c in self.project_meta.obj_classes if c.name not in self.classes
@@ -2039,7 +2156,12 @@ class TrainApp:
 
             self.progress_bar_main.hide()
 
-    def _generate_experiment_output(self, experiment_info: dict, model_meta: ProjectMeta, session_link_file_info: FileInfo) -> tuple:
+    def _generate_experiment_output(
+        self,
+        experiment_info: dict,
+        model_meta: ProjectMeta,
+        session_link_file_info: FileInfo,
+    ) -> tuple:
         """
         Generates and uploads the experiment page to the output directory, if report generation is successful.
         Otherwise, artifacts directory link will be used for output.
@@ -2047,10 +2169,10 @@ class TrainApp:
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         :param model_meta: Model meta with object classes.
-        :type model_meta: ProjectMeta
+        :type model_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param session_link_file_info: Artifacts directory link, used if report is not generated.
-        :type session_link_file_info: FileInfo
-        :return: Output file info and experiment info.
+        :type session_link_file_info: :class:`~supervisely.api.file_api.FileInfo`
+        :returns: Output file info and experiment info.
         :rtype: tuple
         """
         need_generate_report = self._app_options.get("generate_report", False)
@@ -2074,7 +2196,7 @@ class TrainApp:
         """
         Gets the train and val splits information for app_state.json.
 
-        :return: Train and val splits information based on selected split method.
+        :returns: Train and val splits information based on selected split method.
         :rtype: dict
         """
         if not self._has_splits_selector:
@@ -2325,10 +2447,10 @@ class TrainApp:
         :param splits_data: Information about the train and val splits.
         :type splits_data: dict
         :param model_meta: Model meta with object classes.
-        :type model_meta: ProjectInfo
+        :type model_meta: :class:`~supervisely.api.project_api.ProjectInfo`
         :param gt_project_id: Ground truth project ID with converted shapes.
         :type gt_project_id: int
-        :return: Evaluation report, report ID and evaluation metrics.
+        :returns: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
         lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
@@ -2619,9 +2741,9 @@ class TrainApp:
         :param team_files_dir: Team files directory.
         :type team_files_dir: str
         :param file_info: FileInfo of the best checkpoint.
-        :type file_info: FileInfo
+        :type file_info: :class:`~supervisely.api.file_api.FileInfo`
         :param model_benchmark_report: FileInfo of the model benchmark report link (.lnk).
-        :type model_benchmark_report: Optional[FileInfo]
+        :type model_benchmark_report: Optional[:class:`~supervisely.api.file_api.FileInfo`]
         :param model_benchmark_report_id: Model benchmark report ID.
         """
         try:
@@ -2804,9 +2926,20 @@ class TrainApp:
 
     # ----------------------------------------- #
     def start_in_thread(self):
+        """
+        Configure the app to start training automatically on server startup (in a background thread).
+
+        This is useful for programmatic runs (e.g. training triggered by API or workflow execution)
+        where you don't want to wait for a manual UI click.
+
+        :returns: None
+        :rtype: None
+        """
         def auto_train():
             import threading
+
             threading.Thread(target=self._wrapped_start_training, daemon=True).start()
+
         self._server.add_event_handler("startup", auto_train)
 
     def _wrapped_start_training(self):
@@ -2897,7 +3030,6 @@ class TrainApp:
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.disable()
             self.gui.training_process.select_device.disable()
 
         if self._app_options.get("model_benchmark", False):
@@ -2916,7 +3048,6 @@ class TrainApp:
         self.gui.stepper.set_active_step(self.gui.stepper.get_active_step() - 1)
         self.gui.training_process.experiment_name_input.enable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.enable()
             self.gui.training_process.select_device.enable()
         self.gui.enable_select_buttons()
 
@@ -3151,7 +3282,10 @@ class TrainApp:
         return gt_project_info.id, gt_split_data
 
     def _create_collection_splits(self):
-        def _check_match(current_selected_collection_ids: List[int], all_split_collections: List[EntitiesCollectionInfo]):
+        def _check_match(
+            current_selected_collection_ids: List[int],
+            all_split_collections: List[EntitiesCollectionInfo],
+        ):
             if len(current_selected_collection_ids) > 0:
                 if len(current_selected_collection_ids) == 1:
                     current_selected_collection_id = current_selected_collection_ids[0]
@@ -3162,25 +3296,31 @@ class TrainApp:
 
         # Case 1: Use existing collections for training. No need to create new collections
         split_method = self.gui.train_val_splits_selector.get_split_method()
+        self.gui.train_val_splits_selector._parse_collections()
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
+        latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
+        latest_val_collection = self.gui.train_val_splits_selector.latest_val_collection
         if split_method == "Based on collections":
-            current_selected_train_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
+            current_selected_train_collection_ids = (
+                self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
+            )
             train_match = _check_match(current_selected_train_collection_ids, all_train_collections)
             if train_match:
-                current_selected_val_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
+                current_selected_val_collection_ids = (
+                    self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
+                )
                 val_match = _check_match(current_selected_val_collection_ids, all_val_collections)
                 if val_match:
                     self._train_collection_id = current_selected_train_collection_ids[0]
                     self._val_collection_id = current_selected_val_collection_ids[0]
-                    self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
+                    self._update_project_custom_data(
+                        self._train_collection_id, self._val_collection_id
+                    )
                     return
         # ------------------------------------------------------------ #
 
         # Case 2: Create new collections for selected train val splits. Need to create new collections
-        item_type = self.project_info.type
-        experiment_name = self.gui.training_process.get_experiment_name()
-
         train_collection_idx = 1
         val_collection_idx = 1
 
@@ -3191,51 +3331,75 @@ class TrainApp:
             return None
 
         # Get train collection with max idx
-        if len(all_train_collections) > 0:
-            train_indices = [_extract_index_from_col_name(collection.name, "train") for collection in all_train_collections]
-            train_indices = [idx for idx in train_indices if idx is not None]
-            if len(train_indices) > 0:
-                train_collection_idx = max(train_indices) + 1
+        if latest_train_collection:
+            train_collection_idx = (
+                _extract_index_from_col_name(latest_train_collection.name, "train") + 1
+            )
 
         # Get val collection with max idx
-        if len(all_val_collections) > 0:
-            val_indices = [_extract_index_from_col_name(collection.name, "val") for collection in all_val_collections]
-            val_indices = [idx for idx in val_indices if idx is not None]
-            if len(val_indices) > 0:
-                val_collection_idx = max(val_indices) + 1
+        if latest_val_collection:
+            val_collection_idx = _extract_index_from_col_name(latest_val_collection.name, "val") + 1
         # -------------------------------- #
 
         # Create Train Collection
         train_img_ids = list(self._train_split_item_ids)
-        train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
-        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx:03d}", train_collection_description)
-        train_collection_id = getattr(train_collection, "id", None)
-        if train_collection_id is None:
-            raise AttributeError("Train EntitiesCollectionInfo object does not have 'id' attribute")
-        self._api.entities_collection.add_items(train_collection_id, train_img_ids)
-        self._train_collection_id = train_collection_id
+        self._train_collection_id = self._create_collection("train", train_collection_idx)
+        self._api.entities_collection.add_items(self._train_collection_id, train_img_ids)
 
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
-        val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
-        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx:03d}", val_collection_description)
-        val_collection_id = getattr(val_collection, "id", None)
-        if val_collection_id is None:
-            raise AttributeError("Val EntitiesCollectionInfo object does not have 'id' attribute")
-        self._api.entities_collection.add_items(val_collection_id, val_img_ids)
-        self._val_collection_id = val_collection_id
+        self._val_collection_id = self._create_collection("val", val_collection_idx)
+        self._api.entities_collection.add_items(self._val_collection_id, val_img_ids)
 
         # Update Project Custom Data
-        self._update_project_custom_data(train_collection_id, val_collection_id)
+        self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
+
+    def _create_collection(self, split_type: str, suffix: int) -> int:
+        experiment_name = self.gui.training_process.get_experiment_name()
+        description = f"Collection with {split_type} {self.project_info.type} for experiment: {experiment_name}"
+        collection = self._api.entities_collection.create(
+            project_id=self.project_id,
+            name=f"{split_type}_{suffix:03d}",
+            description=description,
+            change_name_if_conflict=True,
+        )
+        if collection is None or collection.id is None:  # pylint: disable=no-member
+            raise RuntimeError(f"Failed to create {split_type} collection")
+        return collection.id  # pylint: disable=no-member
 
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {
             "task_id": self.task_id,
             "framework_name": self.framework_name,
-            "splits": {"train_collection": train_collection_id, "val_collection": val_collection_id}
+            "splits": {
+                "train_collection": train_collection_id,
+                "val_collection": val_collection_id,
+            },
         }
         custom_data = self._api.project.get_info_by_id(self.project_id).custom_data
         train_info_list = custom_data.get("train_info", [])
         train_info_list.append(train_info)
         custom_data.update({"train_info": train_info_list})
         self._api.project.update_custom_data(self.project_id, custom_data)
+
+    def __debug_gui_state(self):
+        """
+        Inner method for debugging experiment guiState.
+
+        Set model name and classes according to the training app and project meta.
+        """
+        gui_state_raw = {
+            "model": {"source": "Pretrained models", "model_name": "YOLO11n-det"},
+            "classes": ["cat", "dog"],
+            "train_val_split": {"method": "random", "split": "train", "percent": 80},
+            "hyperparameters": None,
+            "options": {
+                "convert_class_shapes": True,
+                "model_benchmark": {"enable": False, "speed_test": False},
+                "cache_project": True,
+                "export": {"enable": False, "ONNXRuntime": False, "TensorRT": False},
+            },
+            "experiment_name": None,
+            "start_training": False,
+        }
+        return gui_state_raw

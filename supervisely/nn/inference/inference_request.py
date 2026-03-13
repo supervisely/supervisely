@@ -5,17 +5,24 @@ import time
 import traceback
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
-from functools import partial, wraps
+from functools import partial
 from typing import Any, Dict, List, Tuple, Union
 
-from supervisely._utils import rand_str
 from supervisely.nn.utils import get_gpu_usage, get_ram_usage
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
 
 class InferenceRequest:
+    """State container for a single inference run (progress, results queue, lifecycle stage and cancellation)."""
+
+    PAUSE_SLEEP_INTERVAL = 1.0
+    PAUSE_SLEEP_MAX_WAIT = 60 * 60  # 1 hour
+    PENDING_RESULTS_MAX_SIZE = 500
+
     class Stage:
+        """Human-readable stage labels used for progress reporting."""
+
         PREPARING = "Preparing model for inference..."
         INFERENCE = "Running inference..."
         FINISHED = "Finished"
@@ -28,6 +35,14 @@ class InferenceRequest:
         ttl: Union[int, None] = 60 * 60,
         manager: InferenceRequestsManager = None,
     ):
+        """
+        :param uuid_: Request ID.
+        :type uuid_: str
+        :param ttl: Time-to-live in seconds.
+        :type ttl: Union[int, None]
+        :param manager: Optional InferenceRequestsManager.
+        :type manager: InferenceRequestsManager
+        """
         if uuid_ is None:
             uuid_ = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         self._uuid = uuid_
@@ -40,6 +55,8 @@ class InferenceRequest:
         self._final_result = None
         self._exception = None
         self._stopped = threading.Event()
+        self._paused_time = None
+        self._paused = threading.Event()
         self._progress_log_interval = 5.0
         self._last_progress_report_time = 0
         self.progress = Progress(
@@ -92,10 +109,16 @@ class InferenceRequest:
     def add_results(self, results: List[Dict]):
         with self._lock:
             self._pending_results.extend(results)
+            if self.pending_num() >= self.PENDING_RESULTS_MAX_SIZE:
+                logger.warning(
+                    f"Pending results exceeded max size {self.PENDING_RESULTS_MAX_SIZE}, pausing inference request {self._uuid} for {self.PAUSE_SLEEP_MAX_WAIT} seconds."
+                )
+                self.pause()
             self._updated()
 
     def pop_pending_results(self, n: int = None):
         with self._lock:
+            self.continue_if_paused()
             if len(self._pending_results) == 0:
                 return []
             if n is None:
@@ -171,6 +194,27 @@ class InferenceRequest:
     def is_stopped(self):
         return self._stopped.is_set()
 
+    def pause(self):
+        self._paused.set()
+        self._paused_time = time.monotonic()
+        self._updated()
+
+    def is_paused(self):
+        return self._paused.is_set()
+
+    def continue_if_paused(self):
+        if not self.is_paused():
+            return
+        logger.debug(f"Continuing paused inference request {self._uuid}")
+        self._paused.clear()
+        self._paused_time = None
+        self._updated()
+
+    def paused_for(self):
+        if not self.is_paused():
+            return 0
+        return time.monotonic() - self._paused_time
+
     def is_finished(self):
         return self._finished
 
@@ -207,6 +251,7 @@ class InferenceRequest:
             "exception": self.exception_json(),
             "is_inferring": self.is_inferring(),
             "stopped": self.is_stopped(),
+            "paused": self.is_paused(),
             "finished": self._finished,
             "created_at": self._created_at,
             "updated_at": self._updated_at,
@@ -248,6 +293,8 @@ class InferenceRequest:
 
 
 class GlobalProgress:
+    """Aggregated progress indicator for all inference requests managed by a server instance."""
+
     def __init__(self):
         self.progress = Progress(message="Ready", total_cnt=1)
         self._lock = threading.Lock()
@@ -299,8 +346,13 @@ class GlobalProgress:
 
 
 class InferenceRequestsManager:
+    """Thread-safe registry and monitor for active :class:`InferenceRequest` instances."""
 
     def __init__(self, executor: ThreadPoolExecutor = None):
+        """
+        :param executor: Thread pool for request execution.
+        :type executor: ThreadPoolExecutor
+        """
         if executor is None:
             executor = ThreadPoolExecutor(max_workers=1)
         self._executor = executor
@@ -359,6 +411,11 @@ class InferenceRequestsManager:
             for inference_request_uuid in list(self._inference_requests.keys()):
                 inference_request = self._inference_requests.get(inference_request_uuid)
                 if inference_request is None:
+                    continue
+                if (
+                    inference_request.is_paused()
+                    and inference_request.paused_for() < InferenceRequest.PAUSE_SLEEP_MAX_WAIT
+                ):
                     continue
                 if inference_request.is_expired():
                     self.remove(inference_request_uuid)

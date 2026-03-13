@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
-from supervisely._utils import is_development, logger
+from supervisely._utils import batched, is_development, logger
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
@@ -38,6 +38,8 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class StepFlow:
+    """Small stepper/lock manager for the Predict App wizard UI."""
+
     def __init__(self):
         self._stepper = None
         self.steps = {}
@@ -154,7 +156,15 @@ class StepFlow:
 
 
 class PredictAppGui:
+    """End-to-end GUI for running model inference and writing predictions back to a Supervisely project."""
+
     def __init__(self, api: Api, static_dir: str = "static"):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param static_dir: Static assets directory.
+        :type static_dir: str
+        """
         self.api = api
         self.static_dir = static_dir
 
@@ -467,16 +477,17 @@ class PredictAppGui:
             )
             self.output_selector.secondary_progress.show()
             for dataset_id, video_infos in video_infos_by_dataset_id.items():
-                annotations = self.api.video.annotation.download_bulk(
-                    dataset_id, [info.id for info in video_infos]
-                )
-                for ann_json, video_info in zip(annotations, video_infos):
-                    if ann_json:
-                        project_meta = src_project_metas[video_info.project_id]
-                        ann = VideoAnnotation.from_json(ann_json, project_meta=project_meta)
-                        if len(ann.figures) > 0:
-                            video_ids_to_skip.add(video_info.id)
-                    secondary_pbar.update()
+                for video_info_batch in batched(video_infos, batch_size=100):
+                    annotations = self.api.video.annotation.download_bulk(
+                        dataset_id, [info.id for info in video_info_batch]
+                    )
+                    for ann_json, video_info in zip(annotations, video_info_batch):
+                        if ann_json:
+                            project_meta = src_project_metas[video_info.project_id]
+                            ann = VideoAnnotation.from_json(ann_json, project_meta=project_meta)
+                            if len(ann.figures) > 0:
+                                video_ids_to_skip.add(video_info.id)
+                        secondary_pbar.update()
             self.output_selector.secondary_progress.hide()
             if video_ids_to_skip:
                 video_infos_by_project_id = {
@@ -654,6 +665,19 @@ class PredictAppGui:
         if self.model_api is None:
             self.set_validator_text("Deploying model...", "info")
             self.model_selector.model._deploy()
+            if isinstance(run_parameters, dict):
+                # Set classes from run_parameters
+                model_classes = self.model_api.get_classes()
+                classes = run_parameters.get("classes", [])
+                classes = set(classes) & set(model_classes)
+                self.classes_selector.set_classes(list(classes))
+
+                # Set inference settings from run_parameters
+                settings = run_parameters.get("settings", {})
+                inference_settings = settings.get("inference_settings")
+                if inference_settings:
+                    self.settings_selector.set_inference_settings(inference_settings)
+
         if self.model_api is None:
             logger.error("Model Deployed with an error")
             raise RuntimeError("Model Deployed with an error")
@@ -890,6 +914,7 @@ class PredictAppGui:
 
         # 2. Model selector
         self.model_selector.model.load_from_json(data.get("model", {}))
+        # TODO: deploy model here?
 
         # 3. Classes selector
         if self.classes_selector is not None:

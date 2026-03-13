@@ -4,6 +4,8 @@ from typing import Optional, Union
 
 
 class Image(Widget):
+    """Widget that displays an image from URL with optional height/width (px or percent)."""
+
     def __init__(
         self,
         url: str = "",
@@ -11,6 +13,16 @@ class Image(Widget):
         width: Optional[Union[int, str]] = None,
         widget_id: str = None,
     ):
+        """
+        :param url: Image URL or data URL.
+        :type url: str
+        :param height: Height in pixels or CSS value (e.g., "300px", "100%").
+        :type height: Union[int, str], optional
+        :param width: Width in pixels or CSS value.
+        :type width: Union[int, str], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._url = url
         self._height, self._width = self._check_image_size(height=height, width=width)
         super().__init__(widget_id=widget_id, file_path=__file__)

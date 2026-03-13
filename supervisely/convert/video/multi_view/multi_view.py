@@ -5,6 +5,7 @@ from typing import Dict, List, Union
 
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
+from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableVideoConverters
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
@@ -12,12 +13,15 @@ from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.video.video import has_valid_ext, validate_ext
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 DATASET_ITEMS = "items"
 NESTED_DATASETS = "datasets"
 
 
 class MultiViewVideoConverter(VideoConverter):
+    """Imports multi-view video project structure (nested datasets, videos per view) into Supervisely video project."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._supports_links = True
@@ -403,7 +407,7 @@ class MultiViewVideoConverter(VideoConverter):
 
     def _upload_single_dataset(
         self,
-        api,
+        api: Api,
         dataset_id: int,
         items: list,
         batch_size: int = 10,
@@ -446,6 +450,8 @@ class MultiViewVideoConverter(VideoConverter):
                 if has_large_files:
                     upload_progress = []
                     size_progress_cb = self._get_video_upload_progress(upload_progress)
+
+        key_id_map = KeyIdMap()
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
         for batch in batched(items, batch_size=batch_size):
             item_names = []
@@ -500,10 +506,12 @@ class MultiViewVideoConverter(VideoConverter):
                     figures_cnt, "Uploading annotations..."
                 )
 
-            for vid, ann, item, info in zip(vid_ids, anns, batch, vid_infos):
+            for idx, (ann, info) in enumerate(zip(anns, vid_infos)):
                 if ann is None:
-                    ann = VideoAnnotation((info.frame_height, info.frame_width), info.frames_count)
-                api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
+                    anns[idx] = VideoAnnotation(
+                        (info.frame_height, info.frame_width), info.frames_count
+                    )
+            api.video.annotation.upload_anns_multiview(vid_ids, anns, ann_progress_cb, key_id_map)
 
         if log_progress and is_development():
             if progress is not None:

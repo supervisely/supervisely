@@ -14,13 +14,16 @@ def infer_per_pixel_scores_single_image(model, raw_input, out_shape, apply_softm
     """
     Performs inference with PyTorch model and resize predictions to a given size.
 
-    Args:
-        model: PyTorch model inherited from torch.Module class.
-        raw_input: PyTorch Tensor
-        out_shape: Output size (height, width).
-        apply_softmax: Whether to apply softmax function after inference or not.
-    Returns:
-        Inference resulting numpy array resized to a given size.
+    :param model: PyTorch model inherited from torch.Module class.
+    :type model: :class:`~torch.nn.Module`
+    :param raw_input: PyTorch Tensor
+    :type raw_input: :class:`~torch.Tensor`
+    :param out_shape: Output size (height, width).
+    :type out_shape: Tuple[int, int]
+    :param apply_softmax: Whether to apply softmax function after inference or not.
+    :type apply_softmax: bool
+    :returns: Inference resulting numpy array resized to a given size.
+    :rtype: np.ndarray
     """
     model_input = torch.stack([raw_input], 0)  # add dim #0 (batch size 1)
     model_input = cuda_variable(model_input, volatile=True)

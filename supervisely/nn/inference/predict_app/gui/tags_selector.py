@@ -4,6 +4,8 @@ from supervisely.app.widgets import Button, Card, Container, TagsTable, Text
 
 
 class TagsSelector:
+    """Predict app step: select image tags to filter which items get inference (optional)."""
+
     title = "Tags Selector"
     description = "Select tags that will be used for inference"
     lock_message = "Select previous step to unlock"

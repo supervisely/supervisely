@@ -32,6 +32,8 @@ AUTO_TRACKED_TAG_META = TagMeta(
 
 
 class ApiContext:
+    """Small per-run cache of API-fetched project/dataset/video metadata to avoid repeated requests."""
+
     def __init__(self):
         self.project_info: Dict[int, ProjectInfo] = {}
         self.project_meta: Dict[int, ProjectMeta] = {}
@@ -48,6 +50,8 @@ class ApiContext:
 
 
 class SamplingSettings:
+    """Keys used in the sampling settings dict for `sample_video`."""
+
     ONLY_ANNOTATED = "annotated"
     START = "start"
     END = "end"

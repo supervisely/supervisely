@@ -1,12 +1,14 @@
 import mimetypes
+import re
 from pathlib import Path
+from typing import List, Union
 
 import magic
 import numpy as np
 from PIL import Image
-from typing import Union, List
 
-from supervisely import Rectangle, Label, logger
+from supervisely import Label, Rectangle, logger
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.imaging.image import read, write
 from supervisely.io.fs import (
     get_file_ext,
@@ -88,7 +90,14 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     import tifffile
 
     logger.debug(f"Found tiff file: {path}.")
-    image = tifffile.imread(path)
+    try:
+        image = tifffile.imread(path)
+    except Exception as e:
+        logger.warning(
+            f"tifffile failed to read TIFF, trying Pillow fallback: {repr(e)}",
+            extra={"file_path": path},
+        )
+        image = _read_tiff_image_fallback(path)
     name = get_file_name_with_ext(path)
     if image is not None:
         tiff_shape = image.shape
@@ -100,11 +109,46 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     return image
 
 
+def _read_tiff_image_fallback(path: str) -> Union[np.ndarray, None]:
+    """
+    Fallback method to read tiff image using Pillow.
+    """
+    from PIL import ImageSequence
+
+    try:
+        with Image.open(path) as pil_img:
+            frames = [np.asarray(frame) for frame in ImageSequence.Iterator(pil_img)]
+        if not frames:
+            return None
+        if len(frames) == 1:
+            return frames[0]
+
+        if all(frame.shape == frames[0].shape for frame in frames):
+            return np.stack(frames, axis=0)
+
+        logger.warning(
+            "TIFF has multiple pages with different shapes; using the first page only.",
+            extra={"file_path": path},
+        )
+        return frames[0]
+    except Exception as e:
+        logger.warning(
+            f"Pillow failed to read TIFF: {repr(e)}",
+            extra={"file_path": path},
+        )
+        return None
+
+
 def validate_image_bounds(labels: List[Label], img_rect: Rectangle) -> List[Label]:
     """
     Check if labels are localed inside the image canvas, print a warning and skip them if not.
     """
-    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+    new_labels = []
+    for label in labels:
+        if isinstance(label.geometry, OrientedBBox):
+            new_labels.append(label)
+        elif img_rect.contains(label.geometry.to_bbox()):
+            new_labels.append(label)
     if new_labels != labels:
         logger.warning(
             f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."

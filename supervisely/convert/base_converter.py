@@ -8,8 +8,10 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, get_or_create_event_loop, is_production
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
+from supervisely.geometry.graph import GraphNodes
 from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
@@ -19,8 +21,6 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -28,6 +28,8 @@ from supervisely.task.progress import Progress
 
 
 class AvailableImageConverters:
+    """Names of supported image dataset converters."""
+
     SLY = "supervisely"
     COCO = "coco"
     FAST_COCO = "coco (fast)"
@@ -46,6 +48,8 @@ class AvailableImageConverters:
 
 
 class AvailableVideoConverters:
+    """Names of supported video dataset converters."""
+
     SLY = "supervisely"
     MOT = "mot"
     DAVIS = "davis"
@@ -53,6 +57,8 @@ class AvailableVideoConverters:
 
 
 class AvailablePointcloudConverters:
+    """Names of supported point cloud dataset converters."""
+
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
@@ -63,6 +69,8 @@ class AvailablePointcloudConverters:
 
 
 class AvailablePointcloudEpisodesConverters:
+    """Names of supported point cloud episode dataset converters."""
+
     SLY = "supervisely"
     BAG = "rosbag"
     LYFT = "lyft"
@@ -70,15 +78,25 @@ class AvailablePointcloudEpisodesConverters:
 
 
 class AvailableVolumeConverters:
+    """Names of supported 3D volume dataset converters."""
+
     SLY = "supervisely"
     DICOM = "dicom"
     NII = "nii"
 
 
 class BaseConverter:
+    """
+    Base class for dataset format converters into Supervisely projects.
+
+    Detects input format, validates annotations, builds :class:`~supervisely.project.project_meta.ProjectMeta`
+    and provides methods to upload converted data.
+    """
     unsupported_exts = [".gif", ".html", ".htm"]
 
     class BaseItem:
+        """Represents a single convertible item (data path + raw annotation data + optional shape/custom_data)."""
+
         def __init__(
             self,
             item_path: str,
@@ -86,6 +104,15 @@ class BaseConverter:
             shape: Union[Tuple, List] = None,
             custom_data: Optional[dict] = None,
         ):
+            """:param item_path: Path to the item file.
+            :type item_path: str
+            :param ann_data: Raw annotation (path, dict, or JSON string).
+            :type ann_data: Union[str, dict], optional
+            :param shape: Image/item shape (height, width).
+            :type shape: Union[Tuple, List], optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str, dict, list] = ann_data
@@ -162,6 +189,17 @@ class BaseConverter:
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """:param input_data: Path to input directory or archive.
+        :type input_data: str
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface, optional
+        :param upload_as_links: If True, upload as Team Files links.
+        :type upload_as_links: bool
+        :param remote_files_map: Map of local paths to remote paths for link upload.
+        :type remote_files_map: Dict[str, str], optional
+
+        :raises ValueError: If labeling_interface is invalid.
+        """
         self._input_data: str = input_data
         self._items: List[BaseConverter.BaseItem] = []
         self._meta: ProjectMeta = None
@@ -231,7 +269,7 @@ class BaseConverter:
             2. creates items, count detected annotations and save them to self._items
             3. validates annotation files (and genereate meta if key file is missing)
 
-        :return: True if format is valid, False otherwise.
+        :returns: True if format is valid, False otherwise.
         """
         raise NotImplementedError()
 
@@ -291,14 +329,14 @@ class BaseConverter:
                     raise RuntimeError(
                         f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
                         f"Unsupported file extensions detected: {unsupported_exts}. "
-                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"  # pylint: disable=no-member
                     )
                 raise RuntimeError(
                     "Please refer to the app overview and documentation for annotation formats, "
                     "and ensure that your data contains valid information"
                 )
             if not only_modality_items:
-                logger.warn(
+                logger.warning(
                     "Annotations not found. "  # pylint: disable=no-member
                     f"Uploading {self.modality} without annotations. "
                     "If you need assistance to upload data with annotations, please contact our support team."
@@ -366,7 +404,7 @@ class BaseConverter:
                 new_name = f"{new_cls.name}_{i}"
                 i += 1
             if new_name != new_cls.name:
-                logger.warn(f"Class {new_cls.name} renamed to {new_name}")
+                logger.warning(f"Class {new_cls.name} renamed to {new_name}")
                 renamed_classes[new_cls.name] = new_name
             if not matched:
                 new_cls = new_cls.clone(name=new_name)
@@ -387,7 +425,7 @@ class BaseConverter:
                 new_name = f"{new_tag.name}_{i}"
                 i += 1
             if new_name != new_tag.name:
-                logger.warn(f"Tag {new_tag.name} renamed to {new_name}")
+                logger.warning(f"Tag {new_tag.name} renamed to {new_name}")
                 renamed_tags[new_tag.name] = new_name
             if not matched:
                 new_tag = new_tag.clone(name=new_name)

@@ -17,6 +17,7 @@ from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.geometry.oriented_bbox import OrientedBBox
 
 
 type_to_zmdi_icon = {
@@ -32,6 +33,7 @@ type_to_zmdi_icon = {
     Pointcloud: "zmdi zmdi-cloud-outline",  #  # "zmdi zmdi-border-clear"
     MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+    OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 
 type_to_icons8_icon = {
@@ -61,10 +63,13 @@ type_to_shape_text = {
     Point3d: "point 3d",  # "zmdi zmdi-select-all"
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
+    OrientedBBox: "oriented bbox",
 }
 
 
 class ObjectClassView(Widget):
+    """Displays an ObjClass as a compact card with shape icon, color, and name."""
+
     def __init__(
         self,
         obj_class: ObjClass,
@@ -72,6 +77,15 @@ class ObjectClassView(Widget):
         show_shape_icon: bool = False,
         widget_id: str = None,
     ):
+        """:param obj_class: ObjClass to display.
+        :type obj_class: ObjClass
+        :param show_shape_text: If True, show shape type text.
+        :type show_shape_text: bool
+        :param show_shape_icon: If True, show shape icon.
+        :type show_shape_icon: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._obj_class = obj_class
         self._show_shape_text = show_shape_text
         self._show_shape_icon = show_shape_icon

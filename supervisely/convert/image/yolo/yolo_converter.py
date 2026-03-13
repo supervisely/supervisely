@@ -22,6 +22,7 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class YOLOConverter(ImageConverter):
+    """Imports YOLO format (images + .txt per image, data.yaml) into Supervisely; supports detection and pose keypoints."""
 
     def __init__(
             self,
@@ -30,6 +31,7 @@ class YOLOConverter(ImageConverter):
             upload_as_links: bool,
             remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._yaml_info: dict = None
@@ -153,7 +155,7 @@ class YOLOConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
-        if self.upload_as_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
 
         detected_ann_cnt = 0

@@ -14,6 +14,8 @@ import os
 
 def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
     class MyTqdm(tqdm):
+        """tqdm progress wrapper that tracks per-file upload progress from a byte monitor."""
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.iteration_value = 0
@@ -22,6 +24,8 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
             self.total_monitor_size = 0
 
     class MySlyProgress(sly.Progress):
+        """Supervisely Progress wrapper that tracks per-file upload progress from a byte monitor."""
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.iteration_value = 0

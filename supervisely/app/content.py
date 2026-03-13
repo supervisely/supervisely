@@ -18,6 +18,7 @@ from fastapi import Request
 
 from supervisely._utils import is_production
 from supervisely.api.api import Api
+import supervisely.app.fastapi.multi_user as multi_user
 from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.singleton import Singleton
@@ -39,6 +40,8 @@ async def async_lock(lock: threading.Lock):
 
 
 class Field(str, enum.Enum):
+    """Top-level JSON sections used by the app protocol (`state`, `data`, `context`)."""
+
     STATE = "state"
     DATA = "data"
     CONTEXT = "context"
@@ -89,7 +92,17 @@ def get_synced_data_dir():
 
 
 class _PatchableJson(dict):
+    """Base dict that can compute JSON patches and broadcast changes via websockets."""
+
     def __init__(self, field: Field, *args, **kwargs):
+        """
+        :param field: Field enum (STATE, DATA, or CONTEXT).
+        :type field: :class:`~supervisely.app.content.Field`, optional
+        :param args: Passed to dict().
+        :type args: tuple, optional
+        :param kwargs: Passed to dict().
+        :type kwargs: dict, optional
+        """
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()
         self._last = copy.deepcopy(dict(self))
@@ -112,8 +125,15 @@ class _PatchableJson(dict):
 
     async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
         patch = self._get_patch()
-        await self._apply_patch(patch)
-        await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
+        if user_id is not None:
+            async with multi_user.async_session_context(user_id):
+                await self._apply_patch(patch)
+                await self._ws.broadcast(
+                    self.get_changes(patch), user_id=user_id
+                )
+        else:
+            await self._apply_patch(patch)
+            await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
 
     async def send_changes_async(self):
         user_id = None
@@ -133,6 +153,8 @@ class _PatchableJson(dict):
 
 
 class StateJson(_PatchableJson, metaclass=Singleton):
+    """Singleton state store synchronized between backend and frontend via JSON patches."""
+
     _global_lock: threading.Lock = None
 
     def __init__(self, *args, **kwargs):
@@ -172,6 +194,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
+    """Singleton data store synchronized between backend and frontend via JSON patches."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
 
@@ -183,6 +207,8 @@ class DataJson(_PatchableJson, metaclass=Singleton):
 
 
 class ContentOrigin(metaclass=Singleton):
+    """Background synchronizer that periodically pushes `StateJson`/`DataJson` changes to the server."""
+
     def __init__(self):
         self._SLEEP_TIME = sly_env.content_origin_update_interval()
         self._data_patch_queue = queue.Queue()

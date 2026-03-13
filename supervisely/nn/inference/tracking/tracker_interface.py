@@ -10,11 +10,13 @@ from typing import OrderedDict as OrderedDictType
 import numpy as np
 
 from supervisely._utils import find_value_by_keys
+from supervisely.annotation.label import LabelingStatus
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.helpers import deserialize_geometry
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
@@ -22,10 +24,11 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.annotation.label import LabelingStatus
 
 
 class TrackerInterface:
+    """Base helper that applies tracking across video frames by fetching figures/frames and appending new geometries."""
+
     def __init__(
         self,
         context,
@@ -37,6 +40,24 @@ class TrackerInterface:
         frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]] = None,
         should_notify: bool = True,
     ):
+        """
+        :param context: Dict with frameIndex, frames, trackId, videoId, objectIds, figureIds, direction.
+        :type context: Dict[str, Any]
+        :param api: Supervisely API.
+        :type api: Api
+        :param load_all_frames: Preload all frames.
+        :type load_all_frames: bool
+        :param notify_in_predict: Notify during predict.
+        :type notify_in_predict: bool
+        :param per_point_polygon_tracking: Polygon tracking mode.
+        :type per_point_polygon_tracking: bool
+        :param frame_loader: Optional frame loader.
+        :type frame_loader: Callable[[Api, int, int], np.ndarray]
+        :param frames_loader: Optional batch frame loader.
+        :type frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]]
+        :param should_notify: Enable notifications.
+        :type should_notify: bool
+        """
         self.api: Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]
@@ -83,7 +104,7 @@ class TrackerInterface:
     @property
     def video_info(self):
         if self._video_info is None:
-            self._video_info = self.api.video.get_info_by_id(self.video_id)
+            self._video_info = self.api.video.get_info_by_id(self.video_id, raise_error=True)
         return self._video_info
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
@@ -132,6 +153,10 @@ class TrackerInterface:
             h = self.video_info.frame_height
             w = self.video_info.frame_width
         rect = Rectangle.from_size((h, w))
+        if isinstance(geometry, OrientedBBox):
+            if rect.contains_point_location(geometry.center):
+                return geometry
+            return None
         cropped = geometry.crop(rect)
         if len(cropped) == 0:
             return None
@@ -237,7 +262,7 @@ class TrackerInterface:
         # TODO: other geometries
 
     def _add_frames_indexes(self):
-        total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
+        total_frames = self.video_info.frames_count
         cur_index = self.frame_index
 
         while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
@@ -335,6 +360,8 @@ class TrackerInterface:
 
 
 class ThreadSafeStopIndicator:
+    """Thread-safe stop flag with an optional reason for cancellation."""
+
     def __init__(self):
         self._stopped = False
         self._reason = None
@@ -360,6 +387,8 @@ FrameImage = namedtuple("FrameImage", ["frame_index", "image"])
 
 
 class TrackerInterfaceV2:
+    """Improved tracker interface that uses a cache and background frame loading for video tracking workflows."""
+
     UPLOAD_SLEEP_TIME = 0.001  # 1ms
     NOTIFY_SLEEP_TIME = 1  # 1s
 
@@ -369,6 +398,14 @@ class TrackerInterfaceV2:
         context: Dict,
         cache: InferenceImageCache,
     ):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param context: Tracking context dict.
+        :type context: Dict[str, Any]
+        :param cache: InferenceImageCache for frames.
+        :type cache: InferenceImageCache
+        """
         self.api = api
         self.context = context
         self.video_id = find_value_by_keys(context, ["videoId", "video_id"])

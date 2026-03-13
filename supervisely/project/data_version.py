@@ -14,6 +14,12 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
+from supervisely.project.versioning.schema_fields import VersionSchemaField
+from supervisely.project.versioning.common import (
+    DEFAULT_IMAGE_SCHEMA_VERSION,
+    DEFAULT_VIDEO_SCHEMA_VERSION,
+    DEFAULT_VOLUME_SCHEMA_VERSION,
+)
 
 
 class VersionInfo(NamedTuple):
@@ -41,6 +47,12 @@ class DataVersion(ModuleApiBase):
     This class provides methods for creating, restoring, and managing project versions.
     """
 
+    PROJECT_NAME_TEMPLATE = "{project_name}, from ver. {version_num}"
+    PROJECT_DESC_TEMPLATE = (
+        "Restored from version {version_num}. "
+        "Source project ID: {project_id}, version ID: {version_id}"
+    )
+
     def __init__(self, api):
         """
         Class for managing project versions.
@@ -49,11 +61,12 @@ class DataVersion(ModuleApiBase):
 
         self._api: Api = api
         self.__storage_dir: str = "/system/versions/"
-        self.__version_format: str = "v1.0.0"
+        self.__version_format: str = DEFAULT_IMAGE_SCHEMA_VERSION
         self.project_info = None
         self.project_dir = None
         self.versions_path = None
         self.versions = None
+        self._batch_size = None
 
     @staticmethod
     def info_sequence():
@@ -84,12 +97,41 @@ class DataVersion(ModuleApiBase):
         """
         return "VersionInfo"
 
+    @property
+    def project_cls(self):
+        from supervisely.project import (
+            Project,
+            ProjectType,
+            VideoProject,
+            VolumeProject,
+        )
+
+        if self.project_info is None:
+            raise ValueError("Project info is not initialized. Call 'initialize' method first.")
+
+        self._batch_size = None
+        project_type = self.project_info.type
+        if project_type == ProjectType.IMAGES.value:
+            self.__version_format = DEFAULT_IMAGE_SCHEMA_VERSION
+            self._batch_size = 200
+            return Project
+        elif project_type == ProjectType.VIDEOS.value:
+            self.__version_format = DEFAULT_VIDEO_SCHEMA_VERSION
+            self._batch_size = 50
+            return VideoProject
+        elif project_type == ProjectType.VOLUMES.value:
+            self.__version_format = DEFAULT_VOLUME_SCHEMA_VERSION
+            self._batch_size = 50
+            return VolumeProject
+        else:
+            raise ValueError(f"Unsupported project type: {project_type}")
+
     def initialize(self, project_info: Union[ProjectInfo, int]):
         """
         Initialize project versions.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -108,8 +150,8 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param filters: Filters
         :type filters: Optional[List]
-        :return: List of project versions
-        :rtype: List[VersionInfo]
+        :returns: List of project versions
+        :rtype: List[:class:`~supervisely.project.data_version.VersionInfo`]
         """
         data = {ApiField.PROJECT_ID: project_id}
         if filters:
@@ -125,7 +167,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param version_num: Version number
         :type version_num: int
-        :return: Version ID
+        :returns: Version ID
         :rtype: int or None
         """
         filter = [
@@ -144,11 +186,11 @@ class DataVersion(ModuleApiBase):
         """
         Get project versions map from storage.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param do_initialization: Initialize project versions. Set to False for internal use.
         :type do_initialization: bool
-        :return: Project versions
+        :returns: Project versions
         :rtype: dict
         """
         if do_initialization:
@@ -158,24 +200,26 @@ class DataVersion(ModuleApiBase):
             versions = self._api.file.get_json_file_content(
                 self.project_info.team_id, self.versions_path
             )
-            versions = versions if versions else {}
+            return versions or {}
         except FileNotFoundError:
-            versions = {"format": self.__version_format}
-        return versions
+            # versions = {"format": self.__version_format}
+            return {}
 
     def set_map(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
         Save project versions map to storage.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param initialize: Initialize project versions. Set to False for internal use.
         :type initialize: bool
-        :return: None
+        :returns: None
         """
 
         if initialize:
             self.initialize(project_info)
+        if "format" not in self.versions:
+            self.versions["format"] = self.__version_format
         temp_dir = tempfile.mkdtemp()
         local_versions = os.path.join(temp_dir, "versions.json")
         json.dump_json_file(self.versions, local_versions)
@@ -199,13 +243,13 @@ class DataVersion(ModuleApiBase):
         If the project is already on the latest version, returns the latest version ID.
         If the project version cannot be created, returns None.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param version_title: Version title
         :type version_title: Optional[str]
         :param version_description: Version description
         :type version_description: Optional[str]
-        :return: Version ID
+        :returns: Version ID
         :rtype: int
         """
         if isinstance(project_info, int):
@@ -286,7 +330,7 @@ class DataVersion(ModuleApiBase):
         :type title: Optional[str]
         :param description: Version description
         :type description: Optional[str]
-        :return: None
+        :returns: None
         """
         body = {
             ApiField.ID: version_id,
@@ -314,7 +358,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param retries: Number of attempts to reserve version
         :type retries: int
-        :return: Version ID and commit token
+        :returns: Version ID and commit token
         :rtype: Tuple[int, str]
         """
         retry_delay = 2  # seconds
@@ -329,21 +373,32 @@ class DataVersion(ModuleApiBase):
                 return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
 
             except requests.exceptions.HTTPError as e:
-                if e.response.json().get("details", {}).get("useExistingVersion"):
-                    version_id = e.response.json().get("details", {}).get("version").get("id")
-                    version = e.response.json().get("details", {}).get("version").get("version")
+                details = {}
+                if e.response is not None:
+                    try:
+                        details = (e.response.json() or {}).get("details", {})  # type: ignore[union-attr]
+                    except Exception:
+                        details = {}
+
+                if details.get("useExistingVersion"):
+                    version_id = details.get("version", {}).get("id")
+                    version = details.get("version", {}).get("version")
                     logger.info(
                         f"No changes to the project since the last version '{version}' with ID '{version_id}'"
                     )
                     return (None, None)
-                elif "is already committing" in e.response.json().get("details", {}).get("message"):
+
+                message = (details.get("message") or "").lower()
+                if "is already committing" in message:
                     if retry_delay >= max_delay:
                         raise RuntimeError(
                             "Failed to reserve version. Another process is already committing a version. Maximum number of attempts reached."
                         )
-                    version = e.response.json().get("details", {}).get("version").get("version")
                     time.sleep(retry_delay)
                     retry_delay *= 2
+                    continue
+
+                raise
 
     def cancel_reservation(self, version_id: int, commit_token: str):
         """
@@ -353,7 +408,7 @@ class DataVersion(ModuleApiBase):
         :type version_id: int
         :param commit_token: Commit token
         :type commit_token: str
-        :return: True if reservation was cancelled, False otherwise
+        :returns: True if reservation was cancelled, False otherwise
         """
         response = self._api.post(
             "projects.versions.cancel-reservation",
@@ -373,19 +428,17 @@ class DataVersion(ModuleApiBase):
         Restore project to a specific version.
         Version can be specified by ID or number.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param version_id: Version ID
         :type version_id: Optional[int]
         :param version_num: Version number
         :type version_num: Optional[int]
         :param skip_missed_entities: Skip missed Images
         :type skip_missed_entities: bool, default False
-        :return: ProjectInfo object of the restored project
-        :rtype: ProjectInfo or None
+        :returns: Project info object of the restored project
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo` or None
         """
-        from supervisely.project.project import Project
-
         if version_id is None and version_num is None:
             raise ValueError("Either version_id or version_num must be provided")
 
@@ -404,7 +457,7 @@ class DataVersion(ModuleApiBase):
             if str(version_id) not in self.versions:
                 raise ValueError(f"Version {version_id} does not exist")
             version_num = self.versions[str(version_id)]["number"]
-        updated_at = self.versions[str(version_id)]["updated_at"]
+        # updated_at = self.versions[str(version_id)]["updated_at"]
         backup_files = self.versions[str(version_id)]["path"]
 
         # turn off this check for now (treating this as a project clone operation)
@@ -420,11 +473,22 @@ class DataVersion(ModuleApiBase):
             )
             return
 
+        dst_project_name = self.PROJECT_NAME_TEMPLATE.format(
+            project_name=self.project_info.name, version_num=version_num
+        )
+        dst_project_desc = self.PROJECT_DESC_TEMPLATE.format(
+            version_num=version_num,
+            project_id=self.project_info.id,
+            version_id=version_id,
+        )
+
         bin_io = self._download_and_extract(backup_files)
-        new_project_info = Project.upload_bin(
+        new_project_info = self.project_cls.upload_bin(
             self._api,
             bin_io,
-            self.project_info.workspace_id,
+            workspace_id=self.project_info.workspace_id,
+            project_name=dst_project_name,
+            project_description=dst_project_desc,
             skip_missed=skip_missed_entities,
         )
         return new_project_info
@@ -449,22 +513,35 @@ class DataVersion(ModuleApiBase):
 
         :param path: Path to the version file
         :type path: str
-        :return: Binary IO object with extracted file
+        :returns: Binary IO object with extracted file
         :rtype: io.BytesIO
         """
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
         try:
             self._api.file.download(self.project_info.team_id, path, local_path)
-            with open(local_path, "rb") as zst:
-                decompressed_data = zstd.decompress(zst.read())
-            with tarfile.open(fileobj=io.BytesIO(decompressed_data)) as tar:
-                file = tar.extractfile("version.bin")
-                if not file:
-                    raise RuntimeError("version.bin not found in the archive")
-                data = file.read()
-                bin_io = io.BytesIO(data)
-                return bin_io
+            # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+            try:
+                dctx = zstd.ZstdDecompressor()
+                with open(local_path, "rb") as zst_f:
+                    with dctx.stream_reader(zst_f) as reader:
+                        with tarfile.open(fileobj=reader, mode="r|") as tar:
+                            for member in tar:
+                                if member.name == "version.bin":
+                                    file = tar.extractfile(member)
+                                    if not file:
+                                        raise RuntimeError("version.bin not found in the archive")
+                                    return io.BytesIO(file.read())
+                            raise RuntimeError("version.bin not found in the archive")
+            except Exception:
+                # Fallback: one-shot decompress
+                with open(local_path, "rb") as zst_f:
+                    decompressed_data = zstd.decompress(zst_f.read())
+                with tarfile.open(fileobj=io.BytesIO(decompressed_data), mode="r") as tar:
+                    file = tar.extractfile("version.bin")
+                    if not file:
+                        raise RuntimeError("version.bin not found in the archive")
+                    return io.BytesIO(file.read())
         except Exception as e:
             raise RuntimeError(f"Failed to extract version: {e}")
         finally:
@@ -475,7 +552,7 @@ class DataVersion(ModuleApiBase):
         Generate a path for the new version archive where it will be saved in the Team Files.
         Archive format: {timestamp}.tar.zst
 
-        :return: Path for the new version archive
+        :returns: Path for the new version archive
         :rtype: str
         """
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -498,37 +575,47 @@ class DataVersion(ModuleApiBase):
 
         :param changes: Changes between current and previous version
         :type changes: bool
-        :return: File info
+        :returns: File info
         :rtype: dict
         """
-        from supervisely.project.project import Project
-
         temp_dir = tempfile.mkdtemp()
+        data = None
+        try:
+            data = self.project_cls.download_bin(
+                self._api, self.project_info.id, batch_size=self._batch_size, return_bytesio=True
+            )
+            info = tarfile.TarInfo(name="version.bin")
+            data.seek(0, io.SEEK_END)
+            info.size = data.tell()
+            data.seek(0)
+            zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
 
-        data = Project.download_bin(
-            self._api, self.project_info.id, batch_size=200, return_bytesio=True
-        )
-        data.seek(0)
-        info = tarfile.TarInfo(name="version.bin")
-        info.size = len(data.getvalue())
-        chunk_size = 1024 * 1024 * 50  # 50 MiB
-        tar_data = io.BytesIO()
+            # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+            try:
+                cctx = zstd.ZstdCompressor()
+                with open(zst_archive_path, "wb") as zst_f:
+                    try:
+                        stream = cctx.stream_writer(zst_f, closefd=False)
+                    except TypeError:
+                        stream = cctx.stream_writer(zst_f)
+                    with stream as compressor:
+                        with tarfile.open(fileobj=compressor, mode="w|") as tar:
+                            tar.addfile(tarinfo=info, fileobj=data)
+            except Exception:
+                # Fallback: build tar in memory + one-shot compress
+                tar_data = io.BytesIO()
+                with tarfile.open(fileobj=tar_data, mode="w") as tar:
+                    tar.addfile(tarinfo=info, fileobj=data)
+                tar_data.seek(0)
+                with open(zst_archive_path, "wb") as zst_f:
+                    zst_f.write(zstd.compress(tar_data.read()))
 
-        # Create a tarfile object that writes into the BytesIO object
-        with tarfile.open(fileobj=tar_data, mode="w") as tar:
-            tar.addfile(tarinfo=info, fileobj=data)
-        data.close()
-        # Reset the BytesIO object's cursor to the beginning
-        tar_data.seek(0)
-        zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
-
-        with open(zst_archive_path, "wb") as zst:
-            while True:
-                chunk = tar_data.read(chunk_size)
-                if not chunk:
-                    break
-                zst.write(zstd.compress(chunk))
-        file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
-        tar_data.close()
-        remove_dir(temp_dir)
-        return file_info
+            file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
+            return file_info
+        finally:
+            if data is not None:
+                try:
+                    data.close()
+                except Exception:
+                    pass
+            remove_dir(temp_dir)

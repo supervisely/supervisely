@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 import pandas as pd
 
@@ -23,6 +23,7 @@ from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.project.project_meta import ProjectMeta
 
 type_to_zmdi_icon = {
@@ -39,8 +40,11 @@ type_to_zmdi_icon = {
     Pointcloud: "zmdi zmdi-cloud-outline",  # "zmdi zmdi-border-clear"
     MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+    OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 class ClassesSelector:
+    """Predict app step: select which model classes to use for inference; filters by model meta."""
+
     title = "Classes"
     description = "Select classes that will be used for inference. This classes are defined by the deployed model"
     lock_message = "Select previous step to unlock"
@@ -103,8 +107,10 @@ class ClassesSelector:
     def set_project_meta(self, project_meta) -> None:
         self._update_meta(project_meta)
 
-    def load_from_json(self, data: Dict[str, Any]) -> None:
-        if "classes" in data:
+    def load_from_json(self, data: Union[Dict[str, Any], List[str]]) -> None:
+        if isinstance(data, List):
+            self.set_classes(data)
+        elif isinstance(data, Dict) and "classes" in data:
             self.set_classes(data["classes"])
 
     def get_selected_classes(self) -> list:

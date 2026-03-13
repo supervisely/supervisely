@@ -38,6 +38,7 @@ from supervisely.task.progress import Progress
 
 
 class ImportManager:
+    """Manages import of external data (archives, folders) into Supervisely projects via modality-specific converters."""
 
     def __init__(
         self,
@@ -47,6 +48,19 @@ class ImportManager:
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
+        """:param input_data: Path(s) to input data (archives or directories).
+        :type input_data: Union[str, List[str]]
+        :param project_type: Project modality (IMAGES, VIDEOS, etc.).
+        :type project_type: ProjectType
+        :param team_id: Team ID for upload. Defaults to env.
+        :type team_id: int, optional
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface
+        :param upload_as_links: If True, upload as links.
+        :type upload_as_links: bool
+
+        :raises ValueError: If team_id invalid or project type unsupported.
+        """
         self._api = Api.from_env()
         if team_id is not None:
             team_info = self._api.team.get_info_by_id(team_id)
@@ -105,9 +119,9 @@ class ImportManager:
         )
         return modality_converter.detect_format()
 
-    def upload_dataset(self, dataset_id):
+    def upload_dataset(self, dataset_id) -> Optional[int]:
         """Upload converted data to Supervisely"""
-        self.converter.upload_dataset(self._api, dataset_id)
+        return self.converter.upload_dataset(self._api, dataset_id)
 
     # def validate_format(self):
     #     raise NotImplementedError
@@ -140,6 +154,7 @@ class ImportManager:
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
+                ProjectType.POINT_CLOUDS.value,
             ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)
