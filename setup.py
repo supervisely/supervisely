@@ -85,7 +85,7 @@ INSTALL_REQUIRES = [
     "python-json-logger>=0.1.11, <=3.0.1",
     "packaging>=20.0",
     "requests>=2.27.1, <3.0.0",
-    "requests-toolbelt>=0.9.1",  # , <1.0.0
+    "requests-toolbelt>=1.0.0, <2.0.0",
     "Shapely>=1.7.1, <=2.1.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
@@ -124,7 +124,7 @@ INSTALL_REQUIRES = [
     "click",
     "imutils==0.5.4",
     "urllib3>=2.6.3, <3.0.0; python_version >= '3.10'",
-    "urllib3>=2.2.3, <2.3.0; python_version < '3.10'",
+    "urllib3>=1.26.15, <=2.2.3; python_version < '3.10'",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.23.0",
     "pyjwt>=2.1.0,<3.0.0",
