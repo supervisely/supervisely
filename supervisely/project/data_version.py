@@ -337,8 +337,6 @@ class DataVersion(ModuleApiBase):
                 "previous": latest,
                 "number": version_num,
             }
-            # if enable_preview and preview_project_info is not None:
-            #     self.versions[version_id]["preview"] = preview_project_info.id
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
             self.commit(
