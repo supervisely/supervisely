@@ -85,8 +85,8 @@ autodoc_default_options = {
     "show-inheritance": True,
 }
 
-
 html_css_files = ["css/custom.css"]
+html_js_files = ["js/expand_nav_sdk_packages.js"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # -- Options for HTML output -------------------------------------------------
@@ -115,7 +115,7 @@ html_theme_options = {
         "navigation.footer",
         "navigation.tracking",
         # Search UX
-        "search.share",
+        # "search.share",
         "search.highlight",
         "search.suggest",
         # TOC UX
@@ -126,7 +126,7 @@ html_theme_options = {
         {
             "media": "(prefers-color-scheme)",
             "toggle": {
-                "icon": "material/brightness-auto",
+                "icon": "material/lightbulb-auto",
                 "name": "Switch to light mode",
             },
         },

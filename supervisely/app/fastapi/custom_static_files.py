@@ -10,6 +10,13 @@ from starlette.staticfiles import NotModifiedResponse
 from starlette.types import Scope
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
+INVALID_RANGE_STATUS_CODE = getattr(status, "HTTP_416_RANGE_NOT_SATISFIABLE", None)
+if INVALID_RANGE_STATUS_CODE is None:
+    INVALID_RANGE_STATUS_CODE = getattr(status, "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE", None)
+if INVALID_RANGE_STATUS_CODE is None:
+    raise AttributeError("No compatible HTTP 416 status code constant found in fastapi.status")
+
+
 PathLike = typing.Union[str, "os.PathLike[str]"]
 
 
@@ -44,7 +51,7 @@ class CustomStaticFiles(StaticFiles):
         def _get_range_header(range_header: str, file_size: int) -> typing.Tuple[int, int]:
             def _invalid_range():
                 return HTTPException(
-                    status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE, #TODO: change to status.HTTP_416_RANGE_NOT_SATISFIABLE if update starlette to 0.48.0+
+                    INVALID_RANGE_STATUS_CODE,
                     detail=f"Invalid request range (Range:{range_header!r})",
                 )
 

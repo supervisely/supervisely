@@ -230,12 +230,18 @@ class NeuralNetworkApi:
                     ],
                 )
             )
-        all_tasks = [
-            task for task in all_tasks if task["meta"]["app"]["moduleId"] in serve_apps_module_ids
-        ]
+        serve_tasks = []
+        for task in all_tasks:
+            try:
+                if task["meta"]["app"]["moduleId"] in serve_apps_module_ids:
+                    serve_tasks.append(task)
+            except KeyError:
+                logger.warning(
+                    f"Task {task['id']} is missing 'meta.app.moduleId' field, skipping it."
+                )
         # get deploy infos and filter results
         result = []
-        for task in all_tasks:
+        for task in serve_tasks:
             try:
                 deploy_info = self._deploy_api.get_deploy_info(task["id"])
             except Exception as e:
