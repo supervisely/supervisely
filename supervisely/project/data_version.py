@@ -13,8 +13,7 @@ from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo, ProjectType
 from supervisely.io import json
-from supervisely.io.fs import remove_dir, silent_remove
-from supervisely.project.copy import copy_project
+from supervisely.io.fs import remove_dir
 from supervisely.project.versioning.common import (
     DEFAULT_IMAGE_SCHEMA_VERSION,
     DEFAULT_VIDEO_SCHEMA_VERSION,
@@ -24,7 +23,6 @@ from supervisely.project.versioning.common import (
     PREVIEW_NAME_TEMPLATE,
     update_custom_data_with_version_preview,
 )
-from supervisely.project.versioning.schema_fields import VersionSchemaField
 
 
 class VersionInfo(NamedTuple):
@@ -353,21 +351,6 @@ class DataVersion(ModuleApiBase):
             )
             if enable_preview:
                 if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
-
-                    # cloned_project_info = copy_project(
-                    #     api=self._api,
-                    #     src_project_info=project_info,
-                    #     dst_workspace_id=workspace_id,
-                    #     dst_project_name=PREVIEW_NAME_TEMPLATE.format(
-                    #         project_name=project_info.name, version_num=version_num
-                    #     ),
-                    #     dst_project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
-                    #         project_id=project_info.id,
-                    #         version_num=version_num,
-                    #         version_id=version_id,
-                    #     ),
-                    #     read_only=enable_preview,
-                    # )
                     preview_project_info = self.enable_preview(
                         project=project_info,
                         version_id=version_id,

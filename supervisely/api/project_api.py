@@ -722,9 +722,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         readme: Optional[str] = None,
         settings: Optional[Dict] = None,
         custom_data: Optional[Dict] = None,
-        created_at: Optional[str] = None,
-        updated_at: Optional[str] = None,
-        created_by: Optional[int] = None,
         read_only: Optional[bool] = None,
     ) -> ProjectInfo:
         """
@@ -746,12 +743,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type settings: dict, optional
         :param custom_data: Optional custom metadata dict.
         :type custom_data: dict, optional
-        :param created_at: Optional ISO-8601 timestamp to set as creation time.
-        :type created_at: str, optional
-        :param updated_at: Optional ISO-8601 timestamp to set as last-update time.
-        :type updated_at: str, optional
-        :param created_by: Optional user ID to record as the project creator.
-        :type created_by: int, optional
         :param read_only: Optional flag to set the project as read-only. Works only with image and video projects. If set to True, the project will be created with read-only settings, and users will not be able to modify annotations in this project. Default is False.
         :type read_only: bool, optional
         :returns: ProjectInfo object with information about the Project.
@@ -812,27 +803,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             payload[ApiField.SETTINGS] = settings
         if custom_data is not None:
             payload[ApiField.CUSTOM_DATA] = custom_data
-        if created_at is not None:
-            payload[ApiField.CREATED_AT] = created_at
-        if updated_at is not None:
-            payload[ApiField.UPDATED_AT] = updated_at
-        if created_by is not None:
-            payload[ApiField.CREATED_BY_ID[0][0]] = created_by
 
         if type in [ProjectType.IMAGES, ProjectType.VIDEOS] and read_only is True:
             if ApiField.SETTINGS not in payload:
                 payload[ApiField.SETTINGS] = {}
             payload[ApiField.SETTINGS][ApiField.IS_READ_ONLY_PROJECT] = read_only
 
-        try:
-            response = self._api.post("projects.add", payload)
-        except Exception as e:
-            if "Some users not found in team" in str(e):
-                raise ValueError(
-                    "Unable to create a project. Project creator is not a member of the destination team."
-                ) from e
-            else:
-                raise e
+        response = self._api.post("projects.add", payload)
+
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
