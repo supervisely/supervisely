@@ -5,3 +5,8 @@ from .live_training import LiveTraining
 from .incremental_dataset import IncrementalDataset
 from .dynamic_sampler import DynamicSampler
 from .checkpoint_utils import resolve_checkpoint
+
+
+class TrainingFailedError(Exception):
+    """Raised when the training process has failed and cannot handle requests."""
+    pass

@@ -1,4 +1,6 @@
+import asyncio
 import os
+import threading
 import numpy as np
 from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType
@@ -15,6 +17,7 @@ import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
 from .loss_plateau_detector import LossPlateauDetector
+from . import TrainingFailedError
 from pathlib import Path
 
 class Phase:
@@ -144,6 +147,7 @@ class LiveTraining:
                 raise e
             else:
                 logger.error(f"Live training failed: {e}", exc_info=True)
+                self._start_request_handling_after_error(e)
                 final_checkpoint = self.latest_checkpoint_path
                 self.save_checkpoint(final_checkpoint)
                 save_state_json(self.state(), final_checkpoint)
@@ -187,7 +191,7 @@ class LiveTraining:
         samples_needed: int,
         max_wait_time: int = None,
     ):
-        sleep_interval = 0.5
+        sleep_interval = 0.3
         elapsed_time = 0
         samples_before = len(self.dataset)
 
@@ -583,3 +587,26 @@ class LiveTraining:
         self.save_checkpoint(self.latest_checkpoint_path)
         save_state_json(self.state(), self.latest_checkpoint_path)
         self._upload_artifacts()
+    
+    def _start_request_handling_after_error(self, exception: Exception):
+        """
+        Handle incoming requests after an error to prevent hanging.
+        Processing in a separate thread.
+        """
+        loop = asyncio.get_event_loop()
+        training_error = TrainingFailedError(f"Training failed: {exception}")
+
+        def handle_requests():
+            while True:
+                requests = self.request_queue.get_all()
+                for request in requests: 
+                    def _set_exc(f=request.future, e=training_error):
+                        if not f.done():
+                            f.set_exception(e)
+                    loop.call_soon_threadsafe(_set_exc)
+                time.sleep(0.3)
+
+        thread = threading.Thread(target=handle_requests, daemon=True, name="RequestHandlerAfterError")
+        thread.start()
+
+        return thread
