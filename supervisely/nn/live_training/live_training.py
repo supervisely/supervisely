@@ -593,7 +593,6 @@ class LiveTraining:
         Handle incoming requests after an error to prevent hanging.
         Processing in a separate thread.
         """
-        loop = asyncio.get_event_loop()
         training_error = TrainingFailedError(f"Training failed: {exception}")
 
         def handle_requests():
@@ -603,6 +602,7 @@ class LiveTraining:
                     def _set_exc(f=request.future, e=training_error):
                         if not f.done():
                             f.set_exception(e)
+                    loop = request.future.get_loop()
                     loop.call_soon_threadsafe(_set_exc)
                 time.sleep(0.3)
 
