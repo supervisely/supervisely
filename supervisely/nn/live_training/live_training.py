@@ -593,7 +593,7 @@ class LiveTraining:
         Handle incoming requests after an error to prevent hanging.
         Processing in a separate thread.
         """
-        training_error = TrainingFailedError(f"Training failed: {exception}")
+        training_error = TrainingFailedError(f"Training failed. {exception}")
 
         def handle_requests():
             while True:
