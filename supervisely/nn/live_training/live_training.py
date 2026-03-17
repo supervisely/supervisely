@@ -17,7 +17,7 @@ import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
 from .loss_plateau_detector import LossPlateauDetector
-from . import TrainingFailedError
+from .utils import TrainingFailedError
 from pathlib import Path
 
 class Phase:

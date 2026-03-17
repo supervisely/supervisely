@@ -4,7 +4,7 @@ import threading
 import asyncio
 
 from .request_queue import RequestQueue, RequestType
-from .live_training import TrainingFailedError
+from .utils import TrainingFailedError
 import supervisely as sly
 from supervisely import logger
 
