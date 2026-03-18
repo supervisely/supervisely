@@ -80,6 +80,8 @@ INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
     "numpy>=1.19, <=2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
+    "scikit-image>=0.14.0",
+    "scipy>=1.5.0",
     "prettytable>=3.8.0, <4.0.0",
     "pillow>=5.4.1, <=12.1.1",
     "python-json-logger>=0.1.11, <=3.0.1",
