@@ -298,7 +298,9 @@ class DataVersion(ModuleApiBase):
         :type version_title: Optional[str]
         :param version_description: Version description
         :type version_description: Optional[str]
-        :param enable_preview: Enable preview flag that creates clone of the project to hidden workspace making version data available immediately. This option can be used to
+        :param enable_preview: Enable preview flag that creates clone of the project to hidden workspace making version data available immediately. 
+            This option can be used to avoid waiting for version data to be processed on the server before previewing it. 
+            Only versions of projects with types VIDEO and IMAGE are supported for preview.
         :type enable_preview: bool
         :returns: Version ID
         :rtype: int
@@ -331,7 +333,7 @@ class DataVersion(ModuleApiBase):
 
             file_info = self._compress_and_upload(path, preserve_local_binary=enable_preview)
 
-            self.versions[version_id] = {
+            self.versions[str(version_id)] = {
                 "path": path,
                 "updated_at": project_info.updated_at,
                 "previous": latest,
@@ -349,22 +351,30 @@ class DataVersion(ModuleApiBase):
             )
             if enable_preview:
                 if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
-                    preview_project_info = self.enable_preview(
-                        project=project_info,
-                        version_id=version_id,
-                        local_binary_path=self._local_binary_path,
-                    )
-                    if self._local_binary_path is not None:
-                        remove_dir(os.path.dirname(self._local_binary_path))
-                        self._local_binary_path = None
+                    try:
+                        preview_project_info = self.enable_preview(
+                            project=project_info,
+                            version_id=version_id,
+                            local_binary_path=self._local_binary_path,
+                        )
+                    finally:
+                        if self._local_binary_path is not None:
+                            remove_dir(os.path.dirname(self._local_binary_path))
+                            self._local_binary_path = None
                     self.versions[str(version_id)]["preview"] = preview_project_info.id
                     self.set_map(project_info, initialize=False)
                 else:
+                    if self._local_binary_path is not None:
+                        remove_dir(os.path.dirname(self._local_binary_path))
+                        self._local_binary_path = None
                     logger.warning(
                         f"Preview is not supported for project type {project_info.type}. Creating version without preview."
                     )
             return version_id
         except Exception as e:
+            if self._local_binary_path is not None:
+                remove_dir(os.path.dirname(self._local_binary_path))
+                self._local_binary_path = None
             if self.cancel_reservation(version_id, commit_token):
                 logger.error(f"Version creation failed. Reservation was cancelled. Exception: {e}")
             else:
@@ -627,7 +637,7 @@ class DataVersion(ModuleApiBase):
         """
         Update version information such as name, description or link preview project to the version.
 
-        ATTENTION: Do not use this parameter to link a regular project as it can cause issues with version data consistency. This parameter is intended to link a cloned project in the hidden workspace that is created when enabling preview for the version.
+        ATTENTION: Do not use `preview_project_id` parameter to link a regular project as it can cause issues with version data consistency. This parameter is intended to link a cloned project in the hidden workspace that is created when enabling preview for the version.
         Only versions of projects with types VIDEO and IMAGE are supported for preview.
 
         :param version_id: Version ID

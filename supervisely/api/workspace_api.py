@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Dict, List, NamedTuple, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
+from supervisely.sly_logger import logger
 
 
 class WorkspaceInfo(NamedTuple):
@@ -243,7 +244,13 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         )
         workspace_info = self._convert_json_info(response.json())
         if hidden:
-            self.change_visibility(workspace_info.id, visible=False)
+            try:
+                self.change_visibility(workspace_info.id, visible=False)
+            except Exception as e:
+                logger.error(
+                    f"Workspace id={workspace_info.id} was created but could not be set as hidden: {e}. "
+                    f"Call change_visibility({workspace_info.id}, visible=False) to retry."
+                )
 
         return workspace_info
 

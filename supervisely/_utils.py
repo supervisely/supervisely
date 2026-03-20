@@ -740,9 +740,7 @@ def deep_merge_dicts(base: dict, override: dict) -> dict:
     """
     Recursively merge two dictionaries. The override dictionary takes precedence over the base dictionary.
     - If a key exists in both dictionaries and both values are dicts, they are merged recursively.
-    - If a key exists in both dictionaries and both values are lists, they are merged element
-        wise (if elements are dicts) or overridden by the override list.
-    - In all other cases, the value from the override dictionary takes precedence.
+    - In all other cases (including lists), the value from the override dictionary replaces the base value entirely.
 
     :param base: The base dictionary.
     :type base: dict
@@ -752,22 +750,10 @@ def deep_merge_dicts(base: dict, override: dict) -> dict:
     :rtype: dict
     """
 
-    result = base.copy()
+    result = copy.deepcopy(base)
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = deep_merge_dicts(result[key], value)
-        elif key in result and isinstance(result[key], list) and isinstance(value, list):
-            merged_list = []
-            for i, item in enumerate(value):
-                if (
-                    i < len(result[key])
-                    and isinstance(result[key][i], dict)
-                    and isinstance(item, dict)
-                ):
-                    merged_list.append(deep_merge_dicts(result[key][i], item))
-                else:
-                    merged_list.append(item)
-            result[key] = merged_list
         else:
-            result[key] = value
+            result[key] = copy.deepcopy(value)
     return result

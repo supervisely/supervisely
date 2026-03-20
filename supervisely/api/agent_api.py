@@ -151,7 +151,6 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         payload = {"teamId": team_id, "filter": filters or []}
         if with_gpu_info:
             payload[ApiField.EXTRA_FIELDS] = [ApiField.GPU_INFO]
-        
         return self.get_list_all_pages("agents.list", payload)
 
     def get_list_available(

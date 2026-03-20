@@ -804,10 +804,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if custom_data is not None:
             payload[ApiField.CUSTOM_DATA] = custom_data
 
-        if type in [ProjectType.IMAGES, ProjectType.VIDEOS] and read_only is True:
-            if ApiField.SETTINGS not in payload:
-                payload[ApiField.SETTINGS] = {}
-            payload[ApiField.SETTINGS][ApiField.IS_READ_ONLY_PROJECT] = read_only
+        if type in (ProjectType.IMAGES, ProjectType.VIDEOS) and read_only:
+            payload.setdefault(ApiField.SETTINGS, {}).setdefault(ApiField.ADVANCED_SETTINGS, {})[ApiField.IS_READ_ONLY_PROJECT] = True
 
         response = self._api.post("projects.add", payload)
 
@@ -1518,7 +1516,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return incorrect_entities
 
-    def get_settings(self, id: int) -> Dict[str, str]:
+    def get_settings(self, id: int) -> Dict[str, Any]:
         info = self._get_info_by_id(id, "projects.info")
         if info is None:
             raise ProjectNotFound(f"Project with id={id} not found")
@@ -1527,7 +1525,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def update_settings(
         self,
         id: int,
-        settings: Dict[str, str],
+        settings: Dict[str, Any],
         merge_with_current: bool = False,
     ) -> None:
         """
@@ -1536,7 +1534,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID
         :type id: int
         :param settings: Project settings to apply.
-        :type settings: Dict[str, str]
+        :type settings: Dict[str, Any]
         :param merge_with_current: If True, deep-merges the new settings with the current settings.
             If False, replaces the current settings entirely.
         :type merge_with_current: bool, optional
