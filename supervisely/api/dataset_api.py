@@ -373,7 +373,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         if custom_data is not None:
             payload[ApiField.CUSTOM_DATA] = custom_data
         response = self._api.post(method, payload)
-        
         return self._convert_json_info(response.json())
 
     def get_or_create(
