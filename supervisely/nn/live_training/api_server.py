@@ -4,7 +4,7 @@ import threading
 import asyncio
 
 from .request_queue import RequestQueue, RequestType
-from .utils import TrainingFailedError
+from .utils import TrainingStoppedException
 import supervisely as sly
 from supervisely import logger
 
@@ -88,10 +88,10 @@ async def _wait_for_result(future: asyncio.Future, response: Response, timeout: 
         result = await asyncio.wait_for(future, timeout=timeout)
     except asyncio.TimeoutError:
         # raise HTTPException(503, detail={"error": "Request timeout - training may be busy"})
-        response.status_code = 503
-        result = _error_response_message("Request timeout - training may be busy")
-    except TrainingFailedError as e:
         response.status_code = 500
+        result = _error_response_message("Request timeout - training may be busy")
+    except TrainingStoppedException as e:
+        response.status_code = 404
         result = _error_response_message(str(e))
     except Exception as e:
         # raise HTTPException(500, detail={"error": str(e)})
@@ -112,4 +112,9 @@ def _api_from_request(request: Request) -> sly.Api:
 
 
 def _error_response_message(message: str):
-    return {"error": {"details": {"message": message}}}
+    return {
+        "details": {
+            "message": message,
+            "checkLogs": False
+        }
+    }
