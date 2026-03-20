@@ -794,6 +794,8 @@ class DataVersion(ModuleApiBase):
                                         raise RuntimeError("version.bin not found in the archive")
                                     return io.BytesIO(file.read())
                             raise RuntimeError("version.bin not found in the archive")
+            except RuntimeError:
+                raise
             except Exception:
                 # Fallback: one-shot decompress
                 with open(local_path, "rb") as zst_f:
@@ -851,9 +853,8 @@ class DataVersion(ModuleApiBase):
             )
 
             version_bin_path = os.path.join(temp_dir, "version.bin")
-            data.seek(0)
             with open(version_bin_path, "wb") as f:
-                f.write(data.read())
+                f.write(data.getbuffer())
 
             # Set the path for future use if preserve_local_binary is True
             if preserve_local_binary:
