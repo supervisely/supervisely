@@ -313,6 +313,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         change_name_if_conflict: Optional[bool] = False,
         parent_id: Optional[int] = None,
         custom_data: Optional[Dict[Any, Any]] = None,
+        created_at: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_by: Optional[int] = None,
     ) -> DatasetInfo:
         """
         Create Dataset with given name in the given Project.
@@ -330,6 +333,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type parent_id: Union[int, None]
         :param custom_data: Custom data to store in the :class:`~supervisely.project.project.Dataset`.
         :type custom_data: Dict[Any, Any], optional
+        :param created_at: Optional ISO-8601 timestamp to set as creation time.
+        :type created_at: str, optional
+        :param updated_at: Optional ISO-8601 timestamp to set as last-update time.
+        :type updated_at: str, optional
+        :param created_by: Optional user ID to record as the dataset creator.
+        :type created_by: int, optional
         :returns: DatasetInfo object with information about the Dataset.
         :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
@@ -372,7 +381,21 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         }
         if custom_data is not None:
             payload[ApiField.CUSTOM_DATA] = custom_data
-        response = self._api.post(method, payload)
+        if created_at is not None:
+            payload[ApiField.CREATED_AT] = created_at
+        if updated_at is not None:
+            payload[ApiField.UPDATED_AT] = updated_at
+        if created_by is not None:
+            payload[ApiField.CREATED_BY_ID[0][0]] = created_by
+        try:
+            response = self._api.post(method, payload)
+        except Exception as e:
+            if "Some users not found in team" in str(e):
+                raise ValueError(
+                    "Unable to create a dataset. Dataset creator is not a member of the destination team."
+                ) from e
+            else:
+                raise e
         return self._convert_json_info(response.json())
 
     def get_or_create(
