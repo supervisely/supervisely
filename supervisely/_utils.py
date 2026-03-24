@@ -734,3 +734,26 @@ def get_latest_instance_version_from_json() -> Optional[str]:
         # Silently fail - don't break the import if versions.json is missing or malformed
         logger.debug("Failed to get latest instance version from versions.json")
         return None
+
+
+def deep_merge_dicts(base: dict, override: dict) -> dict:
+    """
+    Recursively merge two dictionaries. The override dictionary takes precedence over the base dictionary.
+    - If a key exists in both dictionaries and both values are dicts, they are merged recursively.
+    - In all other cases (including lists), the value from the override dictionary replaces the base value entirely.
+
+    :param base: The base dictionary.
+    :type base: dict
+    :param override: The override dictionary.
+    :type override: dict
+    :returns: The merged dictionary.
+    :rtype: dict
+    """
+
+    result = copy.deepcopy(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge_dicts(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
