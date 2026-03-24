@@ -3071,3 +3071,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ADVANCED_SETTINGS: {ApiField.IS_READ_ONLY_PROJECT: enable}},
             merge_with_current=True,
         )
+
+    def is_read_only(self, id: int) -> bool:
+        """Check if the project is read-only.
+
+        :param id: Project ID
+        :type id: int
+        :returns: True if the project is read-only, False otherwise
+        :rtype: bool
+        """
+        project_settings = self.get_settings(id)
+        return project_settings.get(ApiField.ADVANCED_SETTINGS, {}).get(ApiField.IS_READ_ONLY_PROJECT, False)
