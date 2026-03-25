@@ -259,35 +259,6 @@ class LiveTraining:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
     
-    def _process_requests_while_initializing(self):
-        def process_in_background(request: Request):
-            try:
-                if request.type == RequestType.PREDICT:
-                    set_exception(request.future, RuntimeError("Cannot run predict, the model is not ready yet."))
-                elif request.type == RequestType.ADD_SAMPLE:
-                    result = self._handle_add_sample(request.data)
-                    set_result(request.future, result)
-                elif request.type == RequestType.STATUS:
-                    result = self.status()
-                    set_result(request.future, result)
-            except Exception as e:
-                logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
-                set_exception(request.future, e)
-        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerInitializing")
-        self._background_request_handler.start()
-    
-    def _process_requests_while_finishing(self, response_message: str):
-        def process_in_background(request: Request):
-            e = TrainingStoppedException(response_message)
-            set_exception(request.future, e)
-        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerFinishing")
-        self._background_request_handler.start()
-    
-    def _stop_background_request_processing(self):
-        if self._background_request_handler is not None:
-            self._background_request_handler.stop()
-            self._background_request_handler = None
-
     def train(self, checkpoint_path: str = None):
         """
         Main training loop. Implement framework-specific training logic here.
@@ -552,6 +523,13 @@ class LiveTraining:
         finally:
             self._upload_in_progress = False
 
+    def _save_and_upload(self):
+        """Save checkpoint, state, and upload artifacts"""
+        logger.info("Saving checkpoint and uploading artifacts...")
+        self.save_checkpoint(self.latest_checkpoint_path)
+        save_state_json(self.state(), self.latest_checkpoint_path)
+        self._upload_artifacts()
+
     def save_checkpoint(self, checkpoint_path: str):
         pass
 
@@ -611,9 +589,31 @@ class LiveTraining:
         """Check if training should stop due to user inactivity"""
         return self._is_timeout_reached(self._last_activity_time, self._inactivity_timeout)
 
-    def _save_and_upload(self):
-        """Save checkpoint, state, and upload artifacts"""
-        logger.info("Saving checkpoint and uploading artifacts...")
-        self.save_checkpoint(self.latest_checkpoint_path)
-        save_state_json(self.state(), self.latest_checkpoint_path)
-        self._upload_artifacts()
+    def _process_requests_while_initializing(self):
+        def process_in_background(request: Request):
+            try:
+                if request.type == RequestType.PREDICT:
+                    set_exception(request.future, RuntimeError("Cannot run predict, the model is not ready yet."))
+                elif request.type == RequestType.ADD_SAMPLE:
+                    result = self._handle_add_sample(request.data)
+                    set_result(request.future, result)
+                elif request.type == RequestType.STATUS:
+                    result = self.status()
+                    set_result(request.future, result)
+            except Exception as e:
+                logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
+                set_exception(request.future, e)
+        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerInitializing")
+        self._background_request_handler.start()
+    
+    def _process_requests_while_finishing(self, response_message: str):
+        def process_in_background(request: Request):
+            e = TrainingStoppedException(response_message)
+            set_exception(request.future, e)
+        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerFinishing")
+        self._background_request_handler.start()
+    
+    def _stop_background_request_processing(self):
+        if self._background_request_handler is not None:
+            self._background_request_handler.stop()
+            self._background_request_handler = None
