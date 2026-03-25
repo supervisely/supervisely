@@ -84,8 +84,14 @@ class HighColorDepthImageConverter(ImageConverter):
     def _supported_depths(self):
         return [np.uint16, np.int16, np.float16, np.float32, np.float64, np.uint32]
 
-    def to_supervisely(self, *args, **kwargs):
-        return None
+    def to_supervisely(
+        self,
+        item: ImageConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: Dict[str, str] = None,
+        renamed_tags: Dict[str, str] = None,
+    ) -> Annotation:
+        return item.create_empty_annotation()
 
     def upload_dataset(
         self,
@@ -122,6 +128,8 @@ class HighColorDepthImageConverter(ImageConverter):
 
                     item.original_path = remote_path
                     image = helpers.read_high_color_images(item.path)
+                    if image is not None and getattr(image, "shape", None) is not None:
+                        item.set_shape(tuple(image.shape[:2]))
 
                     orig_item_name = item.name
                     nrrd_path = item.path + ".nrrd"

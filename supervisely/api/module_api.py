@@ -720,6 +720,12 @@ class ApiField:
     GUIDE_ID = "guideId"
     """"""
     SINGLE_SESSION_MODE = "singleSessionMode"
+    """"""
+    READ_ONLY_PROJECT_ID = "readOnlyProjectId"
+    """"""
+    IS_READ_ONLY_PROJECT = "isReadOnlyProject"
+    """"""
+    PREVIEW_PROJECT_ID = "previewProjectId"
 
 
 def _get_single_item(items):
