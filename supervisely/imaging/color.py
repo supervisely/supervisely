@@ -71,6 +71,7 @@ def random_rgb(fix_satlight=True) -> List[int, int, int]:
 def _normalize_color(color):
     """
     Divide all RGB values by 255.
+
     :param color: color (RGB tuple of integers)
     :type color: list or tuple
     :returns: Normalized color
@@ -84,8 +85,10 @@ def _color_distance(first_color: list, second_color: list) -> float:
     Calculate distance in HLS color space between Hue components of 2 colors
 
     :param first_color: first color (RGB tuple of integers)
+    :type first_color: list or tuple
     :param second_color: second color (RGB tuple of integers)
-    :returns: Euclidean distance between 'first_color' and 'second_color'
+    :type second_color: list or tuple
+    :returns: Euclidean distance between ``first_color`` and ``second_color``
     :rtype: float
     """
     first_color_hls = colorsys.rgb_to_hls(*_normalize_color(first_color))
@@ -103,7 +106,7 @@ def generate_rgb(exist_colors: List[List[int, int, int]]) -> List[int, int, int]
 
     :param exist_colors: List of existing colors in RGB format.
     :type exist_colors: list
-    :returns: RGB integer values
+    :returns: New color which oppositely by exist colors
     :rtype: :class:`List[int, int, int]`
 
     :Usage Example:
@@ -136,7 +139,7 @@ def rgb2hex(color: List[int, int, int]) -> str:
 
     :param color: List of existing colors in RGB format.
     :type color: List[int, int, int]
-    :returns: HEX RGB string
+    :returns: HEX RGB string representation of color
     :rtype: str
 
     :Usage Example:
@@ -156,8 +159,11 @@ def rgb2hex(color: List[int, int, int]) -> str:
 def _hex2color(hex_value: str) -> list:
     """
     Convert HEX RGB string to integer RGB format
+
     :param hex_value: HEX RGBA string. Example: "#FF02A4
+    :type hex_value: str
     :returns: RGB integer values. Example: [80, 255, 0]
+    :rtype: list
     """
     assert hex_value.startswith("#")
     return [int(hex_value[i : (i + 2)], 16) for i in range(1, len(hex_value), 2)]
@@ -193,8 +199,11 @@ def hex2rgb(hex_value: str) -> List[int, int, int]:
 def _hex2rgba(hex_value: str) -> list:
     """
     Convert HEX RGBA string to integer RGBA format
+
     :param hex_value: HEX RGBA string. Example: "#FF02A4CC
-    :returns: RGBA integer values. Example: [80, 255, 0, 128]
+    :type hex_value: str
+    :returns: RGBA integer values. Example: [80, 255, 0, 128] in format [R, G, B, A]
+    :rtype: list
     """
     assert len(hex_value) == 9, "Supported only HEX RGBA string format!"
     return _hex2color(hex_value)
