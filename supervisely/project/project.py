@@ -3737,7 +3737,7 @@ class Project:
 
             ds_progress = progress_cb
             if log_progress and progress_cb is None:
-                ds_progress = tqdm_sly(
+                ds_progress = tqdm(
                     desc="Downloading dataset: {!r}".format(dataset_info.name),
                     total=len(ds_image_infos),
                 )
@@ -3955,7 +3955,7 @@ class Project:
 
             ds_progress = progress_cb
             if log_progress and progress_cb is None:
-                ds_progress = tqdm_sly(
+                ds_progress = tqdm(
                     desc="Uploading images to {!r}".format(dataset_name),
                     total=len(values["names"]),
                 )
@@ -4020,7 +4020,7 @@ class Project:
             old_alpha_figure_ids = []
             tags_list = []  # to append tags to figures in bulk
             if ds_progress is not None:
-                ds_fig_progress = tqdm_sly(
+                ds_fig_progress = tqdm(
                     desc="Processing figures for images in {!r}".format(dataset_name),
                     total=len(new_file_infos),
                 )
