@@ -3740,7 +3740,7 @@ class Project:
                 ds_progress = tqdm(
                     desc="Downloading dataset: {!r}".format(dataset_info.name),
                     total=len(ds_image_infos),
-                )
+                ).update
 
             for batch in batched(ds_image_infos, batch_size):
                 image_ids = [image_info.id for image_info in batch]
@@ -3758,7 +3758,7 @@ class Project:
                 if ds_progress is not None:
                     ds_progress(len(batch))
         if dataset_infos != [] and ds_progress is not None:
-            ds_progress.close()
+            ds_progress.close() if isinstance(ds_progress, tqdm) else ds_progress.__self__.close()
         data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
         file = (
             io.BytesIO()
@@ -3958,7 +3958,7 @@ class Project:
                 ds_progress = tqdm(
                     desc="Uploading images to {!r}".format(dataset_name),
                     total=len(values["names"]),
-                )
+                ).update
 
             # ------------------------------------ Determine Upload Method ----------------------------------- #
 
