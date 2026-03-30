@@ -2250,6 +2250,47 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         else:
             raise ValueError("Multiview settings can only be set for image or video projects")
 
+    def set_overlay_settings(self, project_id: int) -> None:
+        """Sets the project labeling interface to overlay mode.
+
+        In overlay mode, images that share the same parent (linked via ``parent_id``)
+        are displayed as layered overlays on top of the parent image in the labeling UI.
+
+        .. note::
+            This method only changes the project's labeling interface setting.
+            To upload images as overlays of a parent image, use
+            :meth:`~supervisely.api.image_api.ImageApi.upload_overlay_images`.
+
+        :param project_id: Project ID to apply overlay settings to.
+        :type project_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.project.set_overlay_settings(project_id=123)
+        """
+        meta = ProjectMeta.from_json(self.get_meta(project_id, with_settings=True))
+        new_settings = meta.project_settings.clone(
+            labeling_interface=LabelingInterface.OVERLAY,
+        )
+        meta = meta.clone(project_settings=new_settings)
+        self.update_meta(id=project_id, meta=meta)
+
     def _set_custom_grouping_settings_video(self, project_id: int, sync: bool = True) -> None:
         """Sets the project settings for multiview videos (private method).
         For video projects, videos are grouped by datasets (not by tags).
