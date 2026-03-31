@@ -1,13 +1,14 @@
 import os
 from typing import List
 
-from supervisely import ProjectMeta, logger
+from supervisely import Annotation, ProjectMeta, logger
 from supervisely._utils import batched, is_development
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import is_valid_ext
 from supervisely.io.fs import dirs_filter, get_file_ext, list_files
+from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 
 
@@ -73,7 +74,7 @@ class OverlayImageConverter(ImageConverter):
                     logger.warning("No valid overlay images found for item: %s", item)
                     continue
 
-                ann_path = os.path.join(ann_dir, item_name + ".json")
+                ann_path = os.path.join(ann_dir, os.path.basename(item) + ".json")
                 if not os.path.exists(ann_path):
                     logger.warning("Annotation file not found for item: %s", item)
                     ann_path = None
@@ -128,7 +129,16 @@ class OverlayImageConverter(ImageConverter):
                 for item in items_batch:
                     if item.has_annotation():
                         info = p_name_to_info[os.path.basename(item.path)]
-                        id_to_ann_path[info.id] = item.ann_path
+                        try:
+                            id_to_ann_path[info.id] = Annotation.from_json(
+                                load_json_file(item.ann_path), meta
+                            )
+                        except:
+                            logger.warning(
+                                "Failed to load annotation for item: %s. Skipping annotation upload.",
+                                item.path,
+                            )
+                            continue
 
                 if id_to_ann_path:
                     api.annotation.upload_anns(
