@@ -623,33 +623,69 @@ class LiveTraining:
         if not image_ids:
             return
 
-        logger.info(f"Restoring {len(image_ids)} images from Supervisely...")
+        if isinstance(image_ids[0], int):
+            dataset_type = "images"
+        elif isinstance(image_ids[0], str):
+            dataset_type = "videos"
 
-        restored_count = 0
-        for img_id in image_ids:
-            img_info = self.api.image.get_info_by_id(img_id)
+        if dataset_type == "images":
+            logger.info(f"Restoring {len(image_ids)} images from Supervisely...")
 
-            if img_info is None:
-                logger.warning(f"Image {img_id} not found, skipping")
-                continue
+            restored_count = 0
+            for img_id in image_ids:
+                img_info = self.api.image.get_info_by_id(img_id)
 
-            image_np = self.api.image.download_np(img_id)
-            ann_json = self.api.annotation.download_json(img_id)
-            ann = sly.Annotation.from_json(ann_json, self.project_meta)
+                if img_info is None:
+                    logger.warning(f"Image {img_id} not found, skipping")
+                    continue
 
-            self.dataset.add_or_update(
-                image_id=img_id,
-                image_np=image_np,
-                annotation=ann,
-                image_name=img_info.name
-            )
+                image_np = self.api.image.download_np(img_id)
+                ann_json = self.api.annotation.download_json(img_id)
+                ann = sly.Annotation.from_json(ann_json, self.project_meta)
 
-            restored_count += 1
+                self.dataset.add_or_update(
+                    image_id=img_id, image_np=image_np, annotation=ann, image_name=img_info.name
+                )
 
-            if restored_count % 10 == 0:
-                logger.info(f"Restored {restored_count}/{len(image_ids)}")
+                restored_count += 1
 
-        logger.info(f"Restored {restored_count} images")
+                if restored_count % 10 == 0:
+                    logger.info(f"Restored {restored_count}/{len(image_ids)}")
+
+            logger.info(f"Restored {restored_count} images")
+
+        elif dataset_type == "videos":
+            logger.info(f"Restoring {len(image_ids)} video frames from Supervisely...")
+
+            restored_count = 0
+            for frame_id in image_ids:
+                video_id, frame_idx = list(map(int, frame_id.split("_")))
+                frame_np = self.api.video.frame.download_np(video_id, frame_idx)
+
+                if restored_count == 0:
+                    video_ann_json = self.api.video.annotation.download(video_id)
+
+                video_objects_json, frame_ann_json = self._filter_annotation_video(
+                    video_ann_json, frame_idx
+                )
+                key_id_map = sly.KeyIdMap()
+                video_obj_col = sly.VideoObjectCollection.from_json(
+                    video_objects_json, self.project_meta, key_id_map
+                )
+                frames_count = video_ann_json["framesCount"]
+                frame_ann = sly.Frame.from_json(
+                    frame_ann_json, video_obj_col, frames_count, key_id_map
+                )
+                frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
+                img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+                self.dataset.add_or_update_video(frame_id, frame_np, img_ann)
+
+                restored_count += 1
+
+                if restored_count % 10 == 0:
+                    logger.info(f"Restored {restored_count}/{len(image_ids)}")
+
+            logger.info(f"Restored {restored_count} video frames")
 
     def prepare_artifacts(self) -> dict:
         """
