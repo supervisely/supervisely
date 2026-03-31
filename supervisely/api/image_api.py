@@ -4539,13 +4539,13 @@ class ImageApi(RemoveableBulkModuleApi):
         parent_paths: Optional[List[str]] = None,
         parent_links: Optional[List[str]] = None,
         parent_hashes: Optional[List[str]] = None,
-        paths: Optional[List[str]] = None,
-        links: Optional[List[str]] = None,
-        hashes: Optional[List[str]] = None,
+        paths: Optional[List[List[str]]] = None,
+        links: Optional[List[List[str]]] = None,
+        hashes: Optional[List[List[str]]] = None,
         batch_size: Optional[int] = 50,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
-    ) -> Tuple[List[ImageInfo], List[ImageInfo]]:
+    ) -> Tuple[List[ImageInfo], List[List[ImageInfo]]]:
         """Uploads parent images and overlay images linked to them.
 
         This method first uploads parent images to the destination dataset and then uploads
@@ -4578,12 +4578,15 @@ class ImageApi(RemoveableBulkModuleApi):
         :type parent_links: List[str], optional
         :param parent_hashes: Hashes of parent images already uploaded to Supervisely storage.
         :type parent_hashes: List[str], optional
-        :param paths: Local paths to overlay images.
-        :type paths: List[str], optional
-        :param links: Remote links to overlay images.
-        :type links: List[str], optional
-        :param hashes: Hashes of overlay images already uploaded to Supervisely storage.
-        :type hashes: List[str], optional
+        :param paths: Local paths to overlay images grouped by parent index.
+                  ``paths[i]`` corresponds to ``overlays[i]``.
+        :type paths: List[List[str]], optional
+        :param links: Remote links to overlay images grouped by parent index.
+                  ``links[i]`` corresponds to ``overlays[i]``.
+        :type links: List[List[str]], optional
+        :param hashes: Hashes of overlay images grouped by parent index.
+                   ``hashes[i]`` corresponds to ``overlays[i]``.
+        :type hashes: List[List[str]], optional
         :param batch_size: Number of images uploaded in one batch for link/hash-based uploads.
         :type batch_size: int, optional
         :param conflict_resolution: The strategy to resolve upload conflicts.
@@ -4599,11 +4602,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :raises ValueError: If input list lengths do not match, if the parent mapping is invalid,
                             or if not exactly one source is provided for parents or overlays.
-        :returns: Tuple of two lists:
+                :returns: Tuple of two values:
 
                   - uploaded parent image infos;
-                  - uploaded overlay image infos.
-        :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[:class:`~supervisely.api.image_api.ImageInfo`]]
+                                    - uploaded overlay image infos grouped by parent index
+                                        (``overlay_infos_grouped[i]`` corresponds to ``parent_names[i]``).
+                :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[List[:class:`~supervisely.api.image_api.ImageInfo`]]]
 
         :Usage Example:
 
@@ -4635,9 +4639,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     ["scene_02_mask.png"],                         # overlays for scene_02.png
                 ]
                 overlay_paths = [
-                    "/path/to/scene_01_mask.png",
-                    "/path/to/scene_01_depth.png",
-                    "/path/to/scene_02_mask.png",
+                    ["/path/to/scene_01_mask.png", "/path/to/scene_01_depth.png"],
+                    ["/path/to/scene_02_mask.png"],
                 ]
 
                 parent_infos, overlay_infos = api.image.upload_overlay_images(
@@ -4712,41 +4715,66 @@ class ImageApi(RemoveableBulkModuleApi):
             raise ValueError("Exactly one of 'paths', 'links', or 'hashes' must be provided.")
 
         if paths is not None:
-            if len(overlay_names) != len(paths):
-                raise ValueError("'overlay_names' and 'paths' must have equal length.")
+            if len(paths) != len(overlays):
+                raise ValueError("'paths' and 'overlays' must have equal outer length.")
+            for idx, (overlay_list, path_list) in enumerate(zip(overlays, paths)):
+                if len(overlay_list) != len(path_list):
+                    raise ValueError(
+                        f"'paths[{idx}]' and 'overlays[{idx}]' must have equal length."
+                    )
+            flat_paths = [path for group_paths in paths for path in group_paths]
             overlay_infos = self.upload_to_parents(
                 dataset_id=dataset_id,
                 names=overlay_names,
                 parent_ids=actual_parent_ids,
-                paths=paths,
+                paths=flat_paths,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
             )
         elif links is not None:
-            if len(overlay_names) != len(links):
-                raise ValueError("'overlay_names' and 'links' must have equal length.")
+            if len(links) != len(overlays):
+                raise ValueError("'links' and 'overlays' must have equal outer length.")
+            for idx, (overlay_list, link_list) in enumerate(zip(overlays, links)):
+                if len(overlay_list) != len(link_list):
+                    raise ValueError(
+                        f"'links[{idx}]' and 'overlays[{idx}]' must have equal length."
+                    )
+            flat_links = [link for group_links in links for link in group_links]
             overlay_infos = self.upload_to_parents(
                 dataset_id=dataset_id,
                 names=overlay_names,
                 parent_ids=actual_parent_ids,
-                links=links,
+                links=flat_links,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
                 force_metadata_for_links=force_metadata_for_links,
             )
         else:  # hashes
-            if len(overlay_names) != len(hashes):
-                raise ValueError("'overlay_names' and 'hashes' must have equal length.")
+            if len(hashes) != len(overlays):
+                raise ValueError("'hashes' and 'overlays' must have equal outer length.")
+            for idx, (overlay_list, hash_list) in enumerate(zip(overlays, hashes)):
+                if len(overlay_list) != len(hash_list):
+                    raise ValueError(
+                        f"'hashes[{idx}]' and 'overlays[{idx}]' must have equal length."
+                    )
+            flat_hashes = [hash_item for group_hashes in hashes for hash_item in group_hashes]
             overlay_infos = self.upload_to_parents(
                 dataset_id=dataset_id,
                 names=overlay_names,
                 parent_ids=actual_parent_ids,
-                hashes=hashes,
+                hashes=flat_hashes,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
             )
 
-        return parent_infos, overlay_infos
+        overlay_infos_grouped = []
+        start_idx = 0
+        for overlay_list in overlays:
+            end_idx = start_idx + len(overlay_list)
+            overlay_infos_grouped.append(overlay_infos[start_idx:end_idx])
+            start_idx = end_idx
+
+        return parent_infos, overlay_infos_grouped
 
     def group_images_for_multiview(
         self,
