@@ -400,11 +400,11 @@ class ImageInfo(NamedTuple):
     #: int: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int = None
 
-    #: int: Parent image ID for overlay relationship.
-    parent_id: Optional[int] = None
-
     #: :class:`str`: Image description.
     description: Optional[str] = None
+
+    #: int: Parent image ID for overlay relationship.
+    parent_id: Optional[int] = None
 
     # DO NOT DELETE THIS COMMENT
     #! New fields must be added with default values to keep backward compatibility.
@@ -474,8 +474,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.AI_SEARCH_META,
             ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.PROJECT_ID,
-            ApiField.PARENT_ID,
             ApiField.DESCRIPTION,
+            ApiField.PARENT_ID,
         ]
 
     @staticmethod
@@ -4547,7 +4547,111 @@ class ImageApi(RemoveableBulkModuleApi):
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
     ) -> Tuple[List[ImageInfo], List[ImageInfo]]:
-        """Uploads parent images and linked overlays."""
+        """Uploads parent images and overlay images linked to them.
+
+        This method first uploads parent images to the destination dataset and then uploads
+        overlay images with references to the uploaded parents.
+
+        Parent-to-overlay mapping is defined by ``overlay_parent_names``:
+
+        - each value in ``overlay_parent_names`` must match one of the values in ``parent_names``;
+        - each overlay name in ``overlay_names`` is linked to the parent image with the same index
+          in ``overlay_parent_names``.
+
+        Exactly one parent source must be provided:
+
+        - ``parent_paths``
+        - ``parent_links``
+        - ``parent_hashes``
+
+        Exactly one overlay source must be provided:
+
+        - ``paths``
+        - ``links``
+        - ``hashes``
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param overlay_names: Overlay image names.
+        :type overlay_names: List[str]
+        :param overlay_parent_names: Parent names for each overlay image. Each item must reference
+                                     a name from ``parent_names``.
+        :type overlay_parent_names: List[str]
+        :param parent_names: Parent image names.
+        :type parent_names: List[str]
+        :param parent_paths: Local paths to parent images.
+        :type parent_paths: List[str], optional
+        :param parent_links: Remote links to parent images.
+        :type parent_links: List[str], optional
+        :param parent_hashes: Hashes of parent images already uploaded to Supervisely storage.
+        :type parent_hashes: List[str], optional
+        :param paths: Local paths to overlay images.
+        :type paths: List[str], optional
+        :param links: Remote links to overlay images.
+        :type links: List[str], optional
+        :param hashes: Hashes of overlay images already uploaded to Supervisely storage.
+        :type hashes: List[str], optional
+        :param batch_size: Number of images uploaded in one batch for link/hash-based uploads.
+        :type batch_size: int, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts.
+            Options:
+
+            - ``"replace"``: Replace existing images in the dataset and log deletions.
+            - ``"skip"``: Skip uploading conflicting images and return existing ``ImageInfo``.
+            - ``"rename"``: (default) Rename new images to prevent conflicts.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param force_metadata_for_links: Specifies whether to force retrieving metadata for images
+                                         uploaded from links. If False, metadata fields in the
+                                         response can be empty until metadata is retrieved.
+        :type force_metadata_for_links: bool, optional
+        :raises ValueError: If input list lengths do not match, if the parent mapping is invalid,
+                            or if not exactly one source is provided for parents or overlays.
+        :returns: Tuple of two lists:
+
+                  - uploaded parent image infos;
+                  - uploaded overlay image infos.
+        :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[:class:`~supervisely.api.image_api.ImageInfo`]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 123456
+
+                parent_names = ["scene_01.png", "scene_02.png"]
+                parent_paths = [
+                    "/path/to/scene_01.png",
+                    "/path/to/scene_02.png",
+                ]
+
+                overlay_names = ["scene_01_mask.png", "scene_02_mask.png"]
+                overlay_parent_names = ["scene_01.png", "scene_02.png"]
+                overlay_paths = [
+                    "/path/to/scene_01_mask.png",
+                    "/path/to/scene_02_mask.png",
+                ]
+
+                parent_infos, overlay_infos = api.image.upload_overlay_images(
+                    dataset_id=dataset_id,
+                    overlay_names=overlay_names,
+                    overlay_parent_names=overlay_parent_names,
+                    parent_names=parent_names,
+                    parent_paths=parent_paths,
+                    paths=overlay_paths,
+                )
+        """
         if len(overlay_parent_names) != len(overlay_names):
             raise ValueError("'overlay_parent_names' and 'overlay_names' must have equal length.")
 
