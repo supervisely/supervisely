@@ -234,11 +234,10 @@ class LiveTraining:
     def _process_pending_requests(self):
         # Back to synchronous processing.
         self._stop_background_request_processing()
-        
+
         requests = self.request_queue.get_all()
         if not requests:
             return
-
 
         for request in requests: 
             try:
@@ -272,7 +271,7 @@ class LiveTraining:
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
-    
+
     def train(self, checkpoint_path: str = None):
         """
         Main training loop. Implement framework-specific training logic here.
@@ -777,10 +776,16 @@ class LiveTraining:
     def _process_requests_while_initializing(self):
         def process_in_background(request: Request):
             try:
-                if request.type == RequestType.PREDICT:
+                if request.type == RequestType.PREDICT or request.type == RequestType.PREDICT_BATCH:
                     set_exception(request.future, RuntimeError("Cannot run predict, the model is not ready yet."))
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
+                    set_result(request.future, result)
+                elif request.type == RequestType.ADD_SAMPLE_VIDEO:
+                    result = self._handle_add_sample_video(request.data)
+                    set_result(request.future, result)
+                elif request.type == RequestType.ADD_SAMPLES_VIDEO:
+                    result = self._handle_add_samples_video(request.data)
                     set_result(request.future, result)
                 elif request.type == RequestType.STATUS:
                     result = self.status()
@@ -790,14 +795,14 @@ class LiveTraining:
                 set_exception(request.future, e)
         self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerInitializing")
         self._background_request_handler.start()
-    
+
     def _process_requests_while_finishing(self, response_message: str):
         def process_in_background(request: Request):
             e = TrainingStoppedException(response_message)
             set_exception(request.future, e)
         self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerFinishing")
         self._background_request_handler.start()
-    
+
     def _stop_background_request_processing(self):
         if self._background_request_handler is not None:
             self._background_request_handler.stop()
