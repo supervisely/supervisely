@@ -4545,7 +4545,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
-    ) -> Tuple[List[ImageInfo], List[ImageInfo]]:
+    ) -> Tuple[List[ImageInfo], List[List[ImageInfo]]]:
         """Uploads parent images and overlay images linked to them.
 
         This method first uploads parent images to the destination dataset and then uploads
@@ -4599,11 +4599,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :raises ValueError: If input list lengths do not match, if the parent mapping is invalid,
                             or if not exactly one source is provided for parents or overlays.
-        :returns: Tuple of two lists:
+                :returns: Tuple of two values:
 
                   - uploaded parent image infos;
-                  - uploaded overlay image infos.
-        :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[:class:`~supervisely.api.image_api.ImageInfo`]]
+                                    - uploaded overlay image infos grouped by parent index
+                                        (``overlay_infos_grouped[i]`` corresponds to ``parent_names[i]``).
+                :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[List[:class:`~supervisely.api.image_api.ImageInfo`]]]
 
         :Usage Example:
 
@@ -4746,7 +4747,14 @@ class ImageApi(RemoveableBulkModuleApi):
                 conflict_resolution=conflict_resolution,
             )
 
-        return parent_infos, overlay_infos
+        overlay_infos_grouped = []
+        start_idx = 0
+        for overlay_list in overlays:
+            end_idx = start_idx + len(overlay_list)
+            overlay_infos_grouped.append(overlay_infos[start_idx:end_idx])
+            start_idx = end_idx
+
+        return parent_infos, overlay_infos_grouped
 
     def group_images_for_multiview(
         self,
