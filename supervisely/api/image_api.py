@@ -4440,11 +4440,11 @@ class ImageApi(RemoveableBulkModuleApi):
         )
         return uploaded_image_infos
 
-    def upload_overlays_to_parents(
+    def upload_to_parents(
         self,
         dataset_id: int,
         names: List[str],
-        parent_ids: List[Optional[int]],
+        parent_ids: List[int],
         paths: Optional[List[str]] = None,
         links: Optional[List[str]] = None,
         hashes: Optional[List[str]] = None,
@@ -4454,16 +4454,16 @@ class ImageApi(RemoveableBulkModuleApi):
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
     ) -> List[ImageInfo]:
-        """Uploads overlay images linked to parents by ``parent_ids``.
+        """Uploads images linked to parents by ``parent_ids``.
 
         Exactly one of ``paths``, ``links``, or ``hashes`` must be provided.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Overlay image names.
+        :param names: Image names.
         :type names: List[str]
         :param parent_ids: Parent image IDs for each overlay.
-        :type parent_ids: List[Optional[int]]
+        :type parent_ids: List[int]
         :param paths: Local overlay image paths.
         :type paths: List[str], optional
         :param links: Remote overlay image links.
@@ -4534,55 +4534,65 @@ class ImageApi(RemoveableBulkModuleApi):
     def upload_overlay_images(
         self,
         dataset_id: int,
-        parent_names: List[str],
-        parent_items: List[str],
         overlay_names: List[str],
-        overlay_items: List[str],
         overlay_parent_names: List[str],
-        parent_source: Literal["paths", "links", "hashes"] = "paths",
-        overlay_source: Literal["paths", "links", "hashes"] = "paths",
+        parent_names: List[str],
+        parent_paths: Optional[List[str]] = None,
+        parent_links: Optional[List[str]] = None,
+        parent_hashes: Optional[List[str]] = None,
+        paths: Optional[List[str]] = None,
+        links: Optional[List[str]] = None,
+        hashes: Optional[List[str]] = None,
         batch_size: Optional[int] = 50,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
     ) -> Tuple[List[ImageInfo], List[ImageInfo]]:
-        """Uploads parent images and linked overlays.
-
-        Supports all three upload sources for both parents and overlays:
-        ``paths``, ``links``, and ``hashes``.
-        """
-        if len(parent_names) != len(parent_items):
-            raise ValueError("'parent_names' and 'parent_items' must have equal length.")
-        if len(overlay_names) != len(overlay_items):
-            raise ValueError("'overlay_names' and 'overlay_items' must have equal length.")
+        """Uploads parent images and linked overlays."""
         if len(overlay_parent_names) != len(overlay_names):
             raise ValueError("'overlay_parent_names' and 'overlay_names' must have equal length.")
 
-        if parent_source == "paths":
+        parent_source_count = sum(
+            [
+                parent_paths is not None,
+                parent_links is not None,
+                parent_hashes is not None,
+            ]
+        )
+        if parent_source_count != 1:
+            raise ValueError(
+                "Exactly one of 'parent_paths', 'parent_links', or 'parent_hashes' must be provided."
+            )
+
+        if parent_paths is not None:
+            if len(parent_names) != len(parent_paths):
+                raise ValueError("'parent_names' and 'parent_paths' must have equal length.")
             parent_infos = self.upload_paths(
                 dataset_id=dataset_id,
                 names=parent_names,
-                paths=parent_items,
+                paths=parent_paths,
                 conflict_resolution=conflict_resolution,
             )
-        elif parent_source == "links":
+        elif parent_links is not None:
+            if len(parent_names) != len(parent_links):
+                raise ValueError("'parent_names' and 'parent_links' must have equal length.")
             parent_infos = self.upload_links(
                 dataset_id=dataset_id,
                 names=parent_names,
-                links=parent_items,
+                links=parent_links,
                 batch_size=batch_size,
                 force_metadata_for_links=force_metadata_for_links,
                 conflict_resolution=conflict_resolution,
             )
-        elif parent_source == "hashes":
+        else:  # parent_hashes
+            if len(parent_names) != len(parent_hashes):
+                raise ValueError("'parent_names' and 'parent_hashes' must have equal length.")
             parent_infos = self.upload_hashes(
                 dataset_id=dataset_id,
                 names=parent_names,
-                hashes=parent_items,
+                hashes=parent_hashes,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
             )
-        else:
-            raise ValueError("'parent_source' must be one of: 'paths', 'links', 'hashes'.")
 
         parent_name_to_id = {info.name: info.id for info in parent_infos}
         missing_parent_names = [
@@ -4595,36 +4605,44 @@ class ImageApi(RemoveableBulkModuleApi):
 
         actual_parent_ids = [parent_name_to_id[name] for name in overlay_parent_names]
 
-        if overlay_source == "paths":
-            overlay_infos = self.upload_overlays_to_parents(
+        overlay_source_count = sum([paths is not None, links is not None, hashes is not None])
+        if overlay_source_count != 1:
+            raise ValueError("Exactly one of 'paths', 'links', or 'hashes' must be provided.")
+
+        if paths is not None:
+            if len(overlay_names) != len(paths):
+                raise ValueError("'overlay_names' and 'paths' must have equal length.")
+            overlay_infos = self.upload_to_parents(
                 dataset_id=dataset_id,
                 names=overlay_names,
                 parent_ids=actual_parent_ids,
-                paths=overlay_items,
+                paths=paths,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
             )
-        elif overlay_source == "links":
-            overlay_infos = self.upload_overlays_to_parents(
+        elif links is not None:
+            if len(overlay_names) != len(links):
+                raise ValueError("'overlay_names' and 'links' must have equal length.")
+            overlay_infos = self.upload_to_parents(
                 dataset_id=dataset_id,
                 names=overlay_names,
                 parent_ids=actual_parent_ids,
-                links=overlay_items,
+                links=links,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
                 force_metadata_for_links=force_metadata_for_links,
             )
-        elif overlay_source == "hashes":
-            overlay_infos = self.upload_overlays_to_parents(
+        else:  # hashes
+            if len(overlay_names) != len(hashes):
+                raise ValueError("'overlay_names' and 'hashes' must have equal length.")
+            overlay_infos = self.upload_to_parents(
                 dataset_id=dataset_id,
                 names=overlay_names,
                 parent_ids=actual_parent_ids,
-                hashes=overlay_items,
+                hashes=hashes,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
             )
-        else:
-            raise ValueError("'overlay_source' must be one of: 'paths', 'links', 'hashes'.")
 
         return parent_infos, overlay_infos
 
