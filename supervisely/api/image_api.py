@@ -4656,12 +4656,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
         # Flatten overlays for processing
         overlay_names = []
-        overlay_parent_names = []
+        overlay_parent_indices = []
         for parent_idx, overlay_list in enumerate(overlays):
-            parent_name = parent_names[parent_idx]
             for overlay_name in overlay_list:
                 overlay_names.append(overlay_name)
-                overlay_parent_names.append(parent_name)
+                overlay_parent_indices.append(parent_idx)
 
         parent_source_count = sum(
             [
@@ -4706,16 +4705,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 conflict_resolution=conflict_resolution,
             )
 
-        parent_name_to_id = {info.name: info.id for info in parent_infos}
-        missing_parent_names = [
-            name for name in overlay_parent_names if name not in parent_name_to_id
-        ]
-        if len(missing_parent_names) > 0:
-            raise ValueError(
-                f"Some values in 'overlay_parent_names' do not match uploaded parents: {missing_parent_names}"
-            )
-
-        actual_parent_ids = [parent_name_to_id[name] for name in overlay_parent_names]
+        actual_parent_ids = [parent_infos[parent_idx].id for parent_idx in overlay_parent_indices]
 
         overlay_source_count = sum([paths is not None, links is not None, hashes is not None])
         if overlay_source_count != 1:
