@@ -4534,9 +4534,8 @@ class ImageApi(RemoveableBulkModuleApi):
     def upload_overlay_images(
         self,
         dataset_id: int,
-        overlay_names: List[str],
-        overlay_parent_names: List[str],
         parent_names: List[str],
+        overlays: List[List[str]],
         parent_paths: Optional[List[str]] = None,
         parent_links: Optional[List[str]] = None,
         parent_hashes: Optional[List[str]] = None,
@@ -4552,11 +4551,8 @@ class ImageApi(RemoveableBulkModuleApi):
         This method first uploads parent images to the destination dataset and then uploads
         overlay images with references to the uploaded parents.
 
-        Parent-to-overlay mapping is defined by ``overlay_parent_names``:
-
-        - each value in ``overlay_parent_names`` must match one of the values in ``parent_names``;
-        - each overlay name in ``overlay_names`` is linked to the parent image with the same index
-          in ``overlay_parent_names``.
+        Parent-to-overlay mapping is by index: ``overlays[i]`` contains overlay names for ``parent_names[i]``.
+        Each parent can have multiple overlays (one-to-many mapping).
 
         Exactly one parent source must be provided:
 
@@ -4572,13 +4568,10 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param overlay_names: Overlay image names.
-        :type overlay_names: List[str]
-        :param overlay_parent_names: Parent names for each overlay image. Each item must reference
-                                     a name from ``parent_names``.
-        :type overlay_parent_names: List[str]
         :param parent_names: Parent image names.
         :type parent_names: List[str]
+        :param overlays: List of overlay name lists. ``overlays[i]`` contains overlay names for ``parent_names[i]``.
+        :type overlays: List[List[str]]
         :param parent_paths: Local paths to parent images.
         :type parent_paths: List[str], optional
         :param parent_links: Remote links to parent images.
@@ -4636,24 +4629,39 @@ class ImageApi(RemoveableBulkModuleApi):
                     "/path/to/scene_02.png",
                 ]
 
-                overlay_names = ["scene_01_mask.png", "scene_02_mask.png"]
-                overlay_parent_names = ["scene_01.png", "scene_02.png"]
+                # Multiple overlays can be linked to each parent using list of lists
+                overlays = [
+                    ["scene_01_mask.png", "scene_01_depth.png"],  # overlays for scene_01.png
+                    ["scene_02_mask.png"],                         # overlays for scene_02.png
+                ]
                 overlay_paths = [
                     "/path/to/scene_01_mask.png",
+                    "/path/to/scene_01_depth.png",
                     "/path/to/scene_02_mask.png",
                 ]
 
                 parent_infos, overlay_infos = api.image.upload_overlay_images(
                     dataset_id=dataset_id,
-                    overlay_names=overlay_names,
-                    overlay_parent_names=overlay_parent_names,
                     parent_names=parent_names,
+                    overlays=overlays,
                     parent_paths=parent_paths,
                     paths=overlay_paths,
                 )
         """
-        if len(overlay_parent_names) != len(overlay_names):
-            raise ValueError("'overlay_parent_names' and 'overlay_names' must have equal length.")
+        # Validate overlays length matches parent_names
+        if len(overlays) != len(parent_names):
+            raise ValueError(
+                f"'overlays' length ({len(overlays)}) must match 'parent_names' length ({len(parent_names)})."
+            )
+
+        # Flatten overlays for processing
+        overlay_names = []
+        overlay_parent_names = []
+        for parent_idx, overlay_list in enumerate(overlays):
+            parent_name = parent_names[parent_idx]
+            for overlay_name in overlay_list:
+                overlay_names.append(overlay_name)
+                overlay_parent_names.append(parent_name)
 
         parent_source_count = sum(
             [
