@@ -61,6 +61,9 @@ class RetryableRequestException(Exception):
     """Exception that indicates that the request should be retried."""
 
     def __init__(self, message, response=None):
+        """:param message: Error message.
+        :param response: Optional HTTP response object.
+        """
         super().__init__(message)
         self.response = response
 

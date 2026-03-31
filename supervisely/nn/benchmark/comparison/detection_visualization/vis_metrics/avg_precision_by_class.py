@@ -3,6 +3,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class AveragePrecisionByClass(BaseVisMetrics):
+    """Per-class average precision radar/bar chart for detection comparison."""
+
     MARKDOWN_CLASS_AP = "markdown_class_ap_polar"
     MARKDOWN_CLASS_AP_BAR = "markdown_class_ap_bar"
 

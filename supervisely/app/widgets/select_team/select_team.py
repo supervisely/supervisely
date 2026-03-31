@@ -12,7 +12,11 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectTeam(Widget):
+    """Widget to select a team (typically from app context) and notify on selection changes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -22,6 +26,15 @@ class SelectTeam(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        """:param default_id: Initial team ID (or from context.teamId).
+        :type default_id: int, optional
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = Api()
         self._default_id = default_id
         self._show_label = show_label

@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Work with video annotations via the Supervisely API."""
+
 from __future__ import annotations
 
 import asyncio
@@ -18,32 +20,22 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
-    """
-    :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` for a single video. :class:`VideoAnnotationAPI<VideoAnnotationAPI>` object is immutable.
+    """API for working with video annotations."""
 
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+        :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+            .. code-block:: python
 
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        video_id = 186648102
-        ann_info = api.video.annotation.download(video_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_info = api.video.annotation.download(video_id)
+        """
+        super().__init__(api)
 
     _method_download_bulk = "videos.annotations.bulk.info"
     _entity_ids_str = ApiField.VIDEO_IDS
@@ -54,36 +46,43 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
 
         :param video_id: Video ID in Supervisely.
         :type video_id: int
-        :return: Information about VideoAnnotation in json format
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Information about VideoAnnotation in json format
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            video_id = 198702499
-            ann_info = api.video.annotation.download(video_id)
-            print(ann_info)
-            # Output: {
-            #     "videoId": 198702499,
-            #     "videoName": "Videos_dataset_cars_cars.mp4",
-            #     "createdAt": "2021-03-23T13:14:25.536Z",
-            #     "updatedAt": "2021-03-23T13:16:43.300Z",
-            #     "description": "",
-            #     "tags": [],
-            #     "objects": [],
-            #     "size": {
-            #         "height": 2160,
-            #         "width": 3840
-            #     },
-            #     "framesCount": 326,
-            #     "frames": []
-            # }
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                video_id = 198702499
+                ann_info = api.video.annotation.download(video_id)
+                print(ann_info)
+                # Output: {
+                #     "videoId": 198702499,
+                #     "videoName": "Videos_dataset_cars_cars.mp4",
+                #     "createdAt": "2021-03-23T13:14:25.536Z",
+                #     "updatedAt": "2021-03-23T13:16:43.300Z",
+                #     "description": "",
+                #     "tags": [],
+                #     "objects": [],
+                #     "size": {
+                #         "height": 2160,
+                #         "width": 3840
+                #     },
+                #     "framesCount": 326,
+                #     "frames": []
+                # }
         """
 
         video_info = self._api.video.get_info_by_id(video_id)
@@ -102,26 +101,32 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param ann: VideoAnnotation object.
-        :type ann: VideoAnnotation
+        :type ann: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param progress: Progress.
         :type progress: Optional[Union[tqdm, Callable]]
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            video_id = 198704259
-            api.video.annotation.append(video_id, video_ann)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                video_id = 198704259
+                api.video.annotation.append(video_id, video_ann)
         """
 
         info = self._api.video.get_info_by_id(video_id)
@@ -153,26 +158,32 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: List[int]
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta for VideoAnnotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            video_ids = [121236918, 121236919]
-            ann_paths = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.video.annotation.upload_paths(video_ids, ann_paths, meta)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                video_ids = [121236918, 121236919]
+                ann_paths = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+                api.video.annotation.upload_paths(video_ids, ann_paths, meta)
         """
         # video_ids from the same dataset
         for video_id, ann_path in zip(video_ids, ann_paths):
@@ -202,12 +213,12 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: List[int]
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta for VideoAnnotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         if len(video_ids) != len(ann_paths):
             raise RuntimeError(
@@ -245,9 +256,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Function for tracking upload progress (by number of figures).
         :type progress_cb: tqdm or callable, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: None
-        :rtype: :class:`NoneType`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: None
+        :rtype: None
         """
         if len(video_ids) != len(anns):
             raise RuntimeError(
@@ -320,29 +331,35 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type dst_video_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :raises: :class:`RuntimeError`, if len(src_video_ids) != len(dst_video_ids)
-        :return: None
-        :rtype: :class:`NoneType`
+        :raises RuntimeError, if len(src_video_ids) != len(dst_video_ids)
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from tqdm import tqdm
+                import os
+                from tqdm import tqdm
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            src_ids = [121236918, 121236919]
-            dst_ids = [547837053, 547837054]
-            p = tqdm(desc="Annotations copy: ", total=len(src_ids))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            copy_anns = api.annotation.copy_batch(src_ids, dst_ids, progress_cb=p)
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:24:31.286Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:24:31.288Z", "level": "info"}
+                api = sly.Api.from_env()
+
+                src_ids = [121236918, 121236919]
+                dst_ids = [547837053, 547837054]
+                p = tqdm(desc="Annotations copy: ", total=len(src_ids))
+
+                copy_anns = api.annotation.copy_batch(src_ids, dst_ids, progress_cb=p)
+                # Output:
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:24:31.286Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:24:31.288Z", "level": "info"}
         """
         if len(src_video_ids) != len(dst_video_ids):
             raise RuntimeError(
@@ -386,7 +403,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param video_info: Does not affect the result, but is left for compatibility with the method signature.
-        :type video_info: VideoInfo, optional
+        :type video_info: :class:`~supervisely.api.video.video_api.VideoInfo`, optional
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
         :param force_metadata_for_links: If True, updates meta for videos with links.
@@ -395,22 +412,28 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: Information about VideoAnnotation in json format
-        :rtype: :class:`dict`
+        :returns: Information about VideoAnnotation in json format
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            video_id = 198702499
-            loop = sly.utils.get_or_create_event_loop()
-            ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                video_id = 198702499
+                loop = sly.utils.get_or_create_event_loop()
+                ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
         """
         return await self.download_bulk_async(
             video_ids=[video_id],
@@ -444,22 +467,28 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type batch_size: int, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about VideoAnnotations in json format
-        :rtype: :class:`list`
+        :returns: Information about VideoAnnotations in json format
+        :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            video_ids = [198702499, 198702500, 198702501]
-            loop = sly.utils.get_or_create_event_loop()
-            ann_infos = loop.run_until_complete(api.video.annotation.download_bulk_async(video_ids))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                video_ids = [198702499, 198702500, 198702501]
+                loop = sly.utils.get_or_create_event_loop()
+                ann_infos = loop.run_until_complete(api.video.annotation.download_bulk_async(video_ids))
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()

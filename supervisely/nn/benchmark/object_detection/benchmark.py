@@ -10,6 +10,8 @@ CONF_THRES = 0.05
 
 
 class ObjectDetectionBenchmark(BaseBenchmark):
+    """Benchmark for object detection models (inference, evaluation, visualization)."""
+
     visualizer_cls = ObjectDetectionVisualizer
 
     @property

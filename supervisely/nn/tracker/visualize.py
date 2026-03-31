@@ -15,6 +15,7 @@ from supervisely.nn.tracker.utils import predictions_to_video_annotation
 
 
 class TrackingVisualizer:
+    """Renders tracking results onto video: boxes, trajectories, labels, frame numbers."""
 
     def __init__(
         self,
@@ -34,18 +35,32 @@ class TrackingVisualizer:
         """
         Initialize the visualizer with configuration.
 
-        Args:
-            show_labels: Whether to show track IDs.
-            show_classes: Whether to show class names.
-            show_trajectories: Whether to draw trajectories.
-            show_frame_number: Whether to overlay frame number.
-            box_thickness: Thickness of bounding boxes.
-            text_scale: Scale of label text.
-            text_thickness: Thickness of label text.
-            trajectory_length: How many points to keep in trajectory.
-            codec: Output video codec.
-            output_fps: Output video framerate.
-            colorize_tracks (bool, default=True): if True, ignore colors from project meta and generate new colors for each tracked object; if False, try to use colors from project meta when possible.
+        :param show_labels: Whether to show track IDs.
+        :type show_labels: bool
+        :param show_classes: Whether to show class names.
+        :type show_classes: bool
+        :param show_trajectories: Whether to draw trajectories.
+        :type show_trajectories: bool
+        :param show_frame_number: Whether to overlay frame number.
+        :type show_frame_number: bool
+        :param box_thickness: Thickness of bounding boxes.
+        :type box_thickness: int
+        :param text_scale: Scale of label text.
+        :type text_scale: float
+        :param text_thickness: Thickness of label text.
+        :type text_thickness: int
+        :param trajectory_length: How many points to keep in trajectory.
+        :type trajectory_length: int
+        :param codec: Output video codec.
+        :type codec: str
+        :param output_fps: Output video framerate.
+        :type output_fps: float
+        :param colorize_tracks: If True, ignore colors from project meta and generate new colors for each tracked object; if False, try to use colors from project meta when possible.
+        :type colorize_tracks: bool
+        :param trajectory_thickness: Thickness of trajectory lines.
+        :type trajectory_thickness: int
+        :returns: None
+        :rtype: None
         """
         # Visualization settings
         self.show_labels = show_labels
@@ -135,12 +150,11 @@ class TrackingVisualizer:
     def _create_frame_iterator(self, source: Union[str, Path]) -> Iterator[Tuple[int, np.ndarray]]:
         """
         Create iterator that yields (frame_index, frame) tuples.
-        
-        Args:
-            source: Path to video file or directory with frame images
-            
-        Yields:
-            Tuple of (frame_index, frame_array)
+
+        :param source: Path to video file or directory with frame images
+        :type source: Union[str, Path]
+        :returns: Iterator that yields (frame_index, frame) tuples
+        :rtype: Iterator[Tuple[int, np.ndarray]]
         """
         source = Path(source)
 
@@ -152,7 +166,14 @@ class TrackingVisualizer:
             raise ValueError(f"Source must be a video file or directory, got: {source}")
 
     def _iterate_video_frames(self, video_path: Path) -> Iterator[Tuple[int, np.ndarray]]:
-        """Iterate through video frames using ffmpeg."""
+        """
+        Iterate through video frames using ffmpeg.
+
+        :param video_path: Path to video file
+        :type video_path: Path
+        :returns: Iterator that yields (frame_index, frame) tuples
+        :rtype: Iterator[Tuple[int, np.ndarray]]
+        """
         width, height, fps, total_frames = self._get_video_info(video_path)
 
         # Store video info for later use
@@ -330,13 +351,13 @@ class TrackingVisualizer:
     def _process_single_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
         """
         Process single frame: add annotations and return processed frame.
-        
-        Args:
-            frame: Input frame
-            frame_idx: Frame index
-            
-        Returns:
-            Annotated frame
+
+        :param frame: Input frame
+        :type frame: np.ndarray
+        :param frame_idx: Frame index
+        :type frame_idx: int
+        :returns: Annotated frame
+        :rtype: np.ndarray
         """
         img = frame.copy()
         active_ids = set()
@@ -369,13 +390,13 @@ class TrackingVisualizer:
     def _save_processed_frame(self, frame: np.ndarray, frame_idx: int) -> str:
         """
         Save processed frame to temporary directory.
-        
-        Args:
-            frame: Processed frame
-            frame_idx: Frame index
-            
-        Returns:
-            Path to saved frame
+
+        :param frame: Processed frame
+        :type frame: np.ndarray
+        :param frame_idx: Frame index
+        :type frame_idx: int
+        :returns: Path to saved frame
+        :rtype: str
         """
         frame_path = self._temp_dir / f"frame_{frame_idx:08d}.jpg"
         cv2.imwrite(str(frame_path), frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
@@ -384,9 +405,9 @@ class TrackingVisualizer:
     def _create_video_from_frames(self, output_path: Union[str, Path]) -> None:
         """
         Create final video from processed frames using ffmpeg.
-        
-        Args:
-            output_path: Path for output video
+
+        :param output_path: Path for output video
+        :type output_path: Union[str, Path]
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -419,15 +440,15 @@ class TrackingVisualizer:
                                   output_path: Union[str, Path]) -> None:
         """
         Visualize tracking annotations on video using streaming approach.
-        
-        Args:
-            annotation: Supervisely VideoAnnotation object with tracking data
-            source: Path to video file or directory containing frame images
-            output_path: Path for output video file
-            
-        Raises:
-            TypeError: If annotation is not VideoAnnotation
-            ValueError: If source is invalid or annotation is empty
+
+        :param annotation: Supervisely VideoAnnotation object with tracking data
+        :type annotation: VideoAnnotation
+        :param source: Path to video file or directory containing frame images
+        :type source: Union[str, Path]
+        :param output_path: Path for output video file
+        :type output_path: Union[str, Path]
+        :returns: None
+        :rtype: None
         """
         if not isinstance(annotation, VideoAnnotation):
             raise TypeError(f"Annotation must be VideoAnnotation, got {type(annotation)}")
@@ -491,16 +512,27 @@ def visualize(
     """
     Visualize tracking results from either VideoAnnotation or list of Prediction.
 
-    Args:
-        predictions (supervisely.VideoAnnotation | List[Prediction]): Tracking data to render; either a Supervisely VideoAnnotation or a list of Prediction objects.
-        source (str | Path): Path to an input video file or a directory of sequential frames (e.g., frame_000001.jpg).
-        output_path (str | Path): Path to the output video file to be created.
-        show_labels (bool, default=True): Draw per-object labels (track IDs).
-        show_classes (bool, default=True): Draw class names for each object.
-        show_trajectories (bool, default=True): Render object trajectories across frames.
-        box_thickness (int, default=2): Bounding-box line thickness in pixels.
-        colorize_tracks (bool, default=True): if True, ignore colors from project meta and generate new colors for each tracked object; if False, try to use colors from project meta when possible.    
-        """
+    :param predictions: Tracking data to render; either a Supervisely VideoAnnotation or a list of Prediction objects.
+    :type predictions: Union[VideoAnnotation, List[Prediction]]
+    :param source: Path to an input video file or a directory of sequential frames (e.g., frame_000001.jpg).
+    :type source: Union[str, Path]
+    :param output_path: Path to the output video file to be created.
+    :type output_path: Union[str, Path]
+    :param show_labels: Draw per-object labels (track IDs).
+    :type show_labels: bool
+    :param show_classes: Draw class names for each object.
+    :type show_classes: bool
+    :param show_trajectories: Render object trajectories across frames.
+    :type show_trajectories: bool
+    :param box_thickness: Bounding-box line thickness in pixels.
+    :type box_thickness: int
+    :param colorize_tracks: if True, ignore colors from project meta and generate new colors for each tracked object; if False, try to use colors from project meta when possible.
+    :type colorize_tracks: bool
+    :param kwargs: Additional keyword arguments for TrackingVisualizer.
+    :type kwargs: dict
+    :returns: None
+    :rtype: None
+    """
     visualizer = TrackingVisualizer(
         show_labels=show_labels, 
         show_classes=show_classes, 

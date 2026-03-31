@@ -6,11 +6,20 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 class TrainValSplitsSelector:
+    """TrainApp GUI component for selecting train and val splits."""
     title = "Train / Val Splits"
     description = "Select train and val splits for training"
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, project_id: int, app_options: dict = {}):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param project_id: Project ID.
+        :type project_id: int
+        :param app_options: App options.
+        :type app_options: dict
+        """
         # Init widgets
         self.train_val_splits = None
         self.validator_text = None
@@ -379,7 +388,6 @@ class TrainValSplitsSelector:
                             curr_idx = collection_idx
                             curr_collection = collection
         return curr_collection
-
 
     def _detect_collections(self) -> bool:
         """Find collections with train and val prefixes and set them to train_val_splits"""

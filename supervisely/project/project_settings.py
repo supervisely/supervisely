@@ -15,6 +15,8 @@ from supervisely.sly_logger import logger
 
 
 class LabelingInterface(str, StrEnum):
+    """Enumerates supported labeling UI interfaces for a project (images, multiview, medical, etc.)."""
+
     DEFAULT = "default"
     MEDICAL_IMAGING_SINGLE = "medical_imaging_single"
     IMAGES_WITH_16_COLOR = "images_with_16_color"
@@ -25,6 +27,8 @@ class LabelingInterface(str, StrEnum):
 
 
 class ProjectSettingsJsonFields:
+    """JSON field names used in :class:`~supervisely.project.project_settings.ProjectSettings` serialization."""
+
     MULTI_VIEW = "multiView"
     ENABLED = "enabled"
     TAG_ID = "tagId"
@@ -34,6 +38,8 @@ class ProjectSettingsJsonFields:
 
 
 class ProjectSettingsRequiredSchema:
+    """JSON schema for validating serialized :class:`~supervisely.project.project_settings.ProjectSettings`."""
+
     SCHEMA = {
         "type": "object",
         "properties": {
@@ -82,35 +88,7 @@ def validate_project_settings_schema(data: dict) -> None:
 
 
 class ProjectSettings(JsonSerializable):
-    """
-    General information about :class:`<supervisely.project.project_settings.ProjectSettings>`. The class is immutable.
-
-    :param multiview_enabled: Enable multi-view mode.
-    :type multiview_enabled: bool
-    :param multiview_tag_name: The name of the tag which will be used as a group tag for multi-window mode.
-    :type multiview_tag_name: str, optional
-    :param multiview_tag_id: The id of the tag which will be used as a group tag for multi-window mode.
-    :type multiview_tag_id: str, optional
-    :param multiview_is_synced: Enable syncronization of views for the multi-view mode.
-    :type multiview_is_synced: bool
-    :param labeling_interface: The interface for labeling images.
-    :type labeling_interface: str, optional
-
-    :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        Example 1: multiView Tag is known (by id or name)
-        settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
-
-        Example 2: multiView Tag is unknown, but multiView is enabled. In this case, the tag will be chosen automatically.
-        settings_json = {"multiView": {"enabled": True, "tagName": None, "tagId": None, "areSynced": False}}
-
-        settings = sly.ProjectSettings.from_json(settings_json)
-    """
+    """Project settings: multi-view mode, labeling interface, etc."""
 
     def __init__(
         self,
@@ -120,6 +98,26 @@ class ProjectSettings(JsonSerializable):
         multiview_is_synced: bool = False,
         labeling_interface: Optional[LabelingInterface] = None,
     ):
+        """:param multiview_enabled: Enable multi-view mode.
+        :type multiview_enabled: bool
+        :param multiview_tag_name: Name of the tag used as group tag for multi-window mode.
+        :type multiview_tag_name: str, optional
+        :param multiview_tag_id: Id of the tag used as group tag for multi-window mode.
+        :type multiview_tag_id: int, optional
+        :param multiview_is_synced: Enable synchronization of views for multi-view mode.
+        :type multiview_is_synced: bool
+        :param labeling_interface: The interface for labeling images.
+        :type labeling_interface: str, optional
+        :raises ValidationError: if settings schema is invalid.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                settings_json = {"multiView": {"enabled": True, "tagName": "group_tag", "tagId": None, "isSynced": False}}
+                settings = sly.ProjectSettings.from_json(settings_json)
+        """
         self.multiview_enabled = multiview_enabled
         self.multiview_tag_name = multiview_tag_name
         self.multiview_tag_id = multiview_tag_id

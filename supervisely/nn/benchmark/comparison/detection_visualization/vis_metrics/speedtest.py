@@ -10,6 +10,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Speedtest(BaseVisMetrics):
+    """Inference speed and FPS tables/charts for detection comparison reports."""
 
     def is_empty(self) -> bool:
         return not any(eval_result.speedtest_info for eval_result in self.eval_results)

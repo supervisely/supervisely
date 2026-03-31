@@ -20,7 +20,15 @@ from supervisely.io.fs import dir_exists, list_files_recursively, remove_dir
 
 
 class cd:
+    """Context manager that changes current working directory and optionally adds it to sys.path."""
+
     def __init__(self, new_path=None, add_to_path=False):
+        """
+        :param new_path: Directory to chdir into. If None, path is unchanged.
+        :type new_path: str, optional
+        :param add_to_path: If True, prepend new_path to sys.path on enter.
+        :type add_to_path: bool
+        """
         self.new_path = new_path
         self.add_to_path = add_to_path
         self._should_remove_from_path = False
@@ -64,7 +72,7 @@ def get_remote_url(remote: git.Remote):
 
 
 def get_semver(string):
-    return re.match("\d+\.\d+\.\d+", string)
+    return re.match(r"\d+\.\d+\.\d+", string)
 
 
 def find_tag_in_repo(tag_name, repo: git.Repo):
@@ -221,8 +229,8 @@ def archive_application(repo: git.Repo, config, slug):
         app_folder_name = config["name"].lower()
     else:
         app_folder_name = slug.split("/")[1].lower()
-    app_folder_name = re.sub("[ \/]", "-", app_folder_name)
-    app_folder_name = re.sub("[\"'`,\[\]\(\)]", "", app_folder_name)
+    app_folder_name = re.sub(r"[ /]", "-", app_folder_name)
+    app_folder_name = re.sub(r"[\"'`,\[\]()]", "", app_folder_name)
     working_dir_path = Path(repo.working_dir).absolute()
     should_remove_dir = None
     if config.get("type", "app") == "client_side_app":

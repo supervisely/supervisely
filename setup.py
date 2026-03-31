@@ -1,9 +1,9 @@
 import os
 import re
 import subprocess
+from importlib.metadata import PackageNotFoundError, distribution
 
 import requests
-from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -81,11 +81,12 @@ INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
     "numpy>=1.19, <=2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
-    "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <=10.4.0",
+    "prettytable>=3.8.0, <4.0.0",
+    "pillow>=5.4.1, <=12.1.1",
     "python-json-logger>=0.1.11, <=3.0.1",
+    "packaging>=20.0",
     "requests>=2.27.1, <3.0.0",
-    "requests-toolbelt>=0.9.1",  # , <1.0.0
+    "requests-toolbelt>=1.0.0, <2.0.0",
     "Shapely>=1.7.1, <=2.1.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
@@ -97,16 +98,18 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "starlette<=0.47.3",  # if update to 0.48.0+ change supervisely/app/fastapi/custom_static_files.py line 45
+    "starlette>=0.49.1, <0.50.0; python_version >= '3.10'",
+    "starlette<0.49.1; python_version < '3.10'",
     "pydantic>=1.7.4, <=2.12.3",
-    "fastapi>=0.103.1, <=0.119.1",
+    "fastapi>=0.129.0, <1.0.0; python_version >= '3.10'",
+    "fastapi<0.129.0; python_version < '3.10'",
     "websockets>=10.3, <=13.1",
-    "jinja2>=3.0.3, <4.0.0",
+    "jinja2>=3.1.6, <4.0.0",
     "psutil>=5.9.0, <=7.2.0",
     "jsonpatch>=1.32, <2.0",
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
-    "tqdm>=4.62.3, <5.0.0",
+    "tqdm>=4.66.3, <5.0.0",
     "pandas>=1.1.3, <=2.3.3",
     "async_asgi_testclient",
     "PyYAML>=5.4.0",
@@ -114,13 +117,15 @@ INSTALL_REQUIRES = [
     "beautifulsoup4",
     "numerize",
     "ffmpeg-python==0.2.0",
-    "python-multipart>=0.0.5, <=0.0.12",
+    "python-multipart==0.0.22; python_version >= '3.10'",
+    "python-multipart<=0.0.20; python_version < '3.10'",
     "GitPython",
     "giturlparse",
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.3",
+    "urllib3>=2.6.3, <3.0.0; python_version >= '3.10'",
+    "urllib3>=1.26.15, <=2.2.3; python_version < '3.10'",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.23.0",
     "pyjwt>=2.1.0,<3.0.0",
@@ -128,7 +133,8 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
-    "setuptools<81.0.0",
+    "setuptools>=80.10.1, <81.0.0; python_version >= '3.10'",
+    "setuptools<76; python_version < '3.10'",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -147,9 +153,9 @@ def check_alternative_installation(install_require, alternative_install_requires
     for alternative_install_require in alternative_install_requires:
         try:
             alternative_pkg_name = re.split(r"[ !<>=]", alternative_install_require)[0]
-            get_distribution(alternative_pkg_name)
+            distribution(alternative_pkg_name)
             return str(alternative_install_require)
-        except DistributionNotFound:
+        except PackageNotFoundError:
             continue
 
     return str(install_require)
@@ -222,6 +228,8 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
@@ -234,29 +242,25 @@ setup(
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
             "scipy>=1.8.0, <2.0.0",
-            "pandas>=1.1.3, <=2.3.3",
             "ruamel.yaml==0.17.21",
         ],
-        "apps": [
+        "apps": [  # todo: discuss, all app reqs are duplicated in base requires.
             "uvicorn[standard]>=0.18.2, <1.0.0",
-            "fastapi>=0.79.0, <1.0.0",
+            "fastapi>=0.129.0, <1.0.0; python_version >= '3.10'",
+            "fastapi<0.129.0; python_version < '3.10'",
             "websockets>=10.3, <=13.1",
-            "jinja2>=3.0.3, <4.0.0",
+            "jinja2>=3.1.6, <4.0.0",
             "psutil>=5.9.0, <6.0.0",
             "jsonpatch>=1.32, <2.0",
             "MarkupSafe>=2.1.1, <3.0.0",
             "arel>=0.2.0, <1.0.0",
-            "tqdm>=4.62.3, <5.0.0",
+            "tqdm>=4.66.3, <5.0.0",
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
-            "sphinx==4.4.0",
-            "jinja2==3.0.3",
-            "sphinx-immaterial==0.4.0",
-            "sphinx-copybutton==0.4.0",
-            "sphinx-autodoc-typehints==1.15.3",
-            "sphinxcontrib-details-directive==0.1.0",
-            "myst-parser==0.18.0",
+            "sphinx==8.2.3",
+            "sphinx-immaterial==0.13.9",
+            "myst-parser==5.0.0",
         ],
         "sdk-no-usages": [
             "grpcio>=1.53.2, <2.0.0",

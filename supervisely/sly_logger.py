@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Logger for Supervisely."""
+
 import datetime
 import logging
 import os
@@ -10,16 +12,17 @@ from enum import Enum
 # import simplejson
 from pythonjsonlogger import jsonlogger
 
-###############################################################################
-
-
 class ServiceType(Enum):
+    """Service kinds that emit logs/events in Supervisely."""
+
     AGENT = 1
     TASK = 2
     EXPORT = 3
 
 
 class EventType(Enum):
+    """Event categories used in structured logs (task lifecycle, progress, metrics, etc.)."""
+
     LOGJ = 1
     LOGS = 2
     TASK_STARTED = 3
@@ -43,8 +46,9 @@ class EventType(Enum):
     APP_FINISHED = 21
 
 
-###############################################################################
-# predefined levels
+#####################
+# Predefined levels #
+#####################
 
 
 # level name: level, default exc_info, description
@@ -82,7 +86,9 @@ def _set_logging_levels(levels, the_logger):
         setattr(the_logger, lvl_name.lower(), bound_method)
 
 
-###############################################################################
+##########################
+# Default logging fields #
+##########################
 
 
 def _get_default_logging_fields():
@@ -113,9 +119,15 @@ def _get_default_logging_fields():
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
+    """JSON log formatter that normalizes Supervisely fields (timestamp, level, stack) and adds extra metadata."""
+
     additional_fields = {}
 
     def __init__(self, format_string):
+        """
+        :param format_string: JSON formatter format string.
+        :type format_string: str
+        """
         super().__init__(format_string)  # , json_serializer=dumps_ignore_nan)
 
     def process_log_record(self, log_record):

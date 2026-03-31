@@ -14,7 +14,11 @@ from supervisely.sly_logger import logger
 
 
 class SelectDataset(Widget):
+    """Widget to select one or multiple datasets, optionally coupled to a project selector."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -30,6 +34,28 @@ class SelectDataset(Widget):
         select_all_datasets: bool = False,
         allowed_project_types: List[ProjectType] = [],
     ):
+        """
+        :param default_id: Initial dataset ID or list (if multiselect).
+        :type default_id: Union[int, List], optional
+        :param project_id: Project to list datasets from.
+        :type project_id: int, optional
+        :param multiselect: If True, allow multiple selection.
+        :type multiselect: bool
+        :param compact: If True, compact layout.
+        :type compact: bool
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param disabled: If True, widget is disabled.
+        :type disabled: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param select_all_datasets: If True (with multiselect), initial select-all.
+        :type select_all_datasets: bool
+        :param allowed_project_types: Filter by project types.
+        :type allowed_project_types: List[ProjectType]
+        """
         self._api = Api()
         self._default_id = default_id
         self._project_id = project_id

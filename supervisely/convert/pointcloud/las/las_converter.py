@@ -9,6 +9,7 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext
 
 
 class LasConverter(PointcloudConverter):
+    """Imports LAS/LAZ point cloud files (converts to PCD internally) into Supervisely point cloud project."""
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.LAS

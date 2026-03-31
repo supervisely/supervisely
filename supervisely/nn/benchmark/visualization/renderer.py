@@ -23,6 +23,11 @@ class Renderer:
         template: str = None,
         report_name: str = "Model Evaluation Report.lnk",
     ) -> None:
+        """:param layout: Root widget layout.
+        :param base_dir: Output directory (must be empty).
+        :param template: HTML template string. Uses default if None.
+        :param report_name: Report link filename.
+        """
         if template is None:
             template = (
                 Path(__file__).parents[1].joinpath("visualization/report_template.html").read_text()

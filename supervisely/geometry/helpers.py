@@ -55,14 +55,15 @@ def geometry_to_bitmap(
     geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None
 ) -> List[Bitmap]:
     """
-    Args:
-        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
-        radius: half of thickness of drawed vector elements
-        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
-    Returns:
-        Bitmap (geometry) object
+    :param geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
+    :type geometry: Geometry
+    :param radius: half of thickness of drawed vector elements
+    :type radius: Optional[int]
+    :param crop_image_shape: if not None - crop bitmap object by this shape (HxW)
+    :type crop_image_shape: Optional[Tuple]
+    :returns: Bitmap (geometry) object
+    :rtype: List[:class:`~supervisely.geometry.bitmap.Bitmap`]
     """
-
     return _geometry_to_mask_base(Bitmap, geometry, radius, crop_image_shape)
 
 
@@ -70,12 +71,14 @@ def geometry_to_alpha_mask(
     geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None
 ) -> List[AlphaMask]:
     """
-    Args:
-        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
-        radius: half of thickness of drawed vector elements
-        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
-    Returns:
-        AlphaMask (geometry) object
+    :param geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
+    :type geometry: Geometry
+    :param radius: half of thickness of drawed vector elements
+    :type radius: Optional[int]
+    :param crop_image_shape: if not None - crop bitmap object by this shape (HxW)
+    :type crop_image_shape: Optional[Tuple]
+    :returns: AlphaMask (geometry) object
+    :rtype: List[:class:`~supervisely.geometry.alpha_mask.AlphaMask`]
     """
 
     return _geometry_to_mask_base(AlphaMask, geometry, radius, crop_image_shape)
@@ -86,9 +89,9 @@ def get_effective_nonoverlapping_masks(
 ) -> Tuple[List[Bitmap], np.ndarray]:
     """
     Find nonoverlapping objects from given list of geometries
-    :param geometries: list of geometry type objects(Point, Polygon, PolyLine, Bitmap etc.)
+    :param geometries: list of geometry type objects(:class:`~supervisely.geometry.point.Point`, :class:`~supervisely.geometry.polygon.Polygon`, PolyLine, Bitmap etc.)
     :param img_size: tuple or list of integers
-    :return: list of bitmaps, numpy array
+    :returns: list of bitmaps, numpy array
     """
     if img_size is None:
         if len(geometries) > 0:
@@ -115,7 +118,7 @@ def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometr
     Get geometry from json format
     :param geometry_type_str: str
     :param geometry_json: geometry in json format
-    :return: geometry type object(Point, Polygon, PolyLine, Bitmap etc.)
+    :returns: geometry type object(:class:`~supervisely.geometry.point.Point`, :class:`~supervisely.geometry.polygon.Polygon`, PolyLine, Bitmap etc.)
     """
     geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
     geometry = geometry_type.from_json(geometry_json)

@@ -11,6 +11,7 @@ from supervisely.io.json import load_json_file
 
 
 class LabelStudioConverter(ImageConverter):
+    """Imports Label Studio export format (JSON with annotations/predictions) into Supervisely image project."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

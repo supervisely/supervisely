@@ -30,122 +30,10 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 class VideoAnnotation:
     """
-    VideoAnnotation for a single video. :class:`VideoAnnotation<VideoAnnotation>` object is immutable.
+    Annotation for a single video in Supervisely format.
 
-    :param img_size: Size of the image (height, width).
-    :type img_size: Tuple[int, int] or List[int, int]
-    :param frames_count: Number of frames in VideoAnnotation.
-    :type frames_count: int
-    :param objects: VideoObjectCollection object.
-    :type objects: VideoObjectCollection, optional
-    :param frames: FrameCollection object.
-    :type frames: FrameCollection, optional
-    :param tags: VideoTagCollection object.
-    :type tags: VideoTagCollection, optional
-    :param description: Video description.
-    :type description: str, optional
-    :param key: UUID object.
-    :type key: UUID, optional
-    :raises: :class:`TypeError`, if img_size is not tuple or list
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        # Simple VideoAnnotation example
-        height, width = 500, 700
-        frames_count = 10
-        video_ann = sly.VideoAnnotation((height, width), frames_count)
-        print(video_ann.to_json())
-        # Output: {
-        #     "size": {
-        #         "height": 500,
-        #         "width": 700
-        #     },
-        #     "description": "",
-        #     "key": "abef780b01ad4063b4b961ab2ba2f410",
-        #     "tags": [],
-        #     "objects": [],
-        #     "frames": [],
-        #     "framesCount": 10
-        # }
-
-        # More complex VideoAnnotation example
-
-        height, width = 500, 700
-        frames_count = 1
-        # VideoObjectCollection
-        obj_class_car = sly.ObjClass('car', sly.Rectangle)
-        video_obj_car = sly.VideoObject(obj_class_car)
-        objects = sly.VideoObjectCollection([video_obj_car])
-        # FrameCollection
-        fr_index = 7
-        geometry = sly.Rectangle(0, 0, 100, 100)
-        video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-        frame = sly.Frame(fr_index, figures=[video_figure_car])
-        frames = sly.FrameCollection([frame])
-        # VideoTagCollection
-        meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-        from supervisely.video_annotation.video_tag import VideoTag
-        vid_tag = VideoTag(meta_car, value='acura')
-        from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-        video_tags = VideoTagCollection([vid_tag])
-        # Description
-        descr = 'car example'
-
-        video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, video_tags, descr)
-        print(video_ann.to_json())
-        # Output: {
-        #     "size": {
-        #         "height": 500,
-        #         "width": 700
-        #     },
-        #     "description": "car example",
-        #     "key": "a85b282e5e174e7ebad6f878b6919244",
-        #     "tags": [
-        #         {
-        #             "name": "car_tag",
-        #             "value": "acura",
-        #             "key": "540a8212b0344788953996cea220ea8b"
-        #         }
-        #     ],
-        #     "objects": [
-        #         {
-        #             "key": "7c74b8a495044ea0ac127f32751c8f5c",
-        #             "classTitle": "car",
-        #             "tags": []
-        #         }
-        #     ],
-        #     "frames": [
-        #         {
-        #             "index": 7,
-        #             "figures": [
-        #                 {
-        #                     "key": "82dcbf2e3c5f42a99eeea2ad34173793",
-        #                     "objectKey": "7c74b8a495044ea0ac127f32751c8f5c",
-        #                     "geometryType": "rectangle",
-        #                     "geometry": {
-        #                         "points": {
-        #                             "exterior": [
-        #                                 [
-        #                                     0,
-        #                                     0
-        #                                 ],
-        #                                 [
-        #                                     100,
-        #                                     100
-        #                                 ]
-        #                             ],
-        #                             "interior": []
-        #                         }
-        #                     }
-        #                 }
-        #             ]
-        #         }
-        #     ],
-        #     "framesCount": 1
-        # }
+    Stores video-level tags, objects and per-frame figures, and supports JSON (de)serialization
+    via :meth:`to_json` / :meth:`from_json`.
     """
 
     def __init__(
@@ -158,6 +46,127 @@ class VideoAnnotation:
         description: Optional[str] = "",
         key: Optional[UUID] = None,
     ):
+        """
+        VideoAnnotation for a single video. :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` object is immutable.
+
+        :param img_size: Size of the image (height, width).
+        :type img_size: Tuple[int, int] or List[int, int]
+        :param frames_count: Number of frames in VideoAnnotation.
+        :type frames_count: int
+        :param objects: VideoObjectCollection object.
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`, optional
+        :param frames: FrameCollection object.
+        :type frames: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`, optional
+        :param tags: VideoTagCollection object.
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
+        :param description: Video description.
+        :type description: str, optional
+        :param key: UUID object.
+        :type key: UUID, optional
+        :raises TypeError: if img_size is not tuple or list
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
+                from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+
+                # Simple VideoAnnotation example
+                height, width = 500, 700
+                frames_count = 10
+                video_ann = sly.VideoAnnotation((height, width), frames_count)
+                print(video_ann.to_json())
+                # Output: {
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "description": "",
+                #     "key": "abef780b01ad4063b4b961ab2ba2f410",
+                #     "tags": [],
+                #     "objects": [],
+                #     "frames": [],
+                #     "framesCount": 10
+                # }
+
+                # More complex VideoAnnotation example
+                height, width = 500, 700
+                frames_count = 1
+                # VideoObjectCollection
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+
+                # FrameCollection
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                frame = sly.Frame(fr_index, figures=[video_figure_car])
+                frames = sly.FrameCollection([frame])
+
+                # VideoTagCollection
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                vid_tag = VideoTag(meta_car, value='acura')
+                video_tags = VideoTagCollection([vid_tag])
+
+                # Description
+                descr = 'car example'
+
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, video_tags, descr)
+                print(video_ann.to_json())
+                # Output: {
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "description": "car example",
+                #     "key": "a85b282e5e174e7ebad6f878b6919244",
+                #     "tags": [
+                #         {
+                #             "name": "car_tag",
+                #             "value": "acura",
+                #             "key": "540a8212b0344788953996cea220ea8b"
+                #         }
+                #     ],
+                #     "objects": [
+                #         {
+                #             "key": "7c74b8a495044ea0ac127f32751c8f5c",
+                #             "classTitle": "car",
+                #             "tags": []
+                #         }
+                #     ],
+                #     "frames": [
+                #         {
+                #             "index": 7,
+                #             "figures": [
+                #                 {
+                #                     "key": "82dcbf2e3c5f42a99eeea2ad34173793",
+                #                     "objectKey": "7c74b8a495044ea0ac127f32751c8f5c",
+                #                     "geometryType": "rectangle",
+                #                     "geometry": {
+                #                         "points": {
+                #                             "exterior": [
+                #                                 [
+                #                                     0,
+                #                                     0
+                #                                 ],
+                #                                 [
+                #                                     100,
+                #                                     100
+                #                                 ]
+                #                             ],
+                #                             "interior": []
+                #                         }
+                #                     }
+                #                 }
+                #             ]
+                #         }
+                #     ],
+                #     "framesCount": 1
+                # }
+        """
         if not isinstance(img_size, (tuple, list)):
             raise TypeError(
                 '{!r} has to be a tuple or a list. Given type "{}".'.format(
@@ -180,19 +189,20 @@ class VideoAnnotation:
         """
         Size of the image (height, width).
 
-        :return: Image size
+        :returns: Image size
         :rtype: :class:`Tuple[int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            video_ann = sly.VideoAnnotation((height, width), frames_count)
-            print(video_ann.img_size)
-            # Output: (500, 700)
+                import supervisely as sly
+
+                height, width = 500, 700
+                frames_count = 1
+                video_ann = sly.VideoAnnotation((height, width), frames_count)
+                print(video_ann.img_size)
+                # Output: (500, 700)
         """
         return deepcopy(self._img_size)
 
@@ -201,19 +211,20 @@ class VideoAnnotation:
         """
         Number of frames.
 
-        :return: Frames count
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: Frames count
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 15
-            video_ann = sly.VideoAnnotation((height, width), frames_count)
-            print(video_ann.frames_count)
-            # Output: 15
+                import supervisely as sly
+
+                height, width = 500, 700
+                frames_count = 15
+                video_ann = sly.VideoAnnotation((height, width), frames_count)
+                print(video_ann.frames_count)
+                # Output: 15
         """
         return self._frames_count
 
@@ -222,29 +233,30 @@ class VideoAnnotation:
         """
         VideoAnnotation objects.
 
-        :return: VideoObjectCollection object
-        :rtype: :class:`VideoObjectCollection`
-        :Usage example:
+        :returns: VideoObjectCollection object.
+        :rtype: VideoObjectCollection
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            # VideoObjectCollection
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects)
-            print(video_ann.objects.to_json())
-            # Output: [
-            #     {
-            #         "key": "79fc07a4a6ca4b2796279bc033b9ec9a",
-            #         "classTitle": "car",
-            #         "tags": []
-            #     }
-            # ]
+                import supervisely as sly
+
+                height, width = 500, 700
+                frames_count = 1
+                # VideoObjectCollection
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects)
+                print(video_ann.objects.to_json())
+                # Output: [
+                #     {
+                #         "key": "79fc07a4a6ca4b2796279bc033b9ec9a",
+                #         "classTitle": "car",
+                #         "tags": []
+                #     }
+                # ]
         """
         return self._objects
 
@@ -253,54 +265,55 @@ class VideoAnnotation:
         """
         VideoAnnotation frames.
 
-        :return: FrameCollection object
-        :rtype: :class:`FrameCollection`
-        :Usage example:
+        :returns: FrameCollection object.
+        :rtype: FrameCollection
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
+                import supervisely as sly
 
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
-            print(video_ann.frames.to_json())
-            # Output: [
-            #     {
-            #         "index": 7,
-            #         "figures": [
-            #             {
-            #                 "key": "2842f561b1924f6abd6ab6f696ed9b65",
-            #                 "objectKey": "7f30fa9b78444ad69e02b37edbf9a902",
-            #                 "geometryType": "rectangle",
-            #                 "geometry": {
-            #                     "points": {
-            #                         "exterior": [
-            #                             [
-            #                                 0,
-            #                                 0
-            #                             ],
-            #                             [
-            #                                 100,
-            #                                 100
-            #                             ]
-            #                         ],
-            #                         "interior": []
-            #                     }
-            #                 }
-            #             }
-            #         ]
-            #     }
-            # ]
+                height, width = 500, 700
+                frames_count = 1
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                frame = sly.Frame(fr_index, figures=[video_figure_car])
+                frames = sly.FrameCollection([frame])
+
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
+                print(video_ann.frames.to_json())
+                # Output: [
+                #     {
+                #         "index": 7,
+                #         "figures": [
+                #             {
+                #                 "key": "2842f561b1924f6abd6ab6f696ed9b65",
+                #                 "objectKey": "7f30fa9b78444ad69e02b37edbf9a902",
+                #                 "geometryType": "rectangle",
+                #                 "geometry": {
+                #                     "points": {
+                #                         "exterior": [
+                #                             [
+                #                                 0,
+                #                                 0
+                #                             ],
+                #                             [
+                #                                 100,
+                #                                 100
+                #                             ]
+                #                         ],
+                #                         "interior": []
+                #                     }
+                #                 }
+                #             }
+                #         ]
+                #     }
+                # ]
         """
         return self._frames
 
@@ -309,27 +322,28 @@ class VideoAnnotation:
         """
         VideoAnnotation figures.
 
-        :return: List of VideoFigures from all frames in VideoAnnotation
-        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
-        :Usage example:
+        :returns: List of VideoFigures from all frames in VideoAnnotation.
+        :rtype: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
+                import supervisely as sly
 
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
-            print(len(video_ann.figures)) # 1
+                height, width = 500, 700
+                frames_count = 1
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                frame = sly.Frame(fr_index, figures=[video_figure_car])
+                frames = sly.FrameCollection([frame])
+
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
+                print(len(video_ann.figures)) # 1
         """
         return self.frames.figures
 
@@ -338,39 +352,40 @@ class VideoAnnotation:
         """
         VideoAnnotation tags.
 
-        :return: VideoTagCollection object
-        :rtype: :class:`VideoTagCollection`
-        :Usage example:
+        :returns: VideoTagCollection object.
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            from supervisely.video_annotation.video_tag import VideoTag
-            vid_tag = VideoTag(meta_car, value='acura')
-            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-            tags = VideoTagCollection([vid_tag])
+                import supervisely as sly
 
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, tags)
-            print(video_ann.tags.to_json())
-            # Output: [
-            #     {
-            #         "name": "car_tag",
-            #         "value": "acura",
-            #         "key": "c63e8259589a4fa5b4fb15a48c1f6a63"
-            #     }
-            # ]
+                height, width = 500, 700
+                frames_count = 1
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                frame = sly.Frame(fr_index, figures=[video_figure_car])
+                frames = sly.FrameCollection([frame])
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                from supervisely.video_annotation.video_tag import VideoTag
+                vid_tag = VideoTag(meta_car, value='acura')
+                from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+                tags = VideoTagCollection([vid_tag])
+
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, tags)
+                print(video_ann.tags.to_json())
+                # Output: [
+                #     {
+                #         "name": "car_tag",
+                #         "value": "acura",
+                #         "key": "c63e8259589a4fa5b4fb15a48c1f6a63"
+                #     }
+                # ]
         """
         return self._tags
 
@@ -379,24 +394,24 @@ class VideoAnnotation:
         Annotation key value.
 
         :returns: Key value of annotation object.
-        :rtype: str
+        :rtype: UUID
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            height, width = 500, 700
-            frames_count = 1
-            # VideoObjectCollection
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects)
+                height, width = 500, 700
+                frames_count = 1
+                # VideoObjectCollection
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects)
 
-            print(video_ann.key())
-            # Output: 6e5bd622-4d7b-45ee-8bc5-807d5a5e2134
+                print(video_ann.key())
+                # Output: 6e5bd622-4d7b-45ee-8bc5-807d5a5e2134
         """
 
         return self._key
@@ -406,19 +421,20 @@ class VideoAnnotation:
         """
         Video description.
 
-        :return: Video description
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Video description
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            descr = 'example'
-            video_ann = sly.VideoAnnotation((height, width), frames_count, description=descr)
-            print(video_ann.description) # example
+                import supervisely as sly
+
+                height, width = 500, 700
+                frames_count = 1
+                descr = 'example'
+                video_ann = sly.VideoAnnotation((height, width), frames_count, description=descr)
+                print(video_ann.description) # example
         """
         return self._description
 
@@ -427,11 +443,11 @@ class VideoAnnotation:
     #     Get all existing video tags from frame of video.
 
     #     :param frame_index: Video frame index.
-    #     :type frame_index: :class:`int`
-    #     :return: Tags from the given frame.
-    #     :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
+    #     :type frame_index: int
+    #     :returns: Tags from the given frame.
+    #     :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
-    #     :Usage example:
+    #     :Usage Example:
 
     #      .. code-block:: python
 
@@ -467,11 +483,11 @@ class VideoAnnotation:
     #     Get all existing video objects from frame of video.
 
     #     :param frame_index: Video frame index.
-    #     :type frame_index: :class:`int`
-    #     :return: Objects from the given frame.
-    #     :rtype: :class:`VideoObjectCollection<supervisely.video_annotation.video_object_collection.VideoObjectCollection>`
+    #     :type frame_index: int
+    #     :returns: Objects from the given frame.
+    #     :rtype: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
 
-    #     :Usage example:
+    #     :Usage Example:
 
     #      .. code-block:: python
 
@@ -506,30 +522,30 @@ class VideoAnnotation:
         """
         Checks if image contains figures from all frames in collection.
 
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
-        :return: None
-        :rtype: :class:`NoneType`
+        :raises :class:`~supervisely.video_annotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            height, width = 50, 700
-            frames_count = 1
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
+                height, width = 50, 700
+                frames_count = 1
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                frame = sly.Frame(fr_index, figures=[video_figure_car])
+                frames = sly.FrameCollection([frame])
 
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
-            video_ann.validate_figures_bounds()
-            # raise OutOfImageBoundsException("Figure is out of image bounds")
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames)
+                video_ann.validate_figures_bounds()
+                # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         for frame in self.frames:
             frame.validate_figures_bounds(self.img_size)
@@ -539,31 +555,32 @@ class VideoAnnotation:
         Convert the VideoAnnotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Json format as a dict
+        :rtype: Dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 10
-            video_ann = sly.VideoAnnotation((height, width), frames_count)
-            print(video_ann.to_json())
-            # Output: {
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "description": "",
-            #     "key": "abef780b01ad4063b4b961ab2ba2f410",
-            #     "tags": [],
-            #     "objects": [],
-            #     "frames": [],
-            #     "framesCount": 10
-            # }
+                import supervisely as sly
+
+                height, width = 500, 700
+                frames_count = 10
+                video_ann = sly.VideoAnnotation((height, width), frames_count)
+                print(video_ann.to_json())
+                # Output: {
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "description": "",
+                #     "key": "abef780b01ad4063b4b961ab2ba2f410",
+                #     "tags": [],
+                #     "objects": [],
+                #     "frames": [],
+                #     "framesCount": 10
+                # }
         """
         res_json = {
             IMG_SIZE: {
@@ -598,35 +615,32 @@ class VideoAnnotation:
 
         :param data: Dict in json format.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: Union[KeyIdMap, None]
+        :type key_id_map: Union[:class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, None]
         :param skip_corrupted: Skip corrupted items (currently only frames) during conversion.
         :type skip_corrupted: bool, optional
-        :return: VideoAnnotation object
-        :rtype: :class:`VideoAnnotation`
+        :returns: VideoAnnotation object
+        :rtype: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            video_ann_json = {
-                "size": {
-                    "height": 500,
-                    "width": 700
-                },
-                "tags": [],
-                "objects": [],
-                "frames": [],
-                "framesCount": 1
-            }
-            key_id_map = sly.KeyIdMap()
-            meta = sly.ProjectMeta()
+                video_ann_json = {
+                    "size": {"height": 500, "width": 700},
+                    "tags": [],
+                    "objects": [],
+                    "frames": [],
+                    "framesCount": 1
+                }
+                key_id_map = sly.KeyIdMap()
+                meta = sly.ProjectMeta()
 
-            video_ann = sly.VideoAnnotation.from_json(video_ann_json, meta, key_id_map)
+                video_ann = sly.VideoAnnotation.from_json(video_ann_json, meta, key_id_map)
         """
         # video_name = data[VIDEO_NAME]
         video_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
@@ -667,37 +681,43 @@ class VideoAnnotation:
 
         :param path: Path to the json file.
         :type path: str
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: VideoAnnotation object
-        :rtype: :class:`VideoAnnotation<VideoAnnotation>`
-        :Usage example:
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: VideoAnnotation object
+        :rtype: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            team_name = 'Vehicle Detection'
-            workspace_name = 'Cities'
-            project_name =  'London'
+                import supervisely as sly
 
-            team = api.team.get_info_by_name(team_name)
-            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
-            project = api.project.get_info_by_name(workspace.id, project_name)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project.id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
+                team_name = 'Vehicle Detection'
+                workspace_name = 'Cities'
+                project_name =  'London'
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.VideoAnnotation.load_json_file(path, meta)
+                team = api.team.get_info_by_name(team_name)
+                workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+                project = api.project.get_info_by_name(workspace.id, project_name)
+
+                meta_json = api.project.get_meta(project.id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.VideoAnnotation.load_json_file(path, meta)
         """
         with open(path) as fin:
             data = json.load(fin)
@@ -720,47 +740,48 @@ class VideoAnnotation:
         :param frames_count: Number of frames in VideoAnnotation.
         :type frames_count: int, optional
         :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection, optional
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`, optional
         :param frames: FrameCollection object.
-        :type frames: FrameCollection, optional
+        :type frames: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`, optional
         :param tags: VideoTagCollection object.
-        :type tags: VideoTagCollection, optional
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
         :param description: Video description.
         :type description: str, optional
-        :raises: :class:`TypeError`, if img_size is not tuple or list
-        :Usage example:
+        :raises TypeError: if img_size is not tuple or list
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            height, width = 500, 700
-            frames_count = 1
-            video_ann = sly.VideoAnnotation((height, width), frames_count)
+                import supervisely as sly
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            new_objects = sly.VideoObjectCollection([video_obj_car])
-            new_video_ann = video_ann.clone(objects=new_objects)
-            print(new_video_ann.to_json())
-            # Output: {
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "description": "",
-            #     "key": "37f7d267864c4fd8b1a1a32f67e37f7d",
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "key": "27d4ba1aaee64930b2d0bfb7e8b53493",
-            #             "classTitle": "car",
-            #             "tags": []
-            #         }
-            #     ],
-            #     "frames": [],
-            #     "framesCount": 1
-            # }
+                height, width = 500, 700
+                frames_count = 1
+                video_ann = sly.VideoAnnotation((height, width), frames_count)
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                new_objects = sly.VideoObjectCollection([video_obj_car])
+                new_video_ann = video_ann.clone(objects=new_objects)
+                print(new_video_ann.to_json())
+                # Output: {
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "description": "",
+                #     "key": "37f7d267864c4fd8b1a1a32f67e37f7d",
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "key": "27d4ba1aaee64930b2d0bfb7e8b53493",
+                #             "classTitle": "car",
+                #             "tags": []
+                #         }
+                #     ],
+                #     "frames": [],
+                #     "framesCount": 1
+                # }
         """
         return VideoAnnotation(
             img_size=take_with_default(img_size, self.img_size),
@@ -776,28 +797,35 @@ class VideoAnnotation:
         Check whether video annotation contains objects or tags, or not.
 
         :returns: True if video annotation is empty, False otherwise.
-        :rtype: :class:`bool`
-        :Usage example:
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 17208
-            video_id = 19371139
-            key_id_map = KeyIdMap()
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            ann_json = api.video.annotation.download(video_id)
-            ann = sly.VideoAnnotation.from_json(ann_json, meta, key_id_map)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            print(ann.is_empty()) # False
+                api = sly.Api.from_env()
+
+                project_id = 17208
+                video_id = 19371139
+                key_id_map = KeyIdMap()
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+
+                ann_json = api.video.annotation.download(video_id)
+                ann = sly.VideoAnnotation.from_json(ann_json, meta, key_id_map)
+
+                print(ann.is_empty()) # False
         """
 
         if len(self.objects) == 0 and len(self.tags) == 0:

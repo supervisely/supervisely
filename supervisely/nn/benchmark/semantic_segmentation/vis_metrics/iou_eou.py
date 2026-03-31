@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class IntersectionErrorOverUnion(SemanticSegmVisMetric):
+    """IoU and error-over-union bar charts for semantic segmentation reports."""
+
 
     @property
     def md(self) -> MarkdownWidget:

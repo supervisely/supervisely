@@ -1,8 +1,5 @@
 """
-TrainApp module.
-
-This module contains the `TrainApp` class and related functionality to facilitate
-training workflows in a Supervisely application.
+High-level wrapper for building Supervisely training applications.
 """
 
 import os
@@ -78,21 +75,16 @@ from supervisely.template.experiment.experiment_generator import ExperimentGener
 
 class TrainApp:
     """
-    A class representing the training application.
+    High-level wrapper for building Supervisely training applications.
 
-    This class initializes and manages the training workflow, including
-    handling inputs, hyperparameters, project management, and output artifacts.
+    Learn more about the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
 
-    :param framework_name: Name of the ML framework used.
-    :type framework_name: str
-    :param models: List of model configurations.
-    :type models: Union[str, List[Dict[str, Any]]]
-    :param hyperparameters: Path or string content of hyperparameters in YAML format.
-    :type hyperparameters: str
-    :param app_options: Options for the application layout and behavior.
-    :type app_options: Optional[Union[str, Dict[str, Any]]]
-    :param work_dir: Path to the working directory for storing intermediate files.
-    :type work_dir: Optional[str]
+    **It connects:**
+
+    - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)
+    - **Data preparation** (project download, optional conversion, splitting, collections creation)
+    - **Training lifecycle** (prepare data → run user training code → validate & upload artifacts)
+    - **Optional extras**: export (ONNX/TensorRT), model benchmark, TensorBoard
     """
 
     def __init__(
@@ -103,6 +95,46 @@ class TrainApp:
         app_options: Optional[Union[str, Dict[str, Any]]] = None,
         work_dir: Optional[str] = None,
     ):
+        """
+        :param framework_name: Name of the ML framework used (stored in experiment metadata).
+        :type framework_name: str
+        :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
+        :type models: Union[str, List[Dict[str, Any]]]
+        :param hyperparameters: Path to hyperparameters YAML file (``.yaml``/``.yml``). The GUI allows editing before training.
+        :type hyperparameters: str
+        :param app_options: Path to options YAML file or a dict with UI/behavior options.
+        :type app_options: Optional[Union[str, Dict[str, Any]]]
+        :param work_dir: Local working directory used to store downloaded data, model files, logs and output artifacts.
+        :type work_dir: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.nn.training.train_app import TrainApp
+
+                train_app = TrainApp(
+                    framework_name="My Framework", # e.g "YOLO"
+                    models="models.json",
+                    hyperparameters="hyperparameters.yaml",
+                    app_options="app_options.yaml",
+                )
+
+                @train_app.start
+                def train():
+                    # Access data via train_app.project_dir
+                    # Access hyperparameters via train_app.hyperparameters (dict)
+                    # Access model files via train_app.model_files (dict)
+                    # Train your model, save checkpoints locally, and return experiment_info.
+                    return {
+                        "model_name": train_app.model_name,
+                        "task_type": train_app.task_type,   # TaskType (string-like enum)
+                        "checkpoints": "/path/to/checkpoints_dir",  # or list of file paths
+                        "best_checkpoint": "checkpoint_best.pth",
+                        # optional: return config if model requires it
+                        # "model_files": {"config": "/path/to/config.yaml", ...},
+                    }
+        """
 
         # Init
         self._api = Api.from_env()
@@ -327,7 +359,7 @@ class TrainApp:
         """
         Returns the ID of the team.
 
-        :return: Team ID.
+        :returns: Team ID.
         :rtype: int
         """
         return self.gui.team_id
@@ -337,7 +369,7 @@ class TrainApp:
         """
         Returns the ID of the workspace.
 
-        :return: Workspace ID.
+        :returns: Workspace ID.
         :rtype: int
         """
         return self.gui.workspace_id
@@ -347,7 +379,7 @@ class TrainApp:
         """
         Returns the ID of the project.
 
-        :return: Project ID.
+        :returns: Project ID.
         :rtype: int
         """
         return self.gui.project_id
@@ -357,7 +389,7 @@ class TrainApp:
         """
         Returns the name of the project.
 
-        :return: Project name.
+        :returns: Project name.
         :rtype: str
         """
         return self.gui.project_info.name
@@ -365,10 +397,10 @@ class TrainApp:
     @property
     def project_info(self) -> ProjectInfo:
         """
-        Returns ProjectInfo object, which contains information about the project.
+        Returns :class:`~supervisely.api.project_api.ProjectInfo` object, which contains information about the project.
 
-        :return: Project name.
-        :rtype: str
+        :returns: Project info.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         return self.gui.project_info
 
@@ -377,8 +409,8 @@ class TrainApp:
         """
         Returns the project metadata.
 
-        :return: Project metadata.
-        :rtype: ProjectMeta
+        :returns: Project metadata.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self.gui.project_meta
 
@@ -390,7 +422,7 @@ class TrainApp:
         """
         Return whether the model is pretrained or custom.
 
-        :return: Model source.
+        :returns: Model source.
         :rtype: str
         """
         return self.gui.model_selector.get_model_source()
@@ -400,7 +432,7 @@ class TrainApp:
         """
         Returns the name of the model.
 
-        :return: Model name.
+        :returns: Model name.
         :rtype: str
         """
         return self.gui.model_selector.get_model_name()
@@ -408,10 +440,10 @@ class TrainApp:
     @property
     def model_info(self) -> dict:
         """
-        Returns a selected row in dict format from the models table.
+        Returns a selected row from the models table in dict format.
 
-        :return: Model name.
-        :rtype: str
+        :returns: Model configuration dict.
+        :rtype: dict
         """
         return self.gui.model_selector.get_model_info()
 
@@ -420,8 +452,8 @@ class TrainApp:
         """
         Returns the task type of the model.
 
-        :return: Task type.
-        :rtype: TaskType
+        :returns: Task type.
+        :rtype: :class:`~supervisely.nn.task_type.TaskType`
         """
         return self.gui.model_selector.get_selected_task_type()
 
@@ -430,7 +462,7 @@ class TrainApp:
         """
         Returns the selected device for training.
 
-        :return: Device name.
+        :returns: Device name.
         :rtype: str
         """
         return self.gui.training_process.get_device()
@@ -487,7 +519,7 @@ class TrainApp:
         """
         Returns the selected classes names for training.
 
-        :return: List of selected classes names.
+        :returns: List of selected classes names.
         :rtype: List[str]
         """
         if not self._has_classes_selector:
@@ -501,7 +533,7 @@ class TrainApp:
         """
         Returns the number of selected classes for training.
 
-        :return: Number of selected classes.
+        :returns: Number of selected classes.
         :rtype: int
         """
         if not self._has_classes_selector:
@@ -533,7 +565,7 @@ class TrainApp:
         """
         Returns the selected hyperparameters for training in dict format.
 
-        :return: Hyperparameters in dict format.
+        :returns: Hyperparameters in dict format.
         :rtype: Dict[str, Any]
         """
         return yaml.safe_load(self.hyperparameters_yaml)
@@ -543,7 +575,7 @@ class TrainApp:
         """
         Returns the selected hyperparameters for training in raw format as a string.
 
-        :return: Hyperparameters in raw format.
+        :returns: Hyperparameters in raw format.
         :rtype: str
         """
         return self.gui.hyperparameters_selector.get_hyperparameters()
@@ -554,8 +586,8 @@ class TrainApp:
         """
         Returns the main progress bar widget.
 
-        :return: Main progress bar widget.
-        :rtype: Progress
+        :returns: Main progress bar widget.
+        :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_main
 
@@ -564,8 +596,8 @@ class TrainApp:
         """
         Returns the secondary progress bar widget.
 
-        :return: Secondary progress bar widget.
-        :rtype: Progress
+        :returns: Secondary progress bar widget.
+        :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_secondary
 
@@ -574,7 +606,7 @@ class TrainApp:
         """
         Checks if model benchmarking is enabled based on application options and GUI settings.
 
-        :return: True if model benchmarking is enabled, False otherwise.
+        :returns: True if model benchmarking is enabled, False otherwise.
         :rtype: bool
         """
         return (
@@ -607,8 +639,27 @@ class TrainApp:
     @property
     def start(self):
         """
-        Decorator for the training function defined by user.
-        It wraps user-defined training function and prepares and finalizes the training process.
+        Decorator for the user-defined training function.
+
+        The decorated function is executed when the user clicks **Start training** in the GUI
+        (or when :meth:`start_in_thread` is used).
+
+        The function must return ``experiment_info`` dict with **required keys**:
+
+        - ``model_name``: str (name of the model used for training)
+        - ``task_type``: str (usually :class:`~supervisely.nn.task_type.TaskType`)
+        - ``checkpoints``: list[str] **or** path to directory (str) containing ``.pt``/``.pth`` files
+        - ``best_checkpoint``: str (file name; must be present in ``checkpoints``)
+
+        Optional keys:
+
+        - ``model_files``: dict[str, str] mapping additional files that model requires for inference (e.g model config)
+
+        ``TrainApp`` handles data preparation and (after your function returns) validates outputs and
+        uploads artifacts to Team Files.
+
+        :returns: A decorator that registers a training function.
+        :rtype: Callable
         """
 
         def decorator(func):
@@ -825,8 +876,8 @@ class TrainApp:
         :type experiment_info: dict
         :param remote_dir: Remote directory.
         :type remote_dir: str
-        :return: Best checkpoint info.
-        :rtype: FileInfo
+        :returns: Best checkpoint info.
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
         """
         best_checkpoint_name = experiment_info.get("best_checkpoint")
         remote_best_checkpoint_path = join(remote_dir, "checkpoints", best_checkpoint_name)
@@ -841,8 +892,8 @@ class TrainApp:
         """
         Registers an inference class for the training application to do model benchmarking.
 
-        :param inference_class: Inference class to be registered inherited from `supervisely.nn.inference.Inference`.
-        :type inference_class: Any
+        :param inference_class: Inference class to be registered (must be inherited from :class:`~supervisely.nn.inference.inference.Inference`).
+        :type inference_class: :class:`~supervisely.nn.inference.inference.Inference`
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
@@ -861,7 +912,7 @@ class TrainApp:
 
         :param experiment_info: Experiment info.
         :type experiment_info: dict
-        :return: Application state.
+        :returns: Application state.
         :rtype: dict
         """
         # Prepare optional sections depending on what selectors are enabled in GUI
@@ -906,39 +957,24 @@ class TrainApp:
         :param app_state: The state dictionary or path to the state file.
         :type app_state: Union[str, dict]
 
-        app_state example:
+        Example::
 
             app_state = {
-                "train_val_split": {
-                    "method": "random",
-                    "split": "train",
-                    "percent": 90
-                },
+                "train_val_split": {"method": "random", "split": "train", "percent": 90},
                 "classes": ["apple"],
-                # Pretrained model
+                # For Pretrained model
                 "model": {
                     "source": "Pretrained models",
-                    "model_name": "rtdetr_r50vd_coco_objects365"
+                    "model_name": "rtdetr_r50vd_coco_objects365",
                 },
-                # Custom model
-                # "model": {
-                #     "source": "Custom models",
-                #     "task_id": 555,
-                #     "checkpoint": "checkpoint_10.pth"
-                # },
-                "hyperparameters": hyperparameters, # yaml string
+                # For Custom model
+                # "model": {"source": "Custom models", "task_id": 555, "checkpoint": "checkpoint_10.pth"},
+                "hyperparameters": hyperparameters,  # yaml string
                 "options": {
                     "convert_class_shapes": True,
-                    "model_benchmark": {
-                        "enable": True,
-                        "speed_test": True
-                    },
+                    "model_benchmark": {"enable": True, "speed_test": True},
                     "cache_project": True,
-                    "export": {
-                        "enable": True,
-                        "ONNXRuntime": True,
-                        "TensorRT": True
-                    },
+                    "export": {"enable": True, "ONNXRuntime": True, "TensorRT": True},
                 },
                 "experiment_name": "My Experiment",
             }
@@ -953,7 +989,7 @@ class TrainApp:
 
         :param paths: List of paths to files or directories to be copied to the output directory.
         :type paths: List[str]
-        :return: None
+        :returns: None
         :rtype: None
         """
 
@@ -1003,7 +1039,7 @@ class TrainApp:
 
         :param hyperparameters: Path to hyperparameters file.
         :type hyperparameters: str
-        :return: Hyperparameters in dict format.
+        :returns: Hyperparameters in dict format.
         :rtype: dict
         """
         if not isinstance(hyperparameters, str):
@@ -1045,7 +1081,7 @@ class TrainApp:
 
         :param path: Path to the YAML file.
         :type path: str
-        :return: YAML file contents.
+        :returns: YAML file contents.
         :rtype: dict
         """
         with open(path, "r") as file:
@@ -1151,7 +1187,7 @@ class TrainApp:
         Downloads the project data from Supervisely without using the cache.
 
         :param dataset_infos: List of dataset information objects.
-        :type dataset_infos: List[DatasetInfo]
+        :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param total_images: Total number of images to download.
         :type total_images: int
         """
@@ -1178,7 +1214,7 @@ class TrainApp:
         Downloads the project data from Supervisely using the cache.
 
         :param dataset_infos: List of dataset information objects.
-        :type dataset_infos: List[DatasetInfo]
+        :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param total_images: Total number of images to download.
         :type total_images: int
         """
@@ -1536,7 +1572,7 @@ class TrainApp:
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :return: Experiment info with task_type key.
+        :returns: Experiment info with task_type key.
         :rtype: dict
         """
         task_type = experiment_info.get("task_type", None)
@@ -1564,7 +1600,7 @@ class TrainApp:
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :return: Tuple of success status and reason for failure.
+        :returns: Tuple of success status and reason for failure.
         :rtype: tuple
         """
         if not isinstance(experiment_info, dict):
@@ -1632,7 +1668,7 @@ class TrainApp:
 
         :param project_id: ID of the ground truth project for model benchmark. Provide only when cv task convertion is required.
         :type project_id: Optional[int]
-        :return: Splits data.
+        :returns: Splits data.
         :rtype: dict
         """
         val_dataset_ids = None
@@ -1901,7 +1937,16 @@ class TrainApp:
 
     def create_model_meta(self, task_type: str):
         """
-        Convert project meta according to task type.
+        Create a model meta for the trained model according to task type.
+
+        This method takes the input project's :class:`~supervisely.project.project_meta.ProjectMeta`,
+        removes classes that are not selected in the GUI, and then converts meta to a CV-task-specific
+        format (detection/segmentation).
+
+        :param task_type: CV task type of the trained model.
+        :type task_type: str
+        :returns: Model meta to be saved as ``model_meta.json``.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         names_to_delete = [
             c.name for c in self.project_meta.obj_classes if c.name not in self.classes
@@ -2124,10 +2169,10 @@ class TrainApp:
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         :param model_meta: Model meta with object classes.
-        :type model_meta: ProjectMeta
+        :type model_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param session_link_file_info: Artifacts directory link, used if report is not generated.
-        :type session_link_file_info: FileInfo
-        :return: Output file info and experiment info.
+        :type session_link_file_info: :class:`~supervisely.api.file_api.FileInfo`
+        :returns: Output file info and experiment info.
         :rtype: tuple
         """
         need_generate_report = self._app_options.get("generate_report", False)
@@ -2151,7 +2196,7 @@ class TrainApp:
         """
         Gets the train and val splits information for app_state.json.
 
-        :return: Train and val splits information based on selected split method.
+        :returns: Train and val splits information based on selected split method.
         :rtype: dict
         """
         if not self._has_splits_selector:
@@ -2402,10 +2447,10 @@ class TrainApp:
         :param splits_data: Information about the train and val splits.
         :type splits_data: dict
         :param model_meta: Model meta with object classes.
-        :type model_meta: ProjectInfo
+        :type model_meta: :class:`~supervisely.api.project_api.ProjectInfo`
         :param gt_project_id: Ground truth project ID with converted shapes.
         :type gt_project_id: int
-        :return: Evaluation report, report ID and evaluation metrics.
+        :returns: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
         lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
@@ -2696,9 +2741,9 @@ class TrainApp:
         :param team_files_dir: Team files directory.
         :type team_files_dir: str
         :param file_info: FileInfo of the best checkpoint.
-        :type file_info: FileInfo
+        :type file_info: :class:`~supervisely.api.file_api.FileInfo`
         :param model_benchmark_report: FileInfo of the model benchmark report link (.lnk).
-        :type model_benchmark_report: Optional[FileInfo]
+        :type model_benchmark_report: Optional[:class:`~supervisely.api.file_api.FileInfo`]
         :param model_benchmark_report_id: Model benchmark report ID.
         """
         try:
@@ -2881,6 +2926,15 @@ class TrainApp:
 
     # ----------------------------------------- #
     def start_in_thread(self):
+        """
+        Configure the app to start training automatically on server startup (in a background thread).
+
+        This is useful for programmatic runs (e.g. training triggered by API or workflow execution)
+        where you don't want to wait for a manual UI click.
+
+        :returns: None
+        :rtype: None
+        """
         def auto_train():
             import threading
 

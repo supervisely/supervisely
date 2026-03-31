@@ -19,24 +19,13 @@ def open_image(path, verbose=True):
     """
     Open a 3D NRRD image at the given path.
 
-    Parameters
-    ----------
-    path : str
-        The path of the file to be loaded.
-    verbose : bool, optional
-        If `True` (default), print some meta data of the loaded file to standard output.
-
-    Returns
-    -------
-    Volume
-        The resulting 3D image volume, with the ``src_object`` attribute set to the tuple `(data, header)` returned
-        by pynrrd's ``nrrd.read`` (where `data` is a Numpy array and `header` is a dictionary) and the desired
-        anatomical world coordinate system ``system`` set to "RAS".
-
-    Raises
-    ------
-    IOError
-        If something goes wrong.
+    :param path: The path of the file to be loaded.
+    :type path: str
+    :param verbose: If `True` (default), print some meta data of the loaded file to standard output.
+    :type verbose: bool, optional
+    :returns: The resulting 3D image volume, with the ``src_object`` attribute set to the tuple `(data, header)` returned
+    :rtype: :class:`~supervisely.volume.volume.Volume`
+    :raises IOError: If something goes wrong.
     """
     try:
         src_object = (voxel_data, hdr) = nrrd.read(path)
@@ -68,24 +57,23 @@ def save_image(path, data, transformation, system="RAS", kinds=None):
     """
     Save the given image data as a NRRD image file at the given path.
 
-    Parameters
-    ----------
-    path : str
-        The path for the file to be saved.
-    data : array_like
-        Three-dimensional array that contains the voxels to be saved.
-    transformation : array_like
-        :math:`4x4` transformation matrix that maps from ``data``'s voxel indices to the given ``system``'s anatomical
+    :param path: The path for the file to be saved.
+    :type path: str
+    :param data: Three-dimensional array that contains the voxels to be saved.
+    :type data: array_like
+    :param transformation: :math:`4x4` transformation matrix that maps from ``data``'s voxel indices to the given ``system``'s anatomical
         world coordinate system.
-    system : str, optional
-        The world coordinate system to which ``transformation`` maps the voxel data. Either "RAS" (default), "LAS", or
+    :type transformation: array_like
+    :param system: The world coordinate system to which ``transformation`` maps the voxel data. Either "RAS" (default), "LAS", or
         "LPS" (these are the ones supported by the NRRD format).
-    kinds : str or sequence of strings, optional
-        If given, the string(s) will be used to set the NRRD header's "kinds" field. If a single string is given, it
+    :type system: str, optional
+    :param kinds: If given, the string(s) will be used to set the NRRD header's "kinds" field. If a single string is given, it
         will be used for all dimensions. If multiple strings are given, they will be used in the given order. If
         nothing is given (default), the "kinds" field will not be set. Note that all strings should either be "domain"
         or "space".
-
+    :type kinds: str or sequence of strings, optional
+    :returns: None
+    :rtype: None
     """
     if data.ndim > 3:
         raise RuntimeError("Currently, only supports saving NRRD files with scalar data only!")
@@ -109,25 +97,26 @@ def save_volume(path, volume, src_order=True, src_system=True, kinds=None):
     """
     Save the given ``Volume`` instance as a NRRD image file at the given path.
 
-    Parameters
-    ----------
-    path : str
-        The path for the file to be saved.
-    volume : Volume
-        The ``Volume`` instance containing the image data to be saved.
-    src_order : bool, optional
-        If `True` (default), order the saved voxels as in ``src_data``; if `False`, order the saved voxels as in
+    :param path: The path for the file to be saved.
+    :type path: str
+    :param volume: The ``Volume`` instance containing the image data to be saved.
+    :type volume: :class:`~supervisely.volume.volume.Volume`
+    :param src_order: If `True` (default), order the saved voxels as in ``src_data``; if `False`, order the saved voxels as in
         ``aligned_data``. In any case, the correct transformation matrix will be chosen.
-    src_system : bool, optional
-        If `True` (default), try to use ``volume``'s ``src_system`` as the anatomical world coordinate system for
+    :type src_order: bool, optional
+    :param src_system: If `True` (default), try to use ``volume``'s ``src_system`` as the anatomical world coordinate system for
         saving; if `False`, try to use ``volume``'s ``system`` instead. In either case, this works if the system is
         either "RAS", "LAS", or "LPS" (these are the ones supported by the NRRD format). If a different system is
         given, use "RAS" instead.
-    kinds : str or sequence of strings, optional
-        If given, the string(s) will be used to set the NRRD header's "kinds" field. If a single string is given, it
+    :type src_system: bool, optional
+    :param kinds: If given, the string(s) will be used to set the NRRD header's "kinds" field. If a single string is given, it
         will be used for all dimensions. If multiple strings are given, they will be used in the given order. If
         nothing is given (default), the "kinds" field will not be set. Note that all strings should either be "domain"
         or "space".
+    :type kinds: str or sequence of strings, optional
+    :returns: None
+    :rtype: None
+    :raises RuntimeError: If the volume data is not scalar.
     """
     if volume.aligned_data.ndim > 3:
         raise RuntimeError("Currently, only supports saving NRRD files with scalar data only!")
@@ -150,20 +139,11 @@ def __check_data_kinds_in(header):
     Sanity check on the header's "kinds" field: are all entries either "domain" or "space" (i.e. are we really dealing
     with scalar data on a spatial domain)?
 
-    Parameters
-    ----------
-    header : dict
-        A dictionary containing the NRRD header (as returned by ``nrrd.read``, for example).
-
-    Returns
-    -------
-    None
-        Simply return if everything is ok or the "kinds" field is not set.
-
-    Raises
-    ------
-    IOError
-        If the "kinds" field contains entries other than "domain" or "space".
+    :param header: A dictionary containing the NRRD header (as returned by ``nrrd.read``, for example).
+    :type header: dict
+    :returns: None
+    :rtype: None
+    :raises IOError: If the "kinds" field contains entries other than "domain" or "space".
     """
     kinds = header.get("kinds")
     if kinds is None:
@@ -178,21 +158,12 @@ def __world_coordinate_system_from(header):
     """
     From the given NRRD header, determine the respective assumed anatomical world coordinate system.
 
-    Parameters
-    ----------
-    header : dict
-        A dictionary containing the NRRD header (as returned by ``nrrd.read``, for example).
-
-    Returns
-    -------
-    str
-        The three-character uppercase string determining the respective anatomical world coordinate system (such as
+    :param header: A dictionary containing the NRRD header (as returned by ``nrrd.read``, for example).
+    :type header: dict
+    :returns: The three-character uppercase string determining the respective anatomical world coordinate system (such as
         "RAS" or "LPS").
-
-    Raises
-    ------
-    IOError
-        If the header is missing the "space" field or the "space" field's value does not determine an anatomical world
+    :rtype: str
+    :raises IOError: If the header is missing the "space" field or the "space" field's value does not determine an anatomical world
         coordinate system.
     """
     try:
@@ -224,15 +195,11 @@ def __matrix_from(header):
     """
     Calculate the transformation matrix from voxel coordinates to the header's anatomical world coordinate system.
 
-    Parameters
-    ----------
-    header : dict
-        A dictionary containing the NRRD header (as returned by ``nrrd.read``, for example).
-
-    Returns
-    -------
-    numpy.ndarray
-        The resulting :math:`4x4` transformation matrix.
+    :param header: A dictionary containing the NRRD header (as returned by ``nrrd.read``, for example).
+    :type header: dict
+    :returns: The resulting :math:`4x4` transformation matrix.
+    :rtype: numpy.ndarray
+    :raises IOError: If the header is missing the "space directions" or "space origin" fields.
     """
     try:
         space_directions = header["space directions"]

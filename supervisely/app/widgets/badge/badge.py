@@ -5,29 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class Badge(Widget):
-    """Badge widget in Supervisely is a versatile tool for displaying notifications or counts on elements such as buttons, text.
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/badge>`_
-        (including screenshots and examples).
-
-    :param value: Value to be displayed on the badge.
-    :type value: Optional[Union[int, str, float]]
-    :param widget: Widget to be displayed on the badge.
-    :type widget: Optional[Widget]
-    :param max: Maximum value of the badge. If value is greater than max, max will be displayed on the badge.
-    :type max: Optional[Union[int, float]]
-    :param is_dot: If True, the badge will be displayed as a dot.
-    :type is_dot: Optional[bool]
-    :param hidden: If True, the badge will be hidden.
-    :type hidden: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: Optional[str]
-
-    :Usage example:
-    .. code-block:: python
-        from supervisely.app.widgets import Badge
-
-        badge = Badge(value=5, max=10)
-    """
+    """Displays notification count or dot on buttons, text, or other elements."""
 
     def __init__(
         self,
@@ -38,6 +16,27 @@ class Badge(Widget):
         hidden: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param value: Value to display on the badge.
+        :type value: Union[int, str, float], optional
+        :param widget: Widget to wrap with badge (shows dot if value is None).
+        :type widget: Widget, optional
+        :param max: Max value; if value > max, shows max instead.
+        :type max: Union[int, float], optional
+        :param is_dot: Show as dot instead of number.
+        :type is_dot: bool, optional
+        :param hidden: Hide the badge.
+        :type hidden: bool, optional
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Badge
+                badge = Badge(value=5, max=10)
+        """
         self._value = value
         self._widget = widget
         self._max = max if type(max) in [int, float] else None
@@ -60,7 +59,7 @@ class Badge(Widget):
             - isDot: If True, the badge will be displayed as a dot.
             - hidden: If True, the badge will be hidden.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Union[int, float, bool]]
         """
         res = {}
@@ -75,7 +74,7 @@ class Badge(Widget):
         Dictionary contains the following fields:
             - value: Value to be displayed on the badge.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Union[str, int, float]]
         """
         return {"value": self._value}
@@ -93,7 +92,7 @@ class Badge(Widget):
     def get_value(self) -> Union[str, int, float]:
         """Returns value to be displayed on the badge.
 
-        :return: Value to be displayed on the badge.
+        :returns: Value to be displayed on the badge.
         :rtype: Union[str, int, float]
         """
         if "value" not in StateJson()[self.widget_id].keys():
