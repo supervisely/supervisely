@@ -33,7 +33,7 @@ class OverlayImageConverter(ImageConverter):
         @property
         def overlay_paths(self) -> List[str]:
             return self._overlay_paths
-        
+
         def has_annotation(self) -> bool:
             return self._ann_path is not None
 
@@ -63,7 +63,12 @@ class OverlayImageConverter(ImageConverter):
                     continue
 
                 img_validation_fn = lambda p: is_valid_ext(get_file_ext(p))
-                overlay_paths = [p for p in list_files(os.path.join(overlay_dir, item_name), filter_fn=img_validation_fn)]
+                overlay_paths = [
+                    p
+                    for p in list_files(
+                        os.path.join(overlay_dir, item_name), filter_fn=img_validation_fn
+                    )
+                ]
                 if not overlay_paths:
                     logger.warning("No valid overlay images found for item: %s", item)
                     continue
@@ -104,9 +109,20 @@ class OverlayImageConverter(ImageConverter):
                 parent_paths = [item.path for item in self._items]
                 overlay_paths = [item.overlay_paths for item in self._items]
                 parent_names = [os.path.basename(item.path) for item in items_batch]
-                overlay_names = [[os.path.basename(p) for p in item.overlay_paths] for item in items_batch]
-                parent_image_infos, _ = api.image.upload_overlay_images(dataset_id, parent_names=parent_names, overlays=overlay_names, parent_paths=parent_paths, paths=overlay_paths)
-                p_name_to_info = {name: info for info, name in zip(parent_image_infos, parent_names)}
+                overlay_names = [
+                    [os.path.basename(p) for p in item.overlay_paths] for item in items_batch
+                ]
+
+                parent_image_infos, _ = api.image.upload_overlay_images(
+                    dataset_id,
+                    parent_names=parent_names,
+                    overlays=overlay_names,
+                    parent_paths=parent_paths,
+                    paths=overlay_paths,
+                )
+                p_name_to_info = {
+                    name: info for info, name in zip(parent_image_infos, parent_names)
+                }
 
                 id_to_ann_path = {}
                 for item in items_batch:
@@ -115,8 +131,10 @@ class OverlayImageConverter(ImageConverter):
                         id_to_ann_path[info.id] = item.ann_path
 
                 if id_to_ann_path:
-                    api.annotation.upload_anns(list(id_to_ann_path.keys()), list(id_to_ann_path.values()))
-                
+                    api.annotation.upload_anns(
+                        list(id_to_ann_path.keys()), list(id_to_ann_path.values())
+                    )
+
                 if log_progress:
                     progress_cb(len(items_batch))
 
