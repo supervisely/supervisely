@@ -45,6 +45,7 @@ class AvailableImageConverters:
     LABEL_ME = "label_me"
     LABEL_STUDIO = "label_studio"
     HIGH_COLOR_DEPTH = "high_color_depth"
+    OVERLAY = "overlay"
 
 
 class AvailableVideoConverters:
