@@ -70,7 +70,6 @@ from supervisely.io.fs import (
     list_files_recursively,
     mkdir,
     silent_remove,
-    subdirs_tree,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
@@ -2693,6 +2692,50 @@ class Project:
         """
         return os.path.join(self.directory, "meta.json")
 
+    def _is_dataset_dir(self, directory: str) -> bool:
+        """Return ``True`` when the directory matches the expected dataset layout."""
+        if not os.path.isdir(directory):
+            return False
+
+        expected_subdirs = (
+            self.dataset_class.item_dir_name,
+            self.dataset_class.ann_dir_name,
+            self.dataset_class.datasets_dir_name,
+        )
+        if any(dir_exists(os.path.join(directory, subdir)) for subdir in expected_subdirs):
+            return True
+
+        return any(
+            entry.is_file() and entry.name.endswith(OFFSETS_PKL_SUFFIX)
+            for entry in os.scandir(directory)
+        )
+
+    def _iter_dataset_directories(
+        self, root_dir: str, parents: Optional[List[str]] = None, ignore_dirs: Optional[set] = None
+    ) -> Generator[Tuple[str, Optional[List[str]]], None, None]:
+        """Yield dataset directories from the project root or a dataset ``datasets`` folder only."""
+        parents = parents or []
+        ignore_dirs = ignore_dirs or set()
+
+        if not dir_exists(root_dir):
+            return
+
+        child_dirs = sorted(
+            (entry for entry in os.scandir(root_dir) if entry.is_dir()),
+            key=lambda entry: entry.name,
+        )
+
+        for entry in child_dirs:
+            if entry.name in ignore_dirs or not self._is_dataset_dir(entry.path):
+                continue
+
+            current_parents = parents or None
+            yield entry.path, current_parents
+
+            nested_root = os.path.join(entry.path, self.dataset_class.datasets_dir())
+            nested_parents = [*parents, entry.name]
+            yield from self._iter_dataset_directories(nested_root, nested_parents)
+
     def _read(self):
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
@@ -2701,23 +2744,14 @@ class Project:
         else:
             self.blob_files = []
 
-        ignore_dirs = self.dataset_class.ignorable_dirs()  # dir names that can not be datasets
+        ignore_dirs = set(self.dataset_class.ignorable_dirs())  # dir names that can not be datasets
 
-        ignore_content_dirs = ignore_dirs.copy()  # dir names which can not contain datasets
-        ignore_content_dirs.pop(ignore_content_dirs.index(self.dataset_class.datasets_dir()))
-
-        possible_datasets = subdirs_tree(self.directory, ignore_dirs, ignore_content_dirs)
-
-        for ds_name in possible_datasets:
-            parents = ds_name.split(os.path.sep)
-            parents = [p for p in parents if p != self.dataset_class.datasets_dir()]
-            if len(parents) > 1:
-                parents.pop(-1)
-            else:
-                parents = None
+        for ds_path, parents in self._iter_dataset_directories(
+            self.directory, ignore_dirs=ignore_dirs
+        ):
             try:
                 current_dataset = self.dataset_class(
-                    os.path.join(self.directory, ds_name),
+                    ds_path,
                     OpenMode.READ,
                     parents=parents,
                 )
