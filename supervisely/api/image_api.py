@@ -1630,7 +1630,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :param parent_id: Optional parent ID for the image
+        :param parent_id: Optional parent ID for the image. Used exclusively for "overlay" labeling interface.
         :type parent_id: int, optional
         :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
@@ -2079,7 +2079,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :param parent_id: Optional parent ID for the image
+        :param parent_id: Optional parent ID for the image. Used exclusively for "overlay" labeling interface.
         :type parent_id: int, optional
         :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
@@ -2138,9 +2138,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     img_info = api.image.upload_hash(new_dataset_id, name=im_info.name, hash=im_info.hash, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
-        return self.upload_hashes(dataset_id, [name], [hash], metas=metas, parent_ids=[parent_id])[
-            0
-        ]
+        parent_id = None if parent_id is None else [parent_id]
+        return self.upload_hashes(dataset_id, [name], [hash], metas=metas, parent_ids=parent_id)[0]
 
     def upload_hashes(
         self,
@@ -2914,7 +2913,12 @@ class ImageApi(RemoveableBulkModuleApi):
                                 error_index = name_to_index[error_img_name]
 
                                 idx_to_id[error_index + batch_count * batch_size] = error["id"]
-                                for l in [batch_items, batch_metas, batch_names]:
+                                for l in [
+                                    batch_items,
+                                    batch_metas,
+                                    batch_names,
+                                    batch_parent_ids,
+                                ]:
                                     l.pop(error_index)
 
                         if len(batch_names) == 0:
@@ -4440,97 +4444,6 @@ class ImageApi(RemoveableBulkModuleApi):
         )
         return uploaded_image_infos
 
-    def upload_to_parents(
-        self,
-        dataset_id: int,
-        names: List[str],
-        parent_ids: List[int],
-        paths: Optional[List[str]] = None,
-        links: Optional[List[str]] = None,
-        hashes: Optional[List[str]] = None,
-        metas: Optional[List[Dict]] = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-        batch_size: Optional[int] = 50,
-        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
-        force_metadata_for_links: Optional[bool] = False,
-    ) -> List[ImageInfo]:
-        """Uploads images linked to parents by ``parent_ids``.
-
-        Exactly one of ``paths``, ``links``, or ``hashes`` must be provided.
-
-        :param dataset_id: Dataset ID in Supervisely.
-        :type dataset_id: int
-        :param names: Image names.
-        :type names: List[str]
-        :param parent_ids: Parent image IDs for each overlay.
-        :type parent_ids: List[int]
-        :param paths: Local overlay image paths.
-        :type paths: List[str], optional
-        :param links: Remote overlay image links.
-        :type links: List[str], optional
-        :param hashes: Overlay image hashes.
-        :type hashes: List[str], optional
-        :param metas: Overlay image metas.
-        :type metas: List[Dict], optional
-        :param progress_cb: Upload progress callback.
-        :type progress_cb: tqdm or callable, optional
-        :param batch_size: Batch size.
-        :type batch_size: int, optional
-        :param conflict_resolution: Conflict resolution strategy.
-        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :param force_metadata_for_links: Force metadata extraction for links.
-        :type force_metadata_for_links: bool, optional
-        :returns: Uploaded overlay image infos.
-        :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
-        """
-        source_count = sum([paths is not None, links is not None, hashes is not None])
-        if source_count == 0:
-            raise ValueError("One of 'paths', 'links', or 'hashes' must be provided.")
-        if source_count > 1:
-            raise ValueError("Only one of 'paths', 'links', or 'hashes' can be provided.")
-
-        if paths is not None:
-            if len(names) != len(paths) or len(parent_ids) != len(paths):
-                raise ValueError("'names', 'paths', and 'parent_ids' must have equal length.")
-            return self.upload_paths(
-                dataset_id=dataset_id,
-                names=names,
-                paths=paths,
-                progress_cb=progress_cb,
-                metas=metas,
-                conflict_resolution=conflict_resolution,
-                parent_ids=parent_ids,
-            )
-
-        elif links is not None:
-            if len(names) != len(links) or len(parent_ids) != len(links):
-                raise ValueError("'names', 'links', and 'parent_ids' must have equal length.")
-            return self.upload_links(
-                dataset_id=dataset_id,
-                names=names,
-                links=links,
-                progress_cb=progress_cb,
-                metas=metas,
-                batch_size=batch_size,
-                force_metadata_for_links=force_metadata_for_links,
-                conflict_resolution=conflict_resolution,
-                parent_ids=parent_ids,
-            )
-
-        else:  # hashes
-            if len(names) != len(hashes) or len(parent_ids) != len(hashes):
-                raise ValueError("'names', 'hashes', and 'parent_ids' must have equal length.")
-            return self.upload_hashes(
-                dataset_id=dataset_id,
-                names=names,
-                hashes=hashes,
-                progress_cb=progress_cb,
-                metas=metas,
-                batch_size=batch_size,
-                conflict_resolution=conflict_resolution,
-                parent_ids=parent_ids,
-            )
-
     def upload_overlay_images(
         self,
         dataset_id: int,
@@ -4600,14 +4513,13 @@ class ImageApi(RemoveableBulkModuleApi):
                                          uploaded from links. If False, metadata fields in the
                                          response can be empty until metadata is retrieved.
         :type force_metadata_for_links: bool, optional
-        :raises ValueError: If input list lengths do not match, if the parent mapping is invalid,
+        :raises ValueError: If input list lengths do not match, if the parent mapping is invalid, 
                             or if not exactly one source is provided for parents or overlays.
-                :returns: Tuple of two values:
-
-                  - uploaded parent image infos;
-                                    - uploaded overlay image infos grouped by parent index
-                                        (``overlay_infos_grouped[i]`` corresponds to ``parent_names[i]``).
-                :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[List[:class:`~supervisely.api.image_api.ImageInfo`]]]
+        :returns: Tuple of two values:
+            - uploaded parent image infos;
+            - uploaded overlay image infos grouped by parent index
+                (``overlay_infos_grouped[i]`` corresponds to ``parent_names[i]``).
+        :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[List[:class:`~supervisely.api.image_api.ImageInfo`]]]
 
         :Usage Example:
 
@@ -4651,6 +4563,32 @@ class ImageApi(RemoveableBulkModuleApi):
                     paths=overlay_paths,
                 )
         """
+
+        def _upload_paths_batched(
+            names: List[str],
+            paths: List[str],
+            parent_ids: Optional[List[Optional[int]]] = None,
+        ) -> List[ImageInfo]:
+            if parent_ids is None:
+                parent_ids = [None] * len(names)
+
+            uploaded_infos = []
+            for batch_names, batch_paths, batch_parent_ids in zip(
+                batched(names, batch_size=batch_size),
+                batched(paths, batch_size=batch_size),
+                batched(parent_ids, batch_size=batch_size),
+            ):
+                uploaded_infos.extend(
+                    self.upload_paths(
+                        dataset_id=dataset_id,
+                        names=batch_names,
+                        paths=batch_paths,
+                        conflict_resolution=conflict_resolution,
+                        parent_ids=batch_parent_ids,
+                    )
+                )
+            return uploaded_infos
+
         # Validate overlays length matches parent_names
         if len(overlays) != len(parent_names):
             raise ValueError(
@@ -4680,12 +4618,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if parent_paths is not None:
             if len(parent_names) != len(parent_paths):
                 raise ValueError("'parent_names' and 'parent_paths' must have equal length.")
-            parent_infos = self.upload_paths(
-                dataset_id=dataset_id,
-                names=parent_names,
-                paths=parent_paths,
-                conflict_resolution=conflict_resolution,
-            )
+            parent_infos = _upload_paths_batched(parent_names, parent_paths)
         elif parent_links is not None:
             if len(parent_names) != len(parent_links):
                 raise ValueError("'parent_names' and 'parent_links' must have equal length.")
@@ -4723,13 +4656,10 @@ class ImageApi(RemoveableBulkModuleApi):
                         f"'paths[{idx}]' and 'overlays[{idx}]' must have equal length."
                     )
             flat_paths = [path for group_paths in paths for path in group_paths]
-            overlay_infos = self.upload_to_parents(
-                dataset_id=dataset_id,
-                names=overlay_names,
+            overlay_infos = _upload_paths_batched(
+                overlay_names,
+                flat_paths,
                 parent_ids=actual_parent_ids,
-                paths=flat_paths,
-                batch_size=batch_size,
-                conflict_resolution=conflict_resolution,
             )
         elif links is not None:
             if len(links) != len(overlays):
@@ -4740,14 +4670,14 @@ class ImageApi(RemoveableBulkModuleApi):
                         f"'links[{idx}]' and 'overlays[{idx}]' must have equal length."
                     )
             flat_links = [link for group_links in links for link in group_links]
-            overlay_infos = self.upload_to_parents(
+            overlay_infos = self.upload_links(
                 dataset_id=dataset_id,
                 names=overlay_names,
-                parent_ids=actual_parent_ids,
                 links=flat_links,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
                 force_metadata_for_links=force_metadata_for_links,
+                parent_ids=actual_parent_ids,
             )
         else:  # hashes
             if len(hashes) != len(overlays):
@@ -4758,13 +4688,13 @@ class ImageApi(RemoveableBulkModuleApi):
                         f"'hashes[{idx}]' and 'overlays[{idx}]' must have equal length."
                     )
             flat_hashes = [hash_item for group_hashes in hashes for hash_item in group_hashes]
-            overlay_infos = self.upload_to_parents(
+            overlay_infos = self.upload_hashes(
                 dataset_id=dataset_id,
                 names=overlay_names,
-                parent_ids=actual_parent_ids,
                 hashes=flat_hashes,
                 batch_size=batch_size,
                 conflict_resolution=conflict_resolution,
+                parent_ids=actual_parent_ids,
             )
 
         overlay_infos_grouped = []

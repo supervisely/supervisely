@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 from supervisely import Annotation, ProjectMeta, logger
 from supervisely._utils import batched, is_development
@@ -18,7 +18,13 @@ class OverlayImageConverter(ImageConverter):
     ANN_DIR = "ann"
 
     class Item:
-        def __init__(self, path: str, ann_path: str, overlay_paths: List[str]):
+
+        def __init__(
+            self,
+            path: str,
+            overlay_paths: List[str],
+            ann_path: Optional[str],
+        ):
             self._path = path
             self._ann_path = ann_path
             self._overlay_paths = overlay_paths
@@ -28,7 +34,7 @@ class OverlayImageConverter(ImageConverter):
             return self._path
 
         @property
-        def ann_path(self) -> str:
+        def ann_path(self) -> Optional[str]:
             return self._ann_path
 
         @property
@@ -63,12 +69,14 @@ class OverlayImageConverter(ImageConverter):
                     logger.warning("Skipping file with unsupported extension: %s", item)
                     continue
 
+                item_overlay_dir = os.path.join(overlay_dir, item_name)
+                if not os.path.isdir(item_overlay_dir):
+                    logger.warning("Overlay directory not found for item: %s", item)
+                    continue
+
                 img_validation_fn = lambda p: is_valid_ext(get_file_ext(p))
                 overlay_paths = [
-                    p
-                    for p in list_files(
-                        os.path.join(overlay_dir, item_name), filter_fn=img_validation_fn
-                    )
+                    p for p in list_files(item_overlay_dir, filter_fn=img_validation_fn)
                 ]
                 if not overlay_paths:
                     logger.warning("No valid overlay images found for item: %s", item)
@@ -79,7 +87,7 @@ class OverlayImageConverter(ImageConverter):
                     logger.warning("Annotation file not found for item: %s", item)
                     ann_path = None
 
-                items.append(self.Item(item, ann_path, overlay_paths))
+                items.append(self.Item(item, overlay_paths, ann_path))
         self._items = items
         if items:
             logger.info("Found %d items in overlay images format", len(items))
@@ -107,8 +115,8 @@ class OverlayImageConverter(ImageConverter):
 
         with ApiContext(api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta):
             for items_batch in batched(self._items, batch_size):
-                parent_paths = [item.path for item in self._items]
-                overlay_paths = [item.overlay_paths for item in self._items]
+                parent_paths = [item.path for item in items_batch]
+                overlay_paths = [item.overlay_paths for item in items_batch]
                 parent_names = [os.path.basename(item.path) for item in items_batch]
                 overlay_names = [
                     [os.path.basename(p) for p in item.overlay_paths] for item in items_batch
@@ -133,10 +141,11 @@ class OverlayImageConverter(ImageConverter):
                             id_to_ann_path[info.id] = Annotation.from_json(
                                 load_json_file(item.ann_path), meta
                             )
-                        except:
+                        except Exception as e:
                             logger.warning(
-                                "Failed to load annotation for item: %s. Skipping annotation upload.",
+                                "Failed to load annotation for item: %s. Skipping annotation upload. Error: %s",
                                 item.path,
+                                e,
                             )
                             continue
 
