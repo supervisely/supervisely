@@ -4661,14 +4661,11 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise ValueError(
                     "'overlay_paths' and 'overlay_names' must have equal outer length."
                 )
-            for idx, (current_overlay_names, path_list) in enumerate(
-                zip(overlay_names, overlay_paths)
-            ):
-                if len(current_overlay_names) != len(path_list):
-                    raise ValueError(
-                        f"'overlay_paths[{idx}]' and 'overlay_names[{idx}]' must have equal length."
-                    )
             flat_paths = [path for group_paths in overlay_paths for path in group_paths]
+            if len(flat_overlay_names) != len(flat_paths):
+                raise ValueError(
+                    "The total number of 'overlay_paths' items must match the total number of 'overlay_names' items."
+                )
             overlay_infos = _upload_paths_batched(
                 flat_overlay_names,
                 flat_paths,
@@ -4679,14 +4676,11 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise ValueError(
                     "'overlay_links' and 'overlay_names' must have equal outer length."
                 )
-            for idx, (current_overlay_names, link_list) in enumerate(
-                zip(overlay_names, overlay_links)
-            ):
-                if len(current_overlay_names) != len(link_list):
-                    raise ValueError(
-                        f"'overlay_links[{idx}]' and 'overlay_names[{idx}]' must have equal length."
-                    )
             flat_links = [link for group_links in overlay_links for link in group_links]
+            if len(flat_overlay_names) != len(flat_links):
+                raise ValueError(
+                    "The total number of 'overlay_links' items must match the total number of 'overlay_names' items."
+                )
             overlay_infos = self.upload_links(
                 dataset_id=dataset_id,
                 names=flat_overlay_names,
@@ -4701,16 +4695,13 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise ValueError(
                     "'overlay_hashes' and 'overlay_names' must have equal outer length."
                 )
-            for idx, (current_overlay_names, hash_list) in enumerate(
-                zip(overlay_names, overlay_hashes)
-            ):
-                if len(current_overlay_names) != len(hash_list):
-                    raise ValueError(
-                        f"'overlay_hashes[{idx}]' and 'overlay_names[{idx}]' must have equal length."
-                    )
             flat_hashes = [
                 hash_item for group_hashes in overlay_hashes for hash_item in group_hashes
             ]
+            if len(flat_overlay_names) != len(flat_hashes):
+                raise ValueError(
+                    "The total number of 'overlay_hashes' items must match the total number of 'overlay_names' items."
+                )
             overlay_infos = self.upload_hashes(
                 dataset_id=dataset_id,
                 names=flat_overlay_names,
