@@ -403,6 +403,9 @@ class ImageInfo(NamedTuple):
     #: :class:`str`: Image description.
     description: Optional[str] = None
 
+    #: int: Parent image ID for overlay relationship.
+    parent_id: Optional[int] = None
+
     # DO NOT DELETE THIS COMMENT
     #! New fields must be added with default values to keep backward compatibility.
 
@@ -472,6 +475,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.PROJECT_ID,
             ApiField.DESCRIPTION,
+            ApiField.PARENT_ID,
         ]
 
     @staticmethod
@@ -1603,6 +1607,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        parent_id: Optional[int] = None,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1625,6 +1630,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param parent_id: Optional parent ID for the image. Used exclusively for "overlay" labeling interface.
+        :type parent_id: int, optional
         :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
@@ -1658,6 +1665,7 @@ class ImageApi(RemoveableBulkModuleApi):
             [name],
             [path],
             metas=metas,
+            parent_ids=[parent_id],
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
@@ -1674,6 +1682,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1700,6 +1709,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param parent_ids: Optional list of parent IDs for the images
+        :type parent_ids: List[Optional[int]], optional
         :raises ValueError: if len(names) != len(paths)
         :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
@@ -1747,10 +1758,16 @@ class ImageApi(RemoveableBulkModuleApi):
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
+            parent_ids=parent_ids,
         )
 
     def upload_np(
-        self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        img: np.ndarray,
+        meta: Optional[Dict] = None,
+        parent_id: Optional[int] = None,
     ) -> ImageInfo:
         """
         Upload given Image in numpy format with given name to Dataset.
@@ -1767,6 +1784,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type img: np.ndarray
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
+        :param parent_id: Optional parent ID for the image
+        :type parent_id: int, optional
         :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
@@ -1795,7 +1814,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np, meta=img_meta)
         """
         metas = None if meta is None else [meta]
-        return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
+        return self.upload_nps(dataset_id, [name], [img], metas=metas, parent_ids=[parent_id])[0]
 
     def upload_nps(
         self,
@@ -1805,6 +1824,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1825,6 +1845,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param parent_ids: Optional list of parent IDs for the images
+        :type parent_ids: List[Optional[int]], optional
         :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
@@ -1855,8 +1877,9 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 # Add custom sort parameter for images
                 img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+                parent_ids = [1, 2, 3]
                 with api.image.add_custom_sort(key="my-key"):
-                    img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps, metas=img_metas)
+                    img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps, metas=img_metas, parent_ids=parent_ids)
         """
 
         def img_to_bytes_stream(item):
@@ -1875,7 +1898,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+            dataset_id,
+            names,
+            hashes,
+            metas=metas,
+            conflict_resolution=conflict_resolution,
+            parent_ids=parent_ids,
         )
 
     def upload_link(
@@ -1885,6 +1913,7 @@ class ImageApi(RemoveableBulkModuleApi):
         link: str,
         meta: Optional[Dict] = None,
         force_metadata_for_links=True,
+        parent_id: Optional[int] = None,
     ) -> ImageInfo:
         """
         Uploads Image from given link to Dataset.
@@ -1903,6 +1932,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
+        :param parent_id: Optional parent ID for the image
+        :type parent_id: int, optional
         :returns: ImageInfo object with information about the Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
@@ -1939,6 +1970,7 @@ class ImageApi(RemoveableBulkModuleApi):
             [link],
             metas=metas,
             force_metadata_for_links=force_metadata_for_links,
+            parent_ids=[parent_id],
         )[0]
 
     def upload_links(
@@ -1952,6 +1984,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1976,6 +2009,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param parent_ids: Optional list of parent IDs for the images
+        :type parent_ids: List[Optional[int]], optional
         :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
@@ -2018,10 +2053,16 @@ class ImageApi(RemoveableBulkModuleApi):
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
+            parent_ids=parent_ids,
         )
 
     def upload_hash(
-        self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        hash: str,
+        meta: Optional[Dict] = None,
+        parent_id: Optional[int] = None,
     ) -> ImageInfo:
         """
         Upload Image from given hash to Dataset.
@@ -2038,6 +2079,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
+        :param parent_id: Optional parent ID for the image. Used exclusively for "overlay" labeling interface.
+        :type parent_id: int, optional
         :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
@@ -2095,7 +2138,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     img_info = api.image.upload_hash(new_dataset_id, name=im_info.name, hash=im_info.hash, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
-        return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
+        parent_id = None if parent_id is None else [parent_id]
+        return self.upload_hashes(dataset_id, [name], [hash], metas=metas, parent_ids=parent_id)[0]
 
     def upload_hashes(
         self,
@@ -2110,6 +2154,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -2140,6 +2185,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param parent_ids: Optional list of parent IDs for the images
+        :type parent_ids: List[Optional[int]], optional
         :returns: List with information about Images.
         :rtype: :class:`List[ImageInfo]`
 
@@ -2197,10 +2244,16 @@ class ImageApi(RemoveableBulkModuleApi):
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
+            parent_ids=parent_ids,
         )
 
     def upload_id(
-        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        id: int,
+        meta: Optional[Dict] = None,
+        parent_id: Optional[int] = None,
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -2217,6 +2270,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
+        :param parent_id: Optional parent ID for the image
+        :type parent_id: int, optional
         :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
@@ -2274,7 +2329,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     img_info = api.image.upload_id(new_dataset_id, name=im_info.name, id=im_info.id, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
-        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
+        return self.upload_ids(dataset_id, [name], [id], metas=metas, parent_ids=[parent_id])[0]
 
     def upload_ids(
         self,
@@ -2288,6 +2343,7 @@ class ImageApi(RemoveableBulkModuleApi):
         infos: List[ImageInfo] = None,  # deprecated
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -2316,6 +2372,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param parent_ids: Optional list of parent IDs for the images
+        :type parent_ids: List[Optional[int]], optional
         :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
@@ -2375,6 +2433,7 @@ class ImageApi(RemoveableBulkModuleApi):
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
+            parent_ids=parent_ids,
         )
 
     def upload_by_offsets(
@@ -2391,6 +2450,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from blob file in Team Files by offsets to Dataset with prepared names.
@@ -2432,6 +2492,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param parent_ids: Optional list of parent IDs for the images
+        :type parent_ids: List[Optional[int]], optional
         :returns: List with information about Images.
         :rtype: :class:`List[ImageInfo]`
 
@@ -2518,6 +2580,7 @@ class ImageApi(RemoveableBulkModuleApi):
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
+            parent_ids=parent_ids,
         )
 
     def upload_by_offsets_generator(
@@ -2677,6 +2740,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        parent_ids: Optional[List[Optional[int]]] = None,
     ):
         """ """
         if use_strict_validation and not validate_meta:
@@ -2728,9 +2792,14 @@ class ImageApi(RemoveableBulkModuleApi):
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
-        def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
+        def _pack_for_request(
+            names: List[str],
+            items: List[Any],
+            metas: List[Dict],
+            parent_ids: List[Optional[int]],
+        ) -> List[Any]:
             images = []
-            for name, item, meta in zip(names, items, metas):
+            for name, item, meta, parent_id in zip(names, items, metas, parent_ids):
                 image_data = {ApiField.TITLE: name}
                 # Check if the item is a data format for upload by offset
                 if (
@@ -2746,6 +2815,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     meta = self._add_custom_sort(meta, name)
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
+                if parent_id is not None:
+                    image_data[ApiField.PARENT_ID] = parent_id
                 images.append(image_data)
             return images
 
@@ -2760,16 +2831,22 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(names) != len(metas):
                 raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
+        if parent_ids is None:
+            parent_ids = [None] * len(names)
+        elif len(names) != len(parent_ids):
+            raise ValueError('Can not match "names" and "parent_ids" len(names) != len(parent_ids)')
+
         idx_to_id = {}
-        for batch_count, (batch_names, batch_items, batch_metas) in enumerate(
+        for batch_count, (batch_names, batch_items, batch_metas, batch_parent_ids) in enumerate(
             zip(
                 batched(names, batch_size=batch_size),
                 batched(items, batch_size=batch_size),
                 batched(metas, batch_size=batch_size),
+                batched(parent_ids, batch_size=batch_size),
             )
         ):
             for retry in range(2):
-                images = _pack_for_request(batch_names, batch_items, batch_metas)
+                images = _pack_for_request(batch_names, batch_items, batch_metas, batch_parent_ids)
                 try:
                     response = self._api.post(
                         "images.bulk.add",
@@ -2836,7 +2913,12 @@ class ImageApi(RemoveableBulkModuleApi):
                                 error_index = name_to_index[error_img_name]
 
                                 idx_to_id[error_index + batch_count * batch_size] = error["id"]
-                                for l in [batch_items, batch_metas, batch_names]:
+                                for l in [
+                                    batch_items,
+                                    batch_metas,
+                                    batch_names,
+                                    batch_parent_ids,
+                                ]:
                                     l.pop(error_index)
 
                         if len(batch_names) == 0:
@@ -4361,6 +4443,282 @@ class ImageApi(RemoveableBulkModuleApi):
             force_metadata_for_links=force_metadata_for_links,
         )
         return uploaded_image_infos
+
+    def upload_overlay_images(
+        self,
+        dataset_id: int,
+        names: List[str],
+        paths: Optional[List[str]] = None,
+        links: Optional[List[str]] = None,
+        hashes: Optional[List[str]] = None,
+        overlay_names: Optional[List[List[str]]] = None,
+        overlay_paths: Optional[List[List[str]]] = None,
+        overlay_links: Optional[List[List[str]]] = None,
+        overlay_hashes: Optional[List[List[str]]] = None,
+        batch_size: Optional[int] = 50,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
+        force_metadata_for_links: Optional[bool] = False,
+    ) -> Tuple[List[ImageInfo], List[List[ImageInfo]]]:
+        """Uploads parent images and overlay images linked to them.
+
+        This method first uploads parent images to the destination dataset and then uploads
+        overlay images with references to the uploaded parents.
+
+        Parent-to-overlay mapping is by index: ``overlay_names[i]`` contains overlay names for ``names[i]``.
+        Each parent can have multiple overlays (one-to-many mapping).
+
+        Exactly one parent source must be provided:
+
+        - ``paths``
+        - ``links``
+        - ``hashes``
+
+        Exactly one overlay source must be provided:
+
+        - ``overlay_paths``
+        - ``overlay_links``
+        - ``overlay_hashes``
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: Parent image names.
+        :type names: List[str]
+        :param paths: Local paths to parent images.
+        :type paths: List[str], optional
+        :param links: Remote links to parent images.
+        :type links: List[str], optional
+        :param hashes: Hashes of parent images already uploaded to Supervisely storage.
+        :type hashes: List[str], optional
+        :param overlay_names: List of overlay name lists. ``overlay_names[i]`` contains overlay names for ``names[i]``.
+        :type overlay_names: List[List[str]]
+        :param overlay_paths: Local paths to overlay images grouped by parent index.
+              ``overlay_paths[i]`` corresponds to ``overlay_names[i]``.
+        :type overlay_paths: List[List[str]], optional
+        :param overlay_links: Remote links to overlay images grouped by parent index.
+              ``overlay_links[i]`` corresponds to ``overlay_names[i]``.
+        :type overlay_links: List[List[str]], optional
+        :param overlay_hashes: Hashes of overlay images grouped by parent index.
+               ``overlay_hashes[i]`` corresponds to ``overlay_names[i]``.
+        :type overlay_hashes: List[List[str]], optional
+        :param batch_size: Number of images uploaded in one batch for link/hash-based uploads.
+        :type batch_size: int, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts.
+            Options:
+
+            - ``"replace"``: Replace existing images in the dataset and log deletions.
+            - ``"skip"``: Skip uploading conflicting images and return existing ``ImageInfo``.
+            - ``"rename"``: (default) Rename new images to prevent conflicts.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param force_metadata_for_links: Specifies whether to force retrieving metadata for images
+                                         uploaded from links. If False, metadata fields in the
+                                         response can be empty until metadata is retrieved.
+        :type force_metadata_for_links: bool, optional
+        :raises ValueError: If input list lengths do not match, if the parent mapping is invalid,
+                            or if not exactly one source is provided for parents or overlays.
+        :returns: Tuple of two values:
+            - uploaded parent image infos;
+            - uploaded overlay image infos grouped by parent index
+                (``overlay_infos_grouped[i]`` corresponds to ``names[i]``).
+        :rtype: Tuple[List[:class:`~supervisely.api.image_api.ImageInfo`], List[List[:class:`~supervisely.api.image_api.ImageInfo`]]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 123456
+
+                names = ["scene_01.png", "scene_02.png"]
+                paths = [
+                    "/path/to/scene_01.png",
+                    "/path/to/scene_02.png",
+                ]
+
+                # Multiple overlays can be linked to each parent using list of lists
+                overlay_names = [
+                    ["scene_01_mask.png", "scene_01_depth.png"],  # overlays for scene_01.png
+                    ["scene_02_mask.png"],                         # overlays for scene_02.png
+                ]
+                overlay_paths = [
+                    ["/path/to/scene_01_mask.png", "/path/to/scene_01_depth.png"],
+                    ["/path/to/scene_02_mask.png"],
+                ]
+
+                parent_infos, overlay_infos = api.image.upload_overlay_images(
+                    dataset_id=dataset_id,
+                    names=names,
+                    paths=paths,
+                    overlay_names=overlay_names,
+                    overlay_paths=overlay_paths,
+                )
+        """
+
+        def _upload_paths_batched(
+            names: List[str],
+            paths: List[str],
+            parent_ids: Optional[List[Optional[int]]] = None,
+        ) -> List[ImageInfo]:
+            if parent_ids is None:
+                parent_ids = [None] * len(names)
+
+            uploaded_infos = []
+            for batch_names, batch_paths, batch_parent_ids in zip(
+                batched(names, batch_size=batch_size),
+                batched(paths, batch_size=batch_size),
+                batched(parent_ids, batch_size=batch_size),
+            ):
+                uploaded_infos.extend(
+                    self.upload_paths(
+                        dataset_id=dataset_id,
+                        names=batch_names,
+                        paths=batch_paths,
+                        conflict_resolution=conflict_resolution,
+                        parent_ids=batch_parent_ids,
+                    )
+                )
+            return uploaded_infos
+
+        if overlay_names is None:
+            raise ValueError("'overlay_names' must be provided.")
+
+        # Validate overlay_names length matches names
+        if len(overlay_names) != len(names):
+            raise ValueError(
+                f"'overlay_names' length ({len(overlay_names)}) must match 'names' length ({len(names)})."
+            )
+
+        # Flatten overlays for processing
+        flat_overlay_names = []
+        overlay_parent_indices = []
+        for parent_idx, current_overlay_names in enumerate(overlay_names):
+            for overlay_name in current_overlay_names:
+                flat_overlay_names.append(overlay_name)
+                overlay_parent_indices.append(parent_idx)
+
+        parent_source_count = sum(
+            [
+                paths is not None,
+                links is not None,
+                hashes is not None,
+            ]
+        )
+        if parent_source_count != 1:
+            raise ValueError("Exactly one of 'paths', 'links', or 'hashes' must be provided.")
+
+        if paths is not None:
+            if len(names) != len(paths):
+                raise ValueError("'names' and 'paths' must have equal length.")
+            parent_infos = _upload_paths_batched(names, paths)
+        elif links is not None:
+            if len(names) != len(links):
+                raise ValueError("'names' and 'links' must have equal length.")
+            parent_infos = self.upload_links(
+                dataset_id=dataset_id,
+                names=names,
+                links=links,
+                batch_size=batch_size,
+                force_metadata_for_links=force_metadata_for_links,
+                conflict_resolution=conflict_resolution,
+            )
+        else:  # hashes
+            if len(names) != len(hashes):
+                raise ValueError("'names' and 'hashes' must have equal length.")
+            parent_infos = self.upload_hashes(
+                dataset_id=dataset_id,
+                names=names,
+                hashes=hashes,
+                batch_size=batch_size,
+                conflict_resolution=conflict_resolution,
+            )
+
+        actual_parent_ids = [parent_infos[parent_idx].id for parent_idx in overlay_parent_indices]
+
+        overlay_source_count = sum(
+            [
+                overlay_paths is not None,
+                overlay_links is not None,
+                overlay_hashes is not None,
+            ]
+        )
+        if overlay_source_count != 1:
+            raise ValueError(
+                "Exactly one of 'overlay_paths', 'overlay_links', or 'overlay_hashes' must be provided."
+            )
+
+        if overlay_paths is not None:
+            if len(overlay_paths) != len(overlay_names):
+                raise ValueError(
+                    "'overlay_paths' and 'overlay_names' must have equal outer length."
+                )
+            flat_paths = [path for group_paths in overlay_paths for path in group_paths]
+            if len(flat_overlay_names) != len(flat_paths):
+                raise ValueError(
+                    "The total number of 'overlay_paths' items must match the total number of 'overlay_names' items."
+                )
+            overlay_infos = _upload_paths_batched(
+                flat_overlay_names,
+                flat_paths,
+                parent_ids=actual_parent_ids,
+            )
+        elif overlay_links is not None:
+            if len(overlay_links) != len(overlay_names):
+                raise ValueError(
+                    "'overlay_links' and 'overlay_names' must have equal outer length."
+                )
+            flat_links = [link for group_links in overlay_links for link in group_links]
+            if len(flat_overlay_names) != len(flat_links):
+                raise ValueError(
+                    "The total number of 'overlay_links' items must match the total number of 'overlay_names' items."
+                )
+            overlay_infos = self.upload_links(
+                dataset_id=dataset_id,
+                names=flat_overlay_names,
+                links=flat_links,
+                batch_size=batch_size,
+                conflict_resolution=conflict_resolution,
+                force_metadata_for_links=force_metadata_for_links,
+                parent_ids=actual_parent_ids,
+            )
+        else:  # overlay_hashes
+            if len(overlay_hashes) != len(overlay_names):
+                raise ValueError(
+                    "'overlay_hashes' and 'overlay_names' must have equal outer length."
+                )
+            flat_hashes = [
+                hash_item for group_hashes in overlay_hashes for hash_item in group_hashes
+            ]
+            if len(flat_overlay_names) != len(flat_hashes):
+                raise ValueError(
+                    "The total number of 'overlay_hashes' items must match the total number of 'overlay_names' items."
+                )
+            overlay_infos = self.upload_hashes(
+                dataset_id=dataset_id,
+                names=flat_overlay_names,
+                hashes=flat_hashes,
+                batch_size=batch_size,
+                conflict_resolution=conflict_resolution,
+                parent_ids=actual_parent_ids,
+            )
+
+        overlay_infos_grouped = []
+        start_idx = 0
+        for current_overlay_names in overlay_names:
+            end_idx = start_idx + len(current_overlay_names)
+            overlay_infos_grouped.append(overlay_infos[start_idx:end_idx])
+            start_idx = end_idx
+
+        return parent_infos, overlay_infos_grouped
 
     def group_images_for_multiview(
         self,
