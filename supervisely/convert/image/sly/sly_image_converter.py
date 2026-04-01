@@ -140,6 +140,14 @@ class SLYImageConverter(ImageConverter):
         self._meta = meta
         return detected_ann_cnt > 0
 
+    @staticmethod
+    def _has_overlay_dataset_structure(path: str) -> bool:
+        for root, dirs, _ in os.walk(path):
+            dir_names = set(dirs)
+            if {"img", "ann", "overlay"}.issubset(dir_names):
+                return True
+        return False
+
     def to_supervisely(
         self,
         item: ImageConverter.Item,
@@ -189,6 +197,11 @@ class SLYImageConverter(ImageConverter):
                 logger.info("Possible Supervisely project found in the input data")
             meta = None
             for project_dir in project_dirs:
+                if self._has_overlay_dataset_structure(project_dir):
+                    logger.debug(
+                        "Overlay dataset structure found in project directory. Skipping Supervisely project validation."
+                    )
+                    return False
                 project_fs = Project(project_dir, mode=OpenMode.READ)
                 if len(project_fs.blob_files) > 0:
                     self.blob_project = True
@@ -254,6 +267,11 @@ class SLYImageConverter(ImageConverter):
             meta = ProjectMeta()
             dataset_dirs = [d for d in dirs_filter(input_data, _check_function)]
             for dataset_dir in dataset_dirs:
+                if self._has_overlay_dataset_structure(dataset_dir):
+                    logger.debug(
+                        "Overlay dataset structure found in dataset directory. Skipping Supervisely dataset validation."
+                    )
+                    return False
                 dataset_fs = Dataset(dataset_dir, OpenMode.READ)
                 ds_items = []
                 for name in dataset_fs.get_items_names():
