@@ -115,22 +115,22 @@ class OverlayImageConverter(ImageConverter):
 
         with ApiContext(api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta):
             for items_batch in batched(self._items, batch_size):
-                parent_paths = [item.path for item in items_batch]
+                paths = [item.path for item in items_batch]
                 overlay_paths = [item.overlay_paths for item in items_batch]
-                parent_names = [os.path.basename(item.path) for item in items_batch]
+                names = [os.path.basename(item.path) for item in items_batch]
                 overlay_names = [
                     [os.path.basename(p) for p in item.overlay_paths] for item in items_batch
                 ]
 
                 parent_image_infos, _ = api.image.upload_overlay_images(
                     dataset_id,
-                    parent_names=parent_names,
-                    overlays=overlay_names,
-                    parent_paths=parent_paths,
-                    paths=overlay_paths,
+                    names=names,
+                    paths=paths,
+                    overlay_names=overlay_names,
+                    overlay_paths=overlay_paths,
                 )
                 p_name_to_info = {
-                    name: info for info, name in zip(parent_image_infos, parent_names)
+                    name: info for info, name in zip(parent_image_infos, names)
                 }
 
                 id_to_ann_path = {}
