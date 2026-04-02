@@ -15,6 +15,17 @@ from supervisely.template.base_generator import BaseGenerator
 from supervisely.imaging.color import rgb2hex
 
 
+# After release:
+_slug_map = {
+    "semantic segmentation": "supervisely-ecosystem/live-training---semantic-segmentation",
+    "object detection": "supervisely-ecosystem/live-training---object-detection",
+}
+# For private apps, fallback to hardcoded app_keys:
+_slug_hashes = {
+    "semantic segmentation": "776575edb45b31808c870bb7e0223500/live-training---semantic-segmentation",
+    "object detection": "971bf03172d5b5efe9a31c863d507c08/live-training---object-detection",
+}
+
 class LiveTrainingGenerator(BaseGenerator):
     """
     Generator for Live training session reports.
@@ -53,11 +64,9 @@ class LiveTrainingGenerator(BaseGenerator):
         self.model_config = model_config
         self.model_meta = model_meta
         self.task_type = task_type
-        self._slug_map = {
-            "semantic segmentation": "supervisely-ecosystem/live-training---semantic-segmentation",
-            "object detection": "supervisely-ecosystem/live-training---object-detection",
-        }
-        self.slug = self._slug_map[task_type] 
+
+        self._slug = _slug_map[task_type]
+        self._slug_hash = _slug_hashes[task_type]
 
         # Validate required fields
         self._validate_session_info()
@@ -418,22 +427,15 @@ class LiveTrainingGenerator(BaseGenerator):
     def _get_online_training_app_info(self):
         """Get online training app info from ecosystem"""
         try:
-            # TODO: only works for public apps.
-            # Exception handles only private apps on dev server. Need implement for private apps on any server.
-            module_id = self.api.app.get_ecosystem_module_id(self.slug)
+            module_id = self.api.app.get_ecosystem_module_id(self._slug)
+            slug = self._slug
         except Exception as e:
-            logger.warning(f"Failed to get module ID for slug {self.slug}: {e}.")
-            if self.api.server_address.endswith("dev.internal.supervisely.com"):
-                logger.warning("Using hardcoded module ID for dev server")
-                task2module_map = {
-                    "object detection": 629,
-                    "semantic segmentation": 634,
-                }
-                module_id = task2module_map.get(self.task_type)
-            else:
-                raise e
+            logger.warning(f"Failed to get module ID for slug {self._slug}: {e}. Falling back for private appKey.")
+            # Fallback for private apps
+            module_id = self.api.app.get_ecosystem_module_id(self._slug_hash)
+            slug = self._slug_hash
         return {
-            "slug": self.slug,
+            "slug": slug,
             "module_id": module_id,
         }  
 
