@@ -60,19 +60,19 @@ class YOLOConverter(ImageConverter):
             with open(ann_path, "r") as ann_file:
                 lines = ann_file.readlines()
                 if len(lines) == 0:
-                    logger.warn(f"Empty annotation file: {ann_path}")
+                    logger.warning(f"Empty annotation file: {ann_path}")
                     return False
                 for idx, line in enumerate(lines, start=1):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
                         if class_index not in self._coco_classes_dict:
-                            logger.warn(
+                            logger.warning(
                                 f"Class index {class_index} not found in the config yaml file: {ann_path}"
                             )
                             return False
                         if any([0 > c > 1 for c in coords]):
-                            logger.warn(
+                            logger.warning(
                                 f"The bounding coordinates must be in normalized xywh format (from 0 to 1): {ann_path}"
                             )
                             return False
@@ -81,7 +81,7 @@ class YOLOConverter(ImageConverter):
                             and (len(coords) % 2 != 0 or len(coords) < 6)
                             and not self._with_keypoint
                         ):
-                            logger.warn(
+                            logger.warning(
                                 f"Invalid coordinates for rectangle or polygon geometry: {ann_path}"
                             )
                             return False
@@ -91,7 +91,7 @@ class YOLOConverter(ImageConverter):
                             coords, self._with_keypoint, self._num_kpts, self._num_dims
                         )
                         if geometry is None:
-                            logger.warn(
+                            logger.warning(
                                 "Invalid coordinates for the class index: "
                                 f"FILE [{ann_name}], LINE [{idx}], CLASS [{class_index}]"
                             )
@@ -113,7 +113,7 @@ class YOLOConverter(ImageConverter):
             with open(key_path, "r") as config_yaml_info:
                 config_yaml = yaml.safe_load(config_yaml_info)
                 if "names" not in config_yaml:
-                    logger.warn(
+                    logger.warning(
                         "['names'] key is empty. Class names will be taken from default coco classes names"
                     )
                 classes = config_yaml.get("names", yolo_helper.coco_classes)
@@ -130,7 +130,7 @@ class YOLOConverter(ImageConverter):
                 nc = config_yaml.get("nc", len(classes))
                 if nc is not None:
                     if int(nc) != len(classes):
-                        logger.warn(
+                        logger.warning(
                             "Number of classes in ['names'] and ['nc'] are different. "
                             "Number of classes will be taken from number of classes in ['names']"
                         )
@@ -139,7 +139,7 @@ class YOLOConverter(ImageConverter):
                 colors = config_yaml.get("colors", [])
                 if len(colors) > 0:
                     if len(colors) != len(classes):
-                        logger.warn(
+                        logger.warning(
                             "Number of classes in ['names'] and ['colors'] are different. "
                             "Colors will be generated automatically"
                         )
@@ -279,5 +279,5 @@ class YOLOConverter(ImageConverter):
             return Annotation(labels=labels, img_size=(height, width))
 
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
