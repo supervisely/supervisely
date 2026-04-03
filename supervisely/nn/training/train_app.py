@@ -201,6 +201,7 @@ class TrainApp:
         self._val_split = []
         self._val_split_item_ids = set()
         self._val_collection_id = None
+        self._split_dataset_ids: Dict[str, int] = {}
         # -------------------------- #
 
         # Input
@@ -1357,7 +1358,10 @@ class TrainApp:
                 else:
                     self._val_split_item_ids.add(img_info["id"])
 
-                pbar.update(1)
+                dataset_id = img_info.get("dataset_id")
+                if dataset_id is not None:
+                    if item.dataset_name not in self._split_dataset_ids:
+                        self._split_dataset_ids[item.dataset_name] = dataset_id
 
         # Main split processing
         with self.progress_bar_main(
@@ -1725,12 +1729,19 @@ class TrainApp:
                 for item in split:
                     image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
                 image_infos = []
+                target_ds_ids = {ds.id for ds in ds_infos_dict.values()}
                 for dataset_name, image_names in image_names_per_dataset.items():
-                    ds_info = ds_infos_dict[dataset_name]
+                    ds_id = self._split_dataset_ids.get(dataset_name)
+                    if ds_id is None or ds_id not in target_ds_ids:
+                        logger.error(
+                            "Dataset id for dataset '%s' not found in split dataset ids.",
+                            dataset_name,
+                        )
+                        continue
                     for names_batch in batched(image_names, 200):
                         image_infos.extend(
                             self._api.image.get_list(
-                                ds_info.id,
+                                ds_id,
                                 filters=[
                                     {
                                         "field": "name",
