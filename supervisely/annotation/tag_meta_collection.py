@@ -21,7 +21,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :param items: List of TagMetas.
         :type items: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
 
-        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
+        :raises :exc:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
 
         :Usage Example:
 
