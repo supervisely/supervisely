@@ -84,7 +84,7 @@ INSTALL_REQUIRES = [
     "pillow>=5.4.1, <=12.1.1",
     "python-json-logger>=0.1.11, <=3.0.1",
     "packaging>=20.0",
-    "requests>=2.27.1, <3.0.0",
+    "requests>=2.33.0, <3.0.0",
     "requests-toolbelt>=1.0.0, <2.0.0",
     "Shapely>=1.7.1, <=2.1.2",
     "bidict>=0.21.2, <1.0.0",
