@@ -24,7 +24,9 @@ def get_meta_from_annotation(ann_path: str, meta: Union[ProjectMeta, None]) -> P
         ann_json = ann_json["annotation"]
 
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(f"Pointcloud Annotation file {ann_path} is not in Supervisely format")
+        logger.warning(
+            f"Pointcloud Annotation file {ann_path} is not in Supervisely format"
+        )
         return meta
 
     object_key_to_name = {}
