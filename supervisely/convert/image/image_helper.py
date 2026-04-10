@@ -5,7 +5,7 @@ from typing import List, Union
 
 import magic
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 from supervisely import Label, Rectangle, logger
 from supervisely.geometry.oriented_bbox import OrientedBBox
@@ -30,8 +30,8 @@ def validate_image(path: str) -> tuple:
             return path
         if ext.lower() in EXT_TO_CONVERT:
             path = convert_to_jpg(path)
-            return path
         if ext.lower() != ".mpo":
+            path = normalize_exif_orientation(path)
             name = get_file_name_with_ext(path)
             new_name = validate_mimetypes(name, path)
             if new_name != name:
@@ -76,9 +76,32 @@ def convert_to_jpg(path) -> tuple:
 
     new_path = Path(path).with_suffix(".jpeg").as_posix()
     with Image.open(path) as image:
-        image.convert("RGB").save(new_path)
+        ImageOps.exif_transpose(image).convert("RGB").save(new_path)
     silent_remove(path)
     return new_path
+
+
+def normalize_exif_orientation(path: str) -> str:
+    """Strip EXIF orientation so uploaded image dimensions match the raw pixel matrix used by annotations."""
+
+    try:
+        with Image.open(path) as image:
+            orientation = image.getexif().get(274)
+            if orientation not in {2, 3, 4, 5, 6, 7, 8}:
+                return path
+
+            image_no_exif = image.copy()
+            image_no_exif.save(path)
+            logger.info(
+                f"Removed EXIF orientation from image {get_file_name_with_ext(path)}: {orientation}"
+            )
+    except Exception as e:
+        logger.warning(
+            f"Failed to normalize EXIF orientation: {repr(e)}",
+            extra={"file_path": path},
+        )
+
+    return path
 
 
 def read_tiff_image(path: str) -> Union[np.ndarray, None]:
