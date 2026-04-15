@@ -93,6 +93,7 @@ class BaseConverter:
     Detects input format, validates annotations, builds :class:`~supervisely.project.project_meta.ProjectMeta`
     and provides methods to upload converted data.
     """
+
     unsupported_exts = [".gif", ".html", ".htm"]
 
     class BaseItem:
@@ -389,6 +390,7 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+
             def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
                 if old_cls.geometry_type == new_cls.geometry_type:
                     if old_cls.geometry_type == GraphNodes:
@@ -480,7 +482,7 @@ class BaseConverter:
 
         return meta1.clone(project_settings=new_settings)
 
-    def _download_remote_ann_files(self) -> None:
+    def _download_remote_ann_files(self, exts_to_download=None) -> None:
         """
         Download all annotation files from Cloud Storage to the local storage.
         Needed to detect annotation format if "upload_as_links" is enabled.
@@ -488,10 +490,12 @@ class BaseConverter:
         if not self.upload_as_links:
             return
 
+        valid_exts = exts_to_download if exts_to_download else [self.ann_ext]
+
         ann_archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
 
         anns_to_download = {
-            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
+            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) in valid_exts
         }
         if not anns_to_download and not ann_archives:
             return

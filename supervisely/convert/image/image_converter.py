@@ -155,6 +155,7 @@ class ImageConverter(BaseConverter):
             for item in batch:
                 item.path = self.validate_image(item.path)
                 if item.path is None:
+                    logger.warning(f"Image {item.path} failed validation and will be skipped.")
                     continue  # image has failed validation
                 valid_batch_items.append(item)
                 name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
@@ -171,6 +172,12 @@ class ImageConverter(BaseConverter):
                     item_metas.append(item.meta)
                 else:
                     item_metas.append({})
+
+            if self._items and len(valid_batch_items) == 0:
+                logger.warning("All items in the batch failed validation and will be skipped.")
+                if log_progress:
+                    progress_cb(len(batch))
+                continue
 
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
@@ -219,7 +226,7 @@ class ImageConverter(BaseConverter):
             f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
         )
 
-    def validate_image(self, path: str) -> Tuple[str, str]:
+    def validate_image(self, path: str) -> str:
         if self.upload_as_links:
             return self.remote_files_map.get(path)
         return image_helper.validate_image(path)
