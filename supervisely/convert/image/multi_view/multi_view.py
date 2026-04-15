@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict, Optional, Union
+from typing import Dict, Union, Optional
 
 from supervisely import ProjectMeta, generate_free_name, is_development, logger
 from supervisely.api.api import Api, ApiContext
@@ -54,7 +54,7 @@ class MultiViewImageConverter(ImageConverter):
                     return None
                 if get_file_ext(file) in SUPPORTED_IMG_EXTS:
                     group_map[root].append(os.path.join(root, file))
-
+            
         return group_map
 
     def upload_dataset(
