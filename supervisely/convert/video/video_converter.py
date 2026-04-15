@@ -250,7 +250,7 @@ class VideoConverter(BaseConverter):
     def convert_to_mp4_if_needed(self, video_path):
         video_name = get_file_name_with_ext(video_path)
         if self.upload_as_links:
-            video_path = self.remote_files_map.get(os.path.abspath(video_path))
+            video_path = self.remote_files_map.get(video_path)
             return video_name, video_path
         video_ext = get_file_ext(video_path)
         if video_ext.lower() != video_ext:
