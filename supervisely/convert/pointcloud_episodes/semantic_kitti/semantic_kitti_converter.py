@@ -108,8 +108,7 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
     def validate_format(self) -> bool:
         self._items = []
         filter_fn = (
-            lambda f: get_file_ext(f) == self.key_file_ext
-            and Path(f).parent.name == "velodyne"
+            lambda f: get_file_ext(f) == self.key_file_ext and Path(f).parent.name == "velodyne"
         )
         velodyne_files = list_files_recursively(self._input_data, filter_fn=filter_fn)
         sequences = sorted(set(Path(f).parent.parent for f in velodyne_files))
@@ -175,17 +174,7 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         renamed_classes: dict = {},
         renamed_tags: dict = {},
     ) -> PointcloudEpisodeAnnotation:
-        """:param item: SemanticKITTI sequence item.
-        :type item: SemanticKITTIConverter.Item
-        :param meta: Project meta.
-        :type meta: ProjectMeta
-        :param renamed_classes: Class name mapping.
-        :type renamed_classes: dict
-        :param renamed_tags: Tag name mapping.
-        :type renamed_tags: dict
-        :return: Supervisely pointcloud episode annotation.
-        :rtype: PointcloudEpisodeAnnotation
-        """
+        """Convert to Supervisely format."""
         class_id_to_obj: Dict[int, PointcloudEpisodeObject] = {}
         frames = []
 
@@ -231,15 +220,6 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         batch_size: int = 1,
         log_progress=True,
     ):
-        """:param api: Supervisely API instance.
-        :type api: Api
-        :param dataset_id: Target dataset ID.
-        :type dataset_id: int
-        :param batch_size: Batch size.
-        :type batch_size: int
-        :param log_progress: If True, show upload progress.
-        :type log_progress: bool
-        """
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         dataset_info = api.dataset.get_info_by_id(dataset_id)
@@ -281,9 +261,6 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
 
                 if log_progress:
                     progress_cb(1)
-
-            frame_ids = [frame_to_pcd_ids[idx] for idx in sorted(frame_to_pcd_ids)]
-            api.pointcloud_episode.update_frames_order(sequence_ds.id, frame_ids)
 
             try:
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
