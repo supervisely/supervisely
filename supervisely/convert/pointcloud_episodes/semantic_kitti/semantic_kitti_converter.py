@@ -106,8 +106,8 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
             sequence_name: str,
             frame_paths: List[str],
             label_paths: List[str],
-            poses_path: str,
-            times_path: str,
+            poses_path: Optional[str] = None,
+            times_path: Optional[str] = None,
             custom_data: Optional[dict] = None,
         ):
             """
@@ -115,8 +115,8 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
                 sequence_name: Sequence identifier (e.g., "00", "01")
                 frame_paths: List of paths to .bin point cloud files
                 label_paths: List of paths to .label annotation files
-                poses_path: Path to poses.txt file
-                times_path: Path to times.txt file
+                poses_path: Optional path to poses.txt file (camera poses)
+                times_path: Optional path to times.txt file (timestamps)
                 custom_data: Optional extra data
             """
             self._sequence_name = sequence_name
@@ -265,8 +265,8 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
                 sequence_name=sequence_name,
                 frame_paths=frame_paths,
                 label_paths=label_paths,
-                poses_path=str(poses_path),
-                times_path=str(times_path),
+                poses_path=str(poses_path) if poses_path.exists() else None,
+                times_path=str(times_path) if times_path.exists() else None,
             )
             self._items.append(item)
 
@@ -419,7 +419,7 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
 
             # Process each frame
             for idx, (bin_path, label_path) in enumerate(zip(item.frame_paths, item.label_paths)):
-                # Convert .bin to raw .pcd (no color — labels go into annotations)
+                # Convert .bin to .pcd format
                 pcd_path = str(Path(bin_path).with_suffix(".pcd"))
                 if file_exists(pcd_path):
                     logger.warning(f"Overwriting file: {pcd_path}")

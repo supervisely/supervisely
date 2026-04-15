@@ -96,9 +96,9 @@ def generate_color_for_class(class_id: int) -> List[int]:
 
 def convert_bin_to_pcd(bin_path: str, pcd_path: str) -> None:
     """
-    Convert SemanticKITTI .bin file to .pcd format.
+    Convert SemanticKITTI .bin file to .pcd format using open3d.
 
-    Writes raw XYZ + intensity data without any color information.
+    Writes XYZ + intensity data. Intensity is stored in RGB channels.
     Semantic labels are stored in Supervisely annotations (not in the point cloud).
 
     Args:
@@ -107,38 +107,34 @@ def convert_bin_to_pcd(bin_path: str, pcd_path: str) -> None:
 
     Example:
         >>> convert_bin_to_pcd("000000.bin", "000000.pcd")
+
+    Raises:
+        Exception: If bin file format is invalid
     """
-    points = read_bin_pointcloud(bin_path)  # shape (N, 4): x, y, z, intensity
-    _write_pcd_raw(points, pcd_path)
+    import open3d as o3d  # pylint: disable=import-error
 
+    try:
+        points_data = np.fromfile(bin_path, dtype=np.float32).reshape(-1, 4)
+    except ValueError as e:
+        raise Exception(
+            f"Incorrect data in the Semantic KITTI pointcloud file: {bin_path}. "
+            f"There was an error while trying to reshape the data into a 4-column matrix: {e}. "
+            "Please ensure that the binary file contains a multiple of 4 elements to be "
+            "successfully reshaped into a (N, 4) array."
+        )
 
-def _write_pcd_raw(points: np.ndarray, filename: str) -> None:
-    """
-    Write point cloud to PCD file in binary format with x, y, z, intensity.
+    # Extract XYZ and intensity
+    points = points_data[:, 0:3]
+    intensity = points_data[:, 3]
 
-    Args:
-        points: Array of shape (N, 4) containing [x, y, z, intensity]
-        filename: Output PCD file path
-    """
-    num_points = len(points)
-    xyz = points[:, :3].astype(np.float32)
-    intensity = points[:, 3].astype(np.float32)
+    # Store intensity in RGB channels (R=intensity, G=0, B=0)
+    intensity_fake_rgb = np.zeros((intensity.shape[0], 3))
+    intensity_fake_rgb[:, 0] = intensity
 
-    with open(filename, "w") as f:
-        f.write("# .PCD v0.7 - Point Cloud Data file format\n")
-        f.write("VERSION 0.7\n")
-        f.write("FIELDS x y z intensity\n")
-        f.write("SIZE 4 4 4 4\n")
-        f.write("TYPE F F F F\n")
-        f.write("COUNT 1 1 1 1\n")
-        f.write(f"WIDTH {num_points}\n")
-        f.write("HEIGHT 1\n")
-        f.write("VIEWPOINT 0 0 0 1 0 0 0\n")
-        f.write(f"POINTS {num_points}\n")
-        f.write("DATA ascii\n")
-
-        for i in range(num_points):
-            f.write(f"{xyz[i,0]} {xyz[i,1]} {xyz[i,2]} {intensity[i]}\n")
+    # Create and save point cloud
+    pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
+    pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
+    o3d.io.write_point_cloud(pcd_path, pc)
 
 
 def scan_labels_for_classes(
@@ -253,9 +249,11 @@ def validate_sequence_structure(sequence_path: Path) -> Tuple[bool, str]:
 
     Required:
         - velodyne/ directory with .bin files
-        - labels/ directory with .label files (optional)
-        - poses.txt file
-        - times.txt file
+
+    Optional:
+        - labels/ directory with .label files
+        - poses.txt file (camera poses)
+        - times.txt file (timestamps)
 
     Args:
         sequence_path: Path to sequence directory
@@ -278,13 +276,12 @@ def validate_sequence_structure(sequence_path: Path) -> Tuple[bool, str]:
     if len(bin_files) == 0:
         return False, f"No .bin files found in {velodyne_dir}"
 
-    # Check poses file
+    # Poses and times are optional - just log warning if missing
     if not poses_file.exists():
-        return False, f"Missing poses.txt file: {poses_file}"
+        logger.warning(f"Missing poses.txt file: {poses_file}. Camera poses will not be available.")
 
-    # Check times file
     if not times_file.exists():
-        return False, f"Missing times.txt file: {times_file}"
+        logger.warning(f"Missing times.txt file: {times_file}. Timestamps will not be available.")
 
     # Labels are optional - just log warning if missing
     if not labels_dir.exists():
