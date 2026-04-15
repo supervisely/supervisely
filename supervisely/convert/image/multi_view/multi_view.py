@@ -94,7 +94,7 @@ class MultiViewImageConverter(ImageConverter):
                     os.rename(image, os.path.join(group_path, new_name))
                     image = os.path.join(group_path, new_name)
                 if self._upload_as_links:
-                    image = self.remote_files_map.get(image, image)
+                    image = self.remote_files_map.get(os.path.abspath(image), image)
                 images.append(image)
 
             with ApiContext(

@@ -79,6 +79,7 @@ class ImportManager:
             input_data = [input_data]
 
         self._input_data = get_data_dir()
+        self._clean_remote_reproduction_dirs(input_data)
         for data in input_data:
             self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
@@ -166,6 +167,47 @@ class ImportManager:
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
 
+    def _clean_remote_reproduction_dirs(self, input_data: List[str]) -> None:
+        """
+        Clean local dummy directories once before reproducing remote files.
+
+        Multiple remote inputs can resolve to the same local directory, so cleaning inside
+        `_reproduce_remote_files` would remove files created by previous inputs.
+        """
+
+        if not self._upload_as_links:
+            return
+
+        remote_file_link_modalities = [ProjectType.IMAGES.value, ProjectType.VIDEOS.value]
+        remote_dir_link_modalities = [
+            ProjectType.IMAGES.value,
+            ProjectType.VIDEOS.value,
+            ProjectType.POINT_CLOUDS.value,
+        ]
+        modality = str(self._modality)
+        cleaned_paths = set()
+        for path in input_data:
+            if dir_exists(path) or file_exists(path):
+                continue
+
+            is_dir = None
+            if modality in remote_file_link_modalities and self._api.storage.exists(
+                self._team_id, path
+            ):
+                is_dir = False
+            elif modality in remote_dir_link_modalities and self._api.storage.dir_exists(
+                self._team_id, path
+            ):
+                is_dir = True
+
+            if is_dir is None:
+                continue
+
+            local_path = self._get_remote_reproduction_local_path(path, is_dir=is_dir)
+            if local_path not in cleaned_paths:
+                mkdir(local_path, remove_content_if_exists=True)
+                cleaned_paths.add(local_path)
+
     def _download_input_data(self, remote_path, is_dir=False):
         """Download input data from Supervisely"""
 
@@ -215,7 +257,7 @@ class ImportManager:
 
         unique_directories = set()
         for file in files:
-            new_path = file.path.replace(dir_path, local_path)
+            new_path = os.path.abspath(file.path.replace(dir_path, local_path))
             self._remote_files_map[new_path] = file.path
             unique_directories.add(str(Path(file.path).parent))
 
@@ -228,11 +270,9 @@ class ImportManager:
         Will be used to detect annotation format (by dataset structure) remotely.
         """
 
+        local_path = self._get_remote_reproduction_local_path(remote_path, is_dir=is_dir)
+        mkdir(local_path, remove_content_if_exists=False)
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
-        dir_name = os.path.basename(dir_path)
-
-        local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
-        mkdir(local_path, remove_content_if_exists=True)
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
@@ -241,7 +281,7 @@ class ImportManager:
 
         unique_directories = set()
         for file in files:
-            new_path = file.path.replace(dir_path, local_path)
+            new_path = os.path.abspath(file.path.replace(dir_path, local_path))
             self._remote_files_map[new_path] = file.path
             Path(new_path).parent.mkdir(parents=True, exist_ok=True)
             unique_directories.add(str(Path(file.path).parent))
@@ -249,6 +289,11 @@ class ImportManager:
 
         logger.info(f"Scanned remote directories:\n   - " + "\n   - ".join(unique_directories))
         return local_path
+
+    def _get_remote_reproduction_local_path(self, remote_path, is_dir=False):
+        dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
+        dir_name = os.path.basename(dir_path)
+        return os.path.abspath(os.path.join(get_data_dir(), dir_name))
 
     def _unpack_archives(self, local_path):
         """Unpack if input data contains an archive."""

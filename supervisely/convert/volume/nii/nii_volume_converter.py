@@ -172,7 +172,7 @@ class NiiConverter(VolumeConverter):
 
             for item in batch:
                 if self._upload_as_links:
-                    remote_path = self.remote_files_map.get(item.path)
+                    remote_path = self.remote_files_map.get(os.path.abspath(item.path))
                     if remote_path is not None:
                         item.custom_data["remote_path"] = remote_path
 
