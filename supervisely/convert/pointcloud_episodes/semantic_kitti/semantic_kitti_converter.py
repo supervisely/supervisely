@@ -13,7 +13,7 @@ Follows Supervisely SDK converter architecture (similar to KITTI-360).
 import os
 import numpy as np
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Union
 
 from supervisely import (
     ObjClass,
@@ -27,6 +27,7 @@ from supervisely.convert.base_converter import AvailablePointcloudEpisodesConver
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
 )
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.io.fs import (
     file_exists,
@@ -50,7 +51,7 @@ from supervisely.pointcloud_annotation.pointcloud_episode_object_collection impo
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 
 # Import helper functions
-from .semantickitti_helper import (
+from supervisely.convert.pointcloud_episodes.semantic_kitti.semantic_kitti_helper import (
     read_bin_pointcloud,
     read_label_file,
     convert_bin_to_pcd,
@@ -58,12 +59,8 @@ from .semantickitti_helper import (
     validate_sequence_structure,
 )
 
-# Import default SemanticKITTI labels (optional)
-try:
-    from .semantickitti_config import SEMANTIC_KITTI_LABELS
-except ImportError:
-    SEMANTIC_KITTI_LABELS = {}
-    logger.info("semantickitti_config not found, using auto-generation for all classes")
+# Default label mapping can be customized or auto-generated
+DEFAULT_SEMANTIC_KITTI_LABELS = {}
 
 
 class SemanticKITTIConverter(PointcloudEpisodeConverter):
@@ -146,36 +143,41 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         def frame_count(self) -> int:
             return len(self._frame_paths)
 
-    def __init__(self, input_data: str, labeling_interface=None, label_map: Optional[Dict] = None):
+    def __init__(
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool = False,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        label_map: Optional[Dict] = None,
+    ):
         """
         Initialize SemanticKITTI converter.
 
         Args:
             input_data: Path to sequence directory or directory containing sequences
             labeling_interface: Supervisely labeling interface (optional)
+            upload_as_links: Whether to upload as links (not supported for this format)
+            remote_files_map: Remote files mapping (optional)
             label_map: Optional custom class mapping {class_id: (name, [r,g,b])}
-                      None = use SemanticKITTI defaults
-                      {} = auto-generate all classes
-                      {custom} = use your definitions
+                      None = use auto-generation for all classes
+                      dict = use your definitions
 
         Example:
-            >>> # Use defaults
-            >>> converter = SemanticKITTIConverter("sequences/00")
+            >>> # Use auto-generated classes
+            >>> converter = SemanticKITTIConverter("sequences/00", None)
 
             >>> # Custom classes
-            >>> converter = SemanticKITTIConverter("sequences/00", label_map={
+            >>> converter = SemanticKITTIConverter("sequences/00", None, label_map={
             ...     1: ("robot", [255, 0, 0]),
             ...     2: ("obstacle", [0, 255, 0])
             ... })
-
-            >>> # Auto-generate everything
-            >>> converter = SemanticKITTIConverter("sequences/00", label_map={})
         """
-        super().__init__(input_data, labeling_interface)
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         # Label mapping: None = use defaults, {} = auto-gen all, dict = custom
         if label_map is None:
-            self._label_map = SEMANTIC_KITTI_LABELS.copy()
+            self._label_map = DEFAULT_SEMANTIC_KITTI_LABELS.copy()
         else:
             self._label_map = label_map.copy()
 
@@ -183,7 +185,7 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         self._meta = None
 
     def __str__(self) -> str:
-        return "SemanticKITTI"
+        return AvailablePointcloudEpisodesConverters.SEMANTIC_KITTI
 
     @property
     def key_file_ext(self) -> str:
@@ -282,7 +284,9 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
             sem_id = int(sem_id)
             if sem_id not in complete_label_map:
                 # Auto-generate class
-                from .semantickitti_helper import generate_color_for_class
+                from supervisely.convert.pointcloud_episodes.semantic_kitti.semantic_kitti_helper import (
+                    generate_color_for_class,
+                )
 
                 complete_label_map[sem_id] = (
                     f"class_{sem_id}",
