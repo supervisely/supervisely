@@ -17,11 +17,11 @@ from supervisely import (
 )
 from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailablePointcloudEpisodesConverters
+from supervisely.convert.pointcloud.kitti_3d.kitti_3d_helper import convert_bin_to_pcd
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
 )
 from supervisely.convert.pointcloud_episodes.semantic_kitti.semantic_kitti_helper import (
-    convert_bin_to_pcd,
     generate_color_for_class,
     read_label_file,
 )
