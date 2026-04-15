@@ -175,6 +175,8 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         """
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
+        logger.info(f"SemanticKITTI: Initializing converter for: {input_data}")
+
         # Label mapping: None = use defaults, {} = auto-gen all, dict = custom
         if label_map is None:
             self._label_map = DEFAULT_SEMANTIC_KITTI_LABELS.copy()
@@ -202,6 +204,7 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         Returns:
             bool: True if format is valid and data can be converted
         """
+        logger.info(f"SemanticKITTI: Starting format validation for: {self._input_data}")
         self._items = []
         input_path = Path(self._input_data)
 
@@ -209,15 +212,17 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         if (input_path / "velodyne").exists():
             # Single sequence directory
             sequences = [input_path]
+            logger.info("SemanticKITTI: Found single sequence directory")
         else:
             # Directory containing multiple sequences
             # Look for subdirectories with velodyne/ inside
             sequences = [
                 d for d in input_path.iterdir() if d.is_dir() and (d / "velodyne").exists()
             ]
+            logger.info(f"SemanticKITTI: Found {len(sequences)} potential sequence directories")
 
         if len(sequences) == 0:
-            logger.error(f"No valid sequences found in {input_path}")
+            logger.info(f"SemanticKITTI: No valid sequences found in {input_path}")
             return False
 
         logger.info(f"Found {len(sequences)} sequence(s)")
@@ -273,8 +278,10 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
             logger.info(f"  - {sequence_name}: {len(frame_paths)} frames")
 
         if len(self._items) == 0:
-            logger.error("No valid sequences found")
+            logger.info("SemanticKITTI: No valid sequences found after validation")
             return False
+
+        logger.info(f"SemanticKITTI: Successfully validated {len(self._items)} sequence(s)")
 
         # Build complete label mapping from discovered classes
         complete_label_map = self._label_map.copy()
@@ -310,6 +317,9 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
 
         self._meta = ProjectMeta(obj_classes=ObjClassCollection(obj_classes))
 
+        logger.info(
+            f"SemanticKITTI: Format validation successful! Created meta with {len(obj_classes)} classes"
+        )
         return len(self._items) > 0
 
     def to_supervisely(
