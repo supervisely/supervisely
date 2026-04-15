@@ -79,7 +79,6 @@ class ImportManager:
             input_data = [input_data]
 
         self._input_data = get_data_dir()
-        self._clean_remote_reproduction_dirs(input_data)
         for data in input_data:
             self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
@@ -166,47 +165,6 @@ class ImportManager:
                 return self._download_input_data(input_data, is_dir=True)
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
-
-    def _clean_remote_reproduction_dirs(self, input_data: List[str]) -> None:
-        """
-        Clean local dummy directories once before reproducing remote files.
-
-        Multiple remote inputs can resolve to the same local directory, so cleaning inside
-        `_reproduce_remote_files` would remove files created by previous inputs.
-        """
-
-        if not self._upload_as_links:
-            return
-
-        remote_file_link_modalities = [ProjectType.IMAGES.value, ProjectType.VIDEOS.value]
-        remote_dir_link_modalities = [
-            ProjectType.IMAGES.value,
-            ProjectType.VIDEOS.value,
-            ProjectType.POINT_CLOUDS.value,
-        ]
-        modality = str(self._modality)
-        cleaned_paths = set()
-        for path in input_data:
-            if dir_exists(path) or file_exists(path):
-                continue
-
-            is_dir = None
-            if modality in remote_file_link_modalities and self._api.storage.exists(
-                self._team_id, path
-            ):
-                is_dir = False
-            elif modality in remote_dir_link_modalities and self._api.storage.dir_exists(
-                self._team_id, path
-            ):
-                is_dir = True
-
-            if is_dir is None:
-                continue
-
-            local_path = self._get_remote_reproduction_local_path(path, is_dir=is_dir)
-            if local_path not in cleaned_paths:
-                mkdir(local_path, remove_content_if_exists=True)
-                cleaned_paths.add(local_path)
 
     def _download_input_data(self, remote_path, is_dir=False):
         """Download input data from Supervisely"""
