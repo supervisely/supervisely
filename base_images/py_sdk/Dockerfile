@@ -7,7 +7,7 @@ RUN apt-get install -y zlib1g
 
 RUN pip install --upgrade pip
 RUN pip install attrs
-RUN pip install requests==2.33.0
+RUN pip install requests==2.28.0
 RUN apt-get install -y libmagic-dev
 RUN pip install Werkzeug==2.2.1
 RUN pip install MarkupSafe==2.1.1
