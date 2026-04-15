@@ -348,13 +348,25 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         """
         import numpy as np
 
-        # Create one tracked object per semantic class
-        class_id_to_obj: Dict[int, PointcloudEpisodeObject] = {}
-        for class_id, (class_name, _) in self._label_map.items():
-            obj_class = meta.get_obj_class(class_name)
-            if obj_class is not None:
-                class_id_to_obj[class_id] = PointcloudEpisodeObject(obj_class)
+        # First pass: collect unique class IDs present in THIS sequence
+        unique_class_ids = set()
+        for label_path in item.label_paths:
+            if label_path is not None and Path(label_path).exists():
+                semantic_labels, _ = read_label_file(label_path)
+                if semantic_labels is not None:
+                    unique_class_ids.update(np.unique(semantic_labels))
 
+        # Create one tracked object per semantic class (only for classes in this sequence)
+        class_id_to_obj: Dict[int, PointcloudEpisodeObject] = {}
+        for class_id in sorted(unique_class_ids):
+            class_id = int(class_id)
+            if class_id in self._label_map:
+                class_name, _ = self._label_map[class_id]
+                obj_class = meta.get_obj_class(class_name)
+                if obj_class is not None:
+                    class_id_to_obj[class_id] = PointcloudEpisodeObject(obj_class)
+
+        # Second pass: create frames with figures
         frames = []
         for idx, label_path in enumerate(item.label_paths):
             figures = []
