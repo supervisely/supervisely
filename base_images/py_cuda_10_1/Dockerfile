@@ -58,7 +58,7 @@ RUN pip install \
         scikit-image==0.17.1 \
         matplotlib==3.3.2 \
         pillow==5.4.1 \
-        requests==2.24.0 \
+        requests==2.27.1 \
         networkx==2.5 \
         jsonschema==2.6.0
 
