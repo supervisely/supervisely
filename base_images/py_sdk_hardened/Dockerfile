@@ -21,7 +21,7 @@ ARG tag_ref_name
 RUN set -eu; \
     python -m venv /opt/venv; \
     /opt/venv/bin/pip install --upgrade pip==26.0.1; \
-    /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1; \
+    /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.2.0; \
     MAX_ATTEMPTS=8; \
     TIMEOUT=15; \
     ATTEMPT=1; \
@@ -39,6 +39,7 @@ RUN set -eu; \
     sleep "$TIMEOUT"; \
     ATTEMPT=$((ATTEMPT + 1)); \
     done; \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.26; \
     rm -rf \
     /opt/venv/lib/python3.14/site-packages/wheel* \
     /opt/venv/lib/python3.14/site-packages/setuptools/_vendor/wheel* \
@@ -67,6 +68,8 @@ RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python \
     # install deps of cv2 and other runtime deps
     && apt-get update \
     && apt-get install -y --no-install-recommends \
+    openssl \
+    libssl3 \
     libglib2.0-0 \
     libgl1 \
     libmagic1 \
