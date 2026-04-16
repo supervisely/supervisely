@@ -78,7 +78,7 @@ class ImportManager:
         if isinstance(input_data, str):
             input_data = [input_data]
 
-        self._input_data = get_data_dir()
+        self._input_data = os.path.abspath(get_data_dir())
         for data in input_data:
             self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
@@ -206,7 +206,7 @@ class ImportManager:
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
 
-        local_path = os.path.join(get_data_dir(), dir_name)
+        local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
@@ -232,7 +232,7 @@ class ImportManager:
         dir_name = os.path.basename(dir_path)
 
         local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
-        mkdir(local_path, remove_content_if_exists=True)
+        mkdir(local_path, remove_content_if_exists=False)
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
