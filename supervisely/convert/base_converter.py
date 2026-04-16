@@ -76,6 +76,7 @@ class AvailablePointcloudEpisodesConverters:
     BAG = "rosbag"
     LYFT = "lyft"
     KITTI360 = "kitti360"
+    SEMANTIC_KITTI = "semantic_kitti"
 
 
 class AvailableVolumeConverters:
