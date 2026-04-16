@@ -39,8 +39,6 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
     """Converter for SemanticKITTI pointcloud episodes with semantic segmentation."""
 
     class Item:
-        """Parsed SemanticKITTI sequence bundle."""
-
         def __init__(
             self,
             sequence_name: str,
@@ -50,7 +48,8 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
             times_path: Optional[str] = None,
             custom_data: Optional[dict] = None,
         ):
-            """:param sequence_name: Sequence identifier.
+            """
+            :param sequence_name: Sequence identifier.
             :type sequence_name: str
             :param frame_paths: Paths to ``.bin`` pointcloud frames.
             :type frame_paths: List[str]
@@ -94,7 +93,6 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._label_map = {}
 
@@ -171,10 +169,13 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         self,
         item: Item,
         meta: ProjectMeta,
-        renamed_classes: dict = {},
-        renamed_tags: dict = {},
+        renamed_classes: Optional[dict] = None,
+        renamed_tags: Optional[dict] = None,
     ) -> PointcloudEpisodeAnnotation:
         """Convert to Supervisely format."""
+        renamed_classes = renamed_classes if renamed_classes is not None else {}
+        renamed_tags = renamed_tags if renamed_tags is not None else {}
+
         class_id_to_obj: Dict[int, PointcloudEpisodeObject] = {}
         frames = []
 

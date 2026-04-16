@@ -4,6 +4,8 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
+from supervisely import logger
+
 
 def read_label_file(
     label_path: str,
@@ -17,7 +19,12 @@ def read_label_file(
     if not Path(label_path).exists():
         return None, None
 
-    labels = np.fromfile(label_path, dtype=np.uint32)
+    try:
+        labels = np.fromfile(label_path, dtype=np.uint32)
+    except (OSError, ValueError) as e:
+        logger.warning(f"Failed to read SemanticKITTI label file {label_path}: {e}")
+        return None, None
+
     return labels & 0xFFFF, labels >> 16
 
 
