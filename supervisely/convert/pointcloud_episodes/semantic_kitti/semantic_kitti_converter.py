@@ -22,6 +22,7 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
     PointcloudEpisodeConverter,
 )
 from supervisely.convert.pointcloud_episodes.semantic_kitti.semantic_kitti_helper import (
+    SEMANTIC_KITTI_LABEL_MAP,
     generate_color_for_class,
     read_label_file,
 )
@@ -152,7 +153,12 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         label_map = {}
         for sem_id in sorted(all_semantic_ids):
             sem_id = int(sem_id)
-            label_map[sem_id] = (f"class_{sem_id}", generate_color_for_class(sem_id))
+            if sem_id in SEMANTIC_KITTI_LABEL_MAP:
+                class_name, class_color = SEMANTIC_KITTI_LABEL_MAP[sem_id]
+            else:
+                class_name = f"class_{sem_id}"
+                class_color = generate_color_for_class(sem_id)
+            label_map[sem_id] = (class_name, class_color)
 
         self._label_map = label_map
 
