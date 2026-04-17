@@ -473,4 +473,6 @@ class InferenceRequestsManager:
     def run(self, func, *args, **kwargs):
         inference_request, future = self.schedule_task(func, *args, **kwargs)
         future.result()
+        if inference_request.exception is not None:
+            raise inference_request.exception
         return inference_request.pop_pending_results()
