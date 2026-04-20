@@ -139,7 +139,7 @@ class PascalVOCConverter(ImageConverter):
 
         possible_pascal_voc_dir = [d for d in dirs_filter(self._input_data, check_function)]
         if len(possible_pascal_voc_dir) > 1:
-            logger.warn("Multiple Pascal VOC directories not supported")
+            logger.warning("Multiple Pascal VOC directories not supported")
             return
         elif len(possible_pascal_voc_dir) == 0:
             return
@@ -257,5 +257,5 @@ class PascalVOCConverter(ImageConverter):
                 renamed_tags,
             )
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()

@@ -44,7 +44,7 @@ class PlyConverter(PointcloudConverter):
             pcd_path = ply_path.replace(".ply", ".pcd")
             ply_helper.ply2pcd(ply_path, pcd_path)
             if not os.path.exists(pcd_path):
-                logger.warn(f"Failed to convert PLY to PCD. Skipping: {ply_path}")
+                logger.warning(f"Failed to convert PLY to PCD. Skipping: {ply_path}")
                 continue
             item = self.Item(pcd_path)
             for ext in used_img_ext:
