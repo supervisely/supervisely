@@ -168,16 +168,16 @@ async def _wait_for_result(future: asyncio.Future, response: Response, timeout: 
     try:
         result = await asyncio.wait_for(future, timeout=timeout)
     except asyncio.TimeoutError:
-        # raise HTTPException(503, detail={"error": "Request timeout - training may be busy"})
-        response.status_code = 500
-        result = _error_response_message("Request timeout - training may be busy")
+        raise HTTPException(503, detail={"error": "Request timeout - training may be busy"})
+        # response.status_code = 500
+        # result = _error_response_message("Request timeout - training may be busy")
     except TrainingStoppedException as e:
         response.status_code = 404
         result = _error_response_message(str(e))
     except Exception as e:
-        # raise HTTPException(500, detail={"error": str(e)})
-        response.status_code = 500
-        result = _error_response_message(str(e))
+        raise HTTPException(500, detail={"error": str(e)})
+        # response.status_code = 500
+        # result = _error_response_message(str(e))
     return result
 
 
