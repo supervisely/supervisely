@@ -1750,13 +1750,15 @@ class Inference:
         is_predict_batch_raw_implemented = (
             type(self).predict_batch_raw != Inference.predict_batch_raw
         )
-        if (not use_raw and self.is_batch_inference_supported()) or (
-            use_raw and is_predict_batch_raw_implemented
-        ):
-            result = self._inference_batched_wrapper(source, settings)
-        else:
-            result = self._inference_one_by_one_wrapper(source, settings)
-        self._schedule_freeze_on_inactivity()
+        try:
+            if (not use_raw and self.is_batch_inference_supported()) or (
+                use_raw and is_predict_batch_raw_implemented
+            ):
+                result = self._inference_batched_wrapper(source, settings)
+            else:
+                result = self._inference_one_by_one_wrapper(source, settings)
+        finally:
+            self._schedule_freeze_on_inactivity()
         return result
 
     def inference(
