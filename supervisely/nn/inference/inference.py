@@ -1750,13 +1750,15 @@ class Inference:
         is_predict_batch_raw_implemented = (
             type(self).predict_batch_raw != Inference.predict_batch_raw
         )
-        if (not use_raw and self.is_batch_inference_supported()) or (
-            use_raw and is_predict_batch_raw_implemented
-        ):
-            result = self._inference_batched_wrapper(source, settings)
-        else:
-            result = self._inference_one_by_one_wrapper(source, settings)
-        self._schedule_freeze_on_inactivity()
+        try:
+            if (not use_raw and self.is_batch_inference_supported()) or (
+                use_raw and is_predict_batch_raw_implemented
+            ):
+                result = self._inference_batched_wrapper(source, settings)
+            else:
+                result = self._inference_one_by_one_wrapper(source, settings)
+        finally:
+            self._schedule_freeze_on_inactivity()
         return result
 
     def inference(
@@ -2018,6 +2020,12 @@ class Inference:
                 )
                 settings[key] = value
         return settings
+
+    @staticmethod
+    def _get_single_inference_result(results: List[Dict]):
+        if len(results) == 0:
+            raise RuntimeError("Inference finished without returning any results.")
+        return results[0]
 
     def _get_batch_size_from_state(self, state: dict):
         batch_size = state.get("batch_size", None)
@@ -3500,7 +3508,8 @@ class Inference:
             logger.debug("Received a request to '/inference_image_id'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
-            return self.inference_requests_manager.run(self._inference_image_ids, api, state)[0]
+            results = self.inference_requests_manager.run(self._inference_image_ids, api, state)
+            return self._get_single_inference_result(results)
 
         @server.post("/inference_image_id_async")
         def inference_image_id_async(request: Request):
@@ -3551,7 +3560,10 @@ class Inference:
                     self._inference_images, [image], state, inference_request=inference_request
                 )
                 future.result()
-                return inference_request.pop_pending_results()[0]
+                if inference_request.exception is not None:
+                    raise inference_request.exception
+                results = inference_request.pop_pending_results()
+                return self._get_single_inference_result(results)
             except sly_image.UnsupportedImageFormat:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -3571,7 +3583,8 @@ class Inference:
                 response.raise_for_status()
                 response.raw.decode_content = True
                 image = self.cache.add_image_to_cache(image_url, response.raw, ext=ext)
-            return self.inference_requests_manager.run(self._inference_images, [image], state)[0]
+            results = self.inference_requests_manager.run(self._inference_images, [image], state)
+            return self._get_single_inference_result(results)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
