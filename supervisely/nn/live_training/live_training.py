@@ -412,14 +412,17 @@ class LiveTraining:
         video_objects_json, frame_ann_json = self._filter_annotation_video(
             video_ann_json, frame_idx
         )
-        key_id_map = sly.KeyIdMap()
-        video_obj_col = sly.VideoObjectCollection.from_json(
-            video_objects_json, self.project_meta, key_id_map
-        )
-        frames_count = video_ann_json["framesCount"]
-        frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, key_id_map)
         frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
-        img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+        if frame_ann_json:
+            key_id_map = sly.KeyIdMap()
+            video_obj_col = sly.VideoObjectCollection.from_json(
+                video_objects_json, self.project_meta, key_id_map
+            )
+            frames_count = video_ann_json["framesCount"]
+            frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, key_id_map)
+            img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+        else:
+            img_ann = sly.Annotation((frame_h, frame_w), labels=[])
         self.add_sample_video(
             frame_id=frame_id,
             frame_np=data["frame_np"],
@@ -453,14 +456,20 @@ class LiveTraining:
             video_objects_json, frame_ann_json = self._filter_annotation_video(
                 video_ann_json, frame_idx
             )
-            key_id_map = sly.KeyIdMap()
-            video_obj_col = sly.VideoObjectCollection.from_json(
-                video_objects_json, self.project_meta, key_id_map
-            )
-            frames_count = video_ann_json["framesCount"]
-            frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, key_id_map)
             frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
-            img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+            if frame_ann_json:
+                key_id_map = sly.KeyIdMap()
+                video_obj_col = sly.VideoObjectCollection.from_json(
+                    video_objects_json, self.project_meta, key_id_map
+                )
+                frames_count = video_ann_json["framesCount"]
+                frame_ann = sly.Frame.from_json(
+                    frame_ann_json, video_obj_col, frames_count, key_id_map
+                )
+                img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+            else:
+                img_ann = sly.Annotation((frame_h, frame_w), labels=[])
+
             self.add_sample_video(
                 frame_id=frame_id,
                 frame_np=frame_np,
@@ -530,9 +539,10 @@ class LiveTraining:
         ]
 
         if not frame_ann_json:
-            raise ValueError(
-                f"Input frame must be annotated, but frame with index {frame_index} does not contain labels"
-            )
+            # raise ValueError(
+            #     f"Input frame must be annotated, but frame with index {frame_index} does not contain labels"
+            # )
+            return None, None
         frame_ann_json = frame_ann_json[0]
 
         filtered_objects, filtered_figures = [], []
