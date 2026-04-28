@@ -24,7 +24,11 @@ POSSIBLE_TAGS_TYPES = ["choices"]
 
 
 class InputStream:
+    """Reads bits from a binary string; used for decoding Label Studio RLE masks."""
+
     def __init__(self, data):
+        """:param data: Binary data for bit reading.
+        """
         self.data = data
         self.i = 0
 

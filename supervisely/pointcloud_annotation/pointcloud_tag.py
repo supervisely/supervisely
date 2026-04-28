@@ -12,54 +12,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudTag(Tag):
-    """
-    PointcloudTag object for :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>`. :class:`PointcloudTag<PointcloudTag>` object is immutable.
-
-    :param meta: General information about Pointcloud Tag.
-    :type meta: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
-    :param value: Pointcloud Tag value. Depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` of :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`.
-    :type value: :class:`str` or :class:`int` or :class:`float` or :class:`NoneType`, optional
-    :param key: uuid.UUID object.
-    :type key: uuid.UUID, optional
-    :param sly_id: Video Tag ID in Supervisely.
-    :type sly_id: :class:`int`, optional
-    :param labeler_login: Login of user who created PointcloudTag.
-    :type labeler_login: :class:`str`, optional
-    :param updated_at: Date and Time when PointcloudTag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: :class:`str`, optional
-    :param created_at: Date and Time when PointcloudTag was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: :class:`str`, optional
-    :raises: :class:`ValueError`, If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-        # Now we can create a PointcloudTag using our TagMeta
-        tag_dog = sly.PointcloudTag(meta_dog)
-        # When you are creating a new Tag
-        # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-        # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-        tag_dog = sly.PointcloudTag(meta_dog, value="Husky")
-        # Output: ValueError: Tag dog can not have value Husky
-
-        # Let's create another Tag with a string value type
-        meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-        tag_cat = sly.PointcloudTag(meta_cat, value="Fluffy")
-
-        # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-        # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-        colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-        tag_coat_color = sly.PointcloudTag(meta_coat_color, value="white")
-
-        # If given value is not in a list of possible Tags, ValueError will be raised
-        tag_coat_color = sly.PointcloudTag(meta_coat_color, value="yellow")
-        # Output: ValueError: Tag coat color can not have value yellow
-    """
+    """Tag on point cloud annotation (meta, value). Immutable."""
 
     def __init__(
         self,
@@ -71,6 +24,37 @@ class PointcloudTag(Tag):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Tag on point cloud annotation.
+
+        :param meta: Tag metadata (name, value type).
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :param value: Tag value; type must match TagMeta.value_type.
+        :type value: str or int or float, optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param sly_id: Server-side tag ID.
+        :type sly_id: int, optional
+        :param labeler_login: Login of user who created the tag.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+        :raises ValueError: If value is incompatible with TagMeta.value_type.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.PointcloudTag(meta_dog)
+
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                tag_cat = sly.PointcloudTag(meta_cat, value="Fluffy")
+        """
         super(PointcloudTag, self).__init__(
             meta,
             value=value,
@@ -86,18 +70,19 @@ class PointcloudTag(Tag):
         """
         Get string with information about PointcloudTag name and value.
 
-        :return: Information about PointcloudTag object
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Information about :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` object
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            tag_cat = sly.PointcloudTag(meta_cat, value="Fluffy")
-            compact_tag_cat = tag_cat.get_compact_str()
+            .. code-block:: python
 
-            print(compact_tag_cat) # cat:Fluffy
+                import supervisely as sly
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                tag_cat = sly.PointcloudTag(meta_cat, value="Fluffy")
+                compact_tag_cat = tag_cat.get_compact_str()
+
+                print(compact_tag_cat) # cat:Fluffy
         """
 
         return super(PointcloudTag, self).get_compact_str()
@@ -106,32 +91,33 @@ class PointcloudTag(Tag):
         """
         Checks that 2 Pointcloud Tags are equal by comparing their meta and value.
 
-        :param other: PointcloudTag object.
-        :type other: :class:`PointcloudTag<PointcloudTag>`
-        :return: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :param other: Pointcloud tag.
+        :type other: :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag`
+        :returns: True if comparable objects are equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical Tags
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_1 = sly.PointcloudTag(meta_lemon_1)
+                import supervisely as sly
 
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_2 = sly.PointcloudTag(meta_lemon_2)
+                # Let's create 2 identical Tags
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_1 = sly.PointcloudTag(meta_lemon_1)
 
-            # and 1 different Tag to compare them
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
-            tag_cucumber = sly.PointcloudTag(meta_cucumber, value="Fresh")
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_2 = sly.PointcloudTag(meta_lemon_2)
 
-            # Compare identical Pointcloud Tags
-            tag_lemon_1 == tag_lemon_2      # True
+                # and 1 different Tag to compare them
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                tag_cucumber = sly.PointcloudTag(meta_cucumber, value="Fresh")
 
-            # Compare unidentical Pointcloud Tags
-            tag_lemon_1 == tag_cucumber     # False
+                # Compare identical Pointcloud Tags
+                tag_lemon_1 == tag_lemon_2      # True
+
+                # Compare unidentical Pointcloud Tags
+                tag_lemon_1 == tag_cucumber     # False
         """
 
         return super(PointcloudTag, self).__eq__(other)
@@ -140,32 +126,33 @@ class PointcloudTag(Tag):
         """
         Checks that 2 Pointcloud Tags are opposite.
 
-        :param other: PointcloudTag object.
-        :type other: :class:`PointcloudTag<PointcloudTag>`
-        :return: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :param other: Pointcloud tag.
+        :type other: :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag`
+        :returns: True if comparable objects are not equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical Tags
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_1 = sly.PointcloudTag(meta_lemon_1)
+                import supervisely as sly
 
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_2 = sly.PointcloudTag(meta_lemon_2)
+                # Let's create 2 identical Tags
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_1 = sly.PointcloudTag(meta_lemon_1)
 
-            # and 1 different Tag to compare them
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
-            tag_cucumber = sly.PointcloudTag(meta_cucumber, value="Fresh")
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_2 = sly.PointcloudTag(meta_lemon_2)
 
-            # Compare identical Pointcloud Tags
-            tag_lemon_1 != tag_lemon_2      # False
+                # and 1 different Tag to compare them
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                tag_cucumber = sly.PointcloudTag(meta_cucumber, value="Fresh")
 
-            # Compare unidentical Pointcloud Tags
-            tag_lemon_1 != tag_cucumber     # True
+                # Compare identical Pointcloud Tags
+                tag_lemon_1 != tag_lemon_2      # False
+
+                # Compare unidentical Pointcloud Tags
+                tag_lemon_1 != tag_cucumber     # True
         """
 
         return super(PointcloudTag, self).__ne__(other)
@@ -174,21 +161,22 @@ class PointcloudTag(Tag):
         """
         Get PointcloudTag key value.
 
-        :return: PointcloudTag key value
+        :returns: PointcloudTag key value
         :rtype: uuid.UUID
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
-            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
-            tag_weather = sly.Tag(meta_weather, value="Sunny")
-            key = tag_weather.key()
+                import supervisely as sly
 
-            print(key)
-            # Output: 5c7988e0-eee4-4eb1-972c-b1e3e879f78c
+                weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+                meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+                tag_weather = sly.Tag(meta_weather, value="Sunny")
+                key = tag_weather.key()
+
+                print(key)
+                # Output: 5c7988e0-eee4-4eb1-972c-b1e3e879f78c
         """
 
         return self._key
@@ -198,24 +186,25 @@ class PointcloudTag(Tag):
         Convert the PointcloudTag to a json dict.
         Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            tag_dog = sly.PointcloudTag(meta_dog)
-            tag_dog_json = tag_dog.to_json()
+            .. code-block:: python
 
-            print(tag_dog_json)
-            # Output: {
-            #     "name": "dog",
-            #     "key": "058ad7993a534082b4d94cc52542a97d"
-            # }
+                import supervisely as sly
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.PointcloudTag(meta_dog)
+                tag_dog_json = tag_dog.to_json()
+
+                print(tag_dog_json)
+                # Output: {
+                #     "name": "dog",
+                #     "key": "058ad7993a534082b4d94cc52542a97d"
+                # }
         """
 
         data_json = super(PointcloudTag, self).to_json()
@@ -242,27 +231,24 @@ class PointcloudTag(Tag):
         Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointcloudTag in json format as a dict.
-        :type data: :class:`dict`
-        :param tag_meta_collection: TagMetaCollection object.
-        :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`: TagMetaCollection
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: PointcloudTag object
-        :rtype: :class:`PointcloudTag<PointcloudTag>`
-        :Usage example:
+        :type data: dict
+        :param tag_meta_collection: Tag metadata collection.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Pointcloud tag.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            tag_cat_json = {
-                "name": "cat",
-                "value": "Fluffy"
-            }
+                import supervisely as sly
 
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            meta_collection = sly.TagMetaCollection([meta_cat])
-            tag_cat = sly.PointcloudTag.from_json(tag_cat_json, meta_collection)
+                tag_cat_json = {"name": "cat", "value": "Fluffy"}
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                meta_collection = sly.TagMetaCollection([meta_cat])
+                tag_cat = sly.PointcloudTag.from_json(tag_cat_json, meta_collection)
         """
 
         temp = super(PointcloudTag, cls).from_json(data, tag_meta_collection)
@@ -292,45 +278,43 @@ class PointcloudTag(Tag):
         created_at: Optional[str] = None,
     ) -> PointcloudTag:
         """
-        Clone makes a copy of Pointcloud Tag with new fields, if fields are given, otherwise it will use original Tag fields.
+        Clone makes a copy of pointcloud tag with new fields, if fields are given, otherwise it will use original tag fields.
 
-        :param meta: TagMeta object.
-        :type meta: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`, optional
-        :param value: Pointcloud Tag value. Depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` of :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`.
-        :type value: :class:`str` or :class:`int` or :class:`float` or :class:`NoneType`, optional
+        :param meta: General information about pointcloud tag.
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
+        :param value: Pointcloud tag value. Depends on TagValueType of :class:`~supervisely.annotation.tag_meta.TagMeta`.
+        :type value: str or int or float or None, optional
         :param key: uuid.UUID object.
         :type key: uuid.UUID, optional
-        :param sly_id: Pointcloud Tag ID in Supervisely server.
-        :type sly_id: :class:`int`, optional
-        :param labeler_login: Login of user who created Pointcloud Tag.
-        :type labeler_login: :class:`str`, optional
+        :param sly_id: Pointcloud tag ID in Supervisely.
+        :type sly_id: int, optional
+        :param labeler_login: Login of user who created pointcloud tag.
+        :type labeler_login: str, optional
         :param updated_at: Date and Time when Pointcloud Tag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-        :type updated_at: :class:`str`, optional
+        :type updated_at: str, optional
         :param created_at: Date and Time when Pointcloud Tag was created. Date Format is the same as in "updated_at" parameter.
-        :type created_at: :class:`str`, optional
-        :return: New instance of Pointcloud Tag
-        :rtype: :class:`PointcloudTag<PointcloudTag>`
-        :raises: :class:`ValueError`, If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
+        :type created_at: str, optional
+        :returns: New instance of pointcloud tag.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag`
+        :raises ValueError: If pointcloud tag value is incompatible to :class:`~supervisely.annotation.tag_meta.TagMeta` value type.
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Original Pointcloud Tag
-            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
-            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+                # Original Pointcloud Tag
+                weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+                meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
 
-            tag_weather = sly.PointcloudTag(meta_weather, value="Sunny")
+                tag_weather = sly.PointcloudTag(meta_weather, value="Sunny")
 
-            # Let's create some more tags by cloning our original Pointcloud Tag
-            # Remember that PointcloudTag class object is immutable, and we need to assign new instance of PointcloudTag to a new variable
-            clone_weather_1 = tag_weather.clone(value="Snowy")
-
-            clone_weather_2 = tag_weather.clone(value="Cloudy")
-
-            clone_weather_3 = tag_weather.clone(value="Rainy")
+                # Let's create some more tags by cloning our original Pointcloud Tag
+                # Remember that PointcloudTag class object is immutable, and we need to assign new instance of PointcloudTag to a new variable
+                clone_weather_1 = tag_weather.clone(value="Snowy")
+                clone_weather_2 = tag_weather.clone(value="Cloudy")
+                clone_weather_3 = tag_weather.clone(value="Rainy")
         """
 
         return PointcloudTag(

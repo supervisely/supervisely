@@ -7,48 +7,10 @@ from supervisely.app.widgets import Widget
 
 
 class Field(Widget):
-    """Field widget within Supervisely is a type of form which has the ability to contain various other widgets.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/field>`_
-        (including screenshots and examples).
-
-    :param content: Widget to be placed inside the field
-    :type content: Widget
-    :param title: Title of the field
-    :type title: str
-    :param description: Description of the field
-    :type description: Optional[str]
-    :param title_url: URL of the title
-    :type title_url: Optional[str]
-    :param description_url: URL of the description
-    :type description_url: Optional[str]
-    :param icon: Icon for the field
-    :type icon: Optional[Field.Icon]
-    :param widget_id: ID of the widget
-    :type widget_id: Optional[str]
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Field, Text
-
-        text = Text("Hello, World!")
-
-        field = Field(text, "Title", "Description", icon=Field.Icon(zmdi_class="zmdi zmdi-bike"))
-    """
+    """Form field with title, description, and optional icon; wraps another widget."""
 
     class Icon:
-        """Icon for Field widget which can be either Material Design Icon or image.
-
-        :param zmdi_class: Material Design Icon class name
-        :type zmdi_class: Optional[str]
-        :param color_rgb: RGB color of the icon
-        :type color_rgb: Optional[List[int, int, int]]
-        :param bg_color_rgb: RGB color of the icon background
-        :type bg_color_rgb: Optional[List[int, int, int]]
-        :param image_url: URL of the icon image
-        :type image_url: Optional[str]
-        """
+        """Material Design Icon or image for Field header."""
 
         def __init__(
             self,
@@ -57,6 +19,17 @@ class Field(Widget):
             bg_color_rgb: Optional[List[int, int, int]] = None,
             image_url: Optional[str] = None,
         ) -> Field.Icon:
+            """
+            :param zmdi_class: Material Design Icon class name.
+            :type zmdi_class: Optional[str]
+            :param color_rgb: Icon color [R, G, B].
+            :type color_rgb: Optional[List[int, int, int]]
+            :param bg_color_rgb: Background color [R, G, B].
+            :type bg_color_rgb: Optional[List[int, int, int]]
+            :param image_url: Image URL (alternative to zmdi_class).
+            :type image_url: Optional[str]
+            :raises ValueError: If both or neither zmdi_class/image_url; invalid colors.
+            """
             if zmdi_class is None and image_url is None:
                 raise ValueError(
                     "One of the arguments has to be defined: zmdi_class or image_url"
@@ -92,7 +65,7 @@ class Field(Widget):
                 If icon is image:
                     - imageUrl: URL of the icon image
 
-            :return: JSON representation of the icon
+            :returns: JSON representation of the icon
             :rtype: Dict[str, Any]
             """
             res = {}
@@ -115,6 +88,29 @@ class Field(Widget):
         icon: Optional[Field.Icon] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param content: Child widget.
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`
+        :param title: Field title.
+        :type title: str
+        :param description: Field description.
+        :type description: Optional[str]
+        :param title_url: Link URL for title.
+        :type title_url: Optional[str]
+        :param description_url: Link URL for description.
+        :type description_url: Optional[str]
+        :param icon: Field.Icon for header.
+        :type icon: Optional[Field.Icon]
+        :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Field, Text
+                field = Field(Text("Hello"), "Title", "Description", icon=Field.Icon(zmdi_class="zmdi zmdi-bike"))
+        """
         self._title = title
         self._description = description
         self._title_url = title_url
@@ -146,7 +142,7 @@ class Field(Widget):
                 - color: RGB color of the icon
                 - bgColor: RGB color of the icon background
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Any]
         """
         res = {

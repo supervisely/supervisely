@@ -6,7 +6,17 @@ import time
 
 
 class GMC:
+    """Global Motion Compensation for BoT-SORT: estimates camera motion (orb, sift, ecc, sparseOptFlow) to stabilize tracks."""
+
     def __init__(self, method='sparseOptFlow', downscale=2, verbose=None):
+        """
+        :param method: Motion compensation method.
+        :type method: str
+        :param downscale: Downscale factor.
+        :type downscale: int
+        :param verbose: Verbosity.
+        :type verbose: list
+        """
         super(GMC, self).__init__()
 
         self.method = method

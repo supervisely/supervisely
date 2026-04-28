@@ -12,6 +12,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class PRCurve(DetectionVisMetric):
+    """mAP and precision-recall curve for detection reports."""
+
     MARKDOWN = "pr_curve"
     NOTIFICATION = "pr_curve"
     COLLAPSE = "pr_curve"

@@ -5,8 +5,8 @@ This module provides the `TrainGUI` class that handles the graphical user interf
 training workflows in Supervisely.
 """
 
-import os
 import json
+import os
 from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -47,7 +47,7 @@ class StepFlow:
         """
         Initializes the step manager.
 
-        :param stepper: Stepper object for step navigation
+        :param stepper: :class:`~supervisely.app.widgets.stepper.stepper.Stepper` object for step navigation
         :param app_options: Application options
         """
         self.stepper = stepper
@@ -76,7 +76,7 @@ class StepFlow:
         :param validation_text: Widget for displaying validation text (optional)
         :param validation_func: Validation function (optional)
         :param position: Step position in the sequence (starting from 0)
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         self.steps[name] = {
             "card": card,
@@ -105,7 +105,7 @@ class StepFlow:
 
         :param step_name: Current step name
         :param next_steps: List of names of the next steps
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         if step_name in self.steps:
             self.steps[step_name]["next_steps"] = next_steps
@@ -120,7 +120,7 @@ class StepFlow:
         :param step_name: Step name
         :param actions: List of functions to execute
         :param is_reselect: True if these are actions for reselection, otherwise False
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         if step_name in self.steps:
             key = "on_reselect_click" if is_reselect else "on_select_click"
@@ -131,7 +131,7 @@ class StepFlow:
         """
         Creates wrappers for all steps based on established dependencies.
 
-        :return: Dictionary with created wrappers by step name
+        :returns: Dictionary with created wrappers by step name
         """
         valid_sequence = [s for s in self.step_sequence if s is not None and s in self.steps]
 
@@ -208,7 +208,7 @@ class StepFlow:
         """
         Performs the complete setup of the step system.
 
-        :return: Dictionary with created wrappers by step name
+        :returns: Dictionary with created wrappers by step name
         """
         wrappers = self.build_wrappers()
         self.setup_button_handlers()
@@ -216,22 +216,7 @@ class StepFlow:
 
 
 class TrainGUI:
-    """
-    A class representing the GUI for training workflows.
-
-    This class sets up and manages GUI components such as project selection,
-    train/validation split selection, model selection, hyperparameters selection,
-    and the training process.
-
-    :param framework_name: Name of the ML framework being used.
-    :type framework_name: str
-    :param models: List of available models.
-    :type models: list
-    :param hyperparameters: Hyperparameters for training.
-    :type hyperparameters: dict
-    :param app_options: Application options for customization.
-    :type app_options: dict, optional
-    """
+    """GUI for training workflows: project, split, model, hyperparameters, and training process."""
 
     def __init__(
         self,
@@ -240,6 +225,15 @@ class TrainGUI:
         hyperparameters: dict,
         app_options: dict = None,
     ):
+        """:param framework_name: Name of the ML framework being used.
+        :type framework_name: str
+        :param models: List of available models.
+        :type models: list
+        :param hyperparameters: Hyperparameters for training.
+        :type hyperparameters: dict
+        :param app_options: Application options for customization.
+        :type app_options: dict, optional
+        """
         self._api = Api.from_env()
         if is_production():
             self.task_id = sly_env.task_id()
@@ -673,7 +667,6 @@ class TrainGUI:
         # Basic required keys always needed
         base_required = {
             "model": ["source"],
-            "hyperparameters": (dict, str),
         }
         if show_train_val:
             base_required["train_val_split"] = ["method"]
@@ -854,6 +847,7 @@ class TrainGUI:
             else:
                 app_state = json.loads(app_state)
 
+        logger.debug("Loading from app state", extra={"app_state": app_state})
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
 
@@ -870,7 +864,7 @@ class TrainGUI:
             (self._init_classes, app_state.get("classes", []), "Classes Selector"),
             (self._init_tags, app_state.get("tags", []), "Tags Selector"),
             (self._init_train_val_splits, app_state.get("train_val_split", {}), "Train/Val Splits"),
-            (self._init_hyperparameters, app_state["hyperparameters"], "Hyperparameters"),
+            (self._init_hyperparameters, app_state.get("hyperparameters"), "Hyperparameters"),
         ]
 
         for idx, (init_fn, settings, step_name) in enumerate(_steps, start=1):
@@ -1128,7 +1122,7 @@ class TrainGUI:
 
     def _init_hyperparameters(
         self,
-        hyperparameters_settings: dict,
+        hyperparameters_settings: Union[dict, None],
         options: dict,
         click_cb: bool = True,
         validate: bool = True,
@@ -1137,7 +1131,7 @@ class TrainGUI:
         Initialize the hyperparameters selector with the given settings.
 
         :param hyperparameters_settings: The hyperparameters settings.
-        :type hyperparameters_settings: dict
+        :type hyperparameters_settings: Union[dict, None]
         :param options: The application options.
         :type options: dict
         :param click_cb: Click the callback function.
@@ -1145,7 +1139,8 @@ class TrainGUI:
         :param validate: Validate the step.
         :type validate: bool
         """
-        self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
+        if hyperparameters_settings is not None:
+            self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
         model_benchmark_settings = options.get("model_benchmark", None)
         if model_benchmark_settings is not None:

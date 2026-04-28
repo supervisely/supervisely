@@ -56,6 +56,8 @@ classes_card = Card(
 
 
 class ObjectClassesList(Widget):
+    """Grid of ObjClass cards with optional checkboxes for selection; displays shape icons and colors."""
+
     def __init__(
         self,
         object_classes: Union[ObjClassCollection, List[ObjClass]],
@@ -63,6 +65,15 @@ class ObjectClassesList(Widget):
         columns: int = 1,  # 1 means vertical layout
         widget_id: str = None,
     ):
+        """:param object_classes: ObjClassCollection or list of ObjClass.
+        :type object_classes: Union[ObjClassCollection, List[ObjClass]]
+        :param selectable: If True, show checkboxes for selection.
+        :type selectable: bool
+        :param columns: Number of columns in grid (1 = vertical).
+        :type columns: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._object_classes = object_classes
         self._selectable = selectable
         self._columns = columns

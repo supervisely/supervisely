@@ -12,6 +12,8 @@ from supervisely.nn.benchmark.utils import calculate_metrics, read_coco_datasets
 
 
 class InstanceSegmentationEvalResult(ObjectDetectionEvalResult):
+    """Evaluation result for instance segmentation benchmarks (COCO-style segm metrics + helpers)."""
+
     mp_cls = MetricProvider
     PRIMARY_METRIC = "mAP"
 
@@ -29,6 +31,8 @@ class InstanceSegmentationEvalResult(ObjectDetectionEvalResult):
 
 
 class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):
+    """Benchmark evaluator that computes instance-segmentation metrics between GT and prediction projects."""
+
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = InstanceSegmentationEvalResult
     accepted_shapes = ["polygon", "bitmap"]

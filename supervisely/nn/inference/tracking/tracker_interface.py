@@ -27,6 +27,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class TrackerInterface:
+    """Base helper that applies tracking across video frames by fetching figures/frames and appending new geometries."""
+
     def __init__(
         self,
         context,
@@ -38,6 +40,24 @@ class TrackerInterface:
         frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]] = None,
         should_notify: bool = True,
     ):
+        """
+        :param context: Dict with frameIndex, frames, trackId, videoId, objectIds, figureIds, direction.
+        :type context: Dict[str, Any]
+        :param api: Supervisely API.
+        :type api: Api
+        :param load_all_frames: Preload all frames.
+        :type load_all_frames: bool
+        :param notify_in_predict: Notify during predict.
+        :type notify_in_predict: bool
+        :param per_point_polygon_tracking: Polygon tracking mode.
+        :type per_point_polygon_tracking: bool
+        :param frame_loader: Optional frame loader.
+        :type frame_loader: Callable[[Api, int, int], np.ndarray]
+        :param frames_loader: Optional batch frame loader.
+        :type frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]]
+        :param should_notify: Enable notifications.
+        :type should_notify: bool
+        """
         self.api: Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]
@@ -59,6 +79,7 @@ class TrackerInterface:
         self.global_stop_indicatior = False
 
         self.geometries: OrderedDictType[int, Geometry] = OrderedDict()
+        self.tracked_figures_count: Dict[str, int] = {}
         self.frames_indexes: List[int] = []
         self._cur_frames_indexes: List[int] = []
         self._frames: Optional[np.ndarray] = None
@@ -84,7 +105,7 @@ class TrackerInterface:
     @property
     def video_info(self):
         if self._video_info is None:
-            self._video_info = self.api.video.get_info_by_id(self.video_id)
+            self._video_info = self.api.video.get_info_by_id(self.video_id, raise_error=True)
         return self._video_info
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
@@ -147,22 +168,32 @@ class TrackerInterface:
         geometries: List[Geometry],
         object_ids: List[int],
         frame_indexes: List[int],
+        source_figure_ids: List[int] = None,
         notify: bool = True,
     ):
+        if source_figure_ids is None:
+            source_figure_ids = [None] * len(geometries)
+
         def _split(geometries: List[Geometry], object_ids: List[int], frame_indexes: List[int]):
             result = {}
-            for geometry, object_id, frame_index in zip(geometries, object_ids, frame_indexes):
-                result.setdefault(object_id, []).append((geometry, frame_index))
+            for geometry, object_id, frame_index, source_figure_id in zip(
+                geometries, object_ids, frame_indexes, source_figure_ids
+            ):
+                result.setdefault(object_id, []).append((geometry, frame_index, source_figure_id))
             return result
 
         geometries_by_object = _split(geometries, object_ids, frame_indexes)
 
         for object_id, geometries_frame_indexes in geometries_by_object.items():
-            for i, (geometry, frame_index) in enumerate(geometries_frame_indexes):
-                geometries_frame_indexes[i] = (self._crop_geometry(geometry), frame_index)
+            for i, (geometry, frame_index, source_figure_id) in enumerate(geometries_frame_indexes):
+                geometries_frame_indexes[i] = (
+                    self._crop_geometry(geometry),
+                    frame_index,
+                    source_figure_id,
+                )
             geometries_frame_indexes = [
-                (geometry, frame_index)
-                for geometry, frame_index in geometries_frame_indexes
+                (geometry, frame_index, source_figure_id)
+                for geometry, frame_index, source_figure_id in geometries_frame_indexes
                 if geometry is not None
             ]
             figures_json = [
@@ -170,12 +201,19 @@ class TrackerInterface:
                     ApiField.OBJECT_ID: object_id,
                     ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
                     ApiField.GEOMETRY: geometry.to_json(),
-                    ApiField.META: {ApiField.FRAME: frame_index},
+                    ApiField.META: {
+                        key: value
+                        for key, value in {
+                            ApiField.FRAME: frame_index,
+                            "sourceFigureId": source_figure_id,
+                        }.items()
+                        if value is not None
+                    },
                     ApiField.TRACK_ID: self.track_id,
                     ApiField.NN_CREATED: True,
                     ApiField.NN_UPDATED: True,
                 }
-                for geometry, frame_index in geometries_frame_indexes
+                for geometry, frame_index, source_figure_id in geometries_frame_indexes
             ]
             figures_keys = [uuid.uuid4() for _ in figures_json]
             key_id_map = KeyIdMap()
@@ -185,6 +223,13 @@ class TrackerInterface:
                 figures_keys=figures_keys,
                 key_id_map=key_id_map,
             )
+            for _, _, source_figure_id in geometries_frame_indexes:
+                if source_figure_id is None:
+                    continue
+                source_figure_id = str(source_figure_id)
+                self.tracked_figures_count[source_figure_id] = (
+                    self.tracked_figures_count.get(source_figure_id, 0) + 1
+                )
             self.logger.debug(f"Added {len(figures_json)} geometries to object #{object_id}")
             if notify:
                 self._notify(task="add geometry on frame", pos_increment=len(figures_json))
@@ -242,7 +287,7 @@ class TrackerInterface:
         # TODO: other geometries
 
     def _add_frames_indexes(self):
-        total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
+        total_frames = self.video_info.frames_count
         cur_index = self.frame_index
 
         while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
@@ -321,6 +366,7 @@ class TrackerInterface:
             fend,
             pos,
             self.stop,
+            extra_data={"trackedFigures": self.tracked_figures_count},
         )
 
         self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")
@@ -340,6 +386,8 @@ class TrackerInterface:
 
 
 class ThreadSafeStopIndicator:
+    """Thread-safe stop flag with an optional reason for cancellation."""
+
     def __init__(self):
         self._stopped = False
         self._reason = None
@@ -365,6 +413,8 @@ FrameImage = namedtuple("FrameImage", ["frame_index", "image"])
 
 
 class TrackerInterfaceV2:
+    """Improved tracker interface that uses a cache and background frame loading for video tracking workflows."""
+
     UPLOAD_SLEEP_TIME = 0.001  # 1ms
     NOTIFY_SLEEP_TIME = 1  # 1s
 
@@ -374,6 +424,14 @@ class TrackerInterfaceV2:
         context: Dict,
         cache: InferenceImageCache,
     ):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param context: Tracking context dict.
+        :type context: Dict[str, Any]
+        :param cache: InferenceImageCache for frames.
+        :type cache: InferenceImageCache
+        """
         self.api = api
         self.context = context
         self.video_id = find_value_by_keys(context, ["videoId", "video_id"])
@@ -619,6 +677,7 @@ class TrackerInterfaceV2:
         progress_current: int,
         progress_total: int,
         frame_range: List[int] = None,
+        extra_data: Optional[Dict] = None,
     ):
         logger.debug(
             f"Notify progress: {progress_current}/{progress_total} on frames {frame_range}",
@@ -641,6 +700,7 @@ class TrackerInterfaceV2:
                 frame_range[1],
                 progress_current,
                 progress_total,
+                extra_data=extra_data,
             )
             if stopped and progress_current < progress_total:
                 logger.info("Task stopped by user.", extra=self.log_extra)

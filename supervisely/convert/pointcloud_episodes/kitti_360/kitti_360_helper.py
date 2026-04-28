@@ -34,6 +34,8 @@ annotation2global = defaultdict()
 
 # Abstract base class for annotation objects
 class KITTI360Object:
+    """Base class for KITTI-360 annotation objects (shared fields like label and color mapping)."""
+
     from abc import ABCMeta
 
     __metaclass__ = ABCMeta
@@ -66,6 +68,8 @@ class KITTI360Object:
 
 # Class that contains the information of a single annotated object as 3D bounding box
 class KITTI360Bbox3D(KITTI360Object):
+    """Single annotated object represented as a 3D bounding box in KITTI-360 format."""
+
     # Constructor
     def __init__(self):
         KITTI360Object.__init__(self)
@@ -192,6 +196,8 @@ class KITTI360Bbox3D(KITTI360Object):
 
 # Class that contains the information of the point cloud a single frame
 class KITTI360Point3D(KITTI360Object):
+    """Point cloud annotation container for a single frame in KITTI-360 format."""
+
     # Constructor
     def __init__(self):
         KITTI360Object.__init__(self)
@@ -221,7 +227,11 @@ class KITTI360Point3D(KITTI360Object):
 
 # Meta class for KITTI360Bbox3D
 class Annotation3D:
+    """Loader/index for KITTI-360 3D bounding box annotations stored in XML."""
+
     def __init__(self, labelPath):
+        """:param labelPath: Path to KITTI-360 XML annotation file.
+        """
         from kitti360scripts.helpers.labels import labels  # pylint: disable=import-error
         import xml.etree.ElementTree as ET
 
@@ -269,7 +279,11 @@ class Annotation3D:
         return [list(obj.values())[0] for obj in self.objects.values()]
 
 class StaticTransformations:
+    """Loads and caches KITTI-360 calibration matrices (cam2velo, perspective, cam2world) for coordinate transforms."""
+
     def __init__(self, calibrations_path):
+        """:param calibrations_path: Path to calibration directory (calib_cam_to_velo.txt, perspective.txt).
+        """
         import kitti360scripts.devkits.commons.loadCalibration as lc  # pylint: disable=import-error
 
         cam2velo_path = os.path.join(calibrations_path, "calib_cam_to_velo.txt")

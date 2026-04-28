@@ -1,3 +1,7 @@
+"""
+Streaming inference sessions for deployed models.
+"""
+
 import json
 import time
 from os import PathLike
@@ -30,14 +34,35 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 def value_generator(value):
+    """
+    Yield the same value forever.
+
+    Used internally to provide per-item kwargs during iteration.
+    """
     while True:
         yield value
 
 
 class PredictionSession:
+    """
+    Asynchronous inference session that yields :class:`~supervisely.nn.model.prediction.Prediction`.
+
+    The session starts inference immediately during construction and becomes an iterator.
+    Use it directly when you need streaming results or progress control, or use higher-level helpers
+    like :meth:`~supervisely.nn.model.model_api.ModelAPI.predict_detached` method.
+    """
 
     class Iterator:
+        """Internal iterator that fetches pending results in chunks."""
         def __init__(self, total, session: "PredictionSession", tqdm: tqdm = None):
+            """
+            :param total: Total items.
+            :type total: int
+            :param session: PredictionSession.
+            :type session: :class:`~supervisely.nn.model.prediction_session.PredictionSession`
+            :param tqdm: Optional progress bar.
+            :type tqdm: tqdm
+            """
             self.total = total
             self.session = session
             self.results_queue = []
@@ -71,6 +96,61 @@ class PredictionSession:
         tracking_config: dict = None,
         **kwargs: dict,
     ): 
+        """
+        Exactly one of the following inputs must be provided: ``input``, ``image_id``, ``video_id``,
+        ``dataset_id``, ``project_id`` (or their plural forms in ``kwargs``: ``image_ids`` etc.).
+
+        :param url: Deployment base URL (e.g. ``https://.../net/<sessionToken>``).
+        :type url: str
+        :param input: Local input (NumPy image, image/video path, directory, or list of them).
+        :type input: numpy.ndarray or str or PathLike or list, optional
+        :param image_id: Image id (or list in ``image_ids`` kwarg).
+        :type image_id: int or List[int], optional
+        :param video_id: Video id (single video supported).
+        :type video_id: int or List[int], optional
+        :param dataset_id: Dataset id(s). Requires ``api`` to resolve datasets/projects.
+        :type dataset_id: int or List[int], optional
+        :param project_id: Project id (single project supported).
+        :type project_id: int or List[int], optional
+        :param api: API client used for downloading by id / resolving datasets/projects.
+        :type api: :class:`~supervisely.api.api.Api`, optional
+        :param tracking: Enable video tracking (if supported by deployment).
+        :type tracking: bool, optional
+        :param tracking_config: Tracking configuration dict (may include ``tracker`` key).
+        :type tracking_config: dict, optional
+        :param kwargs: Additional inference settings (confidence, classes, batch size, etc.).
+        :type kwargs: dict
+        :raises AssertionError: If more than one input source is provided.
+        :raises ValueError: For unsupported inputs or invalid combinations.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.nn.model.prediction_session import PredictionSession
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                session = PredictionSession(
+                    url='https://app.supervisely.com/net/<sessionToken>',
+                    image_id=123,
+                    api=api,
+                    conf=0.25,
+                )
+
+                for pred in session:
+                    _ = pred.boxes
+                    _ = pred.scores
+        """
 
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
@@ -383,6 +463,12 @@ class PredictionSession:
 
     @property
     def model_meta(self) -> ProjectMeta:
+        """
+        Lazily fetch output :class:`~supervisely.project.project_meta.ProjectMeta` from the deployment.
+
+        :returns: Model meta.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
+        """
         if self._model_meta is None:
             self._model_meta = ProjectMeta.from_json(
                 self._post("get_model_meta", json=self._get_json_body()).json()
@@ -390,6 +476,11 @@ class PredictionSession:
         return self._model_meta
 
     def stop(self):
+        """
+        Stop the current inference request on the server (if running).
+
+        Also tries to fetch final result metadata and clears the server-side request state.
+        """
         if self.inference_request_uuid is None:
             logger.debug("No active inference request to stop.")
             return
@@ -397,6 +488,13 @@ class PredictionSession:
         self._on_infernce_end()
 
     def is_done(self):
+        """
+        Check whether server-side inference is finished.
+
+        :returns: True if finished.
+        :rtype: bool
+        :raises RuntimeError: If inference has not been started yet.
+        """
         if self.inference_request_uuid is None:
             raise RuntimeError(
                 "Inference is not started. Please start inference before checking the status."
@@ -404,6 +502,13 @@ class PredictionSession:
         return not self._get_inference_progress()["is_inferring"]
 
     def progress(self):
+        """
+        Return numeric progress of the current inference request.
+
+        :returns: Progress value as returned by the backend.
+        :rtype: Any
+        :raises RuntimeError: If inference has not been started yet.
+        """
         if self.inference_request_uuid is None:
             raise RuntimeError(
                 "Inference is not started. Please start inference before checking the status."
@@ -411,6 +516,13 @@ class PredictionSession:
         return self._get_inference_progress()["progress"]
 
     def status(self):
+        """
+        Return raw status JSON for the current inference request.
+
+        :returns: Status dict.
+        :rtype: dict
+        :raises RuntimeError: If inference has not been started yet.
+        """
         if self.inference_request_uuid is None:
             raise RuntimeError(
                 "Inference is not started. Please start inference before checking the status."

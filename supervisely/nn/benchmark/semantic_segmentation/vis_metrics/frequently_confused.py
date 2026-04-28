@@ -7,6 +7,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class FrequentlyConfused(SemanticSegmVisMetric):
+    """Frequently confused class pairs chart for semantic segmentation reports."""
+
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

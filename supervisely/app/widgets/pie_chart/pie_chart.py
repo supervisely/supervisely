@@ -41,6 +41,8 @@ def show_selection(datapoint: sly.app.widgets.PieChart.ClickedDataPoint):
 
 
 class PieChart(Apexchart):
+    """Pie or donut chart; supports click events returning slice metadata (name, value, index)."""
+
     class ClickedDataPoint(NamedTuple):
         """Class, representing clicked datapoint, which contains information about series, data index and data itself.
         It will be returned after click event on datapoint in immutable namedtuple
@@ -59,6 +61,21 @@ class PieChart(Apexchart):
         height: Union[int, str] = 350,
         type: Literal["pie", "donut"] = "pie",
     ):
+        """:param title: Chart title.
+        :type title: str
+        :param series: List of dicts with "name" and "data" (numeric value).
+        :type series: List[Dict[str, Union[int, float]]]
+        :param stroke_width: Stroke width between slices.
+        :type stroke_width: int
+        :param data_labels: If True, show data labels.
+        :type data_labels: bool
+        :param height: Chart height (px or CSS).
+        :type height: Union[int, str]
+        :param type: Chart type: "pie" or "donut".
+        :type type: Literal["pie", "donut"]
+
+        :raises ValueError: If type is not "pie" or "donut".
+        """
         self._title = title
         self._series = series
         self._stroke_width = stroke_width
@@ -144,7 +161,7 @@ class PieChart(Apexchart):
         :type index: int
         :raises TypeError: if index is not int
         :raises IndexError: if index is out of range
-        :return: series name ans data by given index
+        :returns: series name ans data by given index
         :rtype: Dict[str, Union[str, int, float]]
         """
 
@@ -180,7 +197,7 @@ class PieChart(Apexchart):
         """Returns clicked datapoint as a ClickedDataPoint object, which is a namedtuple with fields:
         series_index, data_index and data. If click was outside of the slices, None will be returned.
 
-        :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the slices
+        :returns: clicked datapoint as a ClickedDataPoint object or None if click was outside of the slices
         :rtype: Union[ClickedDataPoint, None]
         """
         value = self.get_clicked_value()

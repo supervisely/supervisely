@@ -23,6 +23,8 @@ from supervisely.sly_logger import logger
 
 
 class SemanticSegmentationEvalResult(BaseEvalResult):
+    """Evaluation result for semantic segmentation benchmarks (per-class IoU and aggregate metrics)."""
+
     mp_cls = MetricProvider
     PRIMARY_METRIC = "mIoU"
 
@@ -78,6 +80,8 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
 
 
 class SemanticSegmentationEvaluator(BaseEvaluator):
+    """Benchmark evaluator that computes semantic-segmentation metrics between GT and prediction projects."""
+
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = SemanticSegmentationEvalResult
 

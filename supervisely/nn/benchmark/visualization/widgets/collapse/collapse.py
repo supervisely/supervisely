@@ -4,7 +4,11 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class CollapseWidget(BaseWidget):
+    """Collapsible container for benchmark report widgets; each child has a foldable panel."""
+
     def __init__(self, widgets: List[BaseWidget]) -> None:
+        """:param widgets: Child widgets with titles for panel headers.
+        """
         super().__init__()
         self.widgets = widgets
 

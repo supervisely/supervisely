@@ -6,7 +6,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class MMClassification(BaseTrainArtifacts):
+    """Training artifacts descriptor for MMClassification-based classification sessions."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMClassification"
@@ -48,7 +51,10 @@ class MMClassification(BaseTrainArtifacts):
 
 
 class MMPretrain(MMClassification):
+    """Training artifacts descriptor for MMPretrain (MMClassification v2) classification sessions."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMPretrain"

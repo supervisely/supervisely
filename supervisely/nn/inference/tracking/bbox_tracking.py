@@ -29,6 +29,8 @@ from supervisely.sly_logger import logger
 
 
 class BBoxTracking(BaseTracking):
+    """Video tracking for bounding-box geometries; uses model or IoU-based propagation per frame."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
@@ -141,7 +143,16 @@ class BBoxTracking(BaseTracking):
                         )
                     sly_geometry = self._to_sly_geometry(geometry)
 
-                    uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
+                    uploader.put(
+                        [
+                            (
+                                sly_geometry,
+                                obj_id,
+                                video_interface._cur_frames_indexes[-1],
+                                fig_id,
+                            )
+                        ]
+                    )
 
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
@@ -351,10 +362,19 @@ class BBoxTracking(BaseTracking):
         ]
         frame_range_asc = [min(frame_range), max(frame_range)]
         progress_total = frames_count * len(figures)
+        tracked_figures_count = {}
 
         def _upload_f(items: List[FigureInfo]):
             inference_request.add_results(items)
             inference_request.done(len(items))
+            for item in items:
+                source_figure_id = item.meta.get("sourceFigureId", item.id)
+                if source_figure_id is None:
+                    continue
+                source_figure_id = str(source_figure_id)
+                tracked_figures_count[source_figure_id] = (
+                    tracked_figures_count.get(source_figure_id, 0) + 1
+                )
 
         def _notify_f(items: List[FigureInfo]):
             frame_range = [
@@ -362,7 +382,10 @@ class BBoxTracking(BaseTracking):
                 max(item.frame_index for item in items),
             ]
             tracker_interface.notify_progress(
-                inference_request.progress.current, inference_request.progress.total, frame_range
+                inference_request.progress.current,
+                inference_request.progress.total,
+                frame_range,
+                extra_data={"trackedFigures": tracked_figures_count},
             )
 
         def _exception_handler(exception: Exception):
@@ -371,6 +394,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
+                extra_data={"trackedFigures": tracked_figures_count},
             )
             tracker_interface.notify_error(exception)
             raise Exception
@@ -392,6 +416,7 @@ class BBoxTracking(BaseTracking):
                 sly_geometry: Rectangle = deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
+                source_figure_id = figure.meta.get("sourceFigureId", figure.id)
                 init = False
                 for frame_i, (frame, next_frame) in enumerate(
                     tracker_interface.frames_loader_generator(), 1
@@ -436,7 +461,10 @@ class BBoxTracking(BaseTracking):
                         {
                             ApiField.ID: figure_id,
                             ApiField.OBJECT_ID: figure.object_id,
-                            "meta": {"frame": next_frame.frame_index},
+                            "meta": {
+                                "frame": next_frame.frame_index,
+                                "sourceFigureId": source_figure_id,
+                            },
                             ApiField.GEOMETRY_TYPE: sly_geometry.geometry_name(),
                             ApiField.GEOMETRY: sly_geometry.to_json(),
                             ApiField.TRACK_ID: tracker_interface.track_id,
@@ -467,6 +495,7 @@ class BBoxTracking(BaseTracking):
                             inference_request.progress.current,
                             inference_request.progress.current,
                             frame_range_asc,
+                            extra_data={"trackedFigures": tracked_figures_count},
                         )
                         return
                     if uploader.has_exception():
@@ -489,6 +518,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
+                extra_data={"trackedFigures": tracked_figures_count},
             )
 
     def track(self, api: Api, state: Dict, context: Dict):
@@ -546,7 +576,7 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: initial bbox
-        :type target_bbox: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
 
@@ -567,12 +597,11 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: previous frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: bbox added on previous step
-        :type target_bbox: PredictionBBox
-        :return: predicted annotation
-        :rtype: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
+        :returns: predicted annotation
+        :rtype: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
-    
 
     def _get_circumscribed_box(self, tlbr, angle):
         top, left, bottom, right = tlbr
@@ -584,9 +613,9 @@ class BBoxTracking(BaseTracking):
         sin_a = np.sin(angle)
         dx = abs(half_w * cos_a) + abs(half_h * sin_a)
         dy = abs(half_w * sin_a) + abs(half_h * cos_a)
-        
+
         return [cy - dy, cx - dx, cy + dy, cx + dx]
-    
+
     def _inscribe_oriented_box(self, tracked_box, angle):
         top, left, bottom, right = tracked_box
         cx = (left + right) / 2
@@ -601,9 +630,9 @@ class BBoxTracking(BaseTracking):
         else:
             half_w = abs(dx * cos_a - dy * sin_a) / abs(det)
             half_h = abs(dy * cos_a - dx * sin_a) / abs(det)
-        
+
         return [cy - half_h, cx - half_w, cy + half_h, cx + half_w]
-    
+
     def predict_oriented(self, rgb_image: np.ndarray, settings: Dict[str, Any], prev_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> PredictionBBox:
         if not target_bbox.angle:
             predicted = self.predict(rgb_image, settings, prev_rgb_image, target_bbox)

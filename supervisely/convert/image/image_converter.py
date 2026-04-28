@@ -25,12 +25,15 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class ImageConverter(BaseConverter):
+    """Base converter for image projects (collects images and uploads images + annotations to Supervisely)."""
+
     allowed_exts = [
         ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
     ]
     modality = "images"
 
     class Item(BaseConverter.BaseItem):
+        """Base image item used by image converters (path + optional annotation/meta and image shape)."""
 
         def __init__(
             self,
@@ -40,6 +43,18 @@ class ImageConverter(BaseConverter):
             shape: Optional[Union[Tuple, List]] = None,
             custom_data: Optional[dict] = None,
         ):
+            """
+            :param item_path: Path to image file.
+            :type item_path: str
+            :param ann_data: Annotation (path or dict).
+            :type ann_data: Union[str, dict], optional
+            :param meta_data: Meta data (path or dict).
+            :type meta_data: Union[str, dict], optional
+            :param shape: Image shape (height, width).
+            :type shape: Union[Tuple, List], optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str,] = ann_data
@@ -140,6 +155,7 @@ class ImageConverter(BaseConverter):
             for item in batch:
                 item.path = self.validate_image(item.path)
                 if item.path is None:
+                    logger.warning(f"Image {item.path} failed validation and will be skipped.")
                     continue  # image has failed validation
                 valid_batch_items.append(item)
                 name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
@@ -156,6 +172,12 @@ class ImageConverter(BaseConverter):
                     item_metas.append(item.meta)
                 else:
                     item_metas.append({})
+
+            if self._items and len(valid_batch_items) == 0:
+                logger.warning("All items in the batch failed validation and will be skipped.")
+                if log_progress:
+                    progress_cb(len(batch))
+                continue
 
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
@@ -180,12 +202,14 @@ class ImageConverter(BaseConverter):
                     )
                 img_ids = [img_info.id for img_info in img_infos]
 
+                if self.upload_as_links and not self.supports_links:
+                    continue
+
                 anns = []
-                if not (self.upload_as_links and not self.supports_links):
-                    for info, item in zip(img_infos, valid_batch_items):
-                        if self._force_shape_for_links:
-                            item.set_shape((info.height, info.width))
-                        anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
+                for info, item in zip(img_infos, valid_batch_items):
+                    if self._force_shape_for_links:
+                        item.set_shape((info.height, info.width))
+                    anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
 
                 if len(anns) == len(img_ids):
                     api.annotation.upload_anns(
@@ -202,7 +226,7 @@ class ImageConverter(BaseConverter):
             f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
         )
 
-    def validate_image(self, path: str) -> Tuple[str, str]:
+    def validate_image(self, path: str) -> str:
         if self.upload_as_links:
             return self.remote_files_map.get(path)
         return image_helper.validate_image(path)

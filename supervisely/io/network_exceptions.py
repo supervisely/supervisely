@@ -27,11 +27,43 @@ RETRY_STATUS_CODES = {
     599,  # Network connect timeout error
 }
 
+# Critical error patterns for connection errors that require client recreation
+CONNECTION_ERROR_PATTERNS = [
+    "broken pipe",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    "connectionterminated",  # HTTP/2 connection closed (often due to max_concurrent_streams)
+    "goaway",  # HTTP/2 GOAWAY frame (server shutting down connection)
+]
+
+# Critical error patterns for streaming errors wrapped in RetryableRequestException
+STREAMING_ERROR_PATTERNS = [
+    # httpx class names (will appear in repr)
+    "remoteprotocolerror",
+    "connecterror",
+    "readerror",
+    "writeerror",
+    "protocolerror",
+    "networkerror",
+    # OS-level error messages
+    "broken pipe",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    # HTTP/2 connection-level errors (not stream-level)
+    "connectionterminated",  # HTTP/2 connection closed (fatal, often max_concurrent_streams)
+    "goaway",  # HTTP/2 GOAWAY frame (server shutting down connection)
+]
+
 
 class RetryableRequestException(Exception):
     """Exception that indicates that the request should be retried."""
 
     def __init__(self, message, response=None):
+        """:param message: Error message.
+        :param response: Optional HTTP response object.
+        """
         super().__init__(message)
         self.response = response
 
@@ -229,7 +261,7 @@ async def process_retryable_request_async(
         user_message = "{}:  Retrying ({}/{}).".format(user_message, retry_idx, retry_limit)
     if verbose:
         external_logger.warn(
-            user_message, extra={"method": api_method_name, "url": url, "details": str(exc)}
+            user_message, extra={"method": api_method_name, "url": url, "details": repr(exc)}
         )
 
     if sleep_sec is not None:
@@ -256,7 +288,7 @@ def process_retryable_request(
         user_message = "{}:  Retrying ({}/{}).".format(user_message, retry_idx, retry_limit)
     if verbose:
         external_logger.warn(
-            user_message, extra={"method": api_method_name, "url": url, "details": str(exc)}
+            user_message, extra={"method": api_method_name, "url": url, "details": repr(exc)}
         )
 
     if sleep_sec is not None:
@@ -292,6 +324,6 @@ def process_invalid_request(external_logger, exc, response, verbose=True):
 
 
 def process_unhandled_request(external_logger, exc):
-    exc_str = str(exc)
+    exc_str = repr(exc)
     external_logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": exc_str})
-    raise RuntimeError(REQUEST_FAILED + "Last failure: {!r}".format(exc_str))
+    raise RuntimeError(REQUEST_FAILED + "Last failure: {}".format(exc_str))

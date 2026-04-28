@@ -12,6 +12,8 @@ from supervisely.sly_logger import logger
 
 
 class PromptableSegmentation(Inference):
+    """Base class for promptable (e.g. SAM-like) segmentation inference with points/boxes."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -21,6 +23,7 @@ class PromptableSegmentation(Inference):
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
+        """See :class:`~supervisely.nn.inference.inference.Inference` for params."""
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
         logger.debug(
             "Smart cache params",

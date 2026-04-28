@@ -4,43 +4,7 @@ from supervisely.app.widgets import Widget
 
 
 class Container(Widget):
-    """Container widget in Supervisely is a flexible tool that allows for organizing other widgets within it.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/container>`_
-        (including screenshots and examples).
-
-    :param widgets: list of widgets to be placed in the container
-    :type widgets: Optional[List[Widget]]
-    :param direction: direction of the container, one of: vertical, horizontal
-    :type direction: Optional[Literal["vertical", "horizontal"]]
-    :param gap: gap between widgets in pixels
-    :type gap: Optional[int]
-    :param fractions: list of fractions for each widget (only for horizontal direction)
-    :type fractions: Optional[List[int]]
-    :param overflow: overflow behavior, one of: scroll, wrap
-    :type overflow: Optional[Literal["scroll", "wrap"]]
-    :param style: CSS style for the container
-    :type style: Optional[str]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Container, Text
-
-        container = Container(
-            widgets=[
-                Text("First widget"),
-                Text("Second widget"),
-            ],
-            direction="horizontal",
-            gap=10,
-            fractions=[1, 2],
-            overflow="scroll",
-            style="background-color: #f0f0f0; padding: 10px",
-        )
-    """
+    """Flexible container for organizing child widgets vertically or horizontally."""
 
     def __init__(
         self,
@@ -53,6 +17,31 @@ class Container(Widget):
         widget_id: Optional[str] = None,
         widgets_style: Optional[str] = "",
     ):
+        """
+        :param widgets: List of child widgets.
+        :type widgets: Optional[List[Widget]]
+        :param direction: "vertical" or "horizontal".
+        :type direction: Optional[Literal["vertical", "horizontal"]]
+        :param gap: Gap between widgets (px).
+        :type gap: Optional[int]
+        :param fractions: Width fractions for horizontal layout.
+        :type fractions: Optional[List[int]]
+        :param overflow: "scroll" or "wrap".
+        :type overflow: Optional[Literal["scroll", "wrap"]]
+        :param style: CSS for container.
+        :type style: Optional[str]
+        :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
+        :param widgets_style: CSS for child widgets.
+        :type widgets_style: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Container, Text
+                container = Container(widgets=[Text("A"), Text("B")], direction="horizontal", gap=10)
+        """
         self._widgets = widgets
         self._direction = direction
         self._gap = gap

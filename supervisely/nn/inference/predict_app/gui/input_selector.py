@@ -20,11 +20,19 @@ from supervisely.project.project import ProjectType
 
 
 class InputSelector:
+    """Predict app step: select workspace, project, dataset, or items as inference input."""
+
     title = "Input data"
     description = "Select input data on which to run model for prediction"
     lock_message = None
 
     def __init__(self, workspace_id: int, api: Api):
+        """
+        :param workspace_id: Workspace ID.
+        :type workspace_id: int
+        :param api: Supervisely API.
+        :type api: Api
+        """
         # Init Step
         self.workspace_id = workspace_id
         self.api = api

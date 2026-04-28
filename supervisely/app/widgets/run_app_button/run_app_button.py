@@ -11,6 +11,8 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 
 class RunAppButton(Widget):
+    """Button that launches a Supervisely app (module) in team/workspace with optional payload and visibility control."""
+
     def __init__(
         self,
         team_id: int,
@@ -62,25 +64,27 @@ class RunAppButton(Widget):
         :param widget_id: Widget ID.
         :type widget_id: str, optional
 
-        :Usage example:
-        .. code-block:: python
-            from supervisely.app.widgets import RunAppButton
+        :Usage Example:
 
-            workspace_id = 123
-            project_id = 555
-            app_module_id = 777
+            .. code-block:: python
 
-            run_app_button = RunAppButton(
-                workspace_id=workspace_id,
-                module_id=app_module_id,
-                payload={"state": {"slyProjectId": project_id}},
-                text="Run App",
-                button_type="info",
-                plain=True,
-                icon="zmdi zmdi-chart",
-                available_in_offline=True,
-                visible_by_vue_field="isStaticVersion",
-            )
+                from supervisely.app.widgets import RunAppButton
+
+                workspace_id = 123
+                project_id = 555
+                app_module_id = 777
+
+                run_app_button = RunAppButton(
+                    workspace_id=workspace_id,
+                    module_id=app_module_id,
+                    payload={"state": {"slyProjectId": project_id}},
+                    text="Run App",
+                    button_type="info",
+                    plain=True,
+                    icon="zmdi zmdi-chart",
+                    available_in_offline=True,
+                    visible_by_vue_field="isStaticVersion",
+                )
         """
         self._text = text
         self._button_type = button_type
@@ -148,7 +152,7 @@ class RunAppButton(Widget):
     def workspace_id(self) -> int:
         """Returns the workspace ID.
 
-        :return: Workspace ID.
+        :returns: Workspace ID.
         :rtype: int
         """
         return self._workspace_id
@@ -168,7 +172,7 @@ class RunAppButton(Widget):
     def text(self) -> str:
         """Returns the text to be displayed on the button.
 
-        :return: Text to be displayed on the button.
+        :returns: Text to be displayed on the button.
         :rtype: str
         """
         return self._text
@@ -188,7 +192,7 @@ class RunAppButton(Widget):
     def payload(self) -> dict:
         """Returns the payload to be sent to the app.
 
-        :return: Payload to be sent to the app.
+        :returns: Payload to be sent to the app.
         :rtype: dict
         """
         return self._payload
@@ -208,7 +212,7 @@ class RunAppButton(Widget):
     def icon(self) -> str:
         """Returns the icon to be displayed on the button.
 
-        :return: Icon to be displayed on the button.
+        :returns: Icon to be displayed on the button.
         :rtype: str
         """
         return self._icon
@@ -231,7 +235,7 @@ class RunAppButton(Widget):
     def button_type(self) -> str:
         """Returns the type of the button.
 
-        :return: Type of the button.
+        :returns: Type of the button.
         :rtype: str
         """
         return self._button_type
@@ -253,7 +257,7 @@ class RunAppButton(Widget):
     def plain(self) -> bool:
         """Returns True if the button is plain, False otherwise.
 
-        :return: True if the button is plain, False otherwise.
+        :returns: True if the button is plain, False otherwise.
         :rtype: bool
         """
         return self._plain
@@ -273,7 +277,7 @@ class RunAppButton(Widget):
     def loading(self) -> bool:
         """Returns True if the button shows loading animation, False otherwise.
 
-        :return: True if the button shows loading animation, False otherwise.
+        :returns: True if the button shows loading animation, False otherwise.
         :rtype: bool
         """
         return self._loading
@@ -293,7 +297,7 @@ class RunAppButton(Widget):
     def disabled(self) -> bool:
         """Returns True if the button is disabled, False otherwise.
 
-        :return: True if the button is disabled, False otherwise.
+        :returns: True if the button is disabled, False otherwise.
         :rtype: bool
         """
         return self._disabled

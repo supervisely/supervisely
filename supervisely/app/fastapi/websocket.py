@@ -9,7 +9,13 @@ from supervisely.app.singleton import Singleton
 
 
 class WebsocketManager(metaclass=Singleton):
+    """Singleton manager for WebSocket connections, broadcasting and user cookie mapping."""
+
     def __init__(self, path="/sly-app-ws"):
+        """
+        :param path: WebSocket route path.
+        :type path: str
+        """
         self.app = None
         self.path = path
         self.active_connections: List[WebSocket] = []

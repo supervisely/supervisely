@@ -40,7 +40,7 @@ def download(
     `sly.download_pointcloud_episode_project` to examine full list of possible arguments.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID, which will be downloaded.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -52,112 +52,112 @@ def download(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
-    :Usage example:
 
-    .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from tqdm import tqdm
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        dest_dir = 'your/local/dest/dir'
+            api = sly.Api.from_env()
 
-        # Download image project
-        project_id_image = 17732
-        project_info = api.project.get_info_by_id(project_id_image)
-        num_images = project_info.items_count
+            dest_dir = 'your/local/dest/dir'
 
-        p = tqdm(desc="Downloading image project", total=num_images)
-        sly.download(
-            api,
-            project_id_image,
-            dest_dir,
-            progress_cb=p,
-            save_image_info=True,
-            save_images=True,
-        )
+            # Download image project
+            project_id_image = 17732
+            project_info = api.project.get_info_by_id(project_id_image)
+            num_images = project_info.items_count
 
-        # Download video project
-        project_id_video = 60498
-        project_info = api.project.get_info_by_id(project_id_video)
-        num_videos = project_info.items_count
+            p = tqdm(desc="Downloading image project", total=num_images)
+            sly.download(
+                api,
+                project_id_image,
+                dest_dir,
+                progress_cb=p,
+                save_image_info=True,
+                save_images=True,
+            )
 
-        # Download video project with automatic logging...
-        sly.download(
-            api,
-            project_id_video,
-            dest_dir,
-            save_video_info=True,
-        )
-        # ...or disable logging at all
-        sly.download(
-            api,
-            project_id_video,
-            dest_dir,
-            log_progress=False,
-            save_video_info=True,
-        )
+            # Download video project
+            project_id_video = 60498
+            project_info = api.project.get_info_by_id(project_id_video)
+            num_videos = project_info.items_count
 
-        # Download volume project
-        project_id_volume = 18594
-        project_info = api.project.get_info_by_id(project_id_volume)
-        num_volumes = project_info.items_count
+            # Download video project with automatic logging...
+            sly.download(
+                api,
+                project_id_video,
+                dest_dir,
+                save_video_info=True,
+            )
 
-        p = tqdm(desc="Downloading volume project",total=num_volumes)
-        sly.download(
-            api,
-            project_id_volume,
-            dest_dir,
-            progress_cb=p,
-            download_volumes=True,
-        )
+            # ...or disable logging at all
+            sly.download(
+                api,
+                project_id_video,
+                dest_dir,
+                log_progress=False,
+                save_video_info=True,
+            )
 
-        # Download pointcloud project
-        project_id_ptcl = 18592
-        project_info = api.project.get_info_by_id(project_id_ptcl)
-        num_ptcl = project_info.items_count
+            # Download volume project
+            project_id_volume = 18594
+            project_info = api.project.get_info_by_id(project_id_volume)
+            num_volumes = project_info.items_count
 
-        p = tqdm(desc="Downloading pointcloud project", total=num_ptcl)
-        sly.download(
-            api,
-            project_id_ptcl,
-            dest_dir,
-            progress_cb=p,
-            download_pointclouds_info=True,
-        )
+            p = tqdm(desc="Downloading volume project",total=num_volumes)
+            sly.download(
+                api,
+                project_id_volume,
+                dest_dir,
+                progress_cb=p,
+                download_volumes=True,
+            )
 
-        # Download some datasets from pointcloud episodes project
-        project_id_ptcl_ep = 18593
-        dataset_ids = [43546, 45765, 45656]
+            # Download pointcloud project
+            project_id_ptcl = 18592
+            project_info = api.project.get_info_by_id(project_id_ptcl)
+            num_ptcl = project_info.items_count
 
-        p = tqdm(
-            desc="Download some datasets from pointcloud episodes project",
-            total=len(dataset_ids),
-        )
-        sly.download(
-            api,
-            project_id_ptcl_ep,
-            dest_dir,
-            dataset_ids,
-            progress_cb=p,
-            download_pcd=True,
-            download_related_images=True,
-            download_annotations=True,
-            download_pointclouds_info=True,
-        )
+            p = tqdm(desc="Downloading pointcloud project", total=num_ptcl)
+            sly.download(
+                api,
+                project_id_ptcl,
+                dest_dir,
+                progress_cb=p,
+                download_pointclouds_info=True,
+            )
+
+            # Download some datasets from pointcloud episodes project
+            project_id_ptcl_ep = 18593
+            dataset_ids = [43546, 45765, 45656]
+
+            p = tqdm(
+                desc="Download some datasets from pointcloud episodes project",
+                total=len(dataset_ids),
+            )
+            sly.download(
+                api,
+                project_id_ptcl_ep,
+                dest_dir,
+                dataset_ids,
+                progress_cb=p,
+                download_pcd=True,
+                download_related_images=True,
+                download_annotations=True,
+                download_pointclouds_info=True,
+            )
     """
 
     project_info = api.project.get_info_by_id(project_id)
@@ -222,9 +222,26 @@ def download_async_or_sync(
     """
     Download project asynchronously if possible, otherwise download synchronously.
     Automatically detects project type.
-    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+    You can pass project info object as `project_info` kwarg to avoid additional API requests.
 
     In case of error during asynchronous download, the function will switch to synchronous download.
+
+    :param api: Supervisely API address and token.
+    :type api: :class:`~supervisely.api.api.Api`
+    :param project_id: Project ID.
+    :type project_id: int
+    :param dest_dir: Destination directory.
+    :type dest_dir: str
+    :param dataset_ids: Dataset IDs.
+    :type dataset_ids: List[int], optional
+    :param log_progress: Show progress bar.
+    :type log_progress: bool
+    :param progress_cb: Progress callback.
+    :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore to limit the number of concurrent downloads.
+    :type semaphore: asyncio.Semaphore, optional
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
     """
     project_info = kwargs.pop("project_info", None)
     if not isinstance(project_info, ProjectInfo) or project_info.id != project_id:
@@ -286,62 +303,67 @@ def download_fast(
     Automatically detects project type.
 
     :param api: Supervisely API address and token.
-    :type api: :class:`Api<supervisely.api.api.Api>`
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Supervisely downloadable project ID.
-    :type project_id: :class:`int`
+    :type project_id: int
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`
+    :type dest_dir: str
     :param dataset_ids: Filter datasets by IDs.
-    :type dataset_ids: :class:`list` [ :class:`int` ], optional
+    :type dataset_ids: List[int], optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
     :param semaphore: Semaphore to limit the number of concurrent downloads of items.
-    :type semaphore: :class:`asyncio.Semaphore`, optional
+    :type semaphore: asyncio.Semaphore, optional
     :param only_image_tags: Download project with only images tags (without objects tags).
-    :type only_image_tags: :class:`bool`, optional
+    :type only_image_tags: bool, optional
     :param save_image_info: Download images infos or not.
-    :type save_image_info: :class:`bool`, optional
+    :type save_image_info: bool, optional
     :param save_images: Download images or not.
-    :type save_images: :class:`bool`, optional
+    :type save_images: bool, optional
     :param save_image_meta: Download images metadata in JSON format or not.
-    :type save_image_meta: :class:`bool`, optional
+    :type save_image_meta: bool, optional
     :param images_ids: Filter images by IDs.
-    :type images_ids: :class:`list` [ :class:`int` ], optional
+    :type images_ids: List[int], optional
     :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
-    :type resume_download: :class:`bool`, optional
+    :type resume_download: bool, optional
     :param switch_size: Size threshold that determines how an item will be downloaded.
                         Items larger than this size will be downloaded as single files, while smaller items will be downloaded as a batch.
                         Useful for projects with different item sizes and when you exactly know which size will perform better with batch download.
-    :type switch_size: :class:`int`, optional
+    :type switch_size: int, optional
     :param batch_size: Number of items to download in a single batch.
-    :type batch_size: :class:`int`, optional
+    :type batch_size: int, optional
     :param download_blob_files: Download project with Blob files in native format.
                                 If False - download project like a regular project in classic Supervisely format.
-    :type download_blob_files: :class:`bool`, optional
+    :type download_blob_files: bool, optional
     :param project_info: Project info object. To avoid additional API requests.
-    :type project_info: :class:`ProjectInfo`, optional
+    :type project_info: :class:`~supervisely.api.project_api.ProjectInfo`, optional
     :param skip_create_readme: Skip creating README.md file. Default is False.
     :type skip_create_readme: bool, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             project_id = 8888
             save_directory = "/path/to/save/projects"
 
             sly.download_fast(api, project_id, save_directory)
-
     """
 
     download_async_or_sync(
@@ -588,20 +610,20 @@ def download_to_cache(
     If both dataset_infos and dataset_ids are None, all datasets of the project will be downloaded.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID, which will be downloaded.
     :type project_id: int
     :param dataset_infos: Specified list of Dataset Infos which will be downloaded.
-    :type dataset_infos: list(DatasetInfo), optional
+    :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`], optional
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
-    :type dataset_ids: list(int), optional
+    :type dataset_ids: List[int], optional
     :param log_progress: Show downloading logs in the output.
     :type log_progress: bool, optional
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
     :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
 
-    :return: Tuple where the first list contains names of downloaded datasets and the second list contains
+    :returns: Tuple where the first list contains names of downloaded datasets and the second list contains
     names of cached datasets
     :rtype: Tuple[List, List]
     """
@@ -679,7 +701,7 @@ def copy_from_cache(
     :param dataset_paths: List of dataset paths to copy. If not specified, all datasets will be copied.
     :type dataset_paths: list(str), optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
     """
     if not is_cached(project_id):
@@ -720,7 +742,7 @@ def download_using_cache(
     If dataset_ids is None, all datasets of the project will be downloaded.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID, which will be downloaded.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -734,7 +756,7 @@ def download_using_cache(
     :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
     :type semaphore: asyncio.Semaphore, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
     """
     downloaded, cached = download_to_cache(
@@ -762,7 +784,7 @@ def read_from_cached_project(
     :param image_ids: List of image IDs.
     :type image_ids: list(int)
 
-    :return: List of tuples of image path and annotation path.
+    :returns: List of tuples of image path and annotation path.
     :rtype: list(str)
     """
     if not is_cached(project_id, dataset_name):

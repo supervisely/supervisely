@@ -32,6 +32,7 @@ ComparisonEvalResult = Union[ObjectDetectionEvalResult, SemanticSegmentationEval
 
 
 class ModelComparison:
+    """Orchestrates loading and visualizing comparison of multiple model evaluations."""
 
     def __init__(
         self,
@@ -42,6 +43,13 @@ class ModelComparison:
         cv_task: Optional[TaskType] = None,
         team_id: Optional[int] = None,
     ):
+        """:param api: Supervisely API.
+        :param remote_eval_dirs: Remote paths to evaluation result dirs.
+        :param progress: Progress callback.
+        :param workdir: Local work directory.
+        :param cv_task: Optional task type override.
+        :param team_id: Optional team ID.
+        """
         self.api = api
         self.progress = progress or tqdm_sly
         self.workdir = workdir

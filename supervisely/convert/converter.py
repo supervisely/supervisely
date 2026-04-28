@@ -38,6 +38,7 @@ from supervisely.task.progress import Progress
 
 
 class ImportManager:
+    """Manages import of external data (archives, folders) into Supervisely projects via modality-specific converters."""
 
     def __init__(
         self,
@@ -47,6 +48,19 @@ class ImportManager:
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
+        """:param input_data: Path(s) to input data (archives or directories).
+        :type input_data: Union[str, List[str]]
+        :param project_type: Project modality (IMAGES, VIDEOS, etc.).
+        :type project_type: ProjectType
+        :param team_id: Team ID for upload. Defaults to env.
+        :type team_id: int, optional
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface
+        :param upload_as_links: If True, upload as links.
+        :type upload_as_links: bool
+
+        :raises ValueError: If team_id invalid or project type unsupported.
+        """
         self._api = Api.from_env()
         if team_id is not None:
             team_info = self._api.team.get_info_by_id(team_id)
@@ -64,7 +78,7 @@ class ImportManager:
         if isinstance(input_data, str):
             input_data = [input_data]
 
-        self._input_data = get_data_dir()
+        self._input_data = os.path.abspath(get_data_dir())
         for data in input_data:
             self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
@@ -140,6 +154,7 @@ class ImportManager:
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
+                ProjectType.POINT_CLOUDS.value,
             ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)
@@ -191,7 +206,7 @@ class ImportManager:
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
 
-        local_path = os.path.join(get_data_dir(), dir_name)
+        local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
@@ -217,7 +232,7 @@ class ImportManager:
         dir_name = os.path.basename(dir_path)
 
         local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
-        mkdir(local_path, remove_content_if_exists=True)
+        mkdir(local_path, remove_content_if_exists=False)
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)

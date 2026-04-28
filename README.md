@@ -118,7 +118,7 @@ More concretely, Supervisely includes the following functionality:
 
 The simplicity of creating Supervisely Apps has already led to the development of [hundreds of applications](https://ecosystem.supervisely.com/), ready to be run within a single click in a web browser and get the job done.
 
-Label your data, perform quality assurance, inspect every aspect of your data, collaborate easily, train and apply state-of-the-art neural networks, integrate custom models, automate routine tasks and more — like in a real AppStore, there should be an app for everything.
+Label your data, perform quality assurance, inspect every aspect of your data, collaborate easily, train and apply state-of-the-art neural networks, integrate custom models, automate routine tasks and more - like in a real AppStore, there should be an app for everything.
 
 ## [Development](https://developer.supervisely.com/) 🧑‍💻
 
@@ -280,7 +280,7 @@ Development for Supervisely builds upon these five principles:
 
 ### Start in a minute
 
-Supervisely's open-source SDK and app framework are straightforward to get started with. It’s just a matter of:
+Supervisely's open-source SDK and app framework are straightforward to get started with. It's just a matter of:
 
 ```
 pip install supervisely

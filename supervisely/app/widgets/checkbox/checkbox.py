@@ -7,20 +7,10 @@ from supervisely.app.widgets import Text, Widget
 
 
 class Checkbox(Widget):
-    """This widget is a simple and intuitive interface element that allows users to select given option.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/controls/checkbox>`_
-        (including screenshots and examples).
-
-    :param content: Content of the checkbox.
-    :type content: Union[Widget, str]
-    :param checked: Initial state of the checkbox.
-    :type checked: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    """
+    """Checkbox for selecting an option."""
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -29,6 +19,21 @@ class Checkbox(Widget):
         checked: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param content: Label widget or text string.
+        :type content: Union[Widget, str]
+        :param checked: Initial checked state.
+        :type checked: bool, optional
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Checkbox
+                cb = Checkbox("Enable feature", checked=False)
+        """
         self._content = content
         self._checked = checked
         if type(self._content) is str:
@@ -39,7 +44,7 @@ class Checkbox(Widget):
     def get_json_data(self) -> Dict:
         """Checkbox widget does not have any additional data, so it returns an empty dictionary.
 
-        :return: Empty dictionary.
+        :returns: Empty dictionary.
         :rtype: Dict
         """
         return {}
@@ -49,7 +54,7 @@ class Checkbox(Widget):
         Dictionary contains the following keys:
             - checked: Current state of the checkbox.
 
-        :return: Dictionary with the state of the checkbox.
+        :returns: Dictionary with the state of the checkbox.
         :rtype: Dict[str, bool]
         """
         return {"checked": self._checked}
@@ -57,7 +62,7 @@ class Checkbox(Widget):
     def is_checked(self) -> bool:
         """Returns the state of the checkbox. True if checked, False otherwise.
 
-        :return: Current state of the checkbox.
+        :returns: Current state of the checkbox.
         :rtype: bool
         """
         return StateJson()[self.widget_id]["checked"]
@@ -87,7 +92,7 @@ class Checkbox(Widget):
 
         :param func: Function that handles the event of changing the state of the checkbox.
         :type func: Callable[[bool], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Checkbox.Routes.VALUE_CHANGED)

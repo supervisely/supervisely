@@ -9,7 +9,7 @@ try:
     from cython_bbox import bbox_overlaps as bbox_ious
 except ImportError:
     logger.warning("scipy, lap, and cython_bbox are not installed, some tracker functionalities may not work.")
-    
+
 from . import kalman_filter
 
 def merge_matches(m1, m2, shape):
@@ -91,10 +91,14 @@ def tlbr_expand(tlbr, scale=1.2):
 def iou_distance(atracks, btracks):
     """
     Compute cost based on IoU
-    :type atracks: list[STrack]
-    :type btracks: list[STrack]
+    
+    :param atracks: List of STracks.
+    :type atracks: List[:class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`]
+    :param btracks: List of STracks.
+    :type btracks: List[:class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`]
 
-    :rtype cost_matrix np.ndarray
+    :returns: Cost matrix based on IoU.
+    :rtype: np.ndarray
     """
 
     if (len(atracks)>0 and isinstance(atracks[0], np.ndarray)) or (len(btracks) > 0 and isinstance(btracks[0], np.ndarray)):
@@ -112,10 +116,13 @@ def iou_distance(atracks, btracks):
 def v_iou_distance(atracks, btracks):
     """
     Compute cost based on IoU
-    :type atracks: list[STrack]
-    :type btracks: list[STrack]
+    :param atracks: List of STracks.
+    :type atracks: List[:class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`]
+    :param btracks: List of STracks.
+    :type btracks: List[:class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`]
 
-    :rtype cost_matrix np.ndarray
+    :returns: Cost matrix based on IoU.
+    :rtype: np.ndarray
     """
 
     if (len(atracks)>0 and isinstance(atracks[0], np.ndarray)) or (len(btracks) > 0 and isinstance(btracks[0], np.ndarray)):
@@ -132,10 +139,14 @@ def v_iou_distance(atracks, btracks):
 
 def embedding_distance(tracks, detections, metric='cosine'):
     """
-    :param tracks: list[STrack]
-    :param detections: list[BaseTrack]
-    :param metric:
-    :return: cost_matrix np.ndarray
+    :param tracks: List of STracks.
+    :type tracks: List[:class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`]
+    :param detections: List of BaseTracks.
+    :type detections: List[:class:`~supervisely.nn.tracker.botsort.tracker.basetrack.BaseTrack`]
+    :param metric: Metric to use for computing the cost matrix.
+    :type metric: str
+    :returns: Cost matrix based on embedding distance.
+    :rtype: np.ndarray
     """
 
     cost_matrix = np.zeros((len(tracks), len(detections)), dtype=float)

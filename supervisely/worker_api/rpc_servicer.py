@@ -50,14 +50,28 @@ FRAME_INDEX = 'frame_index'
 
 
 class ConnectionClosedByServerException(Exception):
+    """Raised when the server closes the RPC request stream unexpectedly."""
+
     pass
 
 
 class AgentRPCServicerBase:
+    """Base implementation of the agent RPC loop for single-image inference requests."""
+
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
 
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        """
+        :param logger: Logger.
+        :type logger: Logger
+        :param model_applier: SingleImageInferenceInterface.
+        :type model_applier: SingleImageInferenceInterface
+        :param conn_config: Dict with server_address, token, task_id.
+        :type conn_config: dict
+        :param cache: Image cache.
+        :type cache: ImageCache
+        """
         self.logger = logger
         self.server_address = conn_config['server_address']
         self.api = AgentAPI(token=conn_config['token'],
@@ -227,6 +241,8 @@ class AgentRPCServicerBase:
 
 
 class AgentRPCServicer(AgentRPCServicerBase):
+    """Default Agent RPC servicer that applies a model via an InferenceMode pipeline."""
+
     @staticmethod
     def _in_project_meta_from_msg(in_msg):
         pr_meta_json = in_msg.get('meta')
@@ -260,6 +276,8 @@ class AgentRPCServicer(AgentRPCServicerBase):
 
 
 class SmarttoolRPCServicer(AgentRPCServicerBase):
+    """RPC servicer that forwards requests to a SmartTool model applier (custom inference API)."""
+
     def _do_single_img_inference(self, img, in_msg):
         inference_result = self.model_applier.inference(img, in_msg)
         return inference_result.to_json()
@@ -269,7 +287,10 @@ class SmarttoolRPCServicer(AgentRPCServicerBase):
 
 
 class InactiveRPCServicer(AgentRPCServicer):
+    """Servicer variant that disables RPC loop (used for internal wiring/tests)."""
+
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        """See AgentRPCServicerBase for params."""
         self.logger = logger
         self.model_applier = model_applier
         self._default_inference_mode_config = InfModeFullImage.make_default_config(model_result_suffix=MODEL_RESULT_SUFFIX)

@@ -8,19 +8,7 @@ from supervisely.imaging.color import rgb2hex
 
 
 class InputTagList(Widget):
-    """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them.
-
-    :param tag_metas: List of TagMeta objects or a TagMetaCollection, defaults to an empty list
-    :type tag_metas: Union[List[TagMeta], TagMetaCollection], optional
-    :param max_width: Maximum width of the widget in pixels, defaults to 300
-    :type max_width: int, optional
-    :param max_height: Maximum height of the widget in pixels, defaults to 50
-    :type max_height: int, optional
-    :param multiple: Whether to allow multiple tags to be selected, defaults to False
-    :type multiple: bool, optional
-    :param widget_id: Unique identifier for the widget, defaults to None
-    :type widget_id: int, optional
-    """
+    """Store and manage a list of input tags based on TagMeta objects."""
 
     class VALUE_TYPES:
         """Value types for input tags. Classifies the different types of values that tags can have."""
@@ -46,8 +34,8 @@ class InputTagList(Widget):
         3. ANY_NUMBER: 0
 
         :param tag_meta: Tag metadata
-        :type tag_meta: TagMeta
-        :return: Default value for the tag
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :returns: Default value for the tag
         :rtype: Union[str, int, None]
         """
         DEFAULT_VALUES = {
@@ -73,6 +61,18 @@ class InputTagList(Widget):
         multiple: bool = False,
         widget_id: int = None,
     ):
+        """
+        :param tag_metas: List of tag metas or a tag meta collection, defaults to an empty list
+        :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`], optional
+        :param max_width: Maximum width of the widget in pixels, defaults to 300
+        :type max_width: int, optional
+        :param max_height: Maximum height of the widget in pixels, defaults to 50
+        :type max_height: int, optional
+        :param multiple: Whether to allow multiple tags to be selected, defaults to False
+        :type multiple: bool, optional
+        :param widget_id: Unique identifier for the widget, defaults to None
+        :type widget_id: int, optional
+        """
         self._tag_metas = tag_metas
         self._max_width = self._get_max_width(max_width)
         self._max_height = self._get_max_height(max_height)
@@ -86,7 +86,7 @@ class InputTagList(Widget):
 
         :param value: Desired maximum width in pixels.
         :type value: int
-        :return: Maximum width for the widget
+        :returns: Maximum width for the widget
         :rtype: str
         """
         if value < 150:
@@ -99,7 +99,7 @@ class InputTagList(Widget):
 
         :param value: Desired maximum height in pixels.
         :type value: int
-        :return: Maximum height for the widget
+        :returns: Maximum height for the widget
         :rtype: str
         """
         if value < 100:
@@ -109,7 +109,7 @@ class InputTagList(Widget):
     def get_json_data(self) -> Dict:
         """Get JSON data for the widget.
 
-        :return: JSON data for the widget
+        :returns: JSON data for the widget
         :rtype: Dict
         """
         return {
@@ -130,7 +130,7 @@ class InputTagList(Widget):
     def get_json_state(self) -> Dict:
         """Get JSON state for the widget.
 
-        :return: JSON state for the widget
+        :returns: JSON state for the widget
         :rtype: Dict
         """
         return {
@@ -141,8 +141,8 @@ class InputTagList(Widget):
     def get_selected_tag_metas(self) -> List[TagMeta]:
         """Get selected tag metas for the widget.
 
-        :return: List of selected tag metas
-        :rtype: List[TagMeta]
+        :returns: List of selected tag metas
+        :rtype: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
         """
         return [
             tm
@@ -153,8 +153,8 @@ class InputTagList(Widget):
     def get_selected_tags(self) -> List[Tag]:
         """Get selected tags for the widget.
 
-        :return: List of selected tags
-        :rtype: List[Tag]
+        :returns: List of selected tags
+        :rtype: List[:class:`~supervisely.annotation.tag.Tag`]
         """
         return [
             Tag(meta=tm, value=value)
@@ -169,8 +169,8 @@ class InputTagList(Widget):
     def get_all_tags(self) -> Union[List[TagMeta], TagMetaCollection]:
         """Get all tags for the widget.
 
-        :return: List of all tag metas
-        :rtype: Union[List[TagMeta], TagMetaCollection]
+        :returns: List of all tag metas
+        :rtype: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]
         """
         return [
             Tag(meta=tm, value=value)
@@ -184,8 +184,8 @@ class InputTagList(Widget):
         """Set tag metas for the widget.
 
         :param tag_metas: Tag metas to set
-        :type tag_metas: Union[List[TagMeta], TagMetaCollection]
-        :return: None
+        :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]
+        :returns: None
         """
         self._tag_metas = tag_metas
         DataJson()[self.widget_id] = self.get_json_data()
@@ -198,7 +198,7 @@ class InputTagList(Widget):
 
         :param values_dict: Dictionary of values to set
         :type values_dict: Dict
-        :return: None
+        :returns: None
         """
         current_values = StateJson()[self.widget_id]["values"]
         values = [
@@ -210,7 +210,7 @@ class InputTagList(Widget):
     def select_all(self) -> None:
         """Select all tags for the widget.
 
-        :return: None
+        :returns: None
         """
         StateJson()[self.widget_id]["selected"] = [True for _ in self._tag_metas]
         StateJson().send_changes()
@@ -218,7 +218,7 @@ class InputTagList(Widget):
     def deselect_all(self) -> None:
         """Deselect all tags for the widget.
 
-        :return: None
+        :returns: None
         """
         StateJson()[self.widget_id]["selected"] = [False for _ in self._tag_metas]
         StateJson().send_changes()
@@ -228,7 +228,7 @@ class InputTagList(Widget):
 
         :param names: List of tag names to select
         :type names: List[str]
-        :return: None
+        :returns: None
         """
         selected = [tm.name in names for tm in self._tag_metas]
         StateJson()[self.widget_id]["selected"] = selected
@@ -239,7 +239,7 @@ class InputTagList(Widget):
 
         :param names: List of tag names to deselect
         :type names: List[str]
-        :return: None
+        :returns: None
         """
         selected = StateJson()[self.widget_id]["selected"]
         for idx, tm in enumerate(self._tag_metas):
@@ -251,8 +251,8 @@ class InputTagList(Widget):
     def get_all_tag_metas(self) -> List[TagMeta]:
         """Get all tag metas for the widget.
 
-        :return: List of all tag metas
-        :rtype: List[TagMeta]
+        :returns: List of all tag metas
+        :rtype: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
         """
         return self._tag_metas
 

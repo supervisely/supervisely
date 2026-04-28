@@ -3,6 +3,8 @@ from collections import OrderedDict
 
 
 class TrackState(object):
+    """Integer constants describing a track's lifecycle state (new/tracked/lost/removed)."""
+
     New = 0
     Tracked = 1
     Lost = 2
@@ -11,6 +13,8 @@ class TrackState(object):
 
 
 class BaseTrack(object):
+    """Base tracking primitive with an ID, state transitions, and abstract lifecycle hooks."""
+
     _count = 0
 
     track_id = 0

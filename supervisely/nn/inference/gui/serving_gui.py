@@ -9,6 +9,8 @@ from supervisely.task.progress import Progress
 
 
 class ServingGUI:
+    """GUI for model serving: device selection, serve/stop buttons, inference settings editor, download progress."""
+
     def __init__(self) -> None:
         self._device_select = Widgets.SelectCudaDevice(include_cpu_option=True)
         self._device_field = Widgets.Field(self._device_select, title="Device")

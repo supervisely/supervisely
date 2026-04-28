@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class KeyMetrics(SemanticSegmVisMetric):
+    """Key metrics table and chart for semantic segmentation reports."""
+
 
     @property
     def md(self) -> MarkdownWidget:
