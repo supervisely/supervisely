@@ -11,6 +11,7 @@ from supervisely.io.json import load_json_file
 
 
 class LabelStudioConverter(ImageConverter):
+    """Imports Label Studio export format (JSON with annotations/predictions) into Supervisely image project."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,6 +31,8 @@ class LabelStudioConverter(ImageConverter):
         if not isinstance(raw_ann, list):
             return False
         if len(raw_ann) == 0:
+            return False
+        if not all([isinstance(ann, dict) for ann in raw_ann]):
             return False
         if not all([isinstance(ann.get("data"), dict) for ann in raw_ann]):
             return False

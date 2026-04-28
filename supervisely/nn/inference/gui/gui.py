@@ -22,6 +22,8 @@ except ImportError:
 
 
 class BaseInferenceGUI:
+    """Minimal interface for building a model-deployment GUI (serve button, progress, and UI layout)."""
+
     @property
     def serve_button(self) -> Widgets.Button:
         # return self._serve_button
@@ -48,6 +50,8 @@ CallbackT = Callable[[BaseInferenceGUI], None]
 
 
 class InferenceGUI(BaseInferenceGUI):
+    """Default GUI to select a model/device and deploy it, with optional tabs for pretrained/custom models."""
+
     def __init__(
         self,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],
@@ -58,6 +62,22 @@ class InferenceGUI(BaseInferenceGUI):
         add_content_to_custom_tab: Optional[Callable] = None,
         custom_model_link_type: Optional[Literal["file", "folder"]] = "file",
     ):
+        """
+        :param models: Model list or dict.
+        :type models: List[Dict[str, str]] or Dict[str, List[Dict[str, str]]]
+        :param api: Supervisely API.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param support_pretrained_models: Enable pretrained tab.
+        :type support_pretrained_models: bool
+        :param support_custom_models: Enable custom tab.
+        :type support_custom_models: bool
+        :param add_content_to_pretrained_tab: Optional callback.
+        :type add_content_to_pretrained_tab: Callable[[BaseInferenceGUI], None]
+        :param add_content_to_custom_tab: Optional callback.
+        :type add_content_to_custom_tab: Callable[[BaseInferenceGUI], None]
+        :param custom_model_link_type: 'file' or 'folder'.
+        :type custom_model_link_type: Literal["file", "folder"]
+        """
         if isinstance(models, dict):
             self._support_submodels = True
         else:

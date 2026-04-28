@@ -162,7 +162,7 @@ def _ask_share_app(server_address):
                 f"Do you want to share this private app on your private instance [green]{server_address}[/] ?\n"
                 f"[green]yes[/] - Application will be available for all users on your private instance.\n"
                 "[red]no[/] - Application will only be available for you and the co-authors of the app.\n"
-                "You will be able to change the selection on the application page in the ecosystem after publishing. \[y/n]:\n"
+                "You will be able to change the selection on the application page in the ecosystem after publishing. [y/n]:\n"
             )
         )
         if confirmed.lower() in ["y", "yes"]:
@@ -172,7 +172,7 @@ def _ask_share_app(server_address):
 
 
 def _check_release_version(release_version):
-    return re.fullmatch("v\d+\.\d+\.\d+", release_version)
+    return re.fullmatch(r"v\d+\.\d+\.\d+", release_version)
 
 
 def _check_instance_version(instance_version):

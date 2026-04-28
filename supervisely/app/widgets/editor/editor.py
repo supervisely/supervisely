@@ -5,49 +5,7 @@ from supervisely.app.widgets import Button, Widget
 
 
 class Editor(Widget):
-    """Editor widget in Supervisely allows users to input and edit code with syntax highlighting.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/editor>`_
-        (including screenshots and examples).
-
-
-    :param initial_text: Initial text in the editor.
-    :type initial_text: Optional[str]
-    :param height_px: Height of the editor in pixels.
-    :type height_px: Optional[int]
-    :param height_lines: Overwrites height_px if specified. If >= 1000, all lines will be displayed.
-    :type height_lines: Optional[int]
-    :param language_mode: Language mode of the editor, one of: json, html, plain_text, yaml, python.
-    :type language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]]
-    :param readonly: If True, editor will be readonly.
-    :type readonly: Optional[bool]
-    :param show_line_numbers: If True, line numbers will be shown.
-    :type show_line_numbers: Optional[bool]
-    :param highlight_active_line: If True, active line will be highlighted.
-    :type highlight_active_line: Optional[bool]
-    :param restore_default_button: If True, button to restore default text will be shown.
-    :type restore_default_button: Optional[bool]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-    :param auto_format: If True, the editor will automatically format JSON on initialization.
-    :type auto_format: bool
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Editor
-
-        editor = Editor(
-            initial_text="print('Hello, world!')",
-            height_px=200,
-            language_mode="python",
-            readonly=False,
-            show_line_numbers=True,
-            highlight_active_line=True,
-            restore_default_button=True,
-        )
-
-    """
+    """Code editor with syntax highlighting."""
 
     def __init__(
         self,
@@ -62,6 +20,35 @@ class Editor(Widget):
         widget_id: Optional[int] = None,
         auto_format: bool = False,
     ):
+        """
+        :param initial_text: Initial content.
+        :type initial_text: Optional[str]
+        :param height_px: Height in pixels.
+        :type height_px: Optional[int]
+        :param height_lines: Height in lines (overrides height_px; >=1000 shows all).
+        :type height_lines: Optional[int]
+        :param language_mode: Language mode of the editor, one of: json, html, plain_text, yaml, python.
+        :type language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]]
+        :param readonly: Read-only mode.
+        :type readonly: Optional[bool]
+        :param show_line_numbers: Show line numbers.
+        :type show_line_numbers: Optional[bool]
+        :param highlight_active_line: Highlight current line.
+        :type highlight_active_line: Optional[bool]
+        :param restore_default_button: Show restore button.
+        :type restore_default_button: Optional[bool]
+        :param auto_format: Auto-format JSON on init.
+        :type auto_format: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Editor
+                editor = Editor(initial_text="print('hi')", language_mode="python")
+        """
         self._initial_code = initial_text
         self._current_code = initial_text
         self._height_px = height_px
@@ -96,7 +83,7 @@ class Editor(Widget):
                 - maxLines: Overwrites height if specified. If >= 1000, all lines will be displayed
                 - highlightActiveLine: If True, active line will be highlighted
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Union[bool, str, int]]
         """
         return {
@@ -117,7 +104,7 @@ class Editor(Widget):
         Dictionary contains the following fields:
             - text: current text in the editor
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, str]
         """
         return {"text": self._current_code}
@@ -126,7 +113,7 @@ class Editor(Widget):
         """Returns current text in the editor.
         Same as get_value().
 
-        :return: current text in the editor
+        :returns: current text in the editor
         :rtype: str
         """
         return StateJson()[self.widget_id]["text"]
@@ -135,7 +122,7 @@ class Editor(Widget):
         """Returns current text in the editor.
         Same as get_text().
 
-        :return: current text in the editor
+        :returns: current text in the editor
         :rtype: str
         """
         return StateJson()[self.widget_id]["text"]
@@ -168,7 +155,7 @@ class Editor(Widget):
     def readonly(self) -> bool:
         """Returns True if editor is readonly, False otherwise.
 
-        :return: True if editor is readonly, False otherwise
+        :returns: True if editor is readonly, False otherwise
         :rtype: bool
         """
         return self._readonly

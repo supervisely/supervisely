@@ -29,7 +29,13 @@ WEIGHTS_INIT_TYPE = 'weights_init_type'
 
 
 class TrainCheckpoints:
+    """Manages checkpoint directories and save calls; reports to Supervisely progress; supports best-checkpoint tracking."""
+
     def __init__(self, base_out_dir):
+        """
+        :param base_out_dir: Root directory for checkpoints.
+        :type base_out_dir: str
+        """
         self._base_out_dir = base_out_dir
         # Checkpoint index does not correspond to epoch. Depending on training config, checkpoints may be saved more
         # frequently than once per epoch (or less frequently than once per epoch).
@@ -58,15 +64,13 @@ class TrainCheckpoints:
 
 
 class SuperviselyModelTrainer:
-    """
-    Base class for train neural networks with Supervisely.
+    """Base class for training neural networks with Supervisely."""
 
-    It is highly recommended that your train classes subclass this class.
-
-    Args:
-        default_config: Dict object containing default training config.
-    """
     def __init__(self, default_config):
+        """
+        :param default_config: Dict containing default training config.
+        :type default_config: dict
+        """
         logger.info('Will init all required to train.')
 
         with open(TaskPaths.TASK_CONFIG_PATH) as fin:

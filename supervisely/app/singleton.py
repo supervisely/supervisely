@@ -2,6 +2,8 @@ import supervisely.io.env as sly_env
 
 
 class Singleton(type):
+    """Metaclass that enforces single instance per class (with per-user variants for DataJson/StateJson in multiuser mode)."""
+
     _instances = {}
     _nested_instances = {}
 

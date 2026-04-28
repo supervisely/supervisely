@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Work with point cloud figures via the Supervisely API."""
+
 from typing import Dict, List, Optional
 
 from supervisely.api.module_api import ApiField
@@ -10,7 +12,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudFigureApi(FigureApi):
     """
-    :class:`PointcloudFigure<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure>` for a single point cloud.
+    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
+    :class:`~supervisely.api.pointcloud.pointcloud_figure_api.PointcloudFigureApi` object is immutable.
     """
 
     def create(
@@ -28,30 +31,37 @@ class PointcloudFigureApi(FigureApi):
         :type pointcloud_id: int
         :param object_id: ID of the object to which the PointcloudFigure belongs.
         :type object_id: int
-        :param geometry_json: Parameters of geometry for PointcloudFigure.
+        :param geometry_json: Parameters of geometry for :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
         :type geometry_json: dict
         :param geometry_type: Type of PointcloudFigure geometry.
         :type geometry_type: str
         :param track_id: int, optional.
         :type track_id: int, optional
-        :return: New figure ID
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: New figure ID
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            pcd_id = 19618685
-            object_id = 5565921
-            geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
-            geometry_type = 'rectangle'
+                import supervisely as sly
 
-            figure_id = api.pointcloud.figure.create(pcd_id, object_id, geometry_json, geometry_type) # 643182610
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pcd_id = 19618685
+                object_id = 5565921
+                geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
+                geometry_type = 'rectangle'
+
+                figure_id = api.pointcloud.figure.create(pcd_id, object_id, geometry_json, geometry_type) # 643182610
         """
 
         return super().create(pointcloud_id, object_id, {}, geometry_json, geometry_type, track_id)
@@ -63,36 +73,43 @@ class PointcloudFigureApi(FigureApi):
         key_id_map: KeyIdMap,
     ) -> None:
         """
-        Add VideoFigures to given Video by ID.
+        Add PointcloudFigures to given point cloud by ID.
 
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
         :param figures: List of point cloud figures to append.
-        :type figures: List[PointcloudFigure]
+        :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 124976
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            key_id_map = KeyIdMap()
+                import supervisely as sly
 
-            pcd_id = 198703212
-            ann_info = api.pointcloud.annotation.download(pcd_id)
-            ann = sly.PointcloudAnnotation.from_json(ann_info, meta, key_id_map)
-            figures = ann.figures[:5]
-            api.video.figure.append_bulk(pcd_id, figures, key_id_map)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 124976
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                key_id_map = KeyIdMap()
+
+                pcd_id = 198703212
+                ann_info = api.pointcloud.annotation.download(pcd_id)
+                ann = sly.PointcloudAnnotation.from_json(ann_info, meta, key_id_map)
+                figures = ann.figures[:5]
+                api.video.figure.append_bulk(pcd_id, figures, key_id_map)
         """
 
         keys = []
@@ -113,65 +130,69 @@ class PointcloudFigureApi(FigureApi):
         """
         Add pointcloud figures to Dataset annotations.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param figures: List of point cloud figures.
-        :type figures: List[PointcloudFigure]
+        :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
         :param entity_ids: List of point cloud IDs.
         :type entity_ids: List[int]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-            from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
-            from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
+                from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
 
-            project_id = 17231
-            dataset_id = 55875
-            pointcloud_id = 19373403
-            project = api.project.get_info_by_id(project_id)
-            dataset = api.dataset.get_info_by_id(dataset_id)
+                project_id = 17231
+                dataset_id = 55875
+                pointcloud_id = 19373403
+                project = api.project.get_info_by_id(project_id)
+                dataset = api.dataset.get_info_by_id(dataset_id)
 
-            class_car = sly.ObjClass('car', Cuboid3d)
-            classes = sly.ObjClassCollection([class_car])
-            project_meta = sly.ProjectMeta(classes)
-            updated_meta = api.project.update_meta(project.id, project_meta.to_json())
+                class_car = sly.ObjClass('car', Cuboid3d)
+                classes = sly.ObjClassCollection([class_car])
+                project_meta = sly.ProjectMeta(classes)
+                updated_meta = api.project.update_meta(project.id, project_meta.to_json())
 
-            key_id_map = KeyIdMap()
+                key_id_map = KeyIdMap()
 
-            car_object = sly.PointcloudObject(class_car)
-            objects_collection = PointcloudObjectCollection([car_object])
+                car_object = sly.PointcloudObject(class_car)
+                objects_collection = PointcloudObjectCollection([car_object])
 
-            uploaded_objects_ids = api.pointcloud_episode.object.append_to_dataset(
-                dataset.id,
-                objects_collection,
-                key_id_map,
-            )
+                uploaded_objects_ids = api.pointcloud_episode.object.append_to_dataset(
+                    dataset.id,
+                    objects_collection,
+                    key_id_map,
+                )
 
-            position, rotation, dimension = Vector3d(-32.4, 33.9, -0.7), Vector3d(0., 0, 0.1), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            figure_1 = PointcloudFigure(car_object, cuboid)
+                position, rotation, dimension = Vector3d(-32.4, 33.9, -0.7), Vector3d(0., 0, 0.1), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                figure_1 = PointcloudFigure(car_object, cuboid)
 
-            api.pointcloud_episode.figure.append_to_dataset(
-                dataset.id,
-                [figure_1],
-                [pointcloud_id],
-                key_id_map,
-            )
+                api.pointcloud_episode.figure.append_to_dataset(
+                    dataset.id,
+                    [figure_1],
+                    [pointcloud_id],
+                    key_id_map,
+                )
         """
 
         keys = []
@@ -206,8 +227,8 @@ class PointcloudFigureApi(FigureApi):
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
-        :return: A dictionary where keys are pointcloud IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :returns: A dictionary where keys are pointcloud IDs and values are lists of figures.
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         if kwargs.get("image_ids", False) is not False:
             pointcloud_ids = kwargs["image_ids"]  # backward compatibility

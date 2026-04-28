@@ -16,11 +16,16 @@ from supervisely.app.widgets import (
 
 
 class TrainingLogs:
+    """TrainApp GUI component for tracking training logs."""
     title = "Training Logs"
     description = "Track training progress"
     lock_message = "Start training to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
+        """
+        :param app_options: App options.
+        :type app_options: Dict[str, Any]
+        """
         # Init widgets
         self.tensorboard_button = None
         self.tensorboard_offline_button = None

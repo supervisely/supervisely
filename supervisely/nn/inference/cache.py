@@ -23,9 +23,15 @@ from supervisely.video.video import VideoFrameReader
 
 
 class PersistentImageLRUCache(LRUCache):
+    """LRU cache that persists image values to disk and loads them on access."""
+
     __marker = object()
 
     def __init__(self, maxsize, filepath: Path, getsizeof=None):
+        """:param maxsize: Max cache size.
+        :param filepath: Directory for persisted images.
+        :param getsizeof: Optional size function for cache eviction.
+        """
         super().__init__(maxsize)
         self._base_dir = filepath
 
@@ -65,7 +71,13 @@ class PersistentImageLRUCache(LRUCache):
 
 
 class PersistentImageTTLCache(TTLCache):
+    """TTL cache that persists cached file paths on disk and deletes expired items' files."""
+
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
+        """:param maxsize: Max cache size.
+        :param ttl: Time-to-live in seconds.
+        :param filepath: Directory for persisted files.
+        """
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
@@ -206,7 +218,11 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class InferenceImageCache:
+    """Disk-backed cache used by inference apps to store images/frames/videos and related metadata."""
+
     class _LoadType(Enum):
+        """Internal enum describing how a cached image should be loaded (by ID/hash/frame/video)."""
+
         ImageId: str = "IMAGE"
         ImageHash: str = "HASH"
         Frame: str = "FRAME"
@@ -220,6 +236,12 @@ class InferenceImageCache:
         base_folder: str = env.smart_cache_container_dir(),
         log_progress: bool = False,
     ) -> None:
+        """:param maxsize: Max cache size.
+        :param ttl: Time-to-live in seconds.
+        :param is_persistent: If True, persist to disk.
+        :param base_folder: Directory for persisted cache.
+        :param log_progress: If True, log cache operations.
+        """
         self.is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
@@ -646,7 +668,7 @@ class InferenceImageCache:
         Run cache_task in new thread.
 
         :param api: supervisely api
-        :type api: sly.Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param list_of_ids_ranges_or_hashes: information abount images/frames need to be loaded;
         to download images, pass list of integer IDs (`dataset_id` requires)
         or list of hash strings (`dataset_id` could be None);

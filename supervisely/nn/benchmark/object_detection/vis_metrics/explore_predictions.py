@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets import GalleryWidget, Markdo
 
 
 class ExplorePredictions(DetectionVisMetric):
+    """Gallery and widgets to explore predictions vs ground truth in detection reports."""
+
     MARKDOWN = "explore_predictions"
     GALLERY = "explore_predictions"
 

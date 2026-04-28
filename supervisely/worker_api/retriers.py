@@ -8,7 +8,21 @@ import requests
 
 # should be stateless
 class RetrierAbstract:
+    """Base class for retry policies used around network/API calls."""
+
     def __init__(self, retry_cnt, wait_sec_first, wait_sec_max, timeout, swallow_exc=False):
+        """
+        :param retry_cnt: Max retries.
+        :type retry_cnt: int
+        :param wait_sec_first: Initial wait.
+        :type wait_sec_first: int
+        :param wait_sec_max: Max wait.
+        :type wait_sec_max: int
+        :param timeout: Request timeout.
+        :type timeout: tuple
+        :param swallow_exc: If True, don't raise on final failure.
+        :type swallow_exc: bool
+        """
         self.retry_cnt = int(retry_cnt)
         self.wait_sec = (wait_sec_first, wait_sec_max)
         if isinstance(timeout, list):  # requests lib timeout format
@@ -36,6 +50,8 @@ class RetrierAbstract:
 
 
 class RetrierAlways(RetrierAbstract):
+    """Retry on any exception until attempts are exhausted."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -47,6 +63,8 @@ class RetrierAlways(RetrierAbstract):
 
 
 class RetrierAlwaysYield(RetrierAbstract):
+    """Retry on any exception for generator-style (streaming) callbacks."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -59,6 +77,8 @@ class RetrierAlwaysYield(RetrierAbstract):
 
 
 class RetrierConnTO(RetrierAbstract):
+    """Retry only on connection/connect-timeout errors."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -70,6 +90,8 @@ class RetrierConnTO(RetrierAbstract):
 
 
 class RetrierConnTOYield(RetrierAbstract):
+    """Retry only on connection/connect-timeout errors for streaming callbacks."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:

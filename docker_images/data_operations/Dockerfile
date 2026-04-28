@@ -12,4 +12,3 @@ RUN pip install decord==0.6.0
 
 # Supervisely
 RUN pip install --upgrade supervisely==$tag_ref_name
-RUN pip install --upgrade supervisely[docs]==$tag_ref_name

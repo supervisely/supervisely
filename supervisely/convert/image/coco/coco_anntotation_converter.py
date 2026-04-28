@@ -12,6 +12,7 @@ COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class FastCOCOConverter(COCOConverter, ImageConverter):
+    """Optimized COCO importer for annotation-only folders (no images on disk); uses COCO JSON as source."""
 
     def __str__(self) -> str:
         return AvailableImageConverters.FAST_COCO

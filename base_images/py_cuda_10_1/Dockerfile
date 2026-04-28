@@ -58,7 +58,7 @@ RUN pip install \
         scikit-image==0.17.1 \
         matplotlib==3.3.2 \
         pillow==5.4.1 \
-        requests==2.24.0 \
+        requests==2.27.1 \
         networkx==2.5 \
         jsonschema==2.6.0
 
@@ -96,7 +96,6 @@ RUN apt-get update && \
 #RUN pip install py3exiv2==0.8.0
 #RUN pip install simplejson==3.17.2
 RUN pip install requests-toolbelt==0.9.1
-RUN pip install PTable
 RUN pip install flask-restful
 RUN apt-get install -y fonts-noto=20160116-1
 

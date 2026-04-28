@@ -46,7 +46,11 @@ DATA_TYPES = ["folder", "file"]
 
 
 class Import(Application):
+    """Template app for importing data into a Supervisely project/dataset with a step-by-step UI."""
+
     class Context:
+        """Import run context (destination IDs + selected remote path + progress widget)."""
+
         def __init__(
             self,
             team_id: int,
@@ -58,6 +62,26 @@ class Import(Application):
             progress: SlyTqdm,
             is_on_agent: bool = False,
         ):
+            """
+            :param team_id: Team ID.
+            :type team_id: int
+            :param workspace_id: Workspace ID.
+            :type workspace_id: int
+            :param project_id: Project ID.
+            :type project_id: int
+            :param dataset_id: Dataset ID.
+            :type dataset_id: int
+            :param path: Selected path in Team Files.
+            :type path: str
+            :param project_name: Name for new project (if applicable).
+            :type project_name: str
+            :param progress: SlyTqdm progress widget.
+            :type progress: SlyTqdm
+            :param is_on_agent: If True, running on agent.
+            :type is_on_agent: bool
+
+            :raises ValueError: If team_id or workspace_id invalid.
+            """
             self._team_id = team_id
             if self._team_id is None:
                 raise ValueError(f"Team ID is not specified: {self._team_id}")
@@ -145,6 +169,16 @@ class Import(Application):
         ] = None,
         allowed_data_type: Literal["folder", "file"] = None,
     ):
+        """
+        :param allowed_project_types: Project types to allow (max 5). Defaults to all.
+        :type allowed_project_types: List[ProjectType], optional
+        :param allowed_destination_options: Destination options (max 3). Defaults to all.
+        :type allowed_destination_options: List[Literal], optional
+        :param allowed_data_type: "folder" or "file". None allows both.
+        :type allowed_data_type: Literal["folder", "file"], optional
+
+        :raises ValueError: If invalid or too many options provided.
+        """
         if allowed_project_types is None:
             self._allowed_project_types = PROJECT_TYPES
         else:
@@ -685,6 +719,7 @@ class Import(Application):
         return team_id, workspace_id, project_id, dataset_id, project_name
 
     def __get_remote_path(self):
+        path = None
         if self.__input_mode == "file":
             path = env.file()
         elif self.__input_mode == "folder":

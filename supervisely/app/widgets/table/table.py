@@ -22,6 +22,8 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 
 
 class PackerUnpacker:
+    """Helpers to (un)pack supported table input types (dict, pandas DataFrame) into a common JSON shape."""
+
     SUPPORTED_TYPES = tuple([dict, pd.DataFrame])
 
     @staticmethod
@@ -105,13 +107,30 @@ def show_image(datapoint: sly.app.widgets.Table.ClickedDataPoint):
 
 
 class Table(Widget):
+    """Table widget for displaying tabular data with sorting, pagination and click callbacks."""
+
     class Routes:
+        """HTTP routes used by the widget frontend for callbacks/download."""
+
         CELL_CLICKED = "cell_clicked_cb"
         DOWNLOAD_AS_CSV = "download_as_csv"
         UPDATE_SORT = "update_sort_cb"
 
     class ClickedDataPoint:
+        """Payload describing a clicked table cell and its row context."""
+
         def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict, row_index: int = None):
+            """:param column_index: 0-based column index.
+            :type column_index: int
+            :param column_name: Column name.
+            :type column_name: str
+            :param cell_value: Cell value.
+            :type cell_value: Any
+            :param row: Full row as dict.
+            :type row: dict
+            :param row_index: 0-based row index.
+            :type row_index: int, optional
+            """
             self.column_index = column_index
             self.column_name = column_name
             self.cell_value = cell_value

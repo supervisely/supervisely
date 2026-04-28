@@ -7,6 +7,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class ClasswiseErrorAnalysis(SemanticSegmVisMetric):
+    """Per-class IoU and error metrics chart for semantic segmentation reports."""
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.clickable = True

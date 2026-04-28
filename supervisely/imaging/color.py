@@ -1,3 +1,5 @@
+"""Color utilities."""
+
 # coding: utf-8
 from __future__ import annotations
 
@@ -14,7 +16,22 @@ from typing import List
 def _validate_color(color):
     """
     Checks input color for compliance with the required format
-    :param: color: color (RGB tuple of integers)
+
+    :param color: color (RGB tuple of integers)
+    :type color: list or tuple
+    :raises ValueError: if color is not a list or tuple or does not contain exactly 3 values
+    :returns: None
+    :rtype: None
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            sly.color._validate_color([128, 64, 255])
+            # Output: None
+            sly.color._validate_color([128, 64, 255, 128])
     """
     if not isinstance(color, (list, tuple)):
         raise ValueError("Color has to be list, or tuple")
@@ -28,17 +45,18 @@ def random_rgb(fix_satlight=True) -> List[int, int, int]:
     """
     Generate RGB color with fixed saturation and lightness.
 
-    :return: RGB integer values
+    :returns: RGB integer values
     :rtype: :class:`List[int, int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        color = sly.color.random_rgb()
-        print(color)
-        # Output: [138, 15, 123]
+            import supervisely as sly
+
+            color = sly.color.random_rgb()
+            print(color)
+            # Output: [138, 15, 123]
     """
     saturation = 0.3
     lightness = 0.8
@@ -54,6 +72,9 @@ def _normalize_color(color):
     """
     Divide all RGB values by 255.
     :param color: color (RGB tuple of integers)
+    :type color: list or tuple
+    :returns: Normalized color
+    :rtype: list
     """
     return [c / 255.0 for c in color]
 
@@ -61,9 +82,11 @@ def _normalize_color(color):
 def _color_distance(first_color: list, second_color: list) -> float:
     """
     Calculate distance in HLS color space between Hue components of 2 colors
+
     :param first_color: first color (RGB tuple of integers)
     :param second_color: second color (RGB tuple of integers)
-    :return: Euclidean distance between 'first_color' and 'second_color'
+    :returns: Euclidean distance between 'first_color' and 'second_color'
+    :rtype: float
     """
     first_color_hls = colorsys.rgb_to_hls(*_normalize_color(first_color))
     second_color_hls = colorsys.rgb_to_hls(*_normalize_color(second_color))
@@ -80,18 +103,19 @@ def generate_rgb(exist_colors: List[List[int, int, int]]) -> List[int, int, int]
 
     :param exist_colors: List of existing colors in RGB format.
     :type exist_colors: list
-    :return: RGB integer values
+    :returns: RGB integer values
     :rtype: :class:`List[int, int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        exist_colors = [[0, 0, 0], [128, 64, 255]]
-        color = sly.color.generate_rgb(exist_colors)
-        print(color)
-        # Output: [15, 138, 39]
+            import supervisely as sly
+
+            exist_colors = [[0, 0, 0], [128, 64, 255]]
+            color = sly.color.generate_rgb(exist_colors)
+            print(color)
+            # Output: [15, 138, 39]
     """
     largest_min_distance = 0
     best_color = random_rgb()
@@ -112,17 +136,18 @@ def rgb2hex(color: List[int, int, int]) -> str:
 
     :param color: List of existing colors in RGB format.
     :type color: List[int, int, int]
-    :return: HEX RGB string
-    :rtype: :class:`str`
-    :Usage example:
+    :returns: HEX RGB string
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        hex_color = sly.color.rgb2hex([128, 64, 255])
-        print(hex_color)
-        # Output: #8040FF
+            import supervisely as sly
+
+            hex_color = sly.color.rgb2hex([128, 64, 255])
+            print(hex_color)
+            # Output: #8040FF
     """
     _validate_color(color)
     return "#" + "".join("{:02X}".format(component) for component in color)
@@ -132,7 +157,7 @@ def _hex2color(hex_value: str) -> list:
     """
     Convert HEX RGB string to integer RGB format
     :param hex_value: HEX RGBA string. Example: "#FF02A4
-    :return: RGB integer values. Example: [80, 255, 0]
+    :returns: RGB integer values. Example: [80, 255, 0]
     """
     assert hex_value.startswith("#")
     return [int(hex_value[i : (i + 2)], 16) for i in range(1, len(hex_value), 2)]
@@ -144,18 +169,19 @@ def hex2rgb(hex_value: str) -> List[int, int, int]:
 
     :param hex_value: HEX RGB string.
     :type hex_value: str
-    :return: RGB integer values
+    :returns: RGB integer values
     :rtype: :class:`List[int, int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        hex_color = '#8040FF'
-        color = sly.color.hex2rgb(hex_color)
-        print(color)
-        # Output: [128, 64, 255]
+            import supervisely as sly
+
+            hex_color = '#8040FF'
+            color = sly.color.hex2rgb(hex_color)
+            print(color)
+            # Output: [128, 64, 255]
     """
     if not _validate_hex_color(hex_value):
         raise ValueError("Supported only HEX RGB string format!")
@@ -168,7 +194,7 @@ def _hex2rgba(hex_value: str) -> list:
     """
     Convert HEX RGBA string to integer RGBA format
     :param hex_value: HEX RGBA string. Example: "#FF02A4CC
-    :return: RGBA integer values. Example: [80, 255, 0, 128]
+    :returns: RGBA integer values. Example: [80, 255, 0, 128]
     """
     assert len(hex_value) == 9, "Supported only HEX RGBA string format!"
     return _hex2color(hex_value)
@@ -180,9 +206,9 @@ def validate_channel_value(value: int) -> None:
 
     :param value: Input channel value.
     :type value: int
-    :raises: :class:`ValueError` if value not between 0 and 255.
-    :return: None
-    :rtype: :class:`NoneType`
+    :raises ValueError: if value not between 0 and 255.
+    :returns: None
+    :rtype: None
     """
     if 0 <= value <= 255:
         pass
@@ -235,7 +261,7 @@ def _validate_hex_color(hex_value: str) -> bool:
 
     :param hex_value: HEX color value
     :type hex_value: str
-    :return: If the value matches the pattern - True, otherwise - False
+    :returns: If the value matches the pattern - True, otherwise - False
     :rtype: bool
     """
 

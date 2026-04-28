@@ -46,6 +46,8 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class SemanticSegmentationVisualizer(BaseVisualizer):
+    """Visualizer for semantic segmentation model evaluation reports."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

@@ -16,9 +16,8 @@ TASK_SHARED = 'sly_task_shared'
 
 
 class TaskPaths:
-    '''
-    This is a class for creating and using paths to configuration files and working directoris in working progress
-    '''
+    """Constants for common file and directory paths inside a running Supervisely task environment."""
+
     TASK_DIR = '/sly_task_data'
     SETTINGS_PATH = os.path.join(TASK_DIR, TASK_SETTINGS_JSON)  # Deprecated - use TASK_CONFIG_PATH instead
     TASK_CONFIG_PATH = os.path.join(TASK_DIR, TASK_CONFIG_JSON)

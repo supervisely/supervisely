@@ -55,7 +55,11 @@ available_geometry_types = [
 
 
 class ClassesListSelector(Widget):
+    """Widget to select existing object classes (and optionally create new classes) from a project meta."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CHECKBOX_CHANGED = "checkbox_cb"
         CLASS_CREATED = "class_created_cb"
 
@@ -67,6 +71,18 @@ class ClassesListSelector(Widget):
         allow_new_classes: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param classes: List of ObjClass instances or ObjClassCollection.
+        :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+        :param multiple: If True, allow multiple class selection.
+        :type multiple: bool, optional
+        :param empty_notification: NotificationBox to show when no classes.
+        :type empty_notification: NotificationBox, optional
+        :param allow_new_classes: If True, show option to create new classes.
+        :type allow_new_classes: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         # Convert to list for internal use to allow mutations when adding new classes
         if isinstance(classes, ObjClassCollection):
             self._classes = list(classes)
@@ -195,7 +211,7 @@ class ClassesListSelector(Widget):
         The decorated function receives the newly created ObjClass.
 
         :param func: Function to be called when a new class is created
-        :type func: Callable[[ObjClass], None]
+        :type func: Callable[[:class:`~supervisely.annotation.obj_class.ObjClass`], None]
         """
         route_path = self.get_route_path(ClassesListSelector.Routes.CLASS_CREATED)
         server = self._sly_app.get_server()

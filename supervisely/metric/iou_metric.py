@@ -33,8 +33,11 @@ def render_labels_as_binary_mask(labels, class_title, mask):
             label.geometry.draw(mask, True)
 
 class IoUMetric(MetricsBase):
+    """Computes Intersection over Union for semantic segmentation masks per class pair."""
 
     def __init__(self, class_mapping):
+        """:param class_mapping: Dict mapping ground-truth class names to prediction class names.
+        """
         self._class_mapping = class_mapping.copy()
         if len(self._class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined.')

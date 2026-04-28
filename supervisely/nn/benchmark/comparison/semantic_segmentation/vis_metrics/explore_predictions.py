@@ -9,6 +9,8 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class ExplorePredictions(BaseVisMetrics):
+    """Gallery and widgets to explore prediction differences across compared segmentation models."""
+
 
     MARKDOWN = "markdown_explorer"
     GALLERY_DIFFERENCE = "explore_difference_gallery"

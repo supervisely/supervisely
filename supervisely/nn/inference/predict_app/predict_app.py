@@ -12,7 +12,10 @@ from supervisely.nn.model.prediction import Prediction
 
 
 class PredictApp:
+    """FastAPI-based application for running model predictions with GUI and optional serving."""
+
     def __init__(self, api: Api):
+        """:param api: Supervisely API."""
         _static_dir = "static"
         sly_fs.mkdir(_static_dir, True)
         self.api = api
@@ -164,6 +167,8 @@ class PredictApp:
                 }
             """
             state = request.state.state
+            if isinstance(state, dict):
+                self.load_from_json(state)
             predictions = self.run(state)
             return [prediction.to_json() for prediction in predictions]
 

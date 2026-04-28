@@ -20,11 +20,22 @@ from supervisely._utils import get_filename_from_headers
 
 
 class ModelSelector:
+    """TrainApp GUI component for selecting a model."""
     title = "Select Model"
     description = "Select a model for training"
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param framework: Framework name.
+        :type framework: str
+        :param models: Model list.
+        :type models: list
+        :param app_options: App options.
+        :type app_options: dict
+        """
         # Init widgets
         self.api = api
         self.pretrained_models_table = None
@@ -51,6 +62,10 @@ class ModelSelector:
 
         # GUI Components
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
+        default_model = model_selector_opts.get("default_model", None)
+        if default_model is not None:
+            self.pretrained_models_table.set_by_model_name(default_model)
+
         experiment_infos = get_experiment_infos(self.api, self.team_id, framework)
         if self.app_options.get("legacy_checkpoints", False):
             try:

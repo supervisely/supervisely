@@ -7,7 +7,15 @@ from supervisely.app.widgets import Widget
 
 
 class FolderThumbnail(Widget):
+    """Compact card showing a Team Files folder with path and link."""
+
     def __init__(self, info=None, widget_id: str = None):
+        """
+        :param info: FileInfo from Team Files (folder). Can be set later with set().
+        :type info: FileInfo, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._id: int = None
         self._info: info = None
         self._description: str = None

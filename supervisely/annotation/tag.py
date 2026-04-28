@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Tag can be attached to whole image and/or to individual :class:`Label<supervisely.annotation.label.Label>`"""
+"""Tag can be attached to whole image and/or to individual :class:`~supervisely.annotation.label.Label`"""
 
 # docs
 from __future__ import annotations
@@ -13,7 +13,7 @@ from supervisely.collection.key_indexed_collection import KeyObject
 
 
 class TagJsonFields:
-    """Json fields for :class:`Annotation<supervisely.annotation.tag.Tag>`"""
+    """Json fields for :class:`~supervisely.annotation.tag.Tag`"""
 
     TAG_NAME = "name"
     """"""
@@ -32,55 +32,7 @@ class TagJsonFields:
 
 
 class Tag(KeyObject):
-    """
-    :class:`Tag<Tag>` can be attached to whole image and/or to individual :class:`Label<LabelBase>`. :class:`Tag<Tag>` object is immutable.
-
-    :param meta: General information about Tag.
-    :type meta: TagMeta
-    :param value: Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
-    :type value: Optional[Union[str, int, float]]
-    :param sly_id: Tag ID in Supervisely server.
-    :type sly_id: int, optional
-    :param labeler_login: Login of user who created Tag.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Tag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises: :class:`ValueError`, if meta is None or if Tag has incompatible value against it's meta value type
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        # Let's create 3 Tags with different values
-        # First we need to initialize a TagMeta
-        meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-
-        # Now we can create a Tag using our TagMeta
-        tag_dog = sly.Tag(meta_dog)
-
-        # When you are creating a new Tag
-        # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-        # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-        tag_dog = sly.Tag(meta_dog, value="Husky")
-        # Output: ValueError: Tag dog can not have value Husky
-
-        # Let's create another Tag with a string value type
-        meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-        tag_cat = sly.Tag(meta_cat, value="Fluffy")
-
-        # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-        # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-        colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-        tag_coat_color = sly.Tag(meta_coat_color, value="white")
-
-        # If given value is not in a list of possible Tags, ValueError will be raised
-        tag_coat_color = sly.Tag(meta_coat_color, value="yellow")
-        # Output: ValueError: Tag coat color can not have value yellow
-    """
+    """Tag attached to image or label; meta + value. Immutable."""
 
     _SUPPORT_UNFINISHED_TAGS = False
 
@@ -93,6 +45,37 @@ class Tag(KeyObject):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        :param meta: :class:`~supervisely.annotation.tag_meta.TagMeta` object with tag metadata (name, value type).
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :param value: Tag value; type must match :class:`~supervisely.annotation.tag_meta.TagMeta`.value_type.
+        :type value: str or int or float, optional
+        :param sly_id: Server-side tag ID.
+        :type sly_id: int, optional
+        :param labeler_login: Login of user who created the tag.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+        :raises ValueError: If meta is None or value is incompatible with :class:`~supervisely.annotation.tag_meta.TagMeta`.value_type.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.Tag(meta_dog)
+
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                tag_cat = sly.Tag(meta_cat, value="Fluffy")
+
+                colors = ["brown", "white", "black"]
+                meta_coat = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                tag_coat = sly.Tag(meta_coat, value="white")
+        """
         if meta is None:
             raise ValueError("TagMeta is None")
         self._meta = meta
@@ -108,47 +91,49 @@ class Tag(KeyObject):
     @property
     def meta(self) -> TagMeta:
         """
-        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` to make sure that value is valid.
+        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`~supervisely.annotation.tag_meta.TagValueType` to make sure that value is valid.
 
-        :return: TagMeta object
-        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
-        :Usage example:
+        :returns: TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            tag_dog = sly.Tag(meta_dog)
+            .. code-block:: python
 
-            # Our TagMeta has value type 'NONE', if we try to add value to our Tag, "ValueError" error will be raised
-            tag_dog = sly.Tag(meta_dog, value="Husky")
-            # Output: ValueError: Tag dog can not have value Husky
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.Tag(meta_dog)
+
+                # Our TagMeta has value type 'NONE', if we try to add value to our Tag, "ValueError" error will be raised
+                tag_dog = sly.Tag(meta_dog, value="Husky")
+                # Output: ValueError: Tag dog can not have value Husky
         """
         return self._meta
 
     @property
     def value(self) -> str or int or float:
         """
-        Tag value. Return type depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>`.
+        Tag value. Return type depends on :class:`~supervisely.annotation.tag_meta.TagValueType`.
 
-        :return: Tag value
-        :rtype: :class:`str`, :class:`int` or :class:`float` or :class:`None`
-        :Usage example:
+        :returns: Tag value
+        :rtype: str, int or float or None
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta_dog, value="Husky")
+            .. code-block:: python
 
-            meta_age = sly.TagMeta('age', sly.TagValueType.ANY_NUMBER)
-            tag_age = sly.Tag(meta_age, value=9)
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(meta_dog, value="Husky")
 
-            colors = ["Black", "White", "Golden", "Brown"]
-            meta_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-            tag_color = sly.Tag(meta_color, value="White")
+                meta_age = sly.TagMeta('age', sly.TagValueType.ANY_NUMBER)
+                tag_age = sly.Tag(meta_age, value=9)
 
-            type(tag_dog.value)   # 'str'
-            type(tag_age.value)   # 'int'
-            type(tag_color.value) # 'str'
+                colors = ["Black", "White", "Golden", "Brown"]
+                meta_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                tag_color = sly.Tag(meta_color, value="White")
+
+                type(tag_dog.value)   # 'str'
+                type(tag_age.value)   # 'int'
+                type(tag_color.value) # 'str'
         """
         return self._value
 
@@ -157,17 +142,18 @@ class Tag(KeyObject):
         """
         Name property.
 
-        :return: Name
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Name
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta_dog, value="Husky")
+            .. code-block:: python
 
-            print(tag_dog.name)
-            # Output: "dog"
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(meta_dog, value="Husky")
+
+                print(tag_dog.name)
+                # Output: "dog"
         """
         return self._meta.name
 
@@ -175,20 +161,21 @@ class Tag(KeyObject):
         """
         Get TagMeta key value.
 
-        :return: TagMeta key value
+        :returns: TagMeta key value
         :rtype: str
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
-            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
-            tag_weather = sly.Tag(meta_weather, value="Sunny")
-            key = tag_weather.key()
-            print(key)
-            # Output: weather
+                import supervisely as sly
+
+                weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+                meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+                tag_weather = sly.Tag(meta_weather, value="Sunny")
+                key = tag_weather.key()
+                print(key)
+                # Output: weather
         """
 
         return self._meta.key()
@@ -197,29 +184,36 @@ class Tag(KeyObject):
         """
         Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Tag with all fields filled in
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta=meta_dog, value="Husky", sly_id=38456, labeler_login="admin",
-                              updated_at="2021-01-22T19:37:50.158Z", created_at="2021-01-22T18:00:00.000Z")
+                import supervisely as sly
 
-            tag_dog_json = tag_dog.to_json()
-            print(tag_dog_json)
-            # Notice that sly_id won't print
-            # Output: {
-            #  "name": "dog",
-            #  "value": "Husky",
-            #  "labelerLogin": "admin",
-            #  "updatedAt": "2021-01-22T19:37:50.158Z",
-            #  "createdAt": "2021-01-22T18:00:00.000Z"
-            # }
+                # Tag with all fields filled in
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(
+                    meta=meta_dog,
+                    value="Husky",
+                    sly_id=38456,
+                    labeler_login="admin",
+                    updated_at="2021-01-22T19:37:50.158Z",
+                    created_at="2021-01-22T18:00:00.000Z"
+                )
+
+                tag_dog_json = tag_dog.to_json()
+                print(tag_dog_json)
+                # Notice that sly_id won't print
+                # Output: {
+                #  "name": "dog",
+                #  "value": "Husky",
+                #  "labelerLogin": "admin",
+                #  "updatedAt": "2021-01-22T19:37:50.158Z",
+                #  "createdAt": "2021-01-22T18:00:00.000Z"
+                # }
         """
         res = {TagJsonFields.TAG_NAME: self.meta.name}
         if self.meta.value_type != TagValueType.NONE:
@@ -240,27 +234,28 @@ class Tag(KeyObject):
         :param data: Tag in json format as a dict.
         :type data: dict
         :param tag_meta_collection: TagMetaCollection object.
-        :type tag_meta_collection: TagMetaCollection
-        :return: Tag object
-        :rtype: :class:`Tag<Tag>`
-        :Usage example:
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :returns: Tag object
+        :rtype: :class:`~supervisely.annotation.tag.Tag`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_metas = sly.TagMetaCollection([meta_dog])
+                import supervisely as sly
 
-            data = {
-                "name": "dog",
-                "value": "Husky",
-                "labelerLogin": "admin",
-                "updatedAt": "2021-01-22T19:37:50.158Z",
-                "createdAt": "2021-01-22T18:00:00.000Z"
-            }
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_metas = sly.TagMetaCollection([meta_dog])
 
-            tag_dog = sly.Tag.from_json(data, tag_metas)
+                data = {
+                    "name": "dog",
+                    "value": "Husky",
+                    "labelerLogin": "admin",
+                    "updatedAt": "2021-01-22T19:37:50.158Z",
+                    "createdAt": "2021-01-22T18:00:00.000Z"
+                }
+
+                tag_dog = sly.Tag.from_json(data, tag_metas)
         """
         if type(data) is str:
             tag_name = data
@@ -290,19 +285,20 @@ class Tag(KeyObject):
         """
         Displays information about Tag's name and value in string format.
 
-        :return: Name and value of the given Tag
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Name and value of the given :class:`~supervisely.annotation.tag.Tag`
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta_dog, value="Husky")
+                import supervisely as sly
 
-            print(tag_dog.get_compact_str())
-            # Output: 'dog:Husky'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(meta_dog, value="Husky")
+
+                print(tag_dog.get_compact_str())
+                # Output: 'dog:Husky'
         """
         if (self.meta.value_type != TagValueType.NONE) and (len(str(self.value)) > 0):
             return "{}:{}".format(self.name, self.value)
@@ -313,31 +309,32 @@ class Tag(KeyObject):
         Checks that 2 Tags are equal by comparing their meta and value.
 
         :param other: Tag object.
-        :type other: Tag
-        :return: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :type other: :class:`~supervisely.annotation.tag.Tag`
+        :returns: True if comparable objects are equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical Tags
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_1 = sly.Tag(meta_lemon_1)
+                import supervisely as sly
 
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_2 = sly.Tag(meta_lemon_2)
+                # Let's create 2 identical Tags
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_1 = sly.Tag(meta_lemon_1)
 
-            # and 1 different Tag to compare them
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
-            tag_cucumber = sly.Tag(meta_cucumber, value="Fresh")
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_2 = sly.Tag(meta_lemon_2)
 
-            # Compare identical Tags
-            tag_lemon_1 == tag_lemon_2      # True
+                # and 1 different Tag to compare them
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                tag_cucumber = sly.Tag(meta_cucumber, value="Fresh")
 
-            # Compare unidentical Tags
-            tag_lemon_1 == tag_cucumber     # False
+                # Compare identical Tags
+                tag_lemon_1 == tag_lemon_2      # True
+
+                # Compare unidentical Tags
+                tag_lemon_1 == tag_cucumber     # False
         """
         return isinstance(other, Tag) and self.meta == other.meta and self.value == other.value
 
@@ -346,31 +343,32 @@ class Tag(KeyObject):
         Checks that 2 Tags are opposite.
 
         :param other: Tag object.
-        :type other: Tag
-        :return: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :type other: :class:`~supervisely.annotation.tag.Tag`
+        :returns: True if comparable objects are not equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical Tags
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_1 = sly.Tag(meta_lemon_1)
+                import supervisely as sly
 
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_2 = sly.Tag(meta_lemon_2)
+                # Let's create 2 identical Tags
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_1 = sly.Tag(meta_lemon_1)
 
-            # and 1 different Tag to compare them
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
-            tag_cucumber = sly.Tag(meta_cucumber, value="Fresh")
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_2 = sly.Tag(meta_lemon_2)
 
-            # Compare identical Tags
-            tag_lemon_1 != tag_lemon_2      # False
+                # and 1 different Tag to compare them
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                tag_cucumber = sly.Tag(meta_cucumber, value="Fresh")
 
-            # Compare unidentical Tags
-            tag_lemon_1 != tag_cucumber     # True
+                # Compare identical Tags
+                tag_lemon_1 != tag_lemon_2      # False
+
+                # Compare unidentical Tags
+                tag_lemon_1 != tag_cucumber     # True
         """
         return not self == other
 
@@ -387,37 +385,38 @@ class Tag(KeyObject):
         Clone makes a copy of Tag with new fields, if fields are given, otherwise it will use original Tag fields.
 
         :param meta: General information about Tag.
-        :type meta: TagMeta
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :type value: str or int or float or None
         :param sly_id: Tag ID in Supervisely server.
         :type sly_id: int, optional
-        :param labeler_login: Login of user who created Tag.
+        :param labeler_login: Login of user who created :class:`~supervisely.annotation.tag.Tag`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when Tag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
         :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: New instance of Tag
-        :rtype: :class:`Tag<Tag>`
+        :returns: New instance of Tag object
+        :rtype: :class:`~supervisely.annotation.tag.Tag`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            #Original Tag
-            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
-            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+                #Original Tag
+                weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+                meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
 
-            tag_weather = sly.Tag(meta_weather, value="Sunny")
+                tag_weather = sly.Tag(meta_weather, value="Sunny")
 
-            # Let's create some more tags by cloning our original Tag
-            # Remember that Tag class object is immutable, and we need to assign new instance of Tag to a new variable
-            clone_weather_1 = tag_weather.clone(value="Snowy")
+                # Let's create some more tags by cloning our original Tag
+                # Remember that Tag class object is immutable, and we need to assign new instance of Tag to a new variable
+                clone_weather_1 = tag_weather.clone(value="Snowy")
 
-            clone_weather_2 = tag_weather.clone(value="Cloudy")
+                clone_weather_2 = tag_weather.clone(value="Cloudy")
 
-            clone_weather_3 = tag_weather.clone(value="Rainy")
+                clone_weather_3 = tag_weather.clone(value="Rainy")
         """
         return Tag(
             meta=take_with_default(meta, self.meta),
@@ -443,18 +442,19 @@ class Tag(KeyObject):
         """
         Get header of the table with tags.
 
-        :return: List of table header values.
+        :returns: List of table header values.
         :rtype: List[str]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            header = sly.Tag.get_header_ptable()
+                import supervisely as sly
 
-            print(header)
-            # Output: ['Name', 'Value type', 'Value']
+                header = sly.Tag.get_header_ptable()
+
+                print(header)
+                # Output: ['Name', 'Value type', 'Value']
         """
 
         return ["Name", "Value type", "Value"]
@@ -463,22 +463,23 @@ class Tag(KeyObject):
         """
         Get row with tag properties.
 
-        :return: List of tag properties.
+        :returns: List of tag properties.
         :rtype: List[str]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
-            meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
-            tag_weather = sly.Tag(meta_weather, value="Sunny")
+                import supervisely as sly
 
-            row = tag_weather.get_row_ptable()
+                weather_conditions = ["Sunny", "Cloudy", "Snowy", "Foggy", "Rainy"]
+                meta_weather = sly.TagMeta("weather", sly.TagValueType.ONEOF_STRING, possible_values=weather_conditions)
+                tag_weather = sly.Tag(meta_weather, value="Sunny")
 
-            print(row)
-            # Output: ['weather', 'oneof_string', 'Sunny']
+                row = tag_weather.get_row_ptable()
+
+                print(row)
+                # Output: ['weather', 'oneof_string', 'Sunny']
         """
 
         return [self._meta.name, self._meta.value_type, self.value]

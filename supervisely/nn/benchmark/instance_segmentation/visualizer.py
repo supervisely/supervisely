@@ -6,6 +6,8 @@ from supervisely.nn.benchmark.object_detection.visualizer import (
 
 
 class InstanceSegmentationVisualizer(ObjectDetectionVisualizer):
+    """Visualizer for instance segmentation model evaluation reports."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

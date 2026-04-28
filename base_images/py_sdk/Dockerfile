@@ -18,7 +18,26 @@ RUN pip install ruamel.yaml==0.17.21
 
 ARG tag_ref_name
 
-RUN pip install --upgrade supervisely==$tag_ref_name
+# Install supervisely package with retry logic for PyPI CDN propagation
+RUN bash -c 'set -o pipefail && \
+    MAX_ATTEMPTS=8 && \
+    TIMEOUT=15 && \
+    ATTEMPT=0 && \
+    while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do \
+    echo "Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS: Installing supervisely==$tag_ref_name..." && \
+    if pip install --no-cache-dir --upgrade supervisely==$tag_ref_name; then \
+    echo "Supervisely installed successfully" && \
+    exit 0; \
+    fi && \
+    ATTEMPT=$((ATTEMPT + 1)) && \
+    if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then \
+    echo "Installation failed. Waiting ${TIMEOUT}s..." && \
+    sleep $TIMEOUT; \
+    fi; \
+    done && \
+    echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2 && \
+    exit 1'
+
 RUN pip install --upgrade supervisely[apps]==$tag_ref_name
 RUN pip install --upgrade supervisely[aug]==$tag_ref_name
 RUN pip install --upgrade supervisely[agent]==$tag_ref_name

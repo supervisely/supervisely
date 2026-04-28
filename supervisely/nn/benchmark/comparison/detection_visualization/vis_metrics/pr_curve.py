@@ -12,6 +12,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class PrCurve(BaseVisMetrics):
+    """mAP and precision-recall curve visualization for detection comparison."""
+
     MARKDOWN_PR_CURVE = "markdown_pr_curve"
     MARKDOWN_PR_TRADE_OFFS = "markdown_trade_offs"
     MARKDOWN_WHAT_IS_PR_CURVE = "markdown_what_is_pr_curve"

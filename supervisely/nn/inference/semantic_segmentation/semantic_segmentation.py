@@ -12,6 +12,8 @@ from supervisely.sly_logger import logger
 
 
 class SemanticSegmentation(Inference):
+    """Base class for semantic segmentation inference; outputs per-pixel class masks (Bitmap geometry)."""
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "semantic segmentation"

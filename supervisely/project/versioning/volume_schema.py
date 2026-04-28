@@ -7,7 +7,6 @@ from typing import Any, Dict
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.mask_3d import Mask3D
-from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.versioning.schema_fields import VersionSchemaField
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -16,6 +15,8 @@ from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 
 @dataclass(frozen=True)
 class VolumeSnapshotSchema:
+    """Defines PyArrow schemas for volume project snapshot tables (datasets, volumes, annotations)."""
+
     schema_version: str
 
     def datasets_table_schema(self, pa_module):

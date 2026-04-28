@@ -7,6 +7,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class OutcomeCounts(DetectionVisMetric):
+    """TP/FP/FN outcome counts chart for detection reports."""
+
     MARKDOWN = "outcome_counts"
     CHART = "outcome_counts"
 

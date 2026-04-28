@@ -14,6 +14,8 @@ EXPERIMENT_INFO_FILENAME = "experiment_info.json"
 
 @dataclass
 class ExperimentInfo:
+    """Information about an experiment."""
+
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
     framework_name: str
@@ -86,6 +88,7 @@ class ExperimentInfo:
             setattr(self, key, value)
 
     def to_json(self) -> Dict:
+        """Convert the experiment info to a JSON dictionary."""
         data = {}
         for field in fields(self.__class__):
             value = getattr(self, field.name)
@@ -98,23 +101,34 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     Get experiments from the specified framework folder for Train v2
 
     :param api: Supervisely API client
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID
     :type team_id: int
     :param framework_name: Name of the framework
     :type framework_name: str
-    :return: List of ExperimentInfo objects
-    :rtype: List[ExperimentInfo]
-    :Usage example:
+    :returns: List of experiment info objects
+    :rtype: List[:class:`~supervisely.nn.experiments.ExperimentInfo`]
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        api = sly.Api.from_env()
-        team_id = sly.env.team_id()
-        framework_name = "RT-DETRv2"
-        experiment_infos = sly.nn.training.experiments.get_experiment_infos(api, team_id, framework_name)
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv("local.env")
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            team_id = sly.env.team_id()
+            framework_name = "RT-DETRv2"
+            experiment_infos = sly.nn.training.experiments.get_experiment_infos(api, team_id, framework_name)
     """
     metadata_name = "experiment_info.json"
     experiments_folder = "/experiments"
@@ -183,13 +197,13 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
     Fetch experiment data from the specified path in Supervisely Team Files
 
     :param api: Supervisely API client
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID
     :type team_id: int
     :param experiment_path: Path to the experiment data
     :type experiment_path: str
-    :return: ExperimentInfo object
-    :rtype: Union[ExperimentInfo, None]
+    :returns: Experiment info object
+    :rtype: Union[:class:`~supervisely.nn.experiments.ExperimentInfo`, None]
     """
     try:
         response = api.post(
@@ -238,23 +252,34 @@ def get_experiment_info_by_artifacts_dir(
     Get experiment info by artifacts directory
 
     :param api: Supervisely API client
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID
     :type team_id: int
     :param artifacts_dir: Path to the directory with artifacts
     :type artifacts_dir: str
-    :return: ExperimentInfo object
-    :rtype: Optional[ExperimentInfo]
-    :Usage example:
+    :returns: Experiment info object
+    :rtype: Optional[:class:`~supervisely.nn.experiments.ExperimentInfo`]
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        api = sly.Api.from_env()
-        team_id = sly.env.team_id()
-        artifacts_dir = "/experiments/27_Lemons (Rectangle)/265_RT-DETRv2/"
-        experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv("local.env")
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            team_id = sly.env.team_id()
+            artifacts_dir = "/experiments/27_Lemons (Rectangle)/265_RT-DETRv2/"
+            experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)
     """
     if not artifacts_dir.startswith("/experiments"):
         raise ValueError("Artifacts directory should start with '/experiments'")

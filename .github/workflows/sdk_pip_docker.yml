@@ -45,11 +45,6 @@ jobs:
           echo "Timeout waiting for tag $TAG replication"
           exit 1
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
@@ -59,7 +54,9 @@ jobs:
         run: python -m build
 
       - name: Install twine
-        run: pip install twine
+        run: |
+          pip install twine
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Publish package distributions to PyPI
         run: twine upload --skip-existing dist/*
@@ -133,6 +130,20 @@ jobs:
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
+
+  base-py-sdk-hardened:
+    name: Build base-py-sdk-hardened
+    needs: publish-pypi
+    uses: ./.github/workflows/build_base_py_sdk_hardened.yml
+    with:
+      tag_version: ${{ github.ref_name }}
+
+  base-py-cuda-hardened:
+    name: Build base-py-cuda-hardened
+    needs: base-py-sdk-hardened
+    uses: ./.github/workflows/build_base_py_cuda_hardened.yml
+    with:
+      tag_version: ${{ github.ref_name }}
 
   collaboration:
     name: Build collaboration

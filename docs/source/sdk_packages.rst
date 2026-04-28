@@ -3,1227 +3,420 @@ SDK Reference
 
 Annotation
 ----------
-**Annnotation**
-- Working with labeling data of individual images. Annotation is the class that wraps all the labeling data for a given image: its Labels (geometrical objects) and Tags.
-
-.. currentmodule:: supervisely.annotation.annotation
+Working with labeling data of individual images. Annotation wraps all the labeling data for a given image: its Labels (geometrical objects) and Tags.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    Annotation
-    AnnotationJsonFields
-
-.. currentmodule:: supervisely.annotation.label
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Label
-    LabelJsonFields
-
-.. currentmodule:: supervisely.annotation.obj_class
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ObjClass
-    ObjClassJsonFields
-
-.. currentmodule:: supervisely.annotation.obj_class_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ObjClassCollection
-
-.. currentmodule:: supervisely.annotation.tag
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Tag
-    TagJsonFields
-
-.. currentmodule:: supervisely.annotation.tag_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    TagCollection
-
-.. currentmodule:: supervisely.annotation.tag_meta
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    TagMeta
-    TagMetaJsonFields
-    TagApplicableTo
-    TagValueType
-
-.. currentmodule:: supervisely.annotation.tag_meta_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    TagMetaCollection
+    ~supervisely.annotation.annotation.Annotation
+    ~supervisely.annotation.annotation.AnnotationJsonFields
+    ~supervisely.annotation.label.Label
+    ~supervisely.annotation.label.LabelJsonFields
+    ~supervisely.annotation.obj_class.ObjClass
+    ~supervisely.annotation.obj_class.ObjClassJsonFields
+    ~supervisely.annotation.obj_class_collection.ObjClassCollection
+    ~supervisely.annotation.tag.Tag
+    ~supervisely.annotation.tag.TagJsonFields
+    ~supervisely.annotation.tag_collection.TagCollection
+    ~supervisely.annotation.tag_meta.TagMeta
+    ~supervisely.annotation.tag_meta.TagMetaJsonFields
+    ~supervisely.annotation.tag_meta.TagApplicableTo
+    ~supervisely.annotation.tag_meta.TagValueType
+    ~supervisely.annotation.tag_meta_collection.TagMetaCollection
 
 API
 ---
-**API**
-- Python wrappers to script your interactions with the Supervisely web instance. Instead of clicking around, you can write a script to request, via the API, a sequence of tasks, like training up a neural network and then running inference on a validation dataset.
-
-.. currentmodule:: supervisely.api.api
+Python wrappers to script your interactions with the Supervisely web instance. Instead of clicking around, you can write a script to request, via the API, a sequence of tasks (e.g. training a neural network and then running inference on a validation dataset).
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    Api
-
-.. currentmodule:: supervisely.api.agent_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    AgentApi
-
-.. currentmodule:: supervisely.api.annotation_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    AnnotationApi
-
-.. currentmodule:: supervisely.api.app_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    AppApi    
-    WorkflowSettings
-    WorkflowMeta
-
-.. currentmodule:: supervisely.api.dataset_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    DatasetApi
-
-.. currentmodule:: supervisely.api.file_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    FileApi
-
-.. currentmodule:: supervisely.api.guides_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    GuidesApi
-
-.. currentmodule:: supervisely.api.storage_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    StorageApi
-
-.. currentmodule:: supervisely.api.image_annotation_tool_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ImageAnnotationToolApi
-    ImageAnnotationToolAction
-
-.. currentmodule:: supervisely.api.image_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ImageApi
-    ImageInfo
-    BlobImageInfo
-
-.. currentmodule:: supervisely.api.import_storage_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ImportStorageApi
-
-.. currentmodule:: supervisely.api.issues_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    IssuesApi
-
-.. currentmodule:: supervisely.api.labeling_job_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    LabelingJobApi
-
-.. currentmodule:: supervisely.api.entities_collection_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    EntitiesCollectionApi
-
-.. currentmodule:: supervisely.api.labeling_queue_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    LabelingQueueApi
-
-.. currentmodule:: supervisely.api.module_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ApiField
-    ModuleApi
-    ModuleApiBase
-    CloneableModuleApi
-    UpdateableModule
-    RemoveableModuleApi
-    RemoveableBulkModuleApi
-    ModuleWithStatus
-
-.. currentmodule:: supervisely.api.object_class_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ObjectClassApi
-
-.. currentmodule:: supervisely.api.plugin_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PluginApi
-
-.. currentmodule:: supervisely.api.project_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ProjectApi
-
-.. currentmodule:: supervisely.api.project_class_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ProjectClassApi
-
-.. currentmodule:: supervisely.api.role_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    RoleApi
-
-.. currentmodule:: supervisely.api.task_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    TaskApi
-
-.. currentmodule:: supervisely.api.team_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ActivityAction
-    TeamApi
-
-.. currentmodule:: supervisely.api.user_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    UserApi
-
-.. currentmodule:: supervisely.api.workspace_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    WorkspaceApi
-
-
-Neural Networks API
-------------
-**Neural Networks API**
-- API for working with videos in Supervisely.
-
-.. currentmodule:: supervisely.api.nn.deploy_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    DeployApi 
-
-.. currentmodule:: supervisely.api.nn.neural_network_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    NeuralNetworkApi 
-
-.. currentmodule:: supervisely.nn.model.model_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ModelApi 
-
-.. currentmodule:: supervisely.nn.model.prediction
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Prediction
+    ~supervisely.api.api.Api
+    ~supervisely.api.agent_api.AgentApi
+    ~supervisely.api.annotation_api.AnnotationApi
+    ~supervisely.api.app_api.AppApi
+    ~supervisely.api.app_api.WorkflowSettings
+    ~supervisely.api.app_api.WorkflowMeta
+    ~supervisely.api.dataset_api.DatasetApi
+    ~supervisely.api.file_api.FileApi
+    ~supervisely.api.guides_api.GuidesApi
+    ~supervisely.api.storage_api.StorageApi
+    ~supervisely.api.image_annotation_tool_api.ImageAnnotationToolApi
+    ~supervisely.api.image_annotation_tool_api.ImageAnnotationToolAction
+    ~supervisely.api.image_api.ImageApi
+    ~supervisely.api.image_api.ImageInfo
+    ~supervisely.api.image_api.BlobImageInfo
+    ~supervisely.api.import_storage_api.ImportStorageApi
+    ~supervisely.api.issues_api.IssuesApi
+    ~supervisely.api.labeling_job_api.LabelingJobApi
+    ~supervisely.api.entities_collection_api.EntitiesCollectionApi
+    ~supervisely.api.labeling_queue_api.LabelingQueueApi
+    ~supervisely.api.module_api.ApiField
+    ~supervisely.api.module_api.ModuleApi
+    ~supervisely.api.module_api.ModuleApiBase
+    ~supervisely.api.module_api.CloneableModuleApi
+    ~supervisely.api.module_api.UpdateableModule
+    ~supervisely.api.module_api.RemoveableModuleApi
+    ~supervisely.api.module_api.RemoveableBulkModuleApi
+    ~supervisely.api.module_api.ModuleWithStatus
+    ~supervisely.api.object_class_api.ObjectClassApi
+    ~supervisely.api.plugin_api.PluginApi
+    ~supervisely.api.project_api.ProjectApi
+    ~supervisely.api.project_class_api.ProjectClassApi
+    ~supervisely.api.role_api.RoleApi
+    ~supervisely.api.task_api.TaskApi
+    ~supervisely.api.team_api.ActivityAction
+    ~supervisely.api.team_api.TeamApi
+    ~supervisely.api.user_api.UserApi
+    ~supervisely.api.workspace_api.WorkspaceApi
 
 
 Video API
-------------
-**Video API**
-- API for working with videos in Supervisely.
-
-.. currentmodule:: supervisely.api.video.video_api
+---------
+API for working with videos in Supervisely.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    VideoApi
-    VideoInfo
-
-.. currentmodule:: supervisely.api.video.video_annotation_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoAnnotationAPI
-
-
-.. currentmodule:: supervisely.api.video.video_figure_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoFigureApi
-
-.. currentmodule:: supervisely.api.video.video_frame_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoFrameAPI
-
-.. currentmodule:: supervisely.api.video.video_object_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoObjectApi
-
-.. currentmodule:: supervisely.api.video.video_tag_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoTagApi
+    ~supervisely.api.video.video_api.VideoApi
+    ~supervisely.api.video.video_api.VideoInfo
+    ~supervisely.api.video.video_annotation_api.VideoAnnotationAPI
+    ~supervisely.api.video.video_figure_api.VideoFigureApi
+    ~supervisely.api.video.video_frame_api.VideoFrameAPI
+    ~supervisely.api.video.video_object_api.VideoObjectApi
+    ~supervisely.api.video.video_tag_api.VideoTagApi
 
 Volume API
-------------
-**Volume API**
-- API for working with volumes in Supervisely.
-
-.. currentmodule:: supervisely.api.volume.volume_api
+----------
+API for working with volumes in Supervisely.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    VolumeApi
-    VolumeInfo
-
-.. currentmodule:: supervisely.api.volume.volume_annotation_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeAnnotationAPI
-
-.. currentmodule:: supervisely.api.volume.volume_figure_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeFigureApi
-
-.. currentmodule:: supervisely.api.volume.volume_object_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeObjectApi
-
-.. currentmodule:: supervisely.api.volume.volume_tag_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeTagApi
+    ~supervisely.api.volume.volume_api.VolumeApi
+    ~supervisely.api.volume.volume_api.VolumeInfo
+    ~supervisely.api.volume.volume_annotation_api.VolumeAnnotationAPI
+    ~supervisely.api.volume.volume_figure_api.VolumeFigureApi
+    ~supervisely.api.volume.volume_object_api.VolumeObjectApi
+    ~supervisely.api.volume.volume_tag_api.VolumeTagApi
 
 Pointcloud API
 --------------
-**Pointcloud API**
-- API for working with pointclouds in Supervisely.
-
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_api
+API for working with pointclouds in Supervisely.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    PointcloudApi
-    PointcloudInfo
+    ~supervisely.api.pointcloud.pointcloud_api.PointcloudApi
+    ~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo
+    ~supervisely.api.pointcloud.pointcloud_episode_api.PointcloudEpisodeApi
+    ~supervisely.api.pointcloud.pointcloud_annotation_api.PointcloudAnnotationAPI
+    ~supervisely.api.pointcloud.pointcloud_episode_annotation_api.PointcloudEpisodeAnnotationAPI
+    ~supervisely.api.pointcloud.pointcloud_figure_api.PointcloudFigureApi
+    ~supervisely.api.pointcloud.pointcloud_object_api.PointcloudObjectApi
+    ~supervisely.api.pointcloud.pointcloud_tag_api.PointcloudTagApi
 
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_episode_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudEpisodeApi
-
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_annotation_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudAnnotationAPI
-
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_episode_annotation_api
+Neural Networks API
+-------------------
+APIs for training, deploying models, running inference, and working with model metadata in Supervisely.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    PointcloudEpisodeAnnotationAPI
-
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_figure_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudFigureApi
-
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_object_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudObjectApi
-
-.. currentmodule:: supervisely.api.pointcloud.pointcloud_tag_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudTagApi
+    ~supervisely.api.nn.deploy_api.DeployApi
+    ~supervisely.api.nn.neural_network_api.NeuralNetworkApi
+    ~supervisely.api.nn.train_api.TrainApi
+    ~supervisely.nn.model.model_api.ModelAPI
+    ~supervisely.nn.model.prediction.Prediction
+    ~supervisely.nn.model.prediction_session.PredictionSession
 
 Augmentation
 ------------
-**Augmentation**
-- Data augmentations to create more data variety for neural networks training.
-
-.. currentmodule:: supervisely.aug
+Data augmentations to create more data variety for neural networks training.
 
 .. autosummary::
     :toctree: sdk
     :template: autosummary/custom-module-template.rst
 
-    aug
+    ~supervisely.aug.aug
 
 Collection
 ----------
-
-.. currentmodule:: supervisely.collection.key_indexed_collection
+Key-indexed collections and helpers used across the SDK.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    DuplicateKeyError
-    KeyObject
-    KeyIndexedCollection
-    MultiKeyIndexedCollection
+    ~supervisely.collection.key_indexed_collection.DuplicateKeyError
+    ~supervisely.collection.key_indexed_collection.KeyObject
+    ~supervisely.collection.key_indexed_collection.KeyIndexedCollection
+    ~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection
 
 Decorators
 ----------
-
-.. currentmodule:: supervisely.decorators
+Small utility decorators (e.g. profiling helpers).
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    profile
+    ~supervisely.decorators.profile
 
 Geometry
 --------
-**Geometry**
-- All the logic concerned with working with geometric objects - compute statistics like object area, transform (rotate, scale, shift), extract bounding boxes, compute intersections and more.
-
-.. currentmodule:: supervisely.geometry.any_geometry
+All the logic concerned with working with geometric objects - compute statistics like object area, transform (rotate, scale, shift), extract bounding boxes, compute intersections and more.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    AnyGeometry
-
-.. currentmodule:: supervisely.geometry.bitmap
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Bitmap
-    SkeletonizeMethod
-
-.. currentmodule:: supervisely.geometry.alpha_mask
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    AlphaMask
-
-.. currentmodule:: supervisely.geometry.bitmap_base
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    BitmapBase
-
-.. currentmodule:: supervisely.geometry.cuboid
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Cuboid
-    CuboidFace
-
-.. currentmodule:: supervisely.geometry.cuboid_3d
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Cuboid3d
-    Vector3d
-
-
-.. currentmodule:: supervisely.geometry.mask_3d
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Mask3D
-
-.. currentmodule:: supervisely.geometry.geometry
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Geometry
-
-.. currentmodule:: supervisely.geometry.point
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Point
-
-.. currentmodule:: supervisely.geometry.point_3d
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Point3d
-
-.. currentmodule:: supervisely.geometry.point_location
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointLocation
-
-.. currentmodule:: supervisely.geometry.polygon
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Polygon
-
-.. currentmodule:: supervisely.geometry.polyline
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Polyline
-
-.. currentmodule:: supervisely.geometry.rectangle
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Rectangle
-
-.. currentmodule:: supervisely.geometry.image_rotator
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ImageRotator
-
-.. currentmodule:: supervisely.geometry.vector_geometry
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VectorGeometry
-
-.. currentmodule:: supervisely.geometry.graph
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    Node
-    GraphNodes
+    ~supervisely.geometry.any_geometry.AnyGeometry
+    ~supervisely.geometry.bitmap.Bitmap
+    ~supervisely.geometry.bitmap.SkeletonizeMethod
+    ~supervisely.geometry.alpha_mask.AlphaMask
+    ~supervisely.geometry.bitmap_base.BitmapBase
+    ~supervisely.geometry.cuboid.Cuboid
+    ~supervisely.geometry.cuboid.CuboidFace
+    ~supervisely.geometry.cuboid_3d.Cuboid3d
+    ~supervisely.geometry.cuboid_3d.Vector3d
+    ~supervisely.geometry.mask_3d.Mask3D
+    ~supervisely.geometry.geometry.Geometry
+    ~supervisely.geometry.point.Point
+    ~supervisely.geometry.point_3d.Point3d
+    ~supervisely.geometry.point_location.PointLocation
+    ~supervisely.geometry.polygon.Polygon
+    ~supervisely.geometry.polyline.Polyline
+    ~supervisely.geometry.rectangle.Rectangle
+    ~supervisely.geometry.image_rotator.ImageRotator
+    ~supervisely.geometry.vector_geometry.VectorGeometry
+    ~supervisely.geometry.graph.Node
+    ~supervisely.geometry.graph.GraphNodes
 
 Imaging
 -------
-**Imaging**
-- Our wrappers for working with images. IO, transformations, text rendering, color conversions.
-
-.. currentmodule:: supervisely.imaging
+Wrappers for working with images: IO, transformations, text rendering, color conversions.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    font
-    color
-    image
+    ~supervisely.imaging.font
+    ~supervisely.imaging.color
+    ~supervisely.imaging.image
 
 IO
 --
-**IO**
-- Low-level convenience IO wrappers that we found useful internally.
-
-.. currentmodule:: supervisely.io
+Low-level convenience IO wrappers that are used across the SDK.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    fs
-    json
+    ~supervisely.io.fs
+    ~supervisely.io.json
 
 
 Labeling Jobs
 -------------
-
-.. currentmodule:: supervisely.labeling_jobs
+Helpers for working with labeling jobs and related utilities.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    utils
+    ~supervisely.labeling_jobs.utils
 
 
 Pointcloud
 ----------
-
-.. currentmodule:: supervisely.pointcloud
+Core pointcloud-related helpers and utilities.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    pointcloud
+    ~supervisely.pointcloud.pointcloud
 
 Pointcloud Annotation
 ---------------------
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_annotation
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudAnnotation
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_figure
+Data model for pointcloud annotations (figures, objects, tags, episodes).
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    PointcloudFigure
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_object
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudObject
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_object_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudObjectCollection
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_tag
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudTag
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_tag_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudTagCollection
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_annotation
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudEpisodeAnnotation
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_frame
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudEpisodeFrame
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_frame_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudEpisodeFrameCollection
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_tag
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudEpisodeTag
-
-.. currentmodule:: supervisely.pointcloud_annotation.pointcloud_episode_tag_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudEpisodeTagCollection
+    ~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation
+    ~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure
+    ~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject
+    ~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection
+    ~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag
+    ~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection
+    ~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation
+    ~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame
+    ~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection
+    ~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag
+    ~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection
 
 
 Pointcloud Episodes
 -------------------
-
-.. currentmodule:: supervisely.pointcloud_episodes
+Helpers and data structures for pointcloud episodes.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    pointcloud_episodes
+    ~supervisely.pointcloud_episodes.pointcloud_episodes
 
 Project
 -------
-**Project**
-- Working with Supervisely projects on disk.
-
-.. currentmodule:: supervisely.project.project
+Working with Supervisely projects on disk.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    Project
-    DatasetDict
-    Dataset
-    OpenMode
-    ItemPaths
-    ItemInfo
-
-.. currentmodule:: supervisely.project.pointcloud_project
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    PointcloudProject
-    PointcloudDataset
-
-.. currentmodule:: supervisely.project.project_meta
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ProjectMeta
-    ProjectMetaJsonFields
-
-.. currentmodule:: supervisely.project.project_type
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ProjectType
-
-.. currentmodule:: supervisely.project.video_project
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoProject
-    VideoDataset
-    VideoItemPaths
-
-.. currentmodule:: supervisely.project.volume_project
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeProject
-    VolumeDataset
-
-.. currentmodule:: supervisely.project.data_version
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VersionInfo
-    DataVersion
+    ~supervisely.project.project.Project
+    ~supervisely.project.project_type.ProjectType
+    ~supervisely.project.project_meta.ProjectMeta
+    ~supervisely.project.project_meta.ProjectMetaJsonFields
+    ~supervisely.project.project.Dataset
+    ~supervisely.project.project.DatasetDict
+    ~supervisely.project.project.OpenMode
+    ~supervisely.project.project.ItemPaths
+    ~supervisely.project.project.ItemInfo
+    ~supervisely.project.video_project.VideoProject
+    ~supervisely.project.video_project.VideoDataset
+    ~supervisely.project.video_project.VideoItemPaths
+    ~supervisely.project.pointcloud_project.PointcloudProject
+    ~supervisely.project.pointcloud_project.PointcloudDataset
+    ~supervisely.project.volume_project.VolumeProject
+    ~supervisely.project.volume_project.VolumeDataset
+    ~supervisely.project.data_version.VersionInfo
+    ~supervisely.project.data_version.DataVersion
 
 Task
 ----
-**Task**
-- Constants defining the directories where a plugin should expect the input and output data to be. Also helpers to stream progress data from a running plugin back to the web instance.
-
-.. currentmodule:: supervisely.task.progress
+Constants defining the directories where a plugin should expect the input and output data to be, plus helpers to stream progress data from a running plugin back to the web instance.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    Progress
+    ~supervisely.task.progress.Progress
+
+Training
+--------
+High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.nn.training.train_app.TrainApp
 
 User
 ----
-
-.. currentmodule:: supervisely.user.user
+User-related data structures and constants.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    UserRoleName
+    ~supervisely.user.user.UserRoleName
 
 Video
 -----
-
-.. currentmodule:: supervisely.video
+Core video-related helpers and utilities.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    video
+    ~supervisely.video.video
 
 Video Annotation
 ----------------
-
-.. currentmodule:: supervisely.video_annotation.video_annotation
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoAnnotation
-
-.. currentmodule:: supervisely.video_annotation.frame
+Data model for video annotations (frames, objects, figures, tags).
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    Frame
-
-.. currentmodule:: supervisely.video_annotation.frame_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    FrameCollection
-
-.. currentmodule:: supervisely.video_annotation.key_id_map
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    KeyIdMap
-
-.. currentmodule:: supervisely.video_annotation.video_figure
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoFigure
-
-.. currentmodule:: supervisely.video_annotation.video_object
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoObject
-
-.. currentmodule:: supervisely.video_annotation.video_object_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-      VideoObjectCollection
-
-.. currentmodule:: supervisely.video_annotation.video_tag
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VideoTag
-
-.. currentmodule:: supervisely.video_annotation.video_tag_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-      VideoTagCollection
+    ~supervisely.video_annotation.video_annotation.VideoAnnotation
+    ~supervisely.video_annotation.frame.Frame
+    ~supervisely.video_annotation.frame_collection.FrameCollection
+    ~supervisely.video_annotation.key_id_map.KeyIdMap
+    ~supervisely.video_annotation.video_figure.VideoFigure
+    ~supervisely.video_annotation.video_object.VideoObject
+    ~supervisely.video_annotation.video_object_collection.VideoObjectCollection
+    ~supervisely.video_annotation.video_tag.VideoTag
+    ~supervisely.video_annotation.video_tag_collection.VideoTagCollection
 
 Volume
 ------
-
-.. currentmodule:: supervisely.volume
+Core volume-related helpers and utilities.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-module-template.rst
 
-    volume
+    ~supervisely.volume.volume
 
 Volume Annotation
 -----------------
-
-.. currentmodule:: supervisely.volume_annotation.volume_annotation
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeAnnotation
-
-.. currentmodule:: supervisely.volume_annotation.volume_figure
+Data model for volume annotations (objects, figures, tags, and slices).
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    VolumeFigure
-
-.. currentmodule:: supervisely.volume_annotation.volume_object
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeObject
-
-.. currentmodule:: supervisely.volume_annotation.volume_object_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-      VolumeObjectCollection
-
-.. currentmodule:: supervisely.volume_annotation.volume_tag
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    VolumeTag
-
-.. currentmodule:: supervisely.volume_annotation.volume_tag_collection
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-      VolumeTagCollection
-
-.. currentmodule:: supervisely.volume_annotation.plane
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-      Plane
-
-.. currentmodule:: supervisely.volume_annotation.slice
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-      Slice
+    ~supervisely.volume_annotation.volume_annotation.VolumeAnnotation
+    ~supervisely.volume_annotation.volume_figure.VolumeFigure
+    ~supervisely.volume_annotation.volume_object.VolumeObject
+    ~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection
+    ~supervisely.volume_annotation.volume_tag.VolumeTag
+    ~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection
+    ~supervisely.volume_annotation.plane.Plane
+    ~supervisely.volume_annotation.slice.Slice
 
 Utility Functions
 -----------------
-**A collection of useful utility functions for common tasks in the Supervisely SDK**
-
-.. currentmodule:: supervisely.project.download
+A collection of useful utility functions for common tasks in the Supervisely SDK.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-function-template.rst
 
-    download_fast
+    ~supervisely.project.download.download_fast

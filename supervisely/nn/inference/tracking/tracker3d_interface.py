@@ -3,11 +3,14 @@ from logging import Logger
 
 
 class Tracker3DInterface:
+    """Interface for 3D tracking requests: point cloud IDs, figure IDs, frame indexes, direction."""
+
     def __init__(
         self,
         context,
         api,
     ):
+        """:param context: Dict with frameIndex, frames. :param api: Supervisely API."""
         self.api: sly.Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]

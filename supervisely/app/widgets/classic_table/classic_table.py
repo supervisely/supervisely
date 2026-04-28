@@ -9,6 +9,8 @@ from supervisely.app.widgets import Widget
 
 
 class PackerUnpacker:
+    """Helpers to (un)pack supported ClassicTable input types (dict, pandas DataFrame) into a common JSON shape."""
+
     SUPPORTED_TYPES = tuple([dict, pd.DataFrame])
 
     @staticmethod
@@ -73,54 +75,11 @@ DATATYPE_TO_UNPACKER = {
 
 
 class ClassicTable(Widget):
-    """ClassicTable is a widget in Supervisely that is used for displaying and manipulating data in a table format.
-    It is similar to the Table widget but with fewer customization options and functionalities.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/classictable>`_
-        (including screenshots and examples).
-
-    :param data: Data of table in different formats, see Usage examples.
-    :type data: Optional[Union[pd.DataFrame, Dict[str, List[Any]]]]
-    :param columns: List of column names.
-    :type columns: Optional[List]
-    :param fixed_columns_num: Number of fixed columns.
-    :type fixed_columns_num: Optional[int]
-    :param widget_id: The ID of the widget.
-    :type widget_id: Optional[str]
-
-    :Usage example:
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import ClassicTable
-
-        # Usage example 1: Pandas DataFrame
-        table_data = pd.DataFrame(
-            data=[
-                ["row_1_column_1", "row_1_column_2", "row_1_column_3"],
-                ["row_2_column_1", "row_2_column_2", "row_2_column_3"],
-                ["row_3_column_1", "row_3_column_2", "row_3_column_3"],
-            ], columns=["col_name_1", "col_name_2", "col_name_3"]
-        )
-
-        classic_table = ClassicTable(data=table_data)
-
-        # Usage example 2: Python dict
-        table_data =  {
-            "columns_names": ["col_name_1", "col_name_2"],
-            "values_by_rows": [
-        ["row_1_column_1", "row_1_column_2"],
-        ["row_2_column_1", "row_2_column_2"],
-            ]
-        }
-
-        columns = ["col_name_1", "col_name_2"]
-
-        classic_table = ClassicTable(data=table_data, columns=columns)
-
-    """
+    """Table for displaying and editing tabular data (DataFrame or dict)."""
 
     class Routes:
+        """HTTP routes used by the widget frontend for callbacks."""
+
         CELL_CLICKED = "cell_clicked_cb"
 
     def __init__(
@@ -130,6 +89,24 @@ class ClassicTable(Widget):
         fixed_columns_num: Optional[int] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param data: pd.DataFrame or dict with "columns" and "data" keys.
+        :type data: Union[pd.DataFrame, Dict[str, List[Any]]]
+        :param columns: Column names (for dict data).
+        :type columns: List[str], optional
+        :param fixed_columns_num: Number of fixed (frozen) columns.
+        :type fixed_columns_num: Optional[int]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ClassicTable
+                import pandas as pd
+                table = ClassicTable(data=pd.DataFrame(...))
+        """
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None
@@ -201,7 +178,7 @@ class ClassicTable(Widget):
     def fixed_columns_num(self) -> int:
         """Returns number of fixed columns.
 
-        :return: Number of fixed columns.
+        :returns: Number of fixed columns.
         :rtype: int
         """
         return self._fix_columns
@@ -219,7 +196,7 @@ class ClassicTable(Widget):
     def to_json(self) -> Dict[str, Any]:
         """Returns table data in JSON format.
 
-        :return: Table data in JSON format.
+        :returns: Table data in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._get_packed_data(self._parsed_data, dict)
@@ -227,7 +204,7 @@ class ClassicTable(Widget):
     def to_pandas(self) -> pd.DataFrame:
         """Returns table data in pandas DataFrame format.
 
-        :return: Table data in pandas DataFrame format.
+        :returns: Table data in pandas DataFrame format.
         :rtype: pd.DataFrame
         """
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
@@ -271,7 +248,7 @@ class ClassicTable(Widget):
 
         :param index: Index of row to remove, defaults to -1.
         :type index: Optional[int], optional
-        :return: Removed row.
+        :returns: Removed row.
         :rtype: List[Any]
         """
         index = (
@@ -296,7 +273,7 @@ class ClassicTable(Widget):
 
         :param state: Dictionary with widget state.
         :type state: Dict[str, Dict]
-        :return: Dictionary with information about selected cell.
+        :returns: Dictionary with information about selected cell.
         :rtype: Dict[str, Any]
         """
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")

@@ -11,12 +11,20 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class EntityAnnotationAPI(ModuleApi):
-    """"""
+    """Base API module for downloading/appending annotations for an entity type (image, video, pointcloud, etc.)."""
 
     _method_download_bulk = None
     """"""
     _entity_ids_str = None
     """"""
+
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
+        super().__init__(api)
+        self._api = api
 
     def download(self, entity_id):
         """"""
@@ -26,7 +34,7 @@ class EntityAnnotationAPI(ModuleApi):
         """
         :param dataset_id: int
         :param entity_id: int
-        :return: list of content(annotation with given id from dataset with given id), received after execution post request
+        :returns: list of content(annotation with given id from dataset with given id), received after execution post request
         """
         return self.download_bulk(dataset_id, [entity_id])[0]
 
@@ -36,7 +44,7 @@ class EntityAnnotationAPI(ModuleApi):
 
         :param dataset_id: int
         :param entity_ids: list of integers
-        :return: list of content(annotations with given ids from dataset with given id), received after execution post request
+        :returns: list of content(annotations with given ids from dataset with given id), received after execution post request
         """
         response = self._api.post(
             self._method_download_bulk,

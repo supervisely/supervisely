@@ -6,6 +6,8 @@ NumT = Union[int, float]
 
 
 class LinePlot(Widget):
+    """Line plot with smoothing, group-key sync, legend, and configurable axis formatting."""
+
     def __init__(
         self,
         title: str,
@@ -20,8 +22,6 @@ class LinePlot(Widget):
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
     ):
         """
-        Create line plot.
-
         :param title: plot title
         :type title: str
         :param series: List of dicts in format

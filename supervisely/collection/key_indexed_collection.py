@@ -1,5 +1,5 @@
 # coding: utf-8
-"""base class for :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` instances"""
+"""base class for :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`  and :class:`~supervisely.annotation.tag_collection.TagCollection` instances"""
 
 
 # docs
@@ -15,8 +15,7 @@ from supervisely._utils import take_with_default
 
 
 class DuplicateKeyError(KeyError):
-    r"""Raised when trying to add already existing key to
-    :class:`KeyIndexedCollection <supervisely.collection.key_indexed_collection.KeyIndexedCollection>`
+    r"""Raised when trying to add already existing key to :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`.
     """
 
     pass
@@ -32,89 +31,89 @@ class KeyObject:
 
 
 class KeyIndexedCollection:
-    """
-    Base class for :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` instances.
-    It is an analogue of python's standard Dict. It allows to store objects inherited from :class:`KeyObject <supervisely.collection.key_indexed_collection.KeyObject>`.
-
-    :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-    :type items: list, optional
-    :raises: :class:`DuplicateKeyError<supervisely.collection.key_indexed_collection.DuplicateKeyError>`, when trying to add object with already existing key
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-        item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-        collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-        print(collection.to_json())
-        # Output: [
-        #     {
-        #         "name": "cat",
-        #         "value_type": "none",
-        #         "color": "#8A0F12",
-        #         "hotkey": "",
-        #         "applicable_type": "all",
-        #         "classes": []
-        #     },
-        #     {
-        #         "name": "turtle",
-        #         "value_type": "any_string",
-        #         "color": "#8A860F",
-        #         "hotkey": "",
-        #         "applicable_type": "all",
-        #         "classes": []
-        #     }
-        # ]
-
-        # Try to add item with a key that already exists in the collection
-        dublicate_item = sly.ObjClass('cat', sly.Rectangle)
-        new_collection = collection.add(dublicate_item)
-        # Output:
-        # supervisely.collection.key_indexed_collection.DuplicateKeyError: "Key 'cat' already exists"
-
-        # Add item with a key that not exist in the collection
-        item_dog = sly.ObjClass('dog', sly.Rectangle)
-        new_collection = collection.add(item_dog)
-        print(new_collection.to_json())
-        # Output: [
-        #     {
-        #         "name": "cat",
-        #         "value_type": "none",
-        #         "color": "#668A0F",
-        #         "hotkey": "",
-        #         "applicable_type": "all",
-        #         "classes": []
-        #     },
-        #     {
-        #         "name": "turtle",
-        #         "value_type": "any_string",
-        #         "color": "#4D0F8A",
-        #         "hotkey": "",
-        #         "applicable_type": "all",
-        #         "classes": []
-        #     },
-        #     {
-        #         "title": "dog",
-        #         "shape": "rectangle",
-        #         "color": "#0F7F8A",
-        #         "geometry_config": {},
-        #         "hotkey": ""
-        #     }
-        # ]
-    """
-
+    """Base class for collections that can be indexed by a key."""
     item_type = KeyObject
     """
     The type of items that can be storred in collection. Defaul value is 
-    :class:`KeyObject <supervisely.collection.key_indexed_collection.KeyObject>`. 
+    :class:`~supervisely.collection.key_indexed_collection.KeyObject`. 
     Field has to be overridden in child class. Before adding object to collection its type is compared with 
     ``item_type`` and ``TypeError`` exception is raised if it differs. Collection is immutable.
     """
 
     def __init__(self, items: Optional[List[KeyObject]] = None):
+        """
+        Base class for :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`  and :class:`~supervisely.annotation.tag_collection.TagCollection` instances.
+        It is an analogue of python's standard Dict. It allows to store objects inherited from :class:`~supervisely.collection.key_indexed_collection.KeyObject`.
+
+        :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
+        :type items: list, optional
+        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`, when trying to add object with already existing key
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                print(collection.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#8A0F12",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#8A860F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
+
+                # Try to add item with a key that already exists in the collection
+                dublicate_item = sly.ObjClass('cat', sly.Rectangle)
+                new_collection = collection.add(dublicate_item)
+                # Output:
+                # DuplicateKeyError: "Key 'cat' already exists"
+
+                # Add item with a key that not exist in the collection
+                item_dog = sly.ObjClass('dog', sly.Rectangle)
+                new_collection = collection.add(item_dog)
+                print(new_collection.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#668A0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#4D0F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "title": "dog",
+                #         "shape": "rectangle",
+                #         "color": "#0F7F8A",
+                #         "geometry_config": {},
+                #         "hotkey": ""
+                #     }
+                # ]
+        """
         self._collection = {}
         self._add_items_impl(self._collection, take_with_default(items, []))
 
@@ -122,8 +121,8 @@ class KeyIndexedCollection:
         """
         Add given item to given collection. Raise error if type of item not KeyObject or item with an item with that name is already in given collection
         :param dst_collection: dictionary
-        :param item: ObjClass, TagMeta or Tag class object
-        :return: dictionary
+        :param item: :class:`~supervisely.annotation.obj_class.ObjClass`, TagMeta or :class:`~supervisely.annotation.tag.Tag` class object
+        :returns: dictionary
         """
         if not isinstance(item, KeyIndexedCollection.item_type):
             raise TypeError(
@@ -139,7 +138,7 @@ class KeyIndexedCollection:
         """
         Add items from input list to given collection. Raise error if type of item not KeyObject or item with an item with that name is already in given collection
         :param dst_collection: dictionary
-        :param items: list of ObjClass, TagMeta or Tag class objects
+        :param items: list of :class:`~supervisely.annotation.obj_class.ObjClass`, TagMeta or :class:`~supervisely.annotation.tag.Tag` class objects
         """
         for item in items:
             self._add_impl(dst_collection, item)
@@ -148,23 +147,24 @@ class KeyIndexedCollection:
         """
         Add given item to collection.
 
-        :param item: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` object.
-        :type item: KeyObject
-        :return: New instance of KeyIndexedCollection
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :param item: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  or :class:`~supervisely.annotation.tag_collection.TagCollection` object.
+        :type item: :class:`~supervisely.collection.key_indexed_collection.KeyObject`
+        :returns: New instance of :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
-            item_dog = sly.ObjClass('dog', sly.Rectangle)
-            new_collection = collection.add(item_dog)
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+
+                # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
+                item_dog = sly.ObjClass('dog', sly.Rectangle)
+                new_collection = collection.add(item_dog)
         """
         return self.clone(items=[*self.items(), item])
 
@@ -172,24 +172,25 @@ class KeyIndexedCollection:
         """
         Add items from given list to collection.
 
-        :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-        :type items:  List[KeyObject]
-        :return: New instance of KeyIndexedCollection
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
+        :type items:  List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :returns: New instance of :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
-            item_dog = sly.ObjClass('dog', sly.Rectangle)
-            item_mouse = sly.ObjClass('mouse', sly.Bitmap)
-            new_collection = collection.add_items([item_dog, item_mouse])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+
+                # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
+                item_dog = sly.ObjClass('dog', sly.Rectangle)
+                item_mouse = sly.ObjClass('mouse', sly.Bitmap)
+                new_collection = collection.add_items([item_dog, item_mouse])
         """
         return self.clone(items=[*self.items(), *items])
 
@@ -200,8 +201,8 @@ class KeyIndexedCollection:
 
         :param keys: List of keys(item names) in collection.
         :type keys:  List[str]
-        :return: New instance of KeyIndexedCollection
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :returns: New instance of :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
         """
         return self.clone(items=[item for item in self.items() if item.key() not in keys])
 
@@ -213,28 +214,28 @@ class KeyIndexedCollection:
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
         :type default: optional
-        :return: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` object
-        :rtype: :class:`KeyObject<KeyObject>`
+        :returns: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyObject`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
 
-            item_cat = collection.get('cat')
-            print(item_cat)
-            # Output:
-            # Name:  cat                      Value type:none          Possible values:None       Hotkey                  Applicable toall        Applicable classes[]
+                item_cat = collection.get('cat')
+                print(item_cat)
+                # Output:
+                # Name:  cat                      Value type:none          Possible values:None       Hotkey                  Applicable toall        Applicable classes[]
 
-            item_not_exist = collection.get('no_item', {1: 2})
-            print(item_not_exist)
-            # Output:
-            # {1: 2}
+                item_not_exist = collection.get('no_item', {1: 2})
+                print(item_not_exist)
+                # Output:
+                # {1: 2}
         """
         return self._collection.get(key, default)
 
@@ -257,23 +258,23 @@ class KeyIndexedCollection:
         """
         Get list of all items in collection.
 
-        :return: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects
-        :rtype: :class:`List[KeyObject]`
+        :returns: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects
+        :rtype: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            items = collection.items()
-            print(items)
-            # Output:
-            # [<supervisely.annotation.tag_meta.TagMeta object at 0x7fd08eae4340>,
-            #  <supervisely.annotation.tag_meta.TagMeta object at 0x7fd08eae4370>]
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                items = collection.items()
+                print(items)
+                # Output:
+                # [<supervisely.annotation.tag_meta.TagMeta object at 0x7fd08eae4340>,
+                #  <supervisely.annotation.tag_meta.TagMeta object at 0x7fd08eae4370>]
         """
         return list(self._collection.values())
 
@@ -281,22 +282,23 @@ class KeyIndexedCollection:
         """
         Makes a copy of KeyIndexedCollection with new fields, if fields are given, otherwise it will use fields of the original KeyIndexedCollection.
 
-        :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-        :type items:  List[KeyObject], optional
-        :return: New instance of KeyIndexedCollection
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
+        :type items:  List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`], optional
+        :returns: New instance of :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
-            new_collection = collection.clone()
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+
+                # Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
+                new_collection = collection.clone()
         """
         return type(self)(items=(items if items is not None else self.items()))
 
@@ -304,19 +306,19 @@ class KeyIndexedCollection:
         """
         Get list of all keys(item names) in collection.
 
-        :return: List of collection keys
-        :rtype: :class:`List[str]`
+        :returns: List of collection keys
+        :rtype: List[str]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            keys = collection.keys() # ['cat', 'turtle']
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                keys = collection.keys() # ['cat', 'turtle']
         """
         return list(self._collection.keys())
 
@@ -326,21 +328,21 @@ class KeyIndexedCollection:
 
         :param key: The key to look for in the collection.
         :type key:  str
-        :return: Is the key in the collection or not
-        :rtype: :class:`bool`
+        :returns: Is the key in the collection or not
+        :rtype: bool
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
 
-            collection.has_key('cat') # True
-            collection.has_key('hamster') # False
+                collection.has_key('cat') # True
+                collection.has_key('hamster') # False
         """
         return key in self._collection
 
@@ -348,38 +350,38 @@ class KeyIndexedCollection:
         """
         Find intersection of given list of instances with collection items.
 
-        :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-        :type key:  List[KeyObject]
-        :raises: :class:`ValueError` if find items with same keys(item names)
-        :return: KeyIndexedCollection object
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :param other: List of items to intersect with the collection.
+        :type other: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :raises ValueError: if find items with same keys(item names)
+        :returns: KeyIndexedCollection object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
 
-            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            items = [item_dog, item_turtle]
+                item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                items = [item_dog, item_turtle]
 
-            intersection = collection.intersection(items)
-            print(intersection.to_json())
-            # Output: [
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#760F8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                intersection = collection.intersection(items)
+                print(intersection.to_json())
+                # Output: [
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#760F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         common_items = []
         for other_item in other:
@@ -397,37 +399,37 @@ class KeyIndexedCollection:
         """
         Find difference between collection and given list of instances.
 
-        :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-        :type key:  List[KeyObject]
-        :return: KeyIndexedCollection object
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :param other: List of items to subtract from the collection.
+        :type other: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :returns: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection` object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
 
-            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            items = [item_dog, item_turtle]
+                item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                items = [item_dog, item_turtle]
 
-            diff = collection.difference(items)
-            print(diff.to_json())
-            # Output: [
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#8A150F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                diff = collection.difference(items)
+                print(diff.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#8A150F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         items = [item for item in self.items() if item not in other]
         return self.clone(items)
@@ -436,54 +438,54 @@ class KeyIndexedCollection:
         """
         Merge collection and other KeyIndexedCollection object.
 
-        :param key: KeyIndexedCollection object.
-        :type key:  KeyIndexedCollection
-        :raises: :class:`ValueError` if item name from given list is in collection but items in both are different
-        :return: KeyIndexedCollection object
-        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        :param other: Other collection to merge with.
+        :type other: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :raises ValueError: if item name from given list is in collection but items in both are different
+        :returns: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection` object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
 
-            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_dog, item_turtle])
+                item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_dog, item_turtle])
 
-            merge = collection.merge(other_collection)
-            print(merge.to_json())
-            # Output: [
-            #     {
-            #         "name": "dog",
-            #         "value_type": "none",
-            #         "color": "#8A6C0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#0F4A8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#4F0F8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                merge = collection.merge(other_collection)
+                print(merge.to_json())
+                # Output: [
+                #     {
+                #         "name": "dog",
+                #         "value_type": "none",
+                #         "color": "#8A6C0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#0F4A8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#4F0F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         new_items = []
         for other_item in other.items():
@@ -507,37 +509,37 @@ class KeyIndexedCollection:
         """
         Convert the KeyIndexedCollection to a json serializable list.
 
-        :return: List of json serializable dicts
+        :returns: List of json serializable dicts
         :rtype: :class:`List[dict]`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            collection_json = collection.to_json()
-            # Output: [
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#8A0F12",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#8A860F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                collection_json = collection.to_json()
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#8A0F12",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#8A860F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         return [item.to_json() for item in self]
 
@@ -555,52 +557,54 @@ class KeyIndexedCollection:
 
 
 class MultiKeyIndexedCollection(KeyIndexedCollection):
-    """
-    Base class for :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` instances. MultiKeyIndexedCollection makes it possible to add an object with an already existing key.
-
-    :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-    :type items: list, optional
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-        item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-        # Create item with same key 'cat'
-        other_cat = sly.ObjClass('cat', sly.Rectangle)
-        collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
-        print(collection.to_json())
-        # Output: [
-        #     {
-        #         "name": "cat",
-        #         "value_type": "none",
-        #         "color": "#0F198A",
-        #         "hotkey": "",
-        #         "applicable_type": "all",
-        #         "classes": []
-        #     },
-        #     {
-        #         "title": "cat",
-        #         "shape": "rectangle",
-        #         "color": "#0F8A6B",
-        #         "geometry_config": {},
-        #         "hotkey": ""
-        #     },
-        #     {
-        #         "name": "turtle",
-        #         "value_type": "any_string",
-        #         "color": "#0F658A",
-        #         "hotkey": "",
-        #         "applicable_type": "all",
-        #         "classes": []
-        #     }
-        # ]
-    """
+    """Collection that can be indexed by multiple keys."""
 
     def __init__(self, items: Optional[List] = None):
+        """
+        Base class for :class:`~supervisely.annotation.tag_collection.TagCollection` instances. MultiKeyIndexedCollection makes it possible to add an object with an already existing key.
+
+        :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
+        :type items: list, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+
+                # Create item with same key 'cat'
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                print(collection.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#0F198A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "title": "cat",
+                #         "shape": "rectangle",
+                #         "color": "#0F8A6B",
+                #         "geometry_config": {},
+                #         "hotkey": ""
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#0F658A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
+        """
         self._collection = defaultdict(list)
         self._add_items_impl(self._collection, take_with_default(items, []))
 
@@ -621,23 +625,23 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
         :type default: optional
-        :return: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` object
-        :rtype: :class:`KeyObject<KeyObject>`
+        :returns: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyObject`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
-            item = collection.get('cat')
-            print(item)
-            # Output:
-            # Name:  cat                      Value type:none          Possible values:None       Hotkey                  Applicable toall        Applicable classes[]
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                item = collection.get('cat')
+                print(item)
+                # Output:
+                # Name:  cat                      Value type:none          Possible values:None       Hotkey                  Applicable toall        Applicable classes[]
         """
         result = self._collection.get(key, default)
         if not result:
@@ -652,23 +656,23 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :type items:  str
         :param default: The value that is returned if there is no key in the collection.
         :type default: List, optional
-        :return: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects or empty list
-        :rtype: :class:`List[KeyObject]` or :class:`list`
+        :returns: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects or empty list
+        :rtype: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`] or list
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
-            items = collection.get('cat')
-            print(items)
-            # Output:
-            # [<supervisely.annotation.tag_meta.TagMeta object at 0x7f0278662340>, <supervisely.annotation.obj_class.ObjClass object at 0x7f02786623a0>]
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                items = collection.get('cat')
+                print(items)
+                # Output:
+                # [<supervisely.annotation.tag_meta.TagMeta object at 0x7f0278662340>, <supervisely.annotation.obj_class.ObjClass object at 0x7f02786623a0>]
         """
         return self._collection.get(key, default)
 
@@ -689,24 +693,24 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Get list of all items in collection.
 
-        :return: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects
-        :rtype: :class:`List[KeyObject]`
+        :returns: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects
+        :rtype: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
-            print(collection.items())
-            # Output:
-            # [<supervisely.annotation.tag_meta.TagMeta object at 0x7fdbd28ce340>,
-            #  <supervisely.annotation.obj_class.ObjClass object at 0x7fdbd28ce3a0>,
-            #  <supervisely.annotation.tag_meta.TagMeta object at 0x7fdbd28ce370>]
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                print(collection.items())
+                # Output:
+                # [<supervisely.annotation.tag_meta.TagMeta object at 0x7fdbd28ce340>,
+                #  <supervisely.annotation.obj_class.ObjClass object at 0x7fdbd28ce3a0>,
+                #  <supervisely.annotation.tag_meta.TagMeta object at 0x7fdbd28ce370>]
         """
         res = []
         for tag_list in self._collection.values():
@@ -717,40 +721,40 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Find intersection of given list of instances with collection items.
 
-        :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
-        :type key:  List[KeyObject]
-        :raises: :class:`ValueError` if find items with same keys(item names)
-        :return: MultiKeyIndexedCollection object
-        :rtype: :class:`MultiKeyIndexedCollection<MultiKeyIndexedCollection>`
+        :param other: List of items to intersect with the collection.
+        :type other: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :raises ValueError: if find items with same keys(item names)
+        :returns: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection` object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
 
-            # Note, item_cat_2 have same key as item_cat, but another value
-            item_cat_2 = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            items = [item_cat_2, item_turtle]
+                # Note, item_cat_2 have same key as item_cat, but another value
+                item_cat_2 = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                items = [item_cat_2, item_turtle]
 
-            intersect = collection.intersection(items)
-            print(intersect.to_json())
-            # Output: [
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#5B8A0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                intersect = collection.intersection(items)
+                print(intersect.to_json())
+                # Output: [
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#5B8A0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         common_items = []
         for other_item in other:
@@ -764,69 +768,69 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Merge collection with other MultiKeyIndexedCollection object.
 
-        :param key: MultiKeyIndexedCollection object.
-        :type key:  MultiKeyIndexedCollection
-        :return: MultiKeyIndexedCollection object
-        :rtype: :class:`MultiKeyIndexedCollection<MultiKeyIndexedCollection>`
+        :param other: Other multi key indexed collection object.
+        :type other: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
+        :returns: Merged multi key indexed collection object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
 
-            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_dog, item_turtle])
+                item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_dog, item_turtle])
 
-            merge = collection.merge(other_collection)
-            print(merge.to_json())
-            # Output: [
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#198A0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "title": "cat",
-            #         "shape": "rectangle",
-            #         "color": "#898A0F",
-            #         "geometry_config": {},
-            #         "hotkey": ""
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#650F8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#0F8A83",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "dog",
-            #         "value_type": "none",
-            #         "color": "#1A8A0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                merge = collection.merge(other_collection)
+                print(merge.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#198A0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "title": "cat",
+                #         "shape": "rectangle",
+                #         "color": "#898A0F",
+                #         "geometry_config": {},
+                #         "hotkey": ""
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#650F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#0F8A83",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "dog",
+                #         "value_type": "none",
+                #         "color": "#1A8A0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         new_items = [*self.items(), *other.items()]
         return self.clone(items=new_items)
@@ -837,61 +841,61 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Merge collection with other MultiKeyIndexedCollection object. Duplicates will be ignored.
 
-        :param key: MultiKeyIndexedCollection object.
-        :type key:  MultiKeyIndexedCollection
-        :raises: :class:`ValueError` if item name from given MultiKeyIndexedCollection is in collection but items in both are different
-        :return: MultiKeyIndexedCollection object
-        :rtype: :class:`MultiKeyIndexedCollection<MultiKeyIndexedCollection>`
+        :param other: Other multi key indexed collection object.
+        :type other: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
+        :raises ValueError: if item name from given :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection` is in collection but items in both are different
+        :returns: MultiKeyIndexedCollection object
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
 
-            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_dog, item_turtle])
+                item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_dog, item_turtle])
 
-            merge = collection.merge_without_duplicates(other_collection)
-            print(merge.to_json())
-            # Output: [
-            #     {
-            #         "name": "dog",
-            #         "value_type": "none",
-            #         "color": "#8A0F37",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#778A0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "title": "cat",
-            #         "shape": "rectangle",
-            #         "color": "#8A0F76",
-            #         "geometry_config": {},
-            #         "hotkey": ""
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#850F8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                merge = collection.merge_without_duplicates(other_collection)
+                print(merge.to_json())
+                # Output: [
+                #     {
+                #         "name": "dog",
+                #         "value_type": "none",
+                #         "color": "#8A0F37",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#778A0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "title": "cat",
+                #         "shape": "rectangle",
+                #         "color": "#8A0F76",
+                #         "geometry_config": {},
+                #         "hotkey": ""
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#850F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         return super().merge(other)

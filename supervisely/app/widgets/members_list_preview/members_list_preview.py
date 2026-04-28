@@ -6,6 +6,8 @@ from supervisely.api.user_api import UserInfo
 
 
 class MembersListPreview(Widget):
+    """Displays a scrollable list of team members (login, role) from UserInfo objects."""
+
     def __init__(
         self,
         users: Optional[List[UserInfo]] = [],
@@ -13,6 +15,16 @@ class MembersListPreview(Widget):
         empty_text: str = None,
         widget_id: int = None,
     ):
+        """
+        :param users: List of UserInfo to display.
+        :type users: List[UserInfo], optional
+        :param max_width: Max width in pixels (min 150).
+        :type max_width: int
+        :param empty_text: Text when list is empty.
+        :type empty_text: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: int, optional
+        """
         self._users = users
         self._max_width = self._get_max_width(max_width)
         self._empty_text = empty_text

@@ -2,6 +2,7 @@ from supervisely.convert.base_converter import AvailableVideoConverters, BaseCon
 
 
 class DavisConverter(BaseConverter):
+    """Base for DAVIS video segmentation format import (semi-supervised video object segmentation)."""
 
     def __str__(self):
         return AvailableVideoConverters.DAVIS
