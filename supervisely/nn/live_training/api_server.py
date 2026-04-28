@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 import uvicorn
 import threading
 import asyncio
+from typing import Callable
 
 from .request_queue import RequestQueue, RequestType
 from .utils import TrainingStoppedException
@@ -12,25 +13,26 @@ from supervisely import logger
 def start_api_server(
     app: sly.Application,
     request_queue: RequestQueue,
+    status_fn: Callable[[], dict],
     host: str = "0.0.0.0",
     port: int = 8000
 ) -> threading.Thread:
     """Start FastAPI server in a daemon thread."""
     server = app.get_server()
-    create_api(server, request_queue)
+    create_api(server, request_queue, status_fn)
 
     config = uvicorn.Config(app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
-    
+
     thread = threading.Thread(target=server.run, daemon=True, name="APIServer")
     thread.start()
-    
+
     logger.debug(f"Live Training API server started: http://{host}:{port}")
 
     return thread
 
 
-def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
+def create_api(app: FastAPI, request_queue: RequestQueue, status_fn: Callable[[], dict]) -> FastAPI:
 
     @app.post("/start")
     async def start(response: Response):
@@ -157,9 +159,10 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
     @app.post("/status")
     async def status(response: Response):
         """Check the status of the training process."""
-        future = request_queue.put(RequestType.STATUS)
-        result = await _wait_for_result(future, response)
-        return result
+        # STATUS bypasses the request queue: it is a pure read of LiveTraining
+        # state, so we serve it directly from the API thread to avoid blocking
+        # behind long-running queued requests (e.g. ADD_SAMPLES_VIDEO).
+        return status_fn()
     return app
 
 

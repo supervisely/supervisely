@@ -70,7 +70,6 @@ class LiveTraining:
             sly.app.development.supervisely_vpn_network(action="up")
             debug_task = sly.app.development.create_debug_task(self.team_id, port="8000", project_id=self.project_id)
             self.task_id = debug_task['id']
-        self._api_thread = start_api_server(self.app, self.request_queue)
         self.phase = Phase.READY_TO_START
         self.iter = 0
         self._loss = None
@@ -99,6 +98,11 @@ class LiveTraining:
         self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
         self._last_activity_time = None
         self._background_request_handler: BackgroundRequestHandler = None
+
+        # Start the API server last so that every attribute touched by status()
+        # (phase, iter, dataset, evaluator, ...) is already initialized before
+        # the server can serve a /status call from another thread.
+        self._api_thread = start_api_server(self.app, self.request_queue, self.status)
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
@@ -174,11 +178,7 @@ class LiveTraining:
     def _wait_for_start(self):
         request = self.request_queue.get()
         while request.type != RequestType.START:
-            if request.type == RequestType.STATUS:
-                status = self.status()
-                request.future.set_result(status)
-            else:
-                request.future.set_exception(Exception(f"Unexpected request {request.type} while waiting for START"))
+            request.future.set_exception(Exception(f"Unexpected request {request.type} while waiting for START"))
             request = self.request_queue.get()
         # When START is received
         status = self.status()
@@ -262,10 +262,6 @@ class LiveTraining:
 
                 elif request.type == RequestType.ADD_SAMPLES_VIDEO:
                     result = self._handle_add_samples_video(request.data)
-                    request.future.set_result(result)
-
-                elif request.type == RequestType.STATUS:
-                    result = self.status()
                     request.future.set_result(result)
 
             except Exception as e:
@@ -832,9 +828,6 @@ class LiveTraining:
                     set_result(request.future, result)
                 elif request.type == RequestType.ADD_SAMPLES_VIDEO:
                     result = self._handle_add_samples_video(request.data)
-                    set_result(request.future, result)
-                elif request.type == RequestType.STATUS:
-                    result = self.status()
                     set_result(request.future, result)
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
