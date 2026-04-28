@@ -1445,6 +1445,7 @@ class VideoApi(RemoveableBulkModuleApi):
         frame_end: int,
         current: int,
         total: int,
+        extra_data: Optional[Dict] = None,
     ):
         """
         Send message to the Annotation Tool and return info if tracking was stopped
@@ -1458,19 +1459,23 @@ class VideoApi(RemoveableBulkModuleApi):
         :returns: str
         """
 
+        data = {
+            ApiField.TRACK_ID: track_id,
+            ApiField.VIDEO_ID: video_id,
+            ApiField.FRAME_RANGE: [frame_start, frame_end],
+            ApiField.PROGRESS: {
+                ApiField.CURRENT: current,
+                ApiField.TOTAL: total,
+            },
+        }
+        if extra_data is not None:
+            data.update(extra_data)
+
         response = self._api.post(
             "videos.notify-annotation-tool",
             {
                 "type": "videos:fetch-figures-in-range",
-                "data": {
-                    ApiField.TRACK_ID: track_id,
-                    ApiField.VIDEO_ID: video_id,
-                    ApiField.FRAME_RANGE: [frame_start, frame_end],
-                    ApiField.PROGRESS: {
-                        ApiField.CURRENT: current,
-                        ApiField.TOTAL: total,
-                    },
-                },
+                "data": data,
             },
         )
         return response.json()[ApiField.STOPPED]
