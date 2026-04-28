@@ -651,6 +651,7 @@ class TrackerInterfaceV2:
         progress_current: int,
         progress_total: int,
         frame_range: List[int] = None,
+        extra_data: Optional[Dict] = None,
     ):
         logger.debug(
             f"Notify progress: {progress_current}/{progress_total} on frames {frame_range}",
@@ -673,6 +674,7 @@ class TrackerInterfaceV2:
                 frame_range[1],
                 progress_current,
                 progress_total,
+                extra_data=extra_data,
             )
             if stopped and progress_current < progress_total:
                 logger.info("Task stopped by user.", extra=self.log_extra)
