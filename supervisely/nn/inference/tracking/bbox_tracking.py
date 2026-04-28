@@ -143,7 +143,16 @@ class BBoxTracking(BaseTracking):
                         )
                     sly_geometry = self._to_sly_geometry(geometry)
 
-                    uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
+                    uploader.put(
+                        [
+                            (
+                                sly_geometry,
+                                obj_id,
+                                video_interface._cur_frames_indexes[-1],
+                                fig_id,
+                            )
+                        ]
+                    )
 
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
