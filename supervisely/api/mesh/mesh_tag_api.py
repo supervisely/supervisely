@@ -1,0 +1,102 @@
+# coding: utf-8
+from __future__ import annotations
+
+from typing import List, Optional, Union
+
+from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.api.module_api import ApiField
+from supervisely.mesh_annotation.constants import KEY
+from supervisely.video_annotation.key_id_map import KeyIdMap
+
+
+class MeshTagApi(TagApi):
+    """API for tags attached directly to mesh entities."""
+
+    _entity_id_field = ApiField.ENTITY_ID
+    _method_bulk_add = "tags.entities.bulk.add"
+
+    @staticmethod
+    def _clean_entity_tag_json(tag_json: dict) -> dict:
+        tag_json = dict(tag_json)
+        tag_json.pop(ApiField.NAME, None)
+        tag_json.pop(KEY, None)
+        return tag_json
+
+    def add(
+        self,
+        tag_meta_id: int,
+        mesh_id: int,
+        value: Optional[Union[str, int, float]] = None,
+        project_id: Optional[int] = None,
+    ) -> int:
+        if project_id is None:
+            project_id = self._api.mesh.get_info_by_id(mesh_id).project_id
+        request_body = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.TAGS: [
+                {
+                    ApiField.TAG_ID: tag_meta_id,
+                    ApiField.ENTITY_ID: mesh_id,
+                }
+            ],
+        }
+        if value is not None:
+            request_body[ApiField.TAGS][0][ApiField.VALUE] = value
+        response = self._api.post("tags.entities.bulk.add", request_body)
+        return response.json()[0][ApiField.ID]
+
+    def append_to_entity(
+        self,
+        entity_id: int,
+        project_id: int,
+        tags,
+        key_id_map: KeyIdMap = None,
+    ) -> List[int]:
+        if len(tags) == 0:
+            return []
+
+        tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
+        for tag_json in tags_json:
+            tag_json[ApiField.ENTITY_ID] = entity_id
+
+        response = self._api.post(
+            "tags.entities.bulk.add",
+            {
+                ApiField.PROJECT_ID: project_id,
+                ApiField.TAGS: [self._clean_entity_tag_json(tag_json) for tag_json in tags_json],
+            },
+        )
+        ids = [obj[ApiField.ID] for obj in response.json()]
+        KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
+        return ids
+
+
+class MeshObjectTagApi(TagApi):
+    """API for tags attached to mesh annotation objects."""
+
+    _entity_id_field = ApiField.OBJECT_ID
+    _method_bulk_add = "annotation-objects.tags.bulk.add"
+
+    def add(
+        self,
+        tag_meta_id: int,
+        object_id: int,
+        value: Optional[Union[str, int, float]] = None,
+    ) -> int:
+        request_body = {
+            ApiField.TAG_ID: tag_meta_id,
+            ApiField.OBJECT_ID: object_id,
+        }
+        if value is not None:
+            request_body[ApiField.VALUE] = value
+        response = self._api.post("annotation-objects.tags.add", request_body)
+        return response.json()[ApiField.ID]
+
+    def remove(self, tag_id: int) -> None:
+        self._api.post("annotation-objects.tags.remove", {ApiField.ID: tag_id})
+
+    def update(self, tag_id: int, value: Union[str, int, float]) -> None:
+        self._api.post(
+            "annotation-objects.tags.update-value",
+            {ApiField.ID: tag_id, ApiField.VALUE: value},
+        )

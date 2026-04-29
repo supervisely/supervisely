@@ -152,6 +152,7 @@ from supervisely.api.team_api import TeamInfo
 from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.app_api import WorkflowSettings, WorkflowMeta
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
+from supervisely.api.mesh.mesh_api import MeshInfo
 
 from supervisely.cli import _handle_creds_error_to_console
 
@@ -232,6 +233,12 @@ from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
 from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
     PointcloudTagCollection,
 )
+from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
+from supervisely.mesh_annotation.mesh_object import MeshObject
+from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
+from supervisely.mesh_annotation.mesh_figure import MeshFigure
+from supervisely.mesh_annotation.mesh_tag import MeshTag
+from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,

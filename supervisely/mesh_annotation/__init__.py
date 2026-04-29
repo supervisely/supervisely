@@ -1,0 +1,8 @@
+# coding: utf-8
+
+from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
+from supervisely.mesh_annotation.mesh_figure import MeshFigure
+from supervisely.mesh_annotation.mesh_object import MeshObject
+from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
+from supervisely.mesh_annotation.mesh_tag import MeshTag
+from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
