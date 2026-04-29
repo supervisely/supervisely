@@ -366,7 +366,7 @@ class TrackerInterface:
             fend,
             pos,
             self.stop,
-            extra_data={"trackedFigures": self.tracked_figures_count},
+            extra_data={ApiField.TRACKED_FIGURES: self.tracked_figures_count},
         )
 
         self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")

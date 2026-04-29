@@ -385,7 +385,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.total,
                 frame_range,
-                extra_data={"trackedFigures": tracked_figures_count},
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
 
         def _exception_handler(exception: Exception):
@@ -394,7 +394,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
-                extra_data={"trackedFigures": tracked_figures_count},
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
             tracker_interface.notify_error(exception)
             raise Exception
@@ -495,7 +495,7 @@ class BBoxTracking(BaseTracking):
                             inference_request.progress.current,
                             inference_request.progress.current,
                             frame_range_asc,
-                            extra_data={"trackedFigures": tracked_figures_count},
+                            extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
                         )
                         return
                     if uploader.has_exception():
@@ -518,7 +518,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
-                extra_data={"trackedFigures": tracked_figures_count},
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
 
     def track(self, api: Api, state: Dict, context: Dict):
