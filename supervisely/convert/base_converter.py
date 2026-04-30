@@ -79,6 +79,12 @@ class AvailablePointcloudEpisodesConverters:
     SEMANTIC_KITTI = "semantic_kitti"
 
 
+class AvailableMeshConverters:
+    """Names of supported mesh dataset converters."""
+
+    SLY = "supervisely"
+
+
 class AvailableVolumeConverters:
     """Names of supported 3D volume dataset converters."""
 

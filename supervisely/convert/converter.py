@@ -13,6 +13,7 @@ from supervisely.convert.image.high_color.high_color_depth import (
     HighColorDepthImageConverter,
 )
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.mesh.mesh_converter import MeshConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
@@ -107,6 +108,7 @@ class ImportManager:
             ProjectType.POINT_CLOUDS.value: PointcloudConverter,
             ProjectType.VOLUMES.value: VolumeConverter,
             ProjectType.POINT_CLOUD_EPISODES.value: PointcloudEpisodeConverter,
+            ProjectType.MESHES.value: MeshConverter,
         }
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
@@ -142,6 +144,7 @@ class ImportManager:
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
+                ProjectType.MESHES.value,
             ]:
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data)
@@ -155,6 +158,7 @@ class ImportManager:
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
                 ProjectType.POINT_CLOUDS.value,
+                ProjectType.MESHES.value,
             ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)

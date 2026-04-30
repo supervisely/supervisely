@@ -306,7 +306,11 @@ from supervisely.project.volume_project import (
 )
 
 from supervisely.convert.converter import ImportManager
-from supervisely.convert.base_converter import AvailableImageConverters, BaseConverter
+from supervisely.convert.base_converter import (
+    AvailableImageConverters,
+    AvailableMeshConverters,
+    BaseConverter,
+)
 
 from supervisely.geometry.bitmap import SkeletonizeMethod
 
