@@ -513,7 +513,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
-        :param filters: Additional list filters forwarded to `figures.list`. Uses the same filter format as `images.list`.
+        :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type filters: List[Dict[str, Any]], optional
 
         :returns: A dictionary where keys are image IDs and values are lists of figures.
@@ -912,7 +912,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
-        :param filters: Additional list filters forwarded to `figures.list`. Uses the same filter format as `images.list`.
+        :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type filters: List[Dict[str, Any]], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional
@@ -1113,7 +1113,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
-        :param filters: Additional list filters forwarded to `figures.list`. Uses the same filter format as `images.list`.
+        :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type filters: List[Dict[str, Any]], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional

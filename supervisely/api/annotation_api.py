@@ -366,7 +366,7 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Information about Annotation.
@@ -467,7 +467,7 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Annotation in json format
@@ -536,7 +536,7 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Information about Annotations.
@@ -676,7 +676,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Information about Annotations.
@@ -1602,7 +1602,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
         :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
@@ -1718,7 +1718,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
@@ -1817,7 +1817,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
