@@ -140,6 +140,38 @@ except Exception:
 
 from supervisely.api.api import Api, UserSession, ApiContext
 from supervisely.api import api
+from supervisely.api.filter import (
+    AgentFilter,
+    AnnotationFilter,
+    ApiFilter,
+    ApiFilterCondition,
+    ApiFilterField,
+    ApiFilterJson,
+    ApiFilterLike,
+    AppFilter,
+    DatasetFilter,
+    EntityCollectionFilter,
+    FigureFilter,
+    GuideFilter,
+    ImageFilter,
+    LabelingJobFilter,
+    LabelingQueueEntityFilter,
+    ObjectClassFilter,
+    ObjectFilter,
+    PluginFilter,
+    PointcloudFilter,
+    ProjectFilter,
+    ProjectVersionFilter,
+    RoleFilter,
+    TagFilter,
+    TaskFilter,
+    TeamFilter,
+    UserFilter,
+    VideoFilter,
+    VolumeFilter,
+    WebhookFilter,
+    WorkspaceFilter,
+)
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
 from supervisely.project.project_settings import ProjectSettings

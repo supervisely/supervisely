@@ -69,6 +69,7 @@ import supervisely.api.webhook_api as webhook_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely.api.filter import ApiFilter
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     CONNECTION_ERROR_PATTERNS,
@@ -421,6 +422,14 @@ class Api:
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
 
+    @staticmethod
+    def _normalize_filter_payload(data):
+        if not isinstance(data, dict) or ApiField.FILTER not in data:
+            return data
+        normalized = dict(data)
+        normalized[ApiField.FILTER] = ApiFilter.normalize(normalized[ApiField.FILTER])
+        return normalized
+
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
         """ """
@@ -718,7 +727,9 @@ class Api:
                 else:
                     json_body = data
                     if type(data) is dict:
-                        json_body = {**data, **self.additional_fields}
+                        json_body = self._normalize_filter_payload(
+                            {**data, **self.additional_fields}
+                        )
                     response = requests.post(
                         url, json=json_body, headers=self.headers, stream=stream
                     )
@@ -1138,6 +1149,8 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
+        json = self._normalize_filter_payload(json)
+
         for retry_idx in range(retries):
             response = None
             try:
@@ -1323,7 +1336,7 @@ class Api:
             json_body = None
             params = None
         elif isinstance(data, Dict):
-            json_body = {**data, **self.additional_fields}
+            json_body = self._normalize_filter_payload({**data, **self.additional_fields})
             content = None
             params = None
         else:
@@ -1470,6 +1483,8 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
+        json = self._normalize_filter_payload(json)
+
         for retry_idx in range(retries):
             response = None
             try:
@@ -1588,7 +1603,7 @@ class Api:
                 content = data
                 json_body = None
             elif isinstance(data, Dict):
-                json_body = {**data, **self.additional_fields}
+                json_body = self._normalize_filter_payload({**data, **self.additional_fields})
                 content = None
             else:
                 raise ValueError("Data should be either bytes or dict")

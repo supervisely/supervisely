@@ -28,6 +28,7 @@ from supervisely._utils import (
     run_coroutine,
 )
 from supervisely.annotation.annotation import Annotation
+from supervisely.api.filter import ApiFilter
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -239,8 +240,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 #                 reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
                 # ]
         """
-        if filters is None:
-            filters = []
+        filters = ApiFilter.normalize(filters)
 
         if parent_id is not None:
             filters.append({"field": ApiField.PARENT_ID, "operator": "=", "value": parent_id})

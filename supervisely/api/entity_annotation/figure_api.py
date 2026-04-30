@@ -25,6 +25,7 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, logger, run_coroutine
 from supervisely.annotation.label import LabelingStatus
+from supervisely.api.filter import ApiFilter
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -97,7 +98,7 @@ class FigureApi(RemoveableBulkModuleApi):
         entity_ids: Optional[List[int]] = None,
         filters: Optional[List[Dict[str, str]]] = None,
     ) -> List[Dict[str, str]]:
-        result_filters = list(filters or [])
+        result_filters = ApiFilter.normalize(filters)
         if entity_ids is not None:
             result_filters.append(
                 {
