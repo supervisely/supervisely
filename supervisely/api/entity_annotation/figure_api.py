@@ -941,13 +941,16 @@ class FigureApi(RemoveableBulkModuleApi):
 
                 api = sly.Api.from_env()
 
-                dataset_id = 12345
-                download_coroutine = api.image.figure.download_async(dataset_id)
+                dataset_id = 40568
+                image_id = 4877489
+
+                download_coroutine = api.image.figure.download_async(dataset_id, [image_id])
                 figures = sly.run_coroutine(download_coroutine)
 
                 filtered_figures = sly.run_coroutine(
                     api.image.figure.download_async(
                         dataset_id,
+                        [image_id],
                         filters=[
                             {
                                 "type": "objects_class",
@@ -1140,11 +1143,13 @@ class FigureApi(RemoveableBulkModuleApi):
 
                 api = sly.Api.from_env()
 
-                dataset_id = 12345
-                figures = api.image.figure.download_fast(dataset_id)
+                dataset_id = 40568
+                image_id = 4877489
+                figures = api.image.figure.download_fast(dataset_id, [image_id])
 
                 filtered_figures = api.image.figure.download_fast(
                     dataset_id,
+                    [image_id],
                     filters=[
                         {
                             "type": "objects_class",
