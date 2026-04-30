@@ -13,6 +13,13 @@ from supervisely.api.module_api import ApiField
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_figure import MeshFigure
+from supervisely.mesh_annotation.mesh_indices import (
+    decode_mesh_indices_base64,
+    decode_mesh_indices_in_json,
+    encode_mesh_indices,
+    encode_mesh_indices_base64,
+    encode_mesh_indices_in_json,
+)
 from supervisely.mesh_annotation.mesh_object import MeshObject
 from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
 from supervisely.mesh_annotation.mesh_tag import MeshTag
@@ -108,6 +115,29 @@ class FakeApi:
             )
         if method == "tags.entities.bulk.add":
             return Response([{"id": 900 + idx} for idx, _ in enumerate(data["tags"])])
+        if method == "entities.annotations.bulk.info":
+            return Response(
+                [
+                    {
+                        ApiField.ENTITY_ID: mesh_id,
+                        ApiField.ANNOTATION: {
+                            "meshId": mesh_id,
+                            "figures": [
+                                {
+                                    "geometry": {
+                                        "indices": encode_mesh_indices_base64(
+                                            [0, 1, 2, 42, 65535]
+                                        )
+                                    }
+                                }
+                            ],
+                        },
+                    }
+                    for mesh_id in data[ApiField.ENTITY_IDS]
+                ]
+            )
+        if method == "entities.annotations.bulk.add":
+            return Response([{"id": 100 + idx} for idx, _ in enumerate(data["annotations"])])
         raise AssertionError(f"Unexpected method: {method}")
 
 
@@ -199,6 +229,18 @@ class TestMeshApi(unittest.TestCase):
 
 
 class TestMeshAnnotation(unittest.TestCase):
+    def test_mesh_indices_codecs(self):
+        indices = [0, 1, 2, 42, 65535]
+        raw = encode_mesh_indices(indices)
+        self.assertEqual(raw, b"\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00*\x00\x00\x00\xff\xff\x00\x00")
+        encoded = encode_mesh_indices_base64(indices)
+        self.assertEqual(decode_mesh_indices_base64(encoded), indices)
+
+        ann_json = {"figures": [{"geometry": {"indices": indices}}]}
+        stored_json = encode_mesh_indices_in_json(ann_json)
+        self.assertIsInstance(stored_json["figures"][0]["geometry"]["indices"], str)
+        self.assertEqual(decode_mesh_indices_in_json(stored_json), ann_json)
+
     def test_json_round_trip(self):
         obj_class = ObjClass("car", Rectangle)
         tag_meta = TagMeta("scene", TagValueType.ANY_STRING)
@@ -217,6 +259,50 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(len(restored.objects), 1)
         self.assertEqual(len(restored.figures), 1)
         self.assertEqual(len(restored.tags), 1)
+
+    def test_download_uses_stored_annotation_json_endpoint(self):
+        fake = FakeApi()
+        api = MeshApi(fake)
+
+        ann_json = api.annotation.download(123)
+
+        self.assertEqual(ann_json["meshId"], 123)
+        self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
+        method, data, _ = fake.calls[-1]
+        self.assertEqual(method, "entities.annotations.bulk.info")
+        self.assertEqual(data[ApiField.DATASET_ID], 4)
+        self.assertEqual(data[ApiField.ENTITY_IDS], [123])
+
+    def test_upload_json_uses_stored_annotation_json_endpoint_and_encodes_indices(self):
+        fake = FakeApi()
+        api = MeshApi(fake)
+        ann_json = {"figures": [{"geometry": {"indices": [0, 1, 2, 42, 65535]}}]}
+
+        api.annotation.upload_json(123, ann_json, dataset_id=4)
+
+        method, data, _ = fake.calls[-1]
+        self.assertEqual(method, "entities.annotations.bulk.add")
+        self.assertEqual(data[ApiField.DATASET_ID], 4)
+        self.assertEqual(data[ApiField.ANNOTATIONS][0][ApiField.ENTITY_ID], 123)
+        stored_ann = data[ApiField.ANNOTATIONS][0][ApiField.ANNOTATION]
+        self.assertEqual(stored_ann["meshId"], 123)
+        stored_indices = stored_ann["figures"][0]["geometry"]["indices"]
+        self.assertIsInstance(stored_indices, str)
+        self.assertEqual(decode_mesh_indices_base64(stored_indices), [0, 1, 2, 42, 65535])
+
+    def test_append_stores_annotation_json_without_object_figure_rebuild(self):
+        fake = FakeApi()
+        api = MeshApi(fake)
+        obj_class = ObjClass("car", Rectangle)
+        mesh_object = MeshObject(obj_class)
+        ann = MeshAnnotation(objects=MeshObjectCollection([mesh_object]))
+
+        api.annotation.append(123, ann)
+
+        methods = [method for method, _, _ in fake.calls]
+        self.assertIn("entities.annotations.bulk.add", methods)
+        self.assertNotIn("annotation-objects.bulk.add", methods)
+        self.assertNotIn("figures.bulk.add", methods)
 
     def test_append_entity_tag_payload(self):
         fake = FakeApi()
