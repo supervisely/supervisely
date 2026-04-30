@@ -518,6 +518,45 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :returns: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 40568
+                image_id = 4877489
+
+                all_figures = api.image.figure.download(dataset_id, [image_id])
+                print(len(all_figures[image_id]))
+
+                filtered_figures = api.image.figure.download(
+                    dataset_id,
+                    [image_id],
+                    filters=[
+                        {
+                            "type": "objects_class",
+                            "data": {
+                                "from": 1,
+                                "to": 9999,
+                                "include": True,
+                                "classId": 154344,
+                            },
+                        }
+                    ],
+                )
+                print(len(filtered_figures[image_id]))
         """
         fields = [
             ApiField.ID,
@@ -905,6 +944,23 @@ class FigureApi(RemoveableBulkModuleApi):
                 dataset_id = 12345
                 download_coroutine = api.image.figure.download_async(dataset_id)
                 figures = sly.run_coroutine(download_coroutine)
+
+                filtered_figures = sly.run_coroutine(
+                    api.image.figure.download_async(
+                        dataset_id,
+                        filters=[
+                            {
+                                "type": "objects_class",
+                                "data": {
+                                    "from": 1,
+                                    "to": 9999,
+                                    "include": True,
+                                    "classId": 154344,
+                                },
+                            }
+                        ],
+                    )
+                )
         """
         fields = [
             ApiField.ID,
@@ -1086,6 +1142,21 @@ class FigureApi(RemoveableBulkModuleApi):
 
                 dataset_id = 12345
                 figures = api.image.figure.download_fast(dataset_id)
+
+                filtered_figures = api.image.figure.download_fast(
+                    dataset_id,
+                    filters=[
+                        {
+                            "type": "objects_class",
+                            "data": {
+                                "from": 1,
+                                "to": 9999,
+                                "include": True,
+                                "classId": 154344,
+                            },
+                        }
+                    ],
+                )
         """
         try:
             return run_coroutine(
