@@ -13,10 +13,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
 from supervisely.mesh_annotation.constants import KEY, MESH_ID
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
-from supervisely.mesh_annotation.mesh_indices import (
-    decode_mesh_indices_in_json,
-    encode_mesh_indices_in_json,
-)
+from supervisely.mesh_annotation.mesh_indices import MESH_INDEX_FIELDS
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -33,18 +30,20 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_id: int,
         project_meta: Optional[ProjectMeta] = None,
         key_id_map: Optional[KeyIdMap] = None,
-        decode_mesh_indices: bool = True,
+        download_mesh_geometries: bool = True,
+        decode_mesh_indices: Optional[bool] = None,
     ) -> Dict:
         """
-        Download stored mesh annotation JSON by mesh ID.
+        Download mesh annotation by mesh ID.
 
-        Mesh annotations are expected to be stored as annotation JSON attached to the entity. Mesh
-        index arrays are stored in JSON as little-endian uint32 base64 strings and decoded to
-        integer lists by default.
+        Mesh annotations are transferred as JSON. Large mesh index geometry may be stored in figure
+        geometry storage and decoded back into JSON on download.
         """
+        if decode_mesh_indices is not None:
+            download_mesh_geometries = decode_mesh_indices
         dataset_id = self._get_mesh_dataset_id(mesh_id)
         ann_json = self.download_bulk(
-            dataset_id, [mesh_id], decode_mesh_indices=decode_mesh_indices
+            dataset_id, [mesh_id], download_mesh_geometries=download_mesh_geometries
         )[0]
         self._update_key_id_map(mesh_id, ann_json, key_id_map)
         return ann_json
@@ -53,7 +52,8 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         self,
         dataset_id: int,
         mesh_ids: List[int],
-        decode_mesh_indices: bool = True,
+        download_mesh_geometries: bool = True,
+        decode_mesh_indices: Optional[bool] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[Dict]:
         """
@@ -63,22 +63,25 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :type dataset_id: int
         :param mesh_ids: Mesh entity IDs.
         :type mesh_ids: List[int]
-        :param decode_mesh_indices: Decode base64 mesh index fields to integer lists.
-        :type decode_mesh_indices: bool
+        :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into JSON when annotation figures reference external geometry.
+        :type download_mesh_geometries: bool
         :param progress_cb: Progress callback.
         :type progress_cb: tqdm or callable, optional
         :returns: Annotation JSONs ordered like ``mesh_ids``.
         :rtype: List[dict]
         """
+        if decode_mesh_indices is not None:
+            download_mesh_geometries = decode_mesh_indices
         annotations = []
         for batch in batched(mesh_ids):
             response = self._api.post(
                 self._method_download_bulk,
                 {ApiField.DATASET_ID: dataset_id, self._entity_ids_str: batch},
             )
-            annotations.extend(
-                self._normalize_download_response(response.json(), batch, decode_mesh_indices)
-            )
+            batch_annotations = self._normalize_download_response(response.json(), batch)
+            if download_mesh_geometries:
+                self._download_mesh_geometries(batch_annotations)
+            annotations.extend(batch_annotations)
             if progress_cb is not None:
                 self._update_progress(progress_cb, len(batch))
         return annotations
@@ -106,20 +109,19 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         ann_json: Dict,
         dataset_id: Optional[int] = None,
         key_id_map: Optional[KeyIdMap] = None,
-        encode_mesh_indices: bool = True,
+        encode_mesh_indices: Optional[bool] = None,
     ) -> None:
         """
-        Upload stored annotation JSON for a single mesh entity.
+        Upload mesh annotation transfer JSON for a single mesh entity.
 
-        Mesh index arrays under fields like ``indices`` or ``faceIndices`` are encoded to base64
-        little-endian uint32 strings before upload.
+        Mesh index arrays stay as JSON transfer data. The backend may persist them in a
+        modality-specific binary representation.
         """
         self.upload_jsons(
             dataset_id=dataset_id,
             mesh_ids=[mesh_id],
             anns_json=[ann_json],
             key_id_map=key_id_map,
-            encode_mesh_indices=encode_mesh_indices,
         )
 
     def upload_jsons(
@@ -128,11 +130,11 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_ids: List[int],
         anns_json: List[Dict],
         key_id_map: Optional[KeyIdMap] = None,
-        encode_mesh_indices: bool = True,
+        encode_mesh_indices: Optional[bool] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
-        Upload stored annotation JSONs for mesh entities.
+        Upload mesh annotation transfer JSONs for mesh entities.
 
         :param dataset_id: Dataset ID. If omitted, it is resolved from the first mesh ID.
         :type dataset_id: int, optional
@@ -155,9 +157,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         for batch in batched(list(zip(mesh_ids, anns_json))):
             data = []
             for mesh_id, ann_json in batch:
-                prepared_ann = self._prepare_annotation_json(
-                    mesh_id, ann_json, key_id_map, encode_mesh_indices
-                )
+                prepared_ann = self._prepare_annotation_json(mesh_id, ann_json, key_id_map)
                 data.append({ApiField.ENTITY_ID: mesh_id, ApiField.ANNOTATION: prepared_ann})
 
             self._api.post(
@@ -173,7 +173,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         ann_path: str,
         dataset_id: Optional[int] = None,
         key_id_map: Optional[KeyIdMap] = None,
-        encode_mesh_indices: bool = True,
+        encode_mesh_indices: Optional[bool] = None,
     ) -> None:
         """Upload a mesh annotation from a local JSON file."""
         self.upload_json(
@@ -181,7 +181,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             load_json_file(ann_path),
             dataset_id=dataset_id,
             key_id_map=key_id_map,
-            encode_mesh_indices=encode_mesh_indices,
         )
 
     def upload_paths(
@@ -190,7 +189,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_ids: List[int],
         ann_paths: List[str],
         key_id_map: Optional[KeyIdMap] = None,
-        encode_mesh_indices: bool = True,
+        encode_mesh_indices: Optional[bool] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """Upload mesh annotations from local JSON files."""
@@ -204,7 +203,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             mesh_ids=mesh_ids,
             anns_json=[load_json_file(path) for path in ann_paths],
             key_id_map=key_id_map,
-            encode_mesh_indices=encode_mesh_indices,
             progress_cb=progress_cb,
         )
 
@@ -213,7 +211,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_id: int,
         ann_json: Dict,
         key_id_map: Optional[KeyIdMap],
-        encode_mesh_indices: bool,
     ) -> Dict:
         prepared_ann = dict(ann_json)
         prepared_ann.setdefault(MESH_ID, mesh_id)
@@ -224,8 +221,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             except Exception:
                 pass
 
-        if encode_mesh_indices:
-            prepared_ann = encode_mesh_indices_in_json(prepared_ann)
         return prepared_ann
 
     def _get_mesh_dataset_id(self, mesh_id: int) -> int:
@@ -242,7 +237,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     def _normalize_download_response(
         response_json,
         mesh_ids: List[int],
-        decode_indices: bool,
     ) -> List[Dict]:
         items = MeshAnnotationAPI._extract_download_items(response_json)
         ordered = []
@@ -252,8 +246,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         for item in items:
             entity_id = MeshAnnotationAPI._extract_entity_id(item)
             ann_json = MeshAnnotationAPI._extract_annotation_json(item)
-            if decode_indices:
-                ann_json = decode_mesh_indices_in_json(ann_json)
             if entity_id is not None:
                 id_to_ann[entity_id] = ann_json
                 has_entity_ids = True
@@ -262,6 +254,48 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         if has_entity_ids:
             return [id_to_ann.get(mesh_id, {}) for mesh_id in mesh_ids]
         return ordered
+
+    def _download_mesh_geometries(self, annotations: List[Dict]) -> None:
+        refs = []
+        for ann_json in annotations:
+            for figure_json in self._iter_mesh_figures(ann_json):
+                figure_id = figure_json.get(ApiField.ID)
+                field_name = self._external_indices_field_name(figure_json)
+                if figure_id is not None and field_name is not None:
+                    refs.append((figure_id, figure_json, field_name))
+
+        if len(refs) == 0:
+            return
+
+        figure_ids = [ref[0] for ref in refs]
+        geometries = self._api.mesh.figure.download_indices_batch(figure_ids)
+        for (_, figure_json, field_name), indices in zip(refs, geometries):
+            figure_json.setdefault(ApiField.GEOMETRY, {})[field_name] = indices
+
+    @staticmethod
+    def _iter_mesh_figures(ann_json: Dict):
+        if not isinstance(ann_json, dict):
+            return
+        figures = ann_json.get("figures", [])
+        if not isinstance(figures, list):
+            return
+        for figure_json in figures:
+            if isinstance(figure_json, dict):
+                yield figure_json
+
+    @staticmethod
+    def _external_indices_field_name(figure_json: Dict) -> Optional[str]:
+        geometry = figure_json.get(ApiField.GEOMETRY)
+        if not isinstance(geometry, dict):
+            return None
+        for field_name in MESH_INDEX_FIELDS:
+            if field_name in geometry and geometry[field_name] is None:
+                return field_name
+        geometry_type = figure_json.get(ApiField.GEOMETRY_TYPE)
+        if isinstance(geometry_type, str) and "mesh" in geometry_type.lower():
+            if not any(field_name in geometry for field_name in MESH_INDEX_FIELDS):
+                return "indices"
+        return None
 
     @staticmethod
     def _extract_download_items(response_json) -> List:

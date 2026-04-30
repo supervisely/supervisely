@@ -8,7 +8,7 @@ from typing import Any, Iterable, List
 import numpy as np
 
 
-MESH_INDEX_FIELDS = {
+MESH_INDEX_FIELDS = (
     "indices",
     "vertexIndices",
     "verticesIndices",
@@ -26,7 +26,7 @@ MESH_INDEX_FIELDS = {
     "faces_indices",
     "triangle_indices",
     "triangles_indices",
-}
+)
 
 
 def encode_mesh_indices_np(indices: Iterable[int]) -> bytes:
@@ -66,7 +66,11 @@ def decode_mesh_indices_base64(data: str) -> List[int]:
 
 
 def encode_mesh_indices_in_json(data: Any) -> Any:
-    """Return a JSON copy with mesh index arrays encoded to base64 strings."""
+    """Return a JSON copy with mesh index arrays encoded to base64 strings.
+
+    Prefer raw ``encode_mesh_indices`` bytes for API/storage paths. This helper is only for JSON-only
+    interchange surfaces.
+    """
     return _convert_mesh_indices(deepcopy(data), encode=True)
 
 

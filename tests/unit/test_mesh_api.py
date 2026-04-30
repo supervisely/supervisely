@@ -92,6 +92,7 @@ class FakeApi:
         self.calls = []
         self.file = FakeFileApi()
         self.dataset = FakeDatasetApi()
+        self.annotation_response = None
 
     def post(self, method, data, **kwargs):
         self.calls.append((method, data, kwargs))
@@ -116,6 +117,8 @@ class FakeApi:
         if method == "tags.entities.bulk.add":
             return Response([{"id": 900 + idx} for idx, _ in enumerate(data["tags"])])
         if method == "entities.annotations.bulk.info":
+            if self.annotation_response is not None:
+                return Response(self.annotation_response)
             return Response(
                 [
                     {
@@ -125,9 +128,7 @@ class FakeApi:
                             "figures": [
                                 {
                                     "geometry": {
-                                        "indices": encode_mesh_indices_base64(
-                                            [0, 1, 2, 42, 65535]
-                                        )
+                                        "indices": [0, 1, 2, 42, 65535]
                                     }
                                 }
                             ],
@@ -138,6 +139,8 @@ class FakeApi:
             )
         if method == "entities.annotations.bulk.add":
             return Response([{"id": 100 + idx} for idx, _ in enumerate(data["annotations"])])
+        if method == "figures.bulk.upload.geometry":
+            return Response({})
         raise AssertionError(f"Unexpected method: {method}")
 
 
@@ -273,7 +276,7 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(data[ApiField.DATASET_ID], 4)
         self.assertEqual(data[ApiField.ENTITY_IDS], [123])
 
-    def test_upload_json_uses_stored_annotation_json_endpoint_and_encodes_indices(self):
+    def test_upload_json_keeps_indices_as_json_transfer_data(self):
         fake = FakeApi()
         api = MeshApi(fake)
         ann_json = {"figures": [{"geometry": {"indices": [0, 1, 2, 42, 65535]}}]}
@@ -287,8 +290,43 @@ class TestMeshAnnotation(unittest.TestCase):
         stored_ann = data[ApiField.ANNOTATIONS][0][ApiField.ANNOTATION]
         self.assertEqual(stored_ann["meshId"], 123)
         stored_indices = stored_ann["figures"][0]["geometry"]["indices"]
-        self.assertIsInstance(stored_indices, str)
-        self.assertEqual(decode_mesh_indices_base64(stored_indices), [0, 1, 2, 42, 65535])
+        self.assertEqual(stored_indices, [0, 1, 2, 42, 65535])
+
+    def test_download_hydrates_external_mesh_indices_geometry(self):
+        fake = FakeApi()
+        fake.annotation_response = [
+            {
+                ApiField.ENTITY_ID: 123,
+                ApiField.ANNOTATION: {
+                    "meshId": 123,
+                    "figures": [
+                        {
+                            ApiField.ID: 987,
+                            ApiField.GEOMETRY_TYPE: "mesh_indices",
+                            ApiField.GEOMETRY: {"indices": None},
+                        }
+                    ],
+                },
+            }
+        ]
+        fake.mesh = SimpleNamespace(
+            figure=SimpleNamespace(download_indices_batch=lambda ids: [[0, 1, 2, 42, 65535]])
+        )
+        api = MeshApi(fake)
+
+        ann_json = api.annotation.download_bulk(4, [123])[0]
+
+        self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
+
+    def test_mesh_figure_upload_indices_uses_raw_geometry_storage(self):
+        fake = FakeApi()
+        api = MeshApi(fake)
+
+        api.figure.upload_indices_batch([987], [[0, 1, 2, 42, 65535]])
+
+        method, data, _ = fake.calls[-1]
+        self.assertEqual(method, "figures.bulk.upload.geometry")
+        self.assertIn(b"\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00*\x00\x00\x00\xff\xff\x00\x00", data.to_string())
 
     def test_append_stores_annotation_json_without_object_figure_rebuild(self):
         fake = FakeApi()
