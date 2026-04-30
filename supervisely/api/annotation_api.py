@@ -83,6 +83,64 @@ class AnnotationApi(ModuleApi):
         """
         super().__init__(api)
 
+    def _get_annotation_dataset_id(self, result: Dict, image_id: int) -> int:
+        dataset_id = result.get(ApiField.DATASET_ID)
+        if dataset_id is None:
+            dataset_id = self._api.image.get_info_by_id(image_id).dataset_id
+        return dataset_id
+
+    @staticmethod
+    def _filter_annotation_json_by_figure_ids(annotation: Dict, figure_ids: set) -> Dict:
+        annotation[AnnotationJsonFields.LABELS] = [
+            label
+            for label in annotation.get(AnnotationJsonFields.LABELS, [])
+            if label.get(LabelJsonFields.ID) in figure_ids
+        ]
+        return annotation
+
+    def _download_filtered_figure_ids(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        figure_filters: Optional[List[Dict[str, str]]] = None,
+    ) -> Dict[int, set]:
+        if figure_filters is None:
+            return {}
+
+        figures_by_image = self._api.image.figure.download(
+            dataset_id=dataset_id,
+            image_ids=image_ids,
+            skip_geometry=True,
+            filters=figure_filters,
+        )
+        return {
+            current_image_id: {figure.id for figure in figures}
+            for current_image_id, figures in figures_by_image.items()
+        }
+
+    async def _download_filtered_figure_ids_async(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        figure_filters: Optional[List[Dict[str, str]]] = None,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> Dict[int, set]:
+        if figure_filters is None:
+            return {}
+
+        figures_by_image = await self._api.image.figure.download_async(
+            dataset_id=dataset_id,
+            image_ids=image_ids,
+            skip_geometry=True,
+            filters=figure_filters,
+            semaphore=semaphore,
+            log_progress=False,
+        )
+        return {
+            current_image_id: {figure.id for figure in figures}
+            for current_image_id, figures in figures_by_image.items()
+        }
+
     @staticmethod
     def info_sequence():
         """
@@ -297,6 +355,7 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -307,6 +366,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation.
+        :type figure_filters: List[Dict[str, str]], optional
 
         :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
@@ -356,6 +417,17 @@ class AnnotationApi(ModuleApi):
             },
         )
         result = response.json()
+        if figure_filters is not None:
+            dataset_id = self._get_annotation_dataset_id(result, image_id)
+            figure_ids_by_image = self._download_filtered_figure_ids(
+                dataset_id=dataset_id,
+                image_ids=[image_id],
+                figure_filters=figure_filters,
+            )
+            result[ApiField.ANNOTATION] = self._filter_annotation_json_by_figure_ids(
+                result[ApiField.ANNOTATION],
+                figure_ids_by_image.get(image_id, set()),
+            )
         # Convert annotation to pixel coordinate system
         result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
             result[ApiField.ANNOTATION]
@@ -384,6 +456,7 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
@@ -394,6 +467,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation.
+        :type figure_filters: List[Dict[str, str]], optional
 
         :returns: Annotation in json format
         :rtype: dict
@@ -426,11 +501,17 @@ class AnnotationApi(ModuleApi):
                 #         },
                 #         "objects": []
                 #     }
+
+                filtered_ann_json = api.annotation.download_json(
+                    image_id,
+                    figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                )
         """
         return self.download(
             image_id=image_id,
             with_custom_data=with_custom_data,
             force_metadata_for_links=force_metadata_for_links,
+            figure_filters=figure_filters,
         ).annotation
 
     def download_batch(
@@ -440,6 +521,7 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -454,6 +536,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
+        :type figure_filters: List[Dict[str, str]], optional
 
         :returns: Information about Annotations.
         :rtype: List[:class:`~supervisely.api.annotation_api.AnnotationInfo`]
@@ -516,6 +600,12 @@ class AnnotationApi(ModuleApi):
                 need_download_alpha_masks = True
                 break
 
+        figure_ids_by_image = self._download_filtered_figure_ids(
+            dataset_id=dataset_id,
+            image_ids=image_ids,
+            figure_filters=figure_filters,
+        )
+
         id_to_ann = {}
         for batch in batched(image_ids):
             post_data = {
@@ -526,6 +616,13 @@ class AnnotationApi(ModuleApi):
                 ApiField.INTEGER_COORDS: False,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
+            if figure_filters is not None:
+                for ann_dict in results:
+                    current_image_id = ann_dict[ApiField.IMAGE_ID]
+                    ann_dict[ApiField.ANNOTATION] = self._filter_annotation_json_by_figure_ids(
+                        ann_dict[ApiField.ANNOTATION],
+                        figure_ids_by_image.get(current_image_id, set()),
+                    )
             if need_download_alpha_masks is True:
                 additonal_geometries = defaultdict(tuple)
                 for ann_idx, ann_dict in enumerate(results):
@@ -566,6 +663,7 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> List[Dict]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -578,6 +676,8 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
+        :type figure_filters: List[Dict[str, str]], optional
 
         :returns: Information about Annotations.
         :rtype: List[:class:`~supervisely.api.annotation_api.AnnotationInfo`]
@@ -606,12 +706,19 @@ class AnnotationApi(ModuleApi):
                 # Output:
                 # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
                 # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
+
+                filtered_anns_jsons = api.annotation.download_json_batch(
+                    dataset_id,
+                    image_ids,
+                    figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                )
         """
         results = self.download_batch(
             dataset_id=dataset_id,
             image_ids=image_ids,
             progress_cb=progress_cb,
             force_metadata_for_links=force_metadata_for_links,
+            figure_filters=figure_filters,
         )
         return [ann_info.annotation for ann_info in results]
 
@@ -1478,6 +1585,7 @@ class AnnotationApi(ModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -1494,6 +1602,8 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation.
+        :type figure_filters: List[Dict[str, str]], optional
         :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
 
@@ -1516,6 +1626,13 @@ class AnnotationApi(ModuleApi):
                 image_id = 121236918
                 loop = sly.utils.get_or_create_event_loop()
                 ann_info = loop.run_until_complete(api.annotation.download_async(image_id))
+
+                filtered_ann_info = loop.run_until_complete(
+                    api.annotation.download_async(
+                        image_id,
+                        figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                    )
+                )
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
@@ -1533,6 +1650,18 @@ class AnnotationApi(ModuleApi):
                 progress_cb(len(response.content))
 
             result = response.json()
+        if figure_filters is not None:
+            dataset_id = self._get_annotation_dataset_id(result, image_id)
+            figure_ids_by_image = await self._download_filtered_figure_ids_async(
+                dataset_id=dataset_id,
+                image_ids=[image_id],
+                figure_filters=figure_filters,
+                semaphore=semaphore,
+            )
+            result[ApiField.ANNOTATION] = self._filter_annotation_json_by_figure_ids(
+                result[ApiField.ANNOTATION],
+                figure_ids_by_image.get(image_id, set()),
+            )
         # Convert annotation to pixel coordinate system
         result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
             result[ApiField.ANNOTATION]
@@ -1570,6 +1699,7 @@ class AnnotationApi(ModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -1588,6 +1718,8 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
+        :type figure_filters: List[Dict[str, str]], optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -1616,6 +1748,14 @@ class AnnotationApi(ModuleApi):
                 ann_infos = loop.run_until_complete(
                                 api.annotation.download_batch_async(dataset_id, image_ids, progress_cb=pbar)
                             )
+
+                filtered_ann_infos = loop.run_until_complete(
+                    api.annotation.download_batch_async(
+                        dataset_id,
+                        image_ids,
+                        figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                    )
+                )
         """
 
         # use context to avoid redundant API calls
@@ -1645,6 +1785,7 @@ class AnnotationApi(ModuleApi):
                 force_metadata_for_links=force_metadata_for_links,
                 progress_cb=progress_cb,
                 progress_cb_type=progress_cb_type,
+                figure_filters=figure_filters,
             )
             tasks.append(task)
         ann_infos = await asyncio.gather(*tasks)
@@ -1658,6 +1799,7 @@ class AnnotationApi(ModuleApi):
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
         semaphore: Optional[asyncio.Semaphore] = None,
+        figure_filters: Optional[List[Dict[str, str]]] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -1675,6 +1817,8 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore, optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
+        :type figure_filters: List[Dict[str, str]], optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -1700,6 +1844,12 @@ class AnnotationApi(ModuleApi):
                 p = tqdm(desc="Annotations downloaded: ", total=len(image_ids))
 
                 ann_infos = await api.annotation.download_bulk_async(dataset_id, image_ids, progress_cb=p)
+
+                filtered_ann_infos = await api.annotation.download_bulk_async(
+                    dataset_id,
+                    image_ids,
+                    figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                )
 
                 # Optimizing the download process by using the context to avoid redundant API calls:
                 # 1. Download the project meta
@@ -1737,6 +1887,13 @@ class AnnotationApi(ModuleApi):
                 need_download_alpha_masks = True
                 break
 
+        figure_ids_by_image = await self._download_filtered_figure_ids_async(
+            dataset_id=dataset_id,
+            image_ids=image_ids,
+            figure_filters=figure_filters,
+            semaphore=semaphore,
+        )
+
         id_to_ann = {}
         for batch in batched(image_ids):
             json_data = {
@@ -1749,6 +1906,13 @@ class AnnotationApi(ModuleApi):
             async with semaphore:
                 results = await self._api.post_async("annotations.bulk.info", json=json_data)
                 results = results.json()
+            if figure_filters is not None:
+                for ann_dict in results:
+                    current_image_id = ann_dict[ApiField.IMAGE_ID]
+                    ann_dict[ApiField.ANNOTATION] = self._filter_annotation_json_by_figure_ids(
+                        ann_dict[ApiField.ANNOTATION],
+                        figure_ids_by_image.get(current_image_id, set()),
+                    )
             if need_download_alpha_masks is True:
                 additonal_geometries = defaultdict(tuple)
                 for ann_idx, ann_dict in enumerate(results):
