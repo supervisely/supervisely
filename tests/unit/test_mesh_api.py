@@ -11,6 +11,7 @@ from supervisely.api.mesh.mesh_api import MeshApi, MeshInfo
 from supervisely.api.mesh.mesh_tag_api import MeshTagApi
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.io.json import load_json_file
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_figure import MeshFigure
 from supervisely.mesh_annotation.mesh_indices import (
@@ -24,6 +25,9 @@ from supervisely.mesh_annotation.mesh_object import MeshObject
 from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
 from supervisely.mesh_annotation.mesh_tag import MeshTag
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
+from supervisely.project import read_project
+from supervisely.project.mesh_project import GEOMETRIES_DIR_NAME, MeshProject
+from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -229,6 +233,68 @@ class TestMeshApi(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             api.upload_links(4, ["bad.glb"], ["https://example.com/bad.glb"])
+
+
+class TestMeshProject(unittest.TestCase):
+    def test_local_mesh_project_layout_and_geometry_sidecars(self):
+        indices = [0, 1, 2, 42, 65535]
+        ann_json = {
+            "description": "",
+            "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "tags": [],
+            "objects": [
+                {
+                    "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "classTitle": "car",
+                    "tags": [],
+                }
+            ],
+            "figures": [
+                {
+                    "key": "cccccccccccccccccccccccccccccccc",
+                    "objectKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "geometryType": "mesh_indices",
+                    "geometry": {"indices": indices},
+                }
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            src_mesh_path = os.path.join(temp_dir, "source.obj")
+            with open(src_mesh_path, "w") as f:
+                f.write("o sample\n")
+
+            project_dir = os.path.join(temp_dir, "mesh_project")
+            project = MeshProject(project_dir, OpenMode.CREATE)
+            ds = project.create_dataset("ds1")
+            ds.add_item_file("sample.obj", src_mesh_path, ann=ann_json, _validate_item=False)
+
+            self.assertTrue(os.path.isfile(os.path.join(project_dir, "meta.json")))
+            self.assertTrue(os.path.isfile(os.path.join(ds.mesh_dir, "sample.obj")))
+            self.assertEqual(project.meta.project_type, ProjectType.MESHES.value)
+
+            stored_ann = load_json_file(ds.get_ann_path("sample.obj"))
+            stored_geometry = stored_ann["figures"][0]["geometry"]
+            self.assertIsNone(stored_geometry["indices"])
+            self.assertIn("indicesPath", stored_geometry)
+            self.assertTrue(stored_geometry["indicesPath"].startswith(GEOMETRIES_DIR_NAME + "/"))
+
+            geometry_path = os.path.join(
+                ds.get_annotation_dir("sample.obj"),
+                *stored_geometry["indicesPath"].split("/"),
+            )
+            self.assertTrue(os.path.isfile(geometry_path))
+            with open(geometry_path, "rb") as f:
+                self.assertEqual(f.read(), encode_mesh_indices(indices))
+
+            restored_ann = ds.get_ann_json("sample.obj")
+            self.assertEqual(restored_ann["figures"][0]["geometry"]["indices"], indices)
+            self.assertNotIn("indicesPath", restored_ann["figures"][0]["geometry"])
+
+            reopened = read_project(project_dir)
+            self.assertIsInstance(reopened, MeshProject)
+            reopened_ds = reopened.datasets.get("ds1")
+            self.assertEqual(reopened_ds.get_ann_json("sample.obj"), restored_ann)
 
 
 class TestMeshAnnotation(unittest.TestCase):

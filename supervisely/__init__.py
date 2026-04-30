@@ -249,6 +249,12 @@ from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollect
 from supervisely.mesh_annotation.mesh_figure import MeshFigure
 from supervisely.mesh_annotation.mesh_tag import MeshTag
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
+from supervisely.project.mesh_project import (
+    MeshDataset,
+    MeshProject,
+    download_mesh_project,
+    upload_mesh_project,
+)
 from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,
