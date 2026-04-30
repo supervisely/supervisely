@@ -26,6 +26,9 @@ from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
+SOURCE_FIGURE_ID = "sourceFigureId"
+
+
 class TrackerInterface:
     """Base helper that applies tracking across video frames by fetching figures/frames and appending new geometries."""
 
@@ -205,7 +208,7 @@ class TrackerInterface:
                         key: value
                         for key, value in {
                             ApiField.FRAME: frame_index,
-                            "sourceFigureId": source_figure_id,
+                            SOURCE_FIGURE_ID: source_figure_id,
                         }.items()
                         if value is not None
                     },

@@ -20,6 +20,7 @@ from supervisely.nn.inference.inference import Uploader
 from supervisely.nn.inference.inference_request import InferenceRequest
 from supervisely.nn.inference.tracking.base_tracking import BaseTracking
 from supervisely.nn.inference.tracking.tracker_interface import (
+    SOURCE_FIGURE_ID,
     TrackerInterface,
     TrackerInterfaceV2,
 )
@@ -368,7 +369,7 @@ class BBoxTracking(BaseTracking):
             inference_request.add_results(items)
             inference_request.done(len(items))
             for item in items:
-                source_figure_id = item.meta.get("sourceFigureId", item.id)
+                source_figure_id = item.meta.get(SOURCE_FIGURE_ID, item.id)
                 if source_figure_id is None:
                     continue
                 source_figure_id = str(source_figure_id)
@@ -416,7 +417,7 @@ class BBoxTracking(BaseTracking):
                 sly_geometry: Rectangle = deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
-                source_figure_id = figure.meta.get("sourceFigureId", figure.id)
+                source_figure_id = figure.meta.get(SOURCE_FIGURE_ID, figure.id)
                 init = False
                 for frame_i, (frame, next_frame) in enumerate(
                     tracker_interface.frames_loader_generator(), 1
@@ -463,7 +464,7 @@ class BBoxTracking(BaseTracking):
                             ApiField.OBJECT_ID: figure.object_id,
                             "meta": {
                                 "frame": next_frame.frame_index,
-                                "sourceFigureId": source_figure_id,
+                                SOURCE_FIGURE_ID: source_figure_id,
                             },
                             ApiField.GEOMETRY_TYPE: sly_geometry.geometry_name(),
                             ApiField.GEOMETRY: sly_geometry.to_json(),

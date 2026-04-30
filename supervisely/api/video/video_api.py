@@ -47,7 +47,6 @@ from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
 from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_tag_api import VideoTagApi
-from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -69,6 +68,7 @@ from supervisely.video.video import (
     is_valid_format,
     validate_ext,
 )
+from supervisely.video_annotation.video_tag import VideoTag
 
 
 class VideoInfo(NamedTuple):
@@ -1456,6 +1456,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :param frame_end: int
         :param current: int
         :param total: int
+        :param extra_data: Additional payload fields to merge into the notification data.
+        :type extra_data: Optional[Dict]
         :returns: str
         """
 
