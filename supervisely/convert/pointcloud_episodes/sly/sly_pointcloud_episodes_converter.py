@@ -38,6 +38,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             self._annotation = ann
             return True
         except Exception as e:
+            logger.warning(f"Failed to parse annotation file '{ann_path}': {e}")
             return False
 
     def validate_key_file(self, key_file_path: str) -> bool:

@@ -22,17 +22,22 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         ann_json = ann_json["annotation"]
 
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(
+        logger.warning(
             f"Pointcloud Episode Annotation file {ann_path} is not in Supervisely format"
         )
         return meta
 
     object_key_to_name = {}
+    all_class_names = set()
     for object in ann_json["objects"]:
         meta = create_tags_from_annotation(object["tags"], meta)
         object_key_to_name[object["key"]] = object["classTitle"]
+        all_class_names.add(object["classTitle"])
     for frame in ann_json["frames"]:
         meta = create_classes_from_annotation(frame, meta, object_key_to_name)
+    for class_name in all_class_names:
+        if meta.get_obj_class(class_name) is None:
+            meta = meta.add_obj_class(ObjClass(name=class_name, geometry_type=AnyGeometry))
     meta = create_tags_from_annotation(ann_json["tags"], meta)
     return meta
 
