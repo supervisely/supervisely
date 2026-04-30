@@ -102,7 +102,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[int, set]:
         if figure_filters is None:
             return {}
@@ -122,7 +122,7 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
     ) -> Dict[int, set]:
         if figure_filters is None:
@@ -355,7 +355,7 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -366,8 +366,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
@@ -456,7 +456,7 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
@@ -467,8 +467,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Annotation in json format
         :rtype: dict
@@ -504,7 +504,7 @@ class AnnotationApi(ModuleApi):
 
                 filtered_ann_json = api.annotation.download_json(
                     image_id,
-                    figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                    figure_filters=[{"type": "objects_class", "data": {"from": 1, "to": 9999, "include": True, "classId": 123}}],
                 )
         """
         return self.download(
@@ -521,7 +521,7 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -536,8 +536,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Information about Annotations.
         :rtype: List[:class:`~supervisely.api.annotation_api.AnnotationInfo`]
@@ -663,7 +663,7 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -676,8 +676,8 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
 
         :returns: Information about Annotations.
         :rtype: List[:class:`~supervisely.api.annotation_api.AnnotationInfo`]
@@ -710,7 +710,7 @@ class AnnotationApi(ModuleApi):
                 filtered_anns_jsons = api.annotation.download_json_batch(
                     dataset_id,
                     image_ids,
-                    figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                    figure_filters=[{"type": "objects_class", "data": {"from": 1, "to": 9999, "include": True, "classId": 123}}],
                 )
         """
         results = self.download_batch(
@@ -1585,7 +1585,7 @@ class AnnotationApi(ModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -1602,8 +1602,8 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in the downloaded annotation. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
         :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
 
@@ -1630,7 +1630,7 @@ class AnnotationApi(ModuleApi):
                 filtered_ann_info = loop.run_until_complete(
                     api.annotation.download_async(
                         image_id,
-                        figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                        figure_filters=[{"type": "objects_class", "data": {"from": 1, "to": 9999, "include": True, "classId": 123}}],
                     )
                 )
         """
@@ -1699,7 +1699,7 @@ class AnnotationApi(ModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -1718,8 +1718,8 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -1753,7 +1753,7 @@ class AnnotationApi(ModuleApi):
                     api.annotation.download_batch_async(
                         dataset_id,
                         image_ids,
-                        figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                        figure_filters=[{"type": "objects_class", "data": {"from": 1, "to": 9999, "include": True, "classId": 123}}],
                     )
                 )
         """
@@ -1799,7 +1799,7 @@ class AnnotationApi(ModuleApi):
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
         semaphore: Optional[asyncio.Semaphore] = None,
-        figure_filters: Optional[List[Dict[str, str]]] = None,
+        figure_filters: Optional[List[Dict[str, Any]]] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -1817,8 +1817,8 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :param figure_filters: Optional figure filters applied to labels in downloaded annotations.
-        :type figure_filters: List[Dict[str, str]], optional
+        :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`.
+        :type figure_filters: List[Dict[str, Any]], optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -1848,7 +1848,7 @@ class AnnotationApi(ModuleApi):
                 filtered_ann_infos = await api.annotation.download_bulk_async(
                     dataset_id,
                     image_ids,
-                    figure_filters=[{"field": "classId", "operator": "=", "value": 123}],
+                    figure_filters=[{"type": "objects_class", "data": {"from": 1, "to": 9999, "include": True, "classId": 123}}],
                 )
 
                 # Optimizing the download process by using the context to avoid redundant API calls:
