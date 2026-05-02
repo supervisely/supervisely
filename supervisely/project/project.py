@@ -71,6 +71,7 @@ from supervisely.io.fs import (
     mkdir,
     silent_remove,
     subdirs_tree,
+    RestrictedUnpickler,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
@@ -83,7 +84,7 @@ from supervisely.task.progress import tqdm_sly
 TF_BLOB_DIR = "blob-files"  # directory for project blob files in team files
 
 
-class CustomUnpickler(pickle.Unpickler):
+class CustomUnpickler(RestrictedUnpickler):
     """
     Custom Unpickler for loading pickled objects of the same class with differing definitions.
     Handles cases where a class object is reconstructed using a newer definition with additional fields
