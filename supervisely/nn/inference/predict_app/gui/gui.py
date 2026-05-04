@@ -906,10 +906,9 @@ class PredictAppGui:
         for dataset_id in input_parameters.get("dataset_ids", []) or []:
             try:
                 dataset_info = self.api.dataset.get_info_by_id(dataset_id)
-                self.api.app.workflow.add_input_dataset(dataset_info)
-                logger.debug(f"Workflow: Input dataset - {dataset_id}")
+                project_ids.add(dataset_info.project_id)
             except Exception as e:
-                logger.debug(f"Workflow: Failed to add input dataset: {repr(e)}")
+                logger.debug(f"Workflow: Failed to resolve input dataset: {repr(e)}")
 
         image_ids = input_parameters.get("image_ids", []) or []
         if image_ids:
