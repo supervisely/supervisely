@@ -71,6 +71,15 @@ class MeshTagApi(TagApi):
         return ids
 
 
+    def remove(self, tag_id: int) -> None:
+        """Remove a tag from a mesh entity."""
+        self._api.post("tags.entities.remove", {ApiField.ID: tag_id})
+
+    def update_value(self, tag_id: int, value: Union[str, int]) -> None:
+        """Update the value of a tag on a mesh entity."""
+        self._api.post("tags.entities.update-value", {ApiField.ID: tag_id, ApiField.VALUE: value})
+
+
 class MeshObjectTagApi(TagApi):
     """API for tags attached to mesh annotation objects."""
 

@@ -1,7 +1,9 @@
 # coding: utf-8
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
+
+from tqdm import tqdm
 
 from requests_toolbelt import MultipartEncoder
 
@@ -69,11 +71,17 @@ class MeshFigureApi(FigureApi):
         if len(figure_ids) != 0:
             self.upload_indices_batch(figure_ids, mesh_indices)
 
-    def download_indices_batch(self, figure_ids: List[int]) -> List[List[int]]:
+    def download_indices_batch(
+        self,
+        figure_ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[List[int]]:
         """Download mesh figure index geometry as raw little-endian uint32 data."""
         geometries = {}
         for figure_id, part in self._download_geometries_generator(figure_ids):
             geometries[figure_id] = decode_mesh_indices(part.content)
+            if progress_cb is not None:
+                progress_cb(len(part.content))
 
         if len(geometries) != len(figure_ids):
             raise RuntimeError("Not all mesh geometries were downloaded")
@@ -87,10 +95,8 @@ class MeshFigureApi(FigureApi):
                 f"{len(figure_ids)} != {len(indices_batch)}."
             )
 
-        for batch_ids, batch_indices in zip(
-            batched(figure_ids, batch_size=100),
-            batched(indices_batch, batch_size=100),
-        ):
+        for batch in batched(list(zip(figure_ids, indices_batch)), batch_size=100):
+            batch_ids, batch_indices = zip(*batch)
             fields = []
             for figure_id, indices in zip(batch_ids, batch_indices):
                 fields.append((ApiField.FIGURE_ID, str(figure_id)))

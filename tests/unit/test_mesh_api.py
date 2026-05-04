@@ -306,7 +306,7 @@ class TestMeshApi(unittest.TestCase):
         self.assertEqual(data[ApiField.ID], 123)
         self.assertTrue(kwargs["stream"])
 
-    def test_upload_links_and_team_file_ids_do_not_use_hash(self):
+    def test_upload_links_do_not_use_hash(self):
         fake = FakeApi()
         api = MeshApi(fake)
 
@@ -316,7 +316,7 @@ class TestMeshApi(unittest.TestCase):
         self.assertEqual(data["entities"][0][ApiField.LINK], "https://example.com/a.obj")
         self.assertNotIn(ApiField.HASH, data["entities"][0])
 
-        api.upload_team_file_ids(4, ["b.ply"], [123])
+        api._upload_by_team_file_ids(4, ["b.ply"], [123])
         method, data, _ = fake.calls[-1]
         self.assertEqual(data["entities"][0][ApiField.TEAM_FILE_ID], 123)
         self.assertNotIn(ApiField.HASH, data["entities"][0])

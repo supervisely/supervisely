@@ -35,19 +35,22 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     def download(
         self,
         mesh_id: int,
-        project_meta: Optional[ProjectMeta] = None,
         key_id_map: Optional[KeyIdMap] = None,
         download_mesh_geometries: bool = True,
-        decode_mesh_indices: Optional[bool] = None,
     ) -> Dict:
         """
         Download mesh annotation by mesh ID.
 
-        Mesh annotations are transferred as JSON. Large mesh index geometry may be stored in figure
-        geometry storage and decoded back into JSON on download.
+        :param mesh_id: Mesh ID in Supervisely.
+        :type mesh_id: int
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into
+            the annotation JSON when figures reference external geometry storage.
+        :type download_mesh_geometries: bool
+        :returns: Annotation JSON.
+        :rtype: dict
         """
-        if decode_mesh_indices is not None:
-            download_mesh_geometries = decode_mesh_indices
         dataset_id = self._api.mesh.get_info_by_id(mesh_id).dataset_id
         ann_json = self.download_bulk(
             dataset_id, [mesh_id], download_mesh_geometries=download_mesh_geometries
@@ -60,7 +63,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         dataset_id: int,
         mesh_ids: List[int],
         download_mesh_geometries: bool = True,
-        decode_mesh_indices: Optional[bool] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[Dict]:
         """
@@ -77,8 +79,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :returns: Annotation JSONs ordered like ``mesh_ids``.
         :rtype: List[dict]
         """
-        if decode_mesh_indices is not None:
-            download_mesh_geometries = decode_mesh_indices
         return self._download_bulk_from_entity_rows(
             dataset_id, mesh_ids, download_mesh_geometries, progress_cb
         )
@@ -100,23 +100,8 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             dataset_id, [mesh_id], [ann.to_json(key_id_map)], key_id_map=key_id_map
         )
 
-    def upload_path(
-        self,
-        mesh_id: int,
-        ann_path: str,
-        dataset_id: Optional[int] = None,
-        key_id_map: Optional[KeyIdMap] = None,
-    ) -> None:
-        """Upload a mesh annotation from a local JSON file."""
-        if dataset_id is None:
-            dataset_id = self._api.mesh.get_info_by_id(mesh_id).dataset_id
-        self._upload_jsons_as_entity_rows(
-            dataset_id, [mesh_id], [load_json_file(ann_path)], key_id_map=key_id_map
-        )
-
     def upload_paths(
         self,
-        dataset_id: Optional[int],
         mesh_ids: List[int],
         ann_paths: List[str],
         key_id_map: Optional[KeyIdMap] = None,
@@ -128,8 +113,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 f"mesh_ids and ann_paths must have the same length: "
                 f"{len(mesh_ids)} != {len(ann_paths)}."
             )
-        if dataset_id is None:
-            dataset_id = self._api.mesh.get_info_by_id(mesh_ids[0]).dataset_id
+        dataset_id = self._api.mesh.get_info_by_id(mesh_ids[0]).dataset_id
         self._upload_jsons_as_entity_rows(
             dataset_id,
             mesh_ids,
@@ -146,13 +130,11 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     ) -> Dict:
         prepared_ann = dict(ann_json)
         prepared_ann.setdefault(MESH_ID, mesh_id)
-
         if key_id_map is not None and prepared_ann.get(KEY) is not None:
             try:
                 key_id_map.add_video(uuid.UUID(prepared_ann[KEY]), mesh_id)
             except Exception:
                 pass
-
         return prepared_ann
 
     def _upload_jsons_as_entity_rows(
@@ -384,13 +366,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             key_id_map.add_video(uuid.UUID(ann_json[KEY]), mesh_id)
         except Exception:
             pass
-
-    @staticmethod
-    def _update_progress(progress_cb, value: int) -> None:
-        if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
-            progress_cb.update(value)
-        else:
-            progress_cb(value)
 
     @staticmethod
     def _update_progress(progress_cb, value: int) -> None:
