@@ -314,6 +314,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         for mesh_id in mesh_ids:
             annotations.append(
                 {
+                    KEY: uuid.uuid4().hex,
                     MESH_ID: mesh_id,
                     TAGS: [],
                     OBJECTS: objects_by_mesh_id.get(mesh_id, []),
