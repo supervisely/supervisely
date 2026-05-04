@@ -1,29 +1,26 @@
 # coding: utf-8
 from __future__ import annotations
 
-import json
 import uuid
+from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
-from supervisely._utils import batched
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
-from supervisely.mesh_annotation.constants import KEY, MESH_ID
+from supervisely.mesh_annotation.constants import FIGURES, KEY, MESH_ID, OBJECT_KEY, OBJECTS, TAGS
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import MESH_INDEX_FIELDS
+from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
+from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshAnnotationAPI(EntityAnnotationAPI):
-    """API for downloading and uploading stored mesh annotation JSON."""
-
-    _method_download_bulk = "entities.annotations.bulk.info"
-    _method_upload_bulk = "entities.annotations.bulk.add"
-    _entity_ids_str = ApiField.ENTITY_IDS
+    """API for mesh annotations backed by generic object, figure, and tag rows."""
 
     def download(
         self,
@@ -57,7 +54,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[Dict]:
         """
-        Download stored mesh annotation JSONs by mesh IDs.
+        Download mesh annotation transfer JSONs by mesh IDs.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -72,19 +69,9 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         """
         if decode_mesh_indices is not None:
             download_mesh_geometries = decode_mesh_indices
-        annotations = []
-        for batch in batched(mesh_ids):
-            response = self._api.post(
-                self._method_download_bulk,
-                {ApiField.DATASET_ID: dataset_id, self._entity_ids_str: batch},
-            )
-            batch_annotations = self._normalize_download_response(response.json(), batch)
-            if download_mesh_geometries:
-                self._download_mesh_geometries(batch_annotations)
-            annotations.extend(batch_annotations)
-            if progress_cb is not None:
-                self._update_progress(progress_cb, len(batch))
-        return annotations
+        return self._download_bulk_from_entity_rows(
+            dataset_id, mesh_ids, download_mesh_geometries, progress_cb
+        )
 
     def append(
         self,
@@ -93,10 +80,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
-        Store a full mesh annotation JSON for the mesh entity.
-
-        This method intentionally writes the annotation JSON through the entity annotation storage
-        endpoint instead of recreating it from generic object, figure, and tag rows.
+        Append a full mesh annotation to the mesh entity.
         """
         if key_id_map is None:
             key_id_map = KeyIdMap()
@@ -114,8 +98,8 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         """
         Upload mesh annotation transfer JSON for a single mesh entity.
 
-        Mesh index arrays stay as JSON transfer data. The backend may persist them in a
-        modality-specific binary representation.
+        Mesh index arrays are accepted as JSON transfer data and persisted as raw figure
+        geometry blobs.
         """
         self.upload_jsons(
             dataset_id=dataset_id,
@@ -154,18 +138,13 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         if dataset_id is None:
             dataset_id = self._get_mesh_dataset_id(mesh_ids[0])
 
-        for batch in batched(list(zip(mesh_ids, anns_json))):
-            data = []
-            for mesh_id, ann_json in batch:
-                prepared_ann = self._prepare_annotation_json(mesh_id, ann_json, key_id_map)
-                data.append({ApiField.ENTITY_ID: mesh_id, ApiField.ANNOTATION: prepared_ann})
-
-            self._api.post(
-                self._method_upload_bulk,
-                {ApiField.DATASET_ID: dataset_id, ApiField.ANNOTATIONS: data},
-            )
-            if progress_cb is not None:
-                self._update_progress(progress_cb, len(batch))
+        self._upload_jsons_as_entity_rows(
+            dataset_id,
+            mesh_ids,
+            anns_json,
+            key_id_map=key_id_map,
+            progress_cb=progress_cb,
+        )
 
     def upload_path(
         self,
@@ -233,106 +212,238 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         ).json()
         return info[ApiField.DATASET_ID]
 
-    @staticmethod
-    def _normalize_download_response(
-        response_json,
+    def _get_dataset_project_id(self, dataset_id: int) -> int:
+        dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+        return dataset_info.project_id
+
+    def _upload_jsons_as_entity_rows(
+        self,
+        dataset_id: int,
         mesh_ids: List[int],
+        anns_json: List[Dict],
+        key_id_map: Optional[KeyIdMap] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        project_id = self._get_dataset_project_id(dataset_id)
+        project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+        if key_id_map is None:
+            key_id_map = KeyIdMap()
+
+        for mesh_id, ann_json in zip(mesh_ids, anns_json):
+            prepared_ann = self._prepare_annotation_json(mesh_id, ann_json, key_id_map)
+
+            tags = MeshTagCollection.from_json(prepared_ann.get(TAGS, []), project_meta.tag_metas)
+            self._api.mesh.tag.append_to_entity(mesh_id, project_id, tags, key_id_map=key_id_map)
+
+            objects = MeshObjectCollection.from_json(prepared_ann.get(OBJECTS, []), project_meta)
+            self._api.mesh.object.append_bulk(mesh_id, objects, key_id_map)
+
+            figures_json, figure_keys, indices_by_key = self._prepare_figures_for_entity_rows(
+                prepared_ann.get(FIGURES, []), key_id_map
+            )
+            self._api.mesh.figure._append_bulk(mesh_id, figures_json, figure_keys, key_id_map)
+            upload_figure_ids = []
+            upload_indices = []
+            for figure_key in figure_keys:
+                indices = indices_by_key.get(figure_key)
+                if indices is None:
+                    continue
+                upload_figure_ids.append(key_id_map.get_figure_id(figure_key))
+                upload_indices.append(indices)
+            if len(upload_figure_ids) != 0:
+                self._api.mesh.figure.upload_indices_batch(upload_figure_ids, upload_indices)
+
+            if progress_cb is not None:
+                self._update_progress(progress_cb, 1)
+
+    def _prepare_figures_for_entity_rows(
+        self, figures_json: List[Dict], key_id_map: KeyIdMap
+    ) -> tuple:
+        prepared_figures = []
+        figure_keys = []
+        indices_by_key = {}
+
+        for figure_json in figures_json:
+            if not isinstance(figure_json, dict):
+                continue
+
+            prepared = deepcopy(figure_json)
+            figure_key = self._uuid_from_value(prepared.get(KEY)) or uuid.uuid4()
+            prepared[KEY] = figure_key.hex
+            figure_keys.append(figure_key)
+
+            object_id = prepared.get(ApiField.OBJECT_ID)
+            object_key = self._uuid_from_value(prepared.get(OBJECT_KEY))
+            if object_id is None and object_key is not None:
+                object_id = key_id_map.get_object_id(object_key)
+            if object_id is None:
+                raise RuntimeError(
+                    "Can not upload mesh figure: objectId or resolvable objectKey is required."
+                )
+            prepared[ApiField.OBJECT_ID] = object_id
+            prepared.pop(OBJECT_KEY, None)
+
+            geometry_type = prepared.get(ApiField.GEOMETRY_TYPE)
+            geometry = prepared.get(ApiField.GEOMETRY) or {}
+            if isinstance(geometry, dict):
+                geometry = dict(geometry)
+                for field_name in MESH_INDEX_FIELDS:
+                    geometry.pop(f"{field_name}Path", None)
+            prepared[ApiField.GEOMETRY] = geometry
+
+            if geometry_type in ("mesh", "mesh_indices"):
+                prepared[ApiField.GEOMETRY_TYPE] = "mesh"
+                indices = self._extract_mesh_indices(geometry)
+                if indices is not None:
+                    indices_by_key[figure_key] = indices
+                prepared.pop(ApiField.GEOMETRY, None)
+
+            prepared_figures.append(prepared)
+
+        return prepared_figures, figure_keys, indices_by_key
+
+    def _download_bulk_from_entity_rows(
+        self,
+        dataset_id: int,
+        mesh_ids: List[int],
+        download_mesh_geometries: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[Dict]:
-        items = MeshAnnotationAPI._extract_download_items(response_json)
-        ordered = []
-        id_to_ann = {}
-        has_entity_ids = False
+        if len(mesh_ids) == 0:
+            return []
 
-        for item in items:
-            entity_id = MeshAnnotationAPI._extract_entity_id(item)
-            ann_json = MeshAnnotationAPI._extract_annotation_json(item)
-            if entity_id is not None:
-                id_to_ann[entity_id] = ann_json
-                has_entity_ids = True
-            ordered.append(ann_json)
+        project_id = self._get_dataset_project_id(dataset_id)
+        obj_class_id_to_name = {
+            obj_class.id: obj_class.name for obj_class in self._api.object_class.get_list(project_id)
+        }
+        tag_id_to_name = {tag.id: tag.name for tag in self._api.mesh.tag.get_list(project_id)}
 
-        if has_entity_ids:
-            return [id_to_ann.get(mesh_id, {}) for mesh_id in mesh_ids]
-        return ordered
+        objects_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
+        object_ids_by_mesh_id = {mesh_id: set() for mesh_id in mesh_ids}
+        object_id_to_json = {}
+        object_id_to_key = {}
+        object_infos = self._api.mesh.object.get_list(dataset_id)
+        for object_info in object_infos:
+            object_key = uuid.uuid4()
+            object_id_to_key[object_info.id] = object_key
+            object_json = {
+                KEY: object_key.hex,
+                "classTitle": obj_class_id_to_name.get(object_info.class_id),
+                TAGS: self._convert_tag_rows_to_json(object_info.tags, tag_id_to_name),
+            }
+            if object_info.entity_id is not None:
+                objects_by_mesh_id.setdefault(object_info.entity_id, []).append(object_json)
+                object_ids_by_mesh_id.setdefault(object_info.entity_id, set()).add(object_info.id)
+            object_id_to_json[object_info.id] = object_json
 
-    def _download_mesh_geometries(self, annotations: List[Dict]) -> None:
-        refs = []
-        for ann_json in annotations:
-            for figure_json in self._iter_mesh_figures(ann_json):
-                figure_id = figure_json.get(ApiField.ID)
-                field_name = self._external_indices_field_name(figure_json)
-                if figure_id is not None and field_name is not None:
-                    refs.append((figure_id, figure_json, field_name))
+        figures_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
+        mesh_geometry_refs = []
+        raw_figures_by_mesh_id = self._api.mesh.figure.download(dataset_id, mesh_ids)
+        for mesh_id, figure_infos in raw_figures_by_mesh_id.items():
+            for figure_info in figure_infos:
+                object_key = object_id_to_key.get(figure_info.object_id)
+                if object_key is None:
+                    object_key = uuid.uuid4()
+                    object_id_to_key[figure_info.object_id] = object_key
+                figure_json = {
+                    KEY: uuid.uuid4().hex,
+                    OBJECT_KEY: object_key.hex,
+                    ApiField.GEOMETRY_TYPE: figure_info.geometry_type,
+                    ApiField.GEOMETRY: figure_info.geometry,
+                }
+                if figure_info.tags:
+                    figure_json[TAGS] = self._convert_tag_rows_to_json(
+                        figure_info.tags, tag_id_to_name
+                    )
+                if figure_info.priority is not None:
+                    figure_json[ApiField.PRIORITY] = figure_info.priority
+                if figure_info.custom_data is not None:
+                    figure_json[ApiField.CUSTOM_DATA] = figure_info.custom_data
+                self._normalize_downloaded_mesh_figure(figure_json)
+                if (
+                    download_mesh_geometries
+                    and figure_json.get(ApiField.GEOMETRY_TYPE) == "mesh"
+                    and self._extract_mesh_indices(figure_json.get(ApiField.GEOMETRY)) is None
+                ):
+                    mesh_geometry_refs.append((figure_info.id, figure_json))
+                figures_by_mesh_id.setdefault(mesh_id, []).append(figure_json)
 
-        if len(refs) == 0:
-            return
+                object_json = object_id_to_json.get(figure_info.object_id)
+                if object_json is not None and "classTitle" not in figure_json:
+                    figure_json["classTitle"] = object_json.get("classTitle")
+                if (
+                    object_json is not None
+                    and figure_info.object_id not in object_ids_by_mesh_id.setdefault(mesh_id, set())
+                ):
+                    objects_by_mesh_id.setdefault(mesh_id, []).append(object_json)
+                    object_ids_by_mesh_id[mesh_id].add(figure_info.object_id)
 
-        figure_ids = [ref[0] for ref in refs]
-        geometries = self._api.mesh.figure.download_indices_batch(figure_ids)
-        for (_, figure_json, field_name), indices in zip(refs, geometries):
-            figure_json.setdefault(ApiField.GEOMETRY, {})[field_name] = indices
+        if len(mesh_geometry_refs) != 0:
+            figure_ids = [figure_id for figure_id, _ in mesh_geometry_refs]
+            indices_batch = self._api.mesh.figure.download_indices_batch(figure_ids)
+            for (_, figure_json), indices in zip(mesh_geometry_refs, indices_batch):
+                figure_json[ApiField.GEOMETRY] = {"indices": indices}
+
+        annotations = []
+        for mesh_id in mesh_ids:
+            annotations.append(
+                {
+                    MESH_ID: mesh_id,
+                    TAGS: [],
+                    OBJECTS: objects_by_mesh_id.get(mesh_id, []),
+                    FIGURES: figures_by_mesh_id.get(mesh_id, []),
+                }
+            )
+            if progress_cb is not None:
+                self._update_progress(progress_cb, 1)
+        return annotations
 
     @staticmethod
-    def _iter_mesh_figures(ann_json: Dict):
-        if not isinstance(ann_json, dict):
-            return
-        figures = ann_json.get("figures", [])
-        if not isinstance(figures, list):
-            return
-        for figure_json in figures:
-            if isinstance(figure_json, dict):
-                yield figure_json
-
-    @staticmethod
-    def _external_indices_field_name(figure_json: Dict) -> Optional[str]:
+    def _normalize_downloaded_mesh_figure(figure_json: Dict) -> None:
         geometry = figure_json.get(ApiField.GEOMETRY)
+        if not isinstance(geometry, dict):
+            return
+        if figure_json.get(ApiField.GEOMETRY_TYPE) == "point_cloud":
+            if any(field_name in geometry for field_name in MESH_INDEX_FIELDS):
+                figure_json[ApiField.GEOMETRY_TYPE] = "mesh"
+
+    @staticmethod
+    def _extract_mesh_indices(geometry) -> Optional[List[int]]:
         if not isinstance(geometry, dict):
             return None
         for field_name in MESH_INDEX_FIELDS:
-            if field_name in geometry and geometry[field_name] is None:
-                return field_name
-        geometry_type = figure_json.get(ApiField.GEOMETRY_TYPE)
-        if isinstance(geometry_type, str) and "mesh" in geometry_type.lower():
-            if not any(field_name in geometry for field_name in MESH_INDEX_FIELDS):
-                return "indices"
+            indices = geometry.get(field_name)
+            if isinstance(indices, list):
+                return indices
         return None
 
     @staticmethod
-    def _extract_download_items(response_json) -> List:
-        if response_json is None:
-            return []
-        if isinstance(response_json, list):
-            return response_json
-        if isinstance(response_json, dict):
-            for key in (ApiField.ANNOTATIONS, "entities", "items"):
-                if isinstance(response_json.get(key), list):
-                    return response_json[key]
-            return [response_json]
-        return []
+    def _convert_tag_rows_to_json(tag_rows: Optional[List[Dict]], tag_id_to_name: Dict[int, str]):
+        result = []
+        for tag_row in tag_rows or []:
+            if not isinstance(tag_row, dict):
+                continue
+            tag_name = tag_id_to_name.get(tag_row.get(ApiField.TAG_ID))
+            if tag_name is None:
+                continue
+            tag_json = {ApiField.NAME: tag_name}
+            if ApiField.VALUE in tag_row:
+                tag_json[ApiField.VALUE] = tag_row[ApiField.VALUE]
+            if ApiField.ID in tag_row:
+                tag_json[ApiField.ID] = tag_row[ApiField.ID]
+            result.append(tag_json)
+        return result
 
     @staticmethod
-    def _extract_annotation_json(item) -> Dict:
-        ann_json = item
-        if isinstance(item, dict) and ApiField.ANNOTATION in item:
-            ann_json = item[ApiField.ANNOTATION]
-        if isinstance(ann_json, str):
-            ann_json = json.loads(ann_json)
-        if ann_json is None:
-            return {}
-        return ann_json
-
-    @staticmethod
-    def _extract_entity_id(item) -> Optional[int]:
-        if not isinstance(item, dict):
+    def _uuid_from_value(value) -> Optional[uuid.UUID]:
+        if value is None:
             return None
-        for field in (ApiField.ENTITY_ID, MESH_ID):
-            value = item.get(field)
-            if value is not None:
-                return value
-        annotation = item.get(ApiField.ANNOTATION)
-        if isinstance(annotation, dict):
-            return annotation.get(MESH_ID)
-        return None
+        if isinstance(value, uuid.UUID):
+            return value
+        try:
+            return uuid.UUID(str(value))
+        except Exception:
+            return None
 
     @staticmethod
     def _update_key_id_map(mesh_id: int, ann_json: Dict, key_id_map: Optional[KeyIdMap]) -> None:

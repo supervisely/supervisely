@@ -30,4 +30,5 @@ class MeshObjectApi(ObjectApi):
             info.dataset_id,
             objects,
             key_id_map,
+            is_pointcloud=True,
         )

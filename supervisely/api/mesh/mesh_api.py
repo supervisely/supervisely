@@ -49,6 +49,8 @@ class MeshApi(ModuleApi):
 
     def __init__(self, api):
         super().__init__(api)
+        if not hasattr(api, "mesh"):
+            api.mesh = self
         self.annotation = MeshAnnotationAPI(api)
         self.object = MeshObjectApi(api)
         self.figure = MeshFigureApi(api)

@@ -41,12 +41,29 @@ class MeshFigureApi(FigureApi):
         figures: List[MeshFigure],
         key_id_map: KeyIdMap,
     ) -> None:
-        keys = []
-        figures_json = []
+        regular_figures_json = []
+        regular_keys = []
+        mesh_keys = []
+        mesh_indices = []
+        mesh_figures_json = []
+
         for figure in figures:
-            keys.append(figure.key())
-            figures_json.append(figure.to_json(key_id_map))
-        self._append_bulk(mesh_id, figures_json, keys, key_id_map)
+            figure_json = figure.to_json(key_id_map)
+            if figure_json.get(ApiField.GEOMETRY_TYPE) == "mesh":
+                mesh_keys.append(figure.key())
+                mesh_indices.append(figure.geometry.indices)
+                figure_json.pop(ApiField.GEOMETRY, None)
+                mesh_figures_json.append(figure_json)
+            else:
+                regular_keys.append(figure.key())
+                regular_figures_json.append(figure_json)
+
+        self._append_bulk(mesh_id, regular_figures_json, regular_keys, key_id_map)
+        self._append_bulk(mesh_id, mesh_figures_json, mesh_keys, key_id_map)
+
+        figure_ids = [key_id_map.get_figure_id(key) for key in mesh_keys]
+        if len(figure_ids) != 0:
+            self.upload_indices_batch(figure_ids, mesh_indices)
 
     def download_indices_batch(self, figure_ids: List[int]) -> List[List[int]]:
         """Download mesh figure index geometry as raw little-endian uint32 data."""

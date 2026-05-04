@@ -1,9 +1,12 @@
 # coding: utf-8
 
 import os
+import tarfile
 import tempfile
 import unittest
 from types import SimpleNamespace
+
+import requests
 
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -63,6 +66,47 @@ def mesh_json(mesh_id=1, name="mesh.obj", **kwargs):
     return data
 
 
+def object_json(object_id=300, class_id=44, entity_id=None, **kwargs):
+    data = {
+        "id": object_id,
+        "description": "",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "datasetId": 4,
+        "classId": class_id,
+        "entityId": entity_id,
+        "tags": [],
+        "meta": {},
+        "createdBy": 5,
+    }
+    data.update(kwargs)
+    return data
+
+
+def figure_json(figure_id=700, mesh_id=123, object_id=300, geometry=None, **kwargs):
+    data = {
+        "id": figure_id,
+        "classId": 44,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "entityId": mesh_id,
+        "objectId": object_id,
+        "projectId": 3,
+        "datasetId": 4,
+        "frameIndex": 0,
+        "geometryType": "mesh",
+        "geometry": geometry or {"indices": [0, 1, 2, 42, 65535]},
+        "geometryMeta": {},
+        "tags": [],
+        "meta": {},
+        "area": None,
+        "priority": None,
+        "customData": None,
+    }
+    data.update(kwargs)
+    return data
+
+
 class Response:
     def __init__(self, value):
         self.value = value
@@ -86,7 +130,10 @@ class FakeFileApi:
 
     def upload_bulk(self, team_id, src_paths, dst_paths, progress_cb=None):
         self.upload_bulk_calls.append((team_id, src_paths, dst_paths, progress_cb))
-        return [SimpleNamespace(id=1000 + idx) for idx, _ in enumerate(src_paths)]
+        return [
+            SimpleNamespace(id=1000 + idx, full_storage_url=f"https://files.example/{idx}.stl")
+            for idx, _ in enumerate(src_paths)
+        ]
 
 
 class FakeDatasetApi:
@@ -97,15 +144,26 @@ class FakeDatasetApi:
 class FakeProjectApi:
     def __init__(self):
         self.updated_meta = None
+        self.meta = ProjectMeta(project_type=ProjectType.MESHES)
 
     def get_meta(self, project_id, with_settings=False):
-        return ProjectMeta(project_type=ProjectType.MESHES).to_json()
+        return self.meta.to_json()
 
     def update_meta(self, project_id, meta):
         self.updated_meta = meta
         if isinstance(meta, ProjectMeta):
+            self.meta = meta
             return meta
-        return ProjectMeta.from_json(meta)
+        self.meta = ProjectMeta.from_json(meta)
+        return self.meta
+
+
+class FakeObjectClassApi:
+    def get_name_to_id_map(self, project_id):
+        return {"car": 44, "any": 45}
+
+    def get_list(self, project_id):
+        return [SimpleNamespace(id=44, name="car"), SimpleNamespace(id=45, name="any")]
 
 
 class FakeApi:
@@ -114,7 +172,11 @@ class FakeApi:
         self.file = FakeFileApi()
         self.dataset = FakeDatasetApi()
         self.project = FakeProjectApi()
+        self.object_class = FakeObjectClassApi()
         self.annotation_response = None
+        self.object_response = []
+        self.figure_response = []
+        self.fail_team_file_id_upload = False
 
     def post(self, method, data, **kwargs):
         self.calls.append((method, data, kwargs))
@@ -125,6 +187,8 @@ class FakeApi:
         if method == "entities.download":
             return Response(b"mesh-bytes")
         if method == "entities.bulk.add":
+            if self.fail_team_file_id_upload and ApiField.TEAM_FILE_ID in data["entities"][0]:
+                raise http_error(404, "The following entities with teamFileId were not found")
             return Response(
                 [
                     mesh_json(
@@ -138,6 +202,30 @@ class FakeApi:
             )
         if method == "tags.entities.bulk.add":
             return Response([{"id": 900 + idx} for idx, _ in enumerate(data["tags"])])
+        if method == "tags.list":
+            return Response({"total": 0, "perPage": 100, "pagesCount": 1, "entities": []})
+        if method == "annotation-objects.list":
+            return Response(
+                {
+                    "total": len(self.object_response),
+                    "perPage": 100,
+                    "pagesCount": 1,
+                    "entities": self.object_response,
+                }
+            )
+        if method == "annotation-objects.bulk.add":
+            return Response([{"id": 300 + idx} for idx, _ in enumerate(data["annotationObjects"])])
+        if method == "figures.list":
+            return Response(
+                {
+                    "total": len(self.figure_response),
+                    "perPage": 100,
+                    "pagesCount": 1,
+                    "entities": self.figure_response,
+                }
+            )
+        if method == "figures.bulk.add":
+            return Response([{"id": 700 + idx} for idx, _ in enumerate(data["figures"])])
         if method == "entities.annotations.bulk.info":
             if self.annotation_response is not None:
                 return Response(self.annotation_response)
@@ -164,6 +252,13 @@ class FakeApi:
         if method == "figures.bulk.upload.geometry":
             return Response({})
         raise AssertionError(f"Unexpected method: {method}")
+
+
+def http_error(status_code, message):
+    response = requests.Response()
+    response.status_code = status_code
+    response._content = message.encode("utf-8")
+    return requests.exceptions.HTTPError(message, response=response)
 
 
 class TestMeshApi(unittest.TestCase):
@@ -244,6 +339,26 @@ class TestMeshApi(unittest.TestCase):
         self.assertEqual(data["entities"][0][ApiField.TEAM_FILE_ID], 1000)
         self.assertNotIn(ApiField.HASH, data["entities"][0])
 
+    def test_upload_paths_does_not_fall_back_to_link_when_team_file_id_is_unavailable(self):
+        fake = FakeApi()
+        fake.fail_team_file_id_upload = True
+        api = MeshApi(fake)
+
+        fd, path = tempfile.mkstemp(suffix=".stl")
+        os.close(fd)
+        try:
+            with self.assertRaises(requests.exceptions.HTTPError):
+                api.upload_paths(4, ["local.stl"], [path])
+        finally:
+            os.remove(path)
+
+        bulk_add_calls = [call for call in fake.calls if call[0] == "entities.bulk.add"]
+        self.assertEqual(len(bulk_add_calls), 1)
+        first_entity = bulk_add_calls[0][1][ApiField.ENTITIES][0]
+        self.assertEqual(first_entity[ApiField.TEAM_FILE_ID], 1000)
+        self.assertNotIn(ApiField.LINK, first_entity)
+        self.assertNotIn(ApiField.HASH, first_entity)
+
     def test_no_hash_upload_surface_and_extension_validation(self):
         api = MeshApi(FakeApi())
         self.assertFalse(hasattr(api, "upload_hash"))
@@ -316,7 +431,31 @@ class TestMeshProject(unittest.TestCase):
 
 
 class TestMeshConverter(unittest.TestCase):
-    def test_sly_mesh_converter_detects_fs_project_and_uploads_annotation_json(self):
+    def test_sly_mesh_archive_fixture_detects_and_decodes_annotation(self):
+        archive_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "fixtures",
+            "mesh",
+            "sly_mesh_project.tar",
+        )
+        expected_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 42, 255, 1024]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with tarfile.open(archive_path, "r") as archive:
+                archive.extractall(temp_dir)
+            project_dir = os.path.join(temp_dir, "sly_mesh_project")
+
+            converter = MeshConverter(project_dir).detect_format()
+
+            self.assertIsInstance(converter, SLYMeshConverter)
+            self.assertEqual(converter.items_count, 1)
+            item = converter.get_items()[0]
+            self.assertEqual(item.name, "24829663.stl")
+            ann_json = converter.to_supervisely(item, converter.get_meta())
+            self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], expected_indices)
+            self.assertNotIn("indicesPath", ann_json["figures"][0]["geometry"])
+
+    def test_sly_mesh_converter_detects_fs_project_and_uploads_annotation_rows(self):
         indices = [0, 1, 2, 42, 65535]
         ann_json = {
             "description": "",
@@ -346,6 +485,9 @@ class TestMeshConverter(unittest.TestCase):
 
             project_dir = os.path.join(temp_dir, "mesh_project")
             project = MeshProject(project_dir, OpenMode.CREATE)
+            project.set_meta(
+                ProjectMeta(obj_classes=[ObjClass("car", Rectangle)], project_type=ProjectType.MESHES)
+            )
             ds = project.create_dataset("ds1")
             ds.add_item_file("sample.obj", src_mesh_path, ann=ann_json, _validate_item=False)
 
@@ -361,6 +503,7 @@ class TestMeshConverter(unittest.TestCase):
             self.assertNotIn("indicesPath", converted_ann["figures"][0]["geometry"])
 
             fake = FakeApi()
+            fake.project.meta = converter.get_meta()
             upload_api = SimpleNamespace(
                 mesh=MeshApi(fake),
                 dataset=fake.dataset,
@@ -370,11 +513,18 @@ class TestMeshConverter(unittest.TestCase):
 
             method_names = [method for method, _, _ in fake.calls]
             self.assertIn("entities.bulk.add", method_names)
-            self.assertIn("entities.annotations.bulk.add", method_names)
-            ann_call = [call for call in fake.calls if call[0] == "entities.annotations.bulk.add"][-1]
-            stored_ann = ann_call[1][ApiField.ANNOTATIONS][0][ApiField.ANNOTATION]
-            self.assertEqual(stored_ann["figures"][0]["geometry"]["indices"], indices)
-            self.assertNotIn("indicesPath", stored_ann["figures"][0]["geometry"])
+            self.assertIn("annotation-objects.bulk.add", method_names)
+            self.assertIn("figures.bulk.add", method_names)
+            self.assertIn("figures.bulk.upload.geometry", method_names)
+            self.assertNotIn("entities.annotations.bulk.add", method_names)
+            object_call = [call for call in fake.calls if call[0] == "annotation-objects.bulk.add"][-1]
+            self.assertNotIn(ApiField.ENTITY_ID, object_call[1][ApiField.ANNOTATION_OBJECTS][0])
+            figure_call = [call for call in fake.calls if call[0] == "figures.bulk.add"][-1]
+            stored_figure = figure_call[1][ApiField.FIGURES][0]
+            self.assertEqual(stored_figure[ApiField.GEOMETRY_TYPE], "mesh")
+            self.assertNotIn(ApiField.GEOMETRY, stored_figure)
+            geometry_call = [call for call in fake.calls if call[0] == "figures.bulk.upload.geometry"][-1]
+            self.assertIn(encode_mesh_indices(indices), geometry_call[1].to_string())
             entity_call = [call for call in fake.calls if call[0] == "entities.bulk.add"][-1]
             self.assertIn(ApiField.TEAM_FILE_ID, entity_call[1][ApiField.ENTITIES][0])
             self.assertNotIn(ApiField.HASH, entity_call[1][ApiField.ENTITIES][0])
@@ -412,60 +562,92 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(len(restored.figures), 1)
         self.assertEqual(len(restored.tags), 1)
 
-    def test_download_uses_stored_annotation_json_endpoint(self):
+    def test_download_uses_generic_annotation_rows(self):
         fake = FakeApi()
+        fake.object_response = [object_json()]
+        fake.figure_response = [figure_json()]
         api = MeshApi(fake)
 
         ann_json = api.annotation.download(123)
 
         self.assertEqual(ann_json["meshId"], 123)
         self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
-        method, data, _ = fake.calls[-1]
-        self.assertEqual(method, "entities.annotations.bulk.info")
-        self.assertEqual(data[ApiField.DATASET_ID], 4)
-        self.assertEqual(data[ApiField.ENTITY_IDS], [123])
+        self.assertEqual(len(ann_json["objects"]), 1)
+        method_names = [method for method, _, _ in fake.calls]
+        self.assertIn("annotation-objects.list", method_names)
+        self.assertIn("figures.list", method_names)
+        self.assertNotIn("entities.annotations.bulk.info", method_names)
 
-    def test_upload_json_keeps_indices_as_json_transfer_data(self):
+    def test_upload_json_writes_indices_to_raw_figure_geometry(self):
         fake = FakeApi()
+        fake.project.meta = ProjectMeta(
+            obj_classes=[ObjClass("car", Rectangle)], project_type=ProjectType.MESHES
+        )
         api = MeshApi(fake)
-        ann_json = {"figures": [{"geometry": {"indices": [0, 1, 2, 42, 65535]}}]}
+        ann_json = {
+            "objects": [
+                {
+                    "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "classTitle": "car",
+                    "tags": [],
+                }
+            ],
+            "figures": [
+                {
+                    "key": "cccccccccccccccccccccccccccccccc",
+                    "objectKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "geometryType": "mesh",
+                    "geometry": {"indices": [0, 1, 2, 42, 65535]},
+                }
+            ],
+        }
 
         api.annotation.upload_json(123, ann_json, dataset_id=4)
 
-        method, data, _ = fake.calls[-1]
-        self.assertEqual(method, "entities.annotations.bulk.add")
-        self.assertEqual(data[ApiField.DATASET_ID], 4)
-        self.assertEqual(data[ApiField.ANNOTATIONS][0][ApiField.ENTITY_ID], 123)
-        stored_ann = data[ApiField.ANNOTATIONS][0][ApiField.ANNOTATION]
-        self.assertEqual(stored_ann["meshId"], 123)
-        stored_indices = stored_ann["figures"][0]["geometry"]["indices"]
-        self.assertEqual(stored_indices, [0, 1, 2, 42, 65535])
+        method_names = [method for method, _, _ in fake.calls]
+        self.assertIn("annotation-objects.bulk.add", method_names)
+        self.assertIn("figures.bulk.add", method_names)
+        self.assertIn("figures.bulk.upload.geometry", method_names)
+        self.assertNotIn("entities.annotations.bulk.add", method_names)
+        figure_call = [call for call in fake.calls if call[0] == "figures.bulk.add"][-1]
+        stored_figure = figure_call[1][ApiField.FIGURES][0]
+        self.assertEqual(stored_figure[ApiField.GEOMETRY_TYPE], "mesh")
+        self.assertNotIn(ApiField.GEOMETRY, stored_figure)
+        geometry_call = [call for call in fake.calls if call[0] == "figures.bulk.upload.geometry"][-1]
+        self.assertIn(encode_mesh_indices([0, 1, 2, 42, 65535]), geometry_call[1].to_string())
 
     def test_download_hydrates_external_mesh_indices_geometry(self):
         fake = FakeApi()
-        fake.annotation_response = [
-            {
-                ApiField.ENTITY_ID: 123,
-                ApiField.ANNOTATION: {
-                    "meshId": 123,
-                    "figures": [
-                        {
-                            ApiField.ID: 987,
-                            ApiField.GEOMETRY_TYPE: "mesh_indices",
-                            ApiField.GEOMETRY: {"indices": None},
-                        }
-                    ],
-                },
-            }
+        fake.object_response = [object_json()]
+        fake.figure_response = [
+            figure_json(
+                figure_id=987,
+                geometry={ApiField.STORAGE_PATH: "figures/geometries/sample.bin"},
+            )
         ]
-        fake.mesh = SimpleNamespace(
-            figure=SimpleNamespace(download_indices_batch=lambda ids: [[0, 1, 2, 42, 65535]])
-        )
         api = MeshApi(fake)
+        api.figure.download_indices_batch = lambda ids: [[0, 1, 2, 42, 65535]]
 
         ann_json = api.annotation.download_bulk(4, [123])[0]
 
         self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
+
+    def test_append_writes_annotation_rows(self):
+        fake = FakeApi()
+        fake.project.meta = ProjectMeta(
+            obj_classes=[ObjClass("car", Rectangle)], project_type=ProjectType.MESHES
+        )
+        api = MeshApi(fake)
+        obj_class = ObjClass("car", Rectangle)
+        mesh_object = MeshObject(obj_class)
+        ann = MeshAnnotation(objects=MeshObjectCollection([mesh_object]))
+
+        api.annotation.append(123, ann)
+
+        methods = [method for method, _, _ in fake.calls]
+        self.assertIn("annotation-objects.bulk.add", methods)
+        self.assertNotIn("entities.annotations.bulk.add", methods)
+        self.assertNotIn("figures.bulk.add", methods)
 
     def test_mesh_figure_upload_indices_uses_raw_geometry_storage(self):
         fake = FakeApi()
@@ -476,20 +658,6 @@ class TestMeshAnnotation(unittest.TestCase):
         method, data, _ = fake.calls[-1]
         self.assertEqual(method, "figures.bulk.upload.geometry")
         self.assertIn(b"\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00*\x00\x00\x00\xff\xff\x00\x00", data.to_string())
-
-    def test_append_stores_annotation_json_without_object_figure_rebuild(self):
-        fake = FakeApi()
-        api = MeshApi(fake)
-        obj_class = ObjClass("car", Rectangle)
-        mesh_object = MeshObject(obj_class)
-        ann = MeshAnnotation(objects=MeshObjectCollection([mesh_object]))
-
-        api.annotation.append(123, ann)
-
-        methods = [method for method, _, _ in fake.calls]
-        self.assertIn("entities.annotations.bulk.add", methods)
-        self.assertNotIn("annotation-objects.bulk.add", methods)
-        self.assertNotIn("figures.bulk.add", methods)
 
     def test_append_entity_tag_payload(self):
         fake = FakeApi()
