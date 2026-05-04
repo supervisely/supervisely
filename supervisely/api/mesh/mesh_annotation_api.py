@@ -249,6 +249,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             object_id_to_key[object_info.id] = object_key
             object_json = {
                 KEY: object_key.hex,
+                ApiField.ID: object_info.id,
                 LabelJsonFields.OBJ_CLASS_NAME: obj_class_id_to_name.get(object_info.class_id),
                 TAGS: self._convert_tag_rows_to_json(object_info.tags, tag_id_to_name),
             }
@@ -268,6 +269,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                     object_id_to_key[figure_info.object_id] = object_key
                 figure_json = {
                     KEY: uuid.uuid4().hex,
+                    ApiField.ID: figure_info.id,
                     OBJECT_KEY: object_key.hex,
                     ApiField.GEOMETRY_TYPE: figure_info.geometry_type,
                     ApiField.GEOMETRY: figure_info.geometry,
