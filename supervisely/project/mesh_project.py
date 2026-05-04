@@ -722,16 +722,10 @@ def upload_mesh_project(
             item_paths = [dataset_fs.get_mesh_path(item_name) for item_name in item_names]
             mesh_infos = api.mesh.upload_paths(dataset.id, item_names, item_paths)
             mesh_ids = [mesh_info.id for mesh_info in mesh_infos]
-            anns_json = [dataset_fs.get_ann_json(item_name) for item_name in item_names]
-            api.mesh.annotation.upload_jsons(
-                dataset.id,
-                mesh_ids,
-                anns_json,
-                key_id_map=key_id_map,
-            )
-            if progress_cb is not None:
-                _update_progress(progress_cb, len(item_names))
-            if log_progress and ds_progress is not None:
+            for mesh_id, item_name in zip(mesh_ids, item_names):
+                ann = dataset_fs.get_ann(item_name, project_fs.meta)
+                api.mesh.annotation.append(mesh_id, ann, key_id_map)
+            if ds_progress is not None:
                 _update_progress(ds_progress, len(item_names))
 
     return project.id, project.name

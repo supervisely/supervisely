@@ -195,8 +195,10 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
             object_id = prepared.get(ApiField.OBJECT_ID)
             object_key = self._uuid_from_value(prepared.get(OBJECT_KEY))
-            if object_id is None and object_key is not None:
-                object_id = key_id_map.get_object_id(object_key)
+            if object_key is not None:
+                resolved = key_id_map.get_object_id(object_key)
+                if resolved is not None:
+                    object_id = resolved
             if object_id is None:
                 raise RuntimeError(
                     "Can not upload mesh figure: objectId or resolvable objectKey is required."
