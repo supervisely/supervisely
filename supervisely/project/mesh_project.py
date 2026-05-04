@@ -493,6 +493,10 @@ class MeshProject(Project):
             new_meta = ProjectMeta.from_json(meta_json)
         super().set_meta(new_meta)
 
+    @property
+    def key_id_map(self) -> KeyIdMap:
+        return self._key_id_map
+
     def set_key_id_map(self, new_map: KeyIdMap):
         self._key_id_map = new_map
         self._key_id_map.dump_json(self._get_key_id_map_path())
@@ -558,6 +562,30 @@ class MeshProject(Project):
     async def download_async(*args, **kwargs):
         raise NotImplementedError(
             f"Static method 'download_async()' is not supported for MeshProject class now."
+        )
+
+    @staticmethod
+    def download_bin(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'download_bin()' is not supported for MeshProject class."
+        )
+
+    @staticmethod
+    def upload_bin(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'upload_bin()' is not supported for MeshProject class."
+        )
+
+    @staticmethod
+    def build_snapshot(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'build_snapshot()' is not supported for MeshProject class."
+        )
+
+    @staticmethod
+    def restore_snapshot(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'restore_snapshot()' is not supported for MeshProject class."
         )
 
 
@@ -701,7 +729,9 @@ def upload_mesh_project(
                 anns_json,
                 key_id_map=key_id_map,
             )
-            if ds_progress is not None:
+            if progress_cb is not None:
+                _update_progress(progress_cb, len(item_names))
+            if log_progress and ds_progress is not None:
                 _update_progress(ds_progress, len(item_names))
 
     return project.id, project.name
