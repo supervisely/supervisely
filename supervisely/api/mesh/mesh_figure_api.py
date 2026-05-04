@@ -8,8 +8,12 @@ from requests_toolbelt import MultipartEncoder
 from supervisely._utils import batched
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.module_api import ApiField
+from supervisely.geometry.mesh import Mesh
 from supervisely.mesh_annotation.mesh_figure import MeshFigure
-from supervisely.mesh_annotation.mesh_indices import decode_mesh_indices, encode_mesh_indices
+from supervisely.mesh_annotation.mesh_indices import (
+    decode_mesh_indices,
+    encode_mesh_indices,
+)
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -49,7 +53,7 @@ class MeshFigureApi(FigureApi):
 
         for figure in figures:
             figure_json = figure.to_json(key_id_map)
-            if figure_json.get(ApiField.GEOMETRY_TYPE) == "mesh":
+            if figure_json.get(ApiField.GEOMETRY_TYPE) == Mesh.geometry_name():
                 mesh_keys.append(figure.key())
                 mesh_indices.append(figure.geometry.indices)
                 figure_json.pop(ApiField.GEOMETRY, None)
