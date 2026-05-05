@@ -728,6 +728,8 @@ class ApiField:
     PREVIEW_PROJECT_ID = "previewProjectId"
     """"""
     SINCE_TIME = "sinceTime"
+    """"""
+    TRACKED_FIGURES = "trackedFigures"
 
 
 def _get_single_item(items):
