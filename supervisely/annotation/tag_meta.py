@@ -101,17 +101,21 @@ SUPPORTED_TARGET_TYPES = [
 
 
 def _is_valid_iso_datetime(value: str) -> bool:
-    """Check that value is a strict ISO datetime string without timezone."""
     if not isinstance(value, str):
         return False
 
+    value_to_parse = value
+    if value.endswith("Z"):
+        # Python 3.8 datetime.fromisoformat()
+        # does not support the UTC "Z" suffix.
+        value_to_parse = value[:-1] + "+00:00"
+
     try:
-        parsed_datetime = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+        datetime.fromisoformat(value_to_parse)
     except ValueError:
         return False
 
-    formatted_datetime = parsed_datetime.strftime("%Y-%m-%dT%H:%M:%S")
-    return formatted_datetime == value
+    return True
 
 
 class TagMeta(KeyObject, JsonSerializable):
