@@ -86,7 +86,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     def append(
         self,
         mesh_id: int,
-        ann: MeshAnnotation,
+        ann: Union[MeshAnnotation, Dict],
         key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
@@ -94,10 +94,16 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         """
         if key_id_map is None:
             key_id_map = KeyIdMap()
-        key_id_map.add_video(ann.key(), mesh_id)
+        if isinstance(ann, MeshAnnotation):
+            key_id_map.add_video(ann.key(), mesh_id)
+            ann_json = ann.to_json(key_id_map)
+        elif isinstance(ann, dict):
+            ann_json = deepcopy(ann)
+        else:
+            raise TypeError(f"Unsupported mesh annotation type: {type(ann).__name__}")
         dataset_id = self._api.mesh.get_info_by_id(mesh_id).dataset_id
         self._upload_jsons_as_entity_rows(
-            dataset_id, [mesh_id], [ann.to_json(key_id_map)], key_id_map=key_id_map
+            dataset_id, [mesh_id], [ann_json], key_id_map=key_id_map
         )
 
     def upload_paths(

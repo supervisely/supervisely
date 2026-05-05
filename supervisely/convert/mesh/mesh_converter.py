@@ -1,10 +1,9 @@
 import os
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
 from supervisely import Api, MeshAnnotation, batched, generate_free_name, is_development, logger
 from supervisely.api.mesh.mesh_api import ALLOWED_MESH_EXTENSIONS
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation as MeshAnnotationType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -102,7 +101,7 @@ class MeshConverter(BaseConverter):
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
-            anns_json = []
+            anns = []
 
             for item in batch:
                 item.name = generate_free_name(
@@ -117,16 +116,11 @@ class MeshConverter(BaseConverter):
                     item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                anns_json.append(self._annotation_to_json(ann, key_id_map))
+                anns.append(ann)
 
             mesh_infos = upload_fn(dataset_id, item_names, item_paths)
-            mesh_ids = [mesh_info.id for mesh_info in mesh_infos]
-            api.mesh.annotation.upload_jsons(
-                dataset_id,
-                mesh_ids,
-                anns_json,
-                key_id_map=key_id_map,
-            )
+            for mesh_info, ann in zip(mesh_infos, anns):
+                api.mesh.annotation.append(mesh_info.id, ann, key_id_map=key_id_map)
 
             if log_progress:
                 progress_cb(len(batch))
@@ -134,16 +128,6 @@ class MeshConverter(BaseConverter):
         if log_progress and is_development():
             progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
-
-    @staticmethod
-    def _annotation_to_json(ann, key_id_map: Optional[KeyIdMap] = None) -> Dict:
-        if ann is None:
-            return MeshAnnotation().to_json(key_id_map)
-        if isinstance(ann, dict):
-            return ann
-        if isinstance(ann, MeshAnnotationType):
-            return ann.to_json(key_id_map)
-        raise TypeError(f"Unsupported mesh annotation type: {type(ann).__name__}")
 
     def _collect_items_if_format_not_detected(self) -> Tuple[List[Item], bool, Set[str]]:
         only_modality_items = True
