@@ -932,13 +932,9 @@ class PredictAppGui:
 
         model_parameters = run_parameters.get("model", {})
         session_id = model_parameters.get("session_id")
-        train_task_id = model_parameters.get("train_task_id")
-        experiment_info = model_parameters.get("experiment_info") or {}
-        train_task_id = train_task_id or experiment_info.get("task_id")
-        input_task_id = session_id or train_task_id
-        input_task_id = int(input_task_id) if input_task_id else None
-        if input_task_id:
-            self.api.app.workflow.add_input_task(input_task_id)
+        session_id = int(session_id) if session_id is not None else None
+        if session_id:
+            self.api.app.workflow.add_input_task(session_id)
 
     def _workflow_output(self, project_ids: List[int]) -> None:
         node_settings = self._workflow_app_node_settings()
