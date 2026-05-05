@@ -76,7 +76,21 @@ jobs:
               -r audit_logs/image_python_requirements.txt \
               --no-deps \
               --disable-pip \
-              --format json > audit_logs/pip_audit.json
+              --format json > audit_logs/pip_audit.json || true
+
+            FIXABLE=$(jq '[.[].vulns[] | select(.fix_versions | length > 0)]' audit_logs/pip_audit.json)
+            FIXABLE_COUNT=$(echo "$FIXABLE" | jq 'length')
+            UNFIXED_COUNT=$(jq '[.[].vulns[] | select(.fix_versions | length == 0)] | length' audit_logs/pip_audit.json)
+
+            if [ "$UNFIXED_COUNT" -gt 0 ]; then
+              echo "pip-audit: WARNING: ${UNFIXED_COUNT} vulnerability/vulnerabilities with no fixes available (ignored)."
+            fi
+
+            if [ "$FIXABLE_COUNT" -gt 0 ]; then
+              echo "pip-audit: ${FIXABLE_COUNT} vulnerability/vulnerabilities with available fixes:"
+              echo "$FIXABLE" | jq -r '.[] | "  \(.id): fix available in \(.fix_versions | join(", "))"'
+              exit 1
+            fi
           else
             echo "[]" > audit_logs/pip_audit.json
           fi
