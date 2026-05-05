@@ -24,6 +24,7 @@ from typing import (
 )
 
 import aiofiles
+import numpy as np
 from numerize.numerize import numerize
 from requests import Response
 from requests_toolbelt import (
@@ -2878,3 +2879,163 @@ class VideoApi(RemoveableBulkModuleApi):
 
         response = self._api.post("images.editInfo", data)
         return self._convert_json_info(response.json())
+
+    async def stream_frames(
+        self,
+        video_id: int,
+        start: Optional[int] = None,
+        end: Optional[int] = None,
+    ) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
+        """Stream frames from a video as ``(frame_index, image)`` tuples.
+
+        Downloads frames by seeking directly into the remote video file via
+        **ffmpeg** / **ffprobe**.
+
+        :param video_id: Video ID in Supervisely.
+        :type video_id: int
+        :param start: First frame index to stream (inclusive). Defaults to 0.
+        :type start: int, optional
+        :param end: Last frame index to stream (inclusive). Defaults to the
+            last frame of the video.
+        :type end: int, optional
+        :returns: Async generator of ``(frame_index, np.ndarray)`` tuples.
+            Images are in RGB order.
+        :rtype: AsyncGenerator[Tuple[int, np.ndarray], None]
+
+        :raises RuntimeError: If ``fullStorageUrl`` is not available or ffprobe
+            fails to parse the stream.
+        :raises FileNotFoundError: If ``ffmpeg`` / ``ffprobe`` are not installed.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import asyncio
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                async def main():
+                    # Frames 150..380 (inclusive)
+                    async for frame_idx, img in api.video.stream_frames(
+                        video_id=19371139, start=150, end=380
+                    ):
+                        print(frame_idx, img.shape)  # e.g. 150 (1080, 1920, 3)
+
+                asyncio.run(main())
+        """
+        
+        # 1. Resolve full video URL (no force_metadata_for_links to stay fast)
+        json_info = self.get_json_info_by_id(video_id, force_metadata_for_links=False)
+        video_url = json_info.get("fullStorageUrl")
+        if not video_url:
+            raise RuntimeError(
+                f"Cannot resolve fullStorageUrl for video {video_id}. "
+                "Make sure the video is fully processed on the server."
+            )
+
+        # Replace the internal origin with the public server address so that
+        # ffprobe/ffmpeg can reach the URL from outside the cluster.
+        parsed = urllib.parse.urlparse(video_url)
+        public = urllib.parse.urlparse(self._api.server_address)
+        video_url = urllib.parse.urlunparse(
+            parsed._replace(scheme=public.scheme, netloc=public.netloc)
+        )
+
+
+        # 2. Probe the video header via ffprobe (reads only a few KB — fast)
+        auth_header = (
+            f"x-api-key: {self._api.token}\r\n" if self._api.token else ""
+        )
+
+        ffprobe_cmd = [
+            "ffprobe", "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams", "-select_streams", "v:0",
+        ]
+        if auth_header:
+            ffprobe_cmd += ["-headers", auth_header]
+        ffprobe_cmd.append(video_url)
+
+        ffprobe_proc = await asyncio.create_subprocess_exec(
+            *ffprobe_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        probe_stdout, _ = await ffprobe_proc.communicate()
+        if ffprobe_proc.returncode != 0 or not probe_stdout.strip():
+            raise RuntimeError(
+                f"ffprobe failed to read stream info for video {video_id} from URL: {video_url}"
+            )
+
+        probe_data = json.loads(probe_stdout.decode())
+        streams = probe_data.get("streams", [])
+        if not streams:
+            raise RuntimeError(f"ffprobe found no video streams for video {video_id}.")
+
+        stream = streams[0]
+        fps_str = stream.get("r_frame_rate") or stream.get("avg_frame_rate", "25/1")
+        fps_num, fps_den = fps_str.split("/")
+        fps = float(fps_num) / float(fps_den)
+
+        width = int(stream["width"])
+        height = int(stream["height"])
+
+        nb_frames_str = stream.get("nb_frames")
+        if nb_frames_str:
+            frames_count = int(nb_frames_str)
+        else:
+            duration = float(stream.get("duration", 0))
+            frames_count = round(duration * fps)
+
+        # 3. Compute seek timestamp and frame count
+        _start = max(0, start if start is not None else 0)
+        _end = min(frames_count - 1, end if end is not None else frames_count - 1)
+
+        if _start > _end:
+            return
+
+        start_time = _start / fps
+        frame_count = _end - _start + 1
+
+        # 4. Stream raw RGB frames from ffmpeg
+        ffmpeg_cmd = ["ffmpeg", "-hide_banner"]
+        if auth_header:
+            ffmpeg_cmd += ["-headers", auth_header]
+        ffmpeg_cmd += [
+            "-ss", f"{start_time:.6f}",
+            "-i", video_url,
+            "-vframes", str(frame_count),
+            "-f", "rawvideo",
+            "-pix_fmt", "rgb24",
+            "pipe:1",
+        ]
+
+        ffmpeg_proc = await asyncio.create_subprocess_exec(
+            *ffmpeg_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+
+        # 5. Yield (frame_index, np.ndarray) as raw pixels arrive
+        frame_size = width * height * 3  # bytes per frame (RGB24)
+        frame_idx = _start
+        buf = bytearray()
+
+        try:
+            while True:
+                chunk = await ffmpeg_proc.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                buf.extend(chunk)
+                while len(buf) >= frame_size:
+                    frame_data = bytes(buf[:frame_size])
+                    del buf[:frame_size]
+                    img = np.frombuffer(frame_data, dtype=np.uint8).reshape(
+                        (height, width, 3)
+                    )
+                    yield frame_idx, img
+                    frame_idx += 1
+        finally:
+            ffmpeg_proc.stdout._transport.close()  # type: ignore[union-attr]
+            await ffmpeg_proc.wait()
