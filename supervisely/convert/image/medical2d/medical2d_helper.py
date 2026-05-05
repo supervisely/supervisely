@@ -151,7 +151,7 @@ def convert_dcm_to_nrrd(
         if dcm.file_meta.TransferSyntaxUID.is_compressed:
             dcm.decompress()
     except AttributeError:
-        logger.warn("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
+        logger.warning("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
     dcm = convert_to_monochrome2(image_path, dcm)
 
     dcm_meta = get_dcm_meta(dcm)
@@ -256,7 +256,7 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
                 progress.update(1)
             progress.close()
         except Exception:
-            logger.warn(f"File [{nrrd_file_path}] is not supported. Skipping...")
+            logger.warning(f"File [{nrrd_file_path}] is not supported. Skipping...")
     else:
         output_paths.append(nrrd_file_path)
         output_names.append(get_file_name_with_ext(nrrd_file_path))
@@ -287,11 +287,15 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
             filtered_tags.append((dcm_tag_name, dcm_tag_value))
         except KeyError:
             dcm_filename = get_file_name_with_ext(dcm.filename)
-            logger.warning(f"Couldn't find key '{dcm_tag}' in file's metadata: '{dcm_filename}'")
+            logger.warning(
+                f"Couldn't find key '{dcm_tag}' in file's metadata: '{dcm_filename}'"
+            )
             continue
 
     if len(empty_tags) > 0:
-        logger.warning(f"{filename}: {len(dcm_tag_name)} tags have empty value. Skipped tags: {empty_tags}.")
+        logger.warning(
+            f"{filename}: {len(dcm_tag_name)} tags have empty value. Skipped tags: {empty_tags}."
+        )
     if len(too_long_tags) > 0:
         logger.warning(
             f"{filename}: {len(too_long_tags)} tags have too long value (> 255 symbols). Skipped tags: {too_long_tags}."

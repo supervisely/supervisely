@@ -52,7 +52,7 @@ class ImagesWithMasksConverter(ImageConverter):
             self._classes_mapping = classes_mapping
             return ProjectMeta(obj_classes=obj_class_collection)
         except Exception as e:
-            logger.warn(f"Failed to read obj_class_to_machine_color.json: {repr(e)}")
+            logger.warning(f"Failed to read obj_class_to_machine_color.json: {repr(e)}")
             return False
 
     def validate_format(self) -> bool:
@@ -161,5 +161,5 @@ class ImagesWithMasksConverter(ImageConverter):
 
             return ann
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return ann
