@@ -83,6 +83,7 @@ class AvailableMeshConverters:
     """Names of supported mesh dataset converters."""
 
     SLY = "supervisely"
+    PER_VERTEX_LABELS = "per_vertex_labels"
 
 
 class AvailableVolumeConverters:

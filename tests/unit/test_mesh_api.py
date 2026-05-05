@@ -15,9 +15,13 @@ from supervisely.api.mesh.mesh_tag_api import MeshTagApi
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import AvailableMeshConverters
 from supervisely.convert.mesh.mesh_converter import MeshConverter
+from supervisely.convert.mesh.per_vertex_labels.per_vertex_labels_converter import (
+    PerVertexLabelsMeshConverter,
+)
 from supervisely.convert.mesh.sly.sly_mesh_converter import SLYMeshConverter
+from supervisely.geometry.mesh import Mesh
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.io.json import load_json_file
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_figure import MeshFigure
 from supervisely.mesh_annotation.mesh_indices import (
@@ -431,6 +435,119 @@ class TestMeshProject(unittest.TestCase):
 
 
 class TestMeshConverter(unittest.TestCase):
+    @staticmethod
+    def _write_ascii_ply(path, vertices):
+        lines = [
+            "ply",
+            "format ascii 1.0",
+            f"element vertex {len(vertices)}",
+            "property float x",
+            "property float y",
+            "property float z",
+            "property uchar red",
+            "property uchar green",
+            "property uchar blue",
+            "property int class_id",
+            "property int object_id",
+            "element face 1",
+            "property list uchar int vertex_indices",
+            "end_header",
+        ]
+        for index, (red, green, blue, class_id, object_id) in enumerate(vertices):
+            lines.append(f"{index} 0 0 {red} {green} {blue} {class_id} {object_id}")
+        lines.append("3 0 1 2")
+        with open(path, "w", encoding="ascii") as file:
+            file.write("\n".join(lines) + "\n")
+
+    @staticmethod
+    def _write_per_vertex_labels_project(project_dir):
+        os.makedirs(os.path.join(project_dir, "Dental"), exist_ok=True)
+        meta = ProjectMeta(
+            obj_classes=[
+                ObjClass("tooth", Mesh, color=[10, 20, 30], sly_id=101),
+                ObjClass("gum", Mesh, color=[40, 50, 60], sly_id=102),
+            ],
+            project_type=ProjectType.MESHES.value,
+        )
+        dump_json_file(meta.to_json(), os.path.join(project_dir, "meta.json"))
+
+        TestMeshConverter._write_ascii_ply(
+            os.path.join(project_dir, "Dental", "labeled.ply"),
+            [
+                (10, 20, 30, 101, 500),
+                (10, 20, 30, 101, 500),
+                (40, 50, 60, 102, -1),
+                (255, 255, 255, -1, -1),
+            ],
+        )
+        TestMeshConverter._write_ascii_ply(
+            os.path.join(project_dir, "Dental", "empty.ply"),
+            [
+                (255, 255, 255, -1, -1),
+                (255, 255, 255, -1, -1),
+                (255, 255, 255, -1, -1),
+            ],
+        )
+
+    def test_per_vertex_labels_converter_detects_painted_ply_and_builds_mesh_figures(self):
+        with tempfile.TemporaryDirectory() as project_dir:
+            self._write_per_vertex_labels_project(project_dir)
+
+            converter = MeshConverter(project_dir).detect_format()
+
+            self.assertIsInstance(converter, PerVertexLabelsMeshConverter)
+            self.assertEqual(str(converter), AvailableMeshConverters.PER_VERTEX_LABELS)
+            self.assertEqual(converter.items_count, 2)
+            self.assertEqual(converter.get_meta().project_type, ProjectType.MESHES.value)
+
+            items_by_name = {item.name: item for item in converter.get_items()}
+            ann_json = converter.to_supervisely(items_by_name["labeled.ply"], converter.get_meta())
+            self.assertEqual(len(ann_json["objects"]), 2)
+            self.assertEqual(len(ann_json["figures"]), 2)
+
+            figures_by_class = {
+                obj["classTitle"]: figure["geometry"]["indices"]
+                for obj, figure in zip(ann_json["objects"], ann_json["figures"])
+            }
+            self.assertEqual(figures_by_class["tooth"], [0, 1])
+            self.assertEqual(figures_by_class["gum"], [2])
+            tooth_object = [obj for obj in ann_json["objects"] if obj["classTitle"] == "tooth"][0]
+            self.assertEqual(tooth_object["id"], 500)
+
+            empty_ann = converter.to_supervisely(items_by_name["empty.ply"], converter.get_meta())
+            self.assertEqual(empty_ann["objects"], [])
+            self.assertEqual(empty_ann["figures"], [])
+
+    def test_per_vertex_labels_converter_honors_renamed_classes(self):
+        with tempfile.TemporaryDirectory() as project_dir:
+            self._write_per_vertex_labels_project(project_dir)
+            converter = PerVertexLabelsMeshConverter(project_dir)
+            self.assertTrue(converter.validate_format())
+
+            item = [item for item in converter.get_items() if item.name == "labeled.ply"][0]
+            ann_json = converter.to_supervisely(
+                item,
+                converter.get_meta(),
+                renamed_classes={"tooth": "tooth_1", "gum": "gum_1"},
+            )
+
+            self.assertEqual(
+                {obj["classTitle"] for obj in ann_json["objects"]},
+                {"tooth_1", "gum_1"},
+            )
+
+    def test_per_vertex_labels_converter_rejects_sly_geometry_sidecars(self):
+        with tempfile.TemporaryDirectory() as project_dir:
+            self._write_per_vertex_labels_project(project_dir)
+            geometries_dir = os.path.join(project_dir, "Dental", "ann", "labeled.ply", "geometries")
+            os.makedirs(geometries_dir, exist_ok=True)
+            with open(os.path.join(geometries_dir, "figure.bin"), "wb") as file:
+                file.write(b"\x00")
+
+            converter = PerVertexLabelsMeshConverter(project_dir)
+
+            self.assertFalse(converter.validate_format())
+
     def test_sly_mesh_archive_fixture_detects_and_decodes_annotation(self):
         archive_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
