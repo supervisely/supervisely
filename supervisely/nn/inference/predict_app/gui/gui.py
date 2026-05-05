@@ -5,7 +5,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
-from supervisely._utils import batched, is_development, logger
+from supervisely._utils import batched, is_development, is_production, logger
+from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
@@ -180,6 +181,7 @@ class PredictAppGui:
         # Flags
         self._stop_flag = False
         self._is_running = False
+        self._workflow_output_project_ids: List[int] = []
         # -------------------------------- #
 
         # GUI
@@ -508,6 +510,7 @@ class PredictAppGui:
         main_pbar = self.output_selector.progress(message=main_pbar_str, total=total_videos)
         self.output_selector.progress.show()
         all_predictictions: List[Prediction] = []
+        output_project_ids: List[int] = []
         for src_project_id, src_video_infos in video_infos_by_project_id.items():
             if len(src_video_infos) == 0:
                 continue
@@ -566,6 +569,7 @@ class PredictAppGui:
                 "info",
             )
             project_meta = src_project_metas[src_project_id]
+            project_has_predictions = False
             for src_video_info, output_video_info in zip(src_video_infos, output_videos):
                 video_validator_text_str = (
                     project_validator_text_str
@@ -656,9 +660,14 @@ class PredictAppGui:
                         key_id_map=KeyIdMap(),
                         progress_cb=secondary_pbar.update,
                     )
+                project_has_predictions = True
                 main_pbar.update()
+            if project_has_predictions:
+                output_project_ids.append(output_project_id)
         self.set_validator_text("Project successfully processed", "success")
-        self.output_selector.set_result_thumbnail(output_project_id)
+        if output_project_ids:
+            self.output_selector.set_result_thumbnail(output_project_ids[-1])
+            self._workflow_output_project_ids.extend(output_project_ids)
         return all_predictictions
 
     def _run_images(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
@@ -778,6 +787,8 @@ class PredictAppGui:
         self.output_selector.progress.show()
         total_items = sum(len(v) for v in image_infos_by_project_id.values())
         main_pbar = self.output_selector.progress(message=f"Copying images...", total=total_items)
+        output_image_infos_all: List[ImageInfo] = []
+        output_project_ids: List[int] = []
         for src_project_id, infos in image_infos_by_project_id.items():
             if len(infos) == 0:
                 continue
@@ -826,13 +837,15 @@ class PredictAppGui:
                     progress_cb=main_pbar.update,
                     project_type=ProjectType.IMAGES,
                 )
+            output_image_infos_all.extend(output_image_infos)
+            output_project_ids.append(output_project_id)
 
         # Run prediction
         self.set_validator_text("Running prediction...", "info")
         predictions: List[Prediction] = []
         self._is_running = True
         with self.model_api.predict_detached(
-            image_ids=[info.id for info in output_image_infos],
+            image_ids=[info.id for info in output_image_infos_all],
             **predict_kwargs,
             tqdm=self.output_selector.progress(),
         ) as session:
@@ -842,13 +855,131 @@ class PredictAppGui:
                     raise StopIteration("Stopped by user.")
                 predictions.append(prediction)
         self.set_validator_text("Project successfully processed", "success")
-        self.output_selector.set_result_thumbnail(output_project_id)
+        if output_project_ids:
+            self.output_selector.set_result_thumbnail(output_project_ids[-1])
+            self._workflow_output_project_ids.extend(output_project_ids)
         return predictions
+
+    def _workflow_app_node_settings(self) -> WorkflowSettings:
+        module_id = None
+        try:
+            module_id = (
+                self.api.task.get_info_by_id(self.api.task_id)
+                .get("meta", {})
+                .get("app", {})
+                .get("id")
+            )
+        except Exception as e:
+            logger.debug(f"Workflow: Failed to get current app module ID: {repr(e)}")
+
+        return WorkflowSettings(
+            title=env.app_name(raise_not_found=False) or "Predict App",
+            url=(
+                f"/apps/{module_id}/sessions/{self.api.task_id}"
+                if module_id
+                else f"/apps/sessions/{self.api.task_id}"
+            ),
+            url_title="Show Results",
+        )
+
+    def _workflow_input_project(self, project_id: int) -> None:
+        try:
+            project_info = self.api.project.get_info_by_id(project_id)
+            project_version_id = (
+                project_info.version.get("id", None) if project_info.version else None
+            )
+            self.api.app.workflow.add_input_project(project_id, version_id=project_version_id)
+            logger.debug(
+                f"Workflow: Input project - {project_id}, project version - {project_version_id}"
+            )
+        except Exception as e:
+            logger.debug(f"Workflow: Failed to add input project: {repr(e)}")
+
+    def _workflow_input(self, run_parameters: Dict[str, Any]) -> None:
+        input_parameters = run_parameters.get("input", {})
+        project_ids = set()
+
+        project_id = input_parameters.get("project_id")
+        if project_id:
+            project_ids.add(project_id)
+
+        for dataset_id in input_parameters.get("dataset_ids", []) or []:
+            try:
+                dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+                project_ids.add(dataset_info.project_id)
+            except Exception as e:
+                logger.debug(f"Workflow: Failed to resolve input dataset: {repr(e)}")
+
+        image_ids = input_parameters.get("image_ids", []) or []
+        if image_ids:
+            try:
+                for image_info in self.api.image.get_info_by_id_batch(image_ids):
+                    dataset_info = self.api.dataset.get_info_by_id(image_info.dataset_id)
+                    project_ids.add(dataset_info.project_id)
+            except Exception as e:
+                logger.debug(f"Workflow: Failed to resolve input images: {repr(e)}")
+
+        video_ids = input_parameters.get("video_ids", []) or []
+        if video_ids:
+            try:
+                for video_info in self.api.video.get_info_by_id_batch(video_ids):
+                    project_ids.add(video_info.project_id)
+            except Exception as e:
+                logger.debug(f"Workflow: Failed to resolve input videos: {repr(e)}")
+
+        for project_id in project_ids:
+            self._workflow_input_project(project_id)
+
+        model_parameters = run_parameters.get("model", {})
+        session_id = model_parameters.get("session_id")
+        train_task_id = model_parameters.get("train_task_id")
+        experiment_info = model_parameters.get("experiment_info") or {}
+        train_task_id = train_task_id or experiment_info.get("task_id")
+        input_task_id = session_id or train_task_id
+        input_task_id = int(input_task_id) if input_task_id else None
+        if input_task_id:
+            self.api.app.workflow.add_input_task(input_task_id)
+
+    def _workflow_output(self, project_ids: List[int]) -> None:
+        node_settings = self._workflow_app_node_settings()
+        relation_settings = WorkflowSettings(
+            title="Predictions",
+            icon="image",
+            icon_color="#13A2A8",
+            icon_bg_color="#DDF7F8",
+            url_title="Open Project",
+        )
+
+        for project_id in dict.fromkeys(project_ids):
+            try:
+                project_info = self.api.project.get_info_by_id(project_id)
+                relation_settings.url = f"/projects/{project_id}/datasets"
+                meta = WorkflowMeta(
+                    relation_settings=relation_settings,
+                    node_settings=node_settings,
+                )
+                self.api.app.workflow.add_output_project(project_info, meta=meta)
+                logger.debug(f"Workflow: Output project - {project_id}")
+            except Exception as e:
+                logger.debug(f"Workflow: Failed to add output project: {repr(e)}")
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
         self.show_validator_text()
         if run_parameters is None:
             run_parameters = self.get_run_parameters()
+
+        if is_development():
+            task_id = env.task_id(raise_not_found=False)
+            if task_id is None:
+                logger.info("No task ID found in development environment. Workflow integration will be skipped.")
+            else:
+                self._workflow_output_project_ids = []
+                self._workflow_input(run_parameters)
+
+        if is_production():
+            self._workflow_output_project_ids = []
+            self._workflow_input(run_parameters)
+
         input_parameters = run_parameters["input"]
         video_ids = input_parameters.get("video_ids", None)
         try:
@@ -856,7 +987,18 @@ class PredictAppGui:
                 run_f = self._run_videos
             else:
                 run_f = self._run_images
-            return run_f(run_parameters)
+            predictions = run_f(run_parameters)
+
+            if is_development() and self._workflow_output_project_ids:
+                task_id = env.task_id(raise_not_found=False)
+                if task_id is None:
+                    logger.info("No task ID found in development environment. Skipping workflow output.")
+                else:
+                    self._workflow_output(self._workflow_output_project_ids)
+
+            if is_production() and self._workflow_output_project_ids:
+                self._workflow_output(self._workflow_output_project_ids)
+            return predictions
         except StopIteration:
             logger.info("Prediction stopped by user.")
             self.set_validator_text("Prediction stopped by user.", "warning")
