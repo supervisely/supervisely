@@ -19,6 +19,7 @@ VALUE_TYPE_NAME = {
     str(TagValueType.ANY_STRING): "TEXT",
     str(TagValueType.ONEOF_STRING): "ONE OF",
     str(TagValueType.ANY_NUMBER): "NUMBER",
+    str(TagValueType.DATE): "DATE",
 }
 
 VALUE_TYPES = [
@@ -26,6 +27,7 @@ VALUE_TYPES = [
     str(TagValueType.ANY_NUMBER),
     str(TagValueType.ANY_STRING),
     str(TagValueType.ONEOF_STRING),
+    str(TagValueType.DATE),
 ]
 
 
@@ -85,6 +87,7 @@ class InputTag(Widget):
         self._input_widgets[str(TagValueType.ANY_NUMBER)] = InputNumber(debounce=500)
         self._input_widgets[str(TagValueType.ANY_STRING)] = Input(type="textarea")
         self._input_widgets[str(TagValueType.ONEOF_STRING)] = RadioGroup(items=[])
+        self._input_widgets[str(TagValueType.DATE)] = Input(placeholder="YYYY-MM-DDTHH:MM:SS")
 
     def _get_max_width(self, value) -> str:
         """Get the maximum width for the widget.

@@ -17,12 +17,14 @@ class InputTagList(Widget):
         any_string = str(TagValueType.ANY_STRING)
         one_of = str(TagValueType.ONEOF_STRING)
         number = str(TagValueType.ANY_NUMBER)
+        date = str(TagValueType.DATE)
 
     VALUE_TYPE_NAME = {
         str(TagValueType.NONE): "NONE",
         str(TagValueType.ANY_STRING): "TEXT",
         str(TagValueType.ONEOF_STRING): "ONE OF",
         str(TagValueType.ANY_NUMBER): "NUMBER",
+        str(TagValueType.DATE): "DATE",
     }
 
     def get_default_value(self, tag_meta: TagMeta) -> Union[str, int, None]:
@@ -42,6 +44,7 @@ class InputTagList(Widget):
             str(TagValueType.NONE): None,
             str(TagValueType.ANY_STRING): "",
             str(TagValueType.ANY_NUMBER): 0,
+            str(TagValueType.DATE): "1970-01-01T00:00:00",
         }
         if tag_meta.value_type == str(TagValueType.ONEOF_STRING):
             return tag_meta.possible_values[0]

@@ -64,6 +64,10 @@
           <el-input-number :controls="false" v-model="state.{{{widget.widget_id}}}.values[idx]" size="mini"
             style="width: 140px"></el-input-number>
         </div>
+        <div v-if="tag.valueType == '{{{widget.VALUE_TYPES.date}}}'">
+          <el-input v-model="state.{{{widget.widget_id}}}.values[idx]" size="mini" style="width: 170px"
+            placeholder="YYYY-MM-DDTHH:MM:SS"></el-input>
+        </div>
       </div>
     </div>
   </div>

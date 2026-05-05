@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from supervisely._utils import take_with_default
@@ -23,6 +24,8 @@ class TagValueType:
     ANY_STRING = "any_string"
     """"""
     ONEOF_STRING = "oneof_string"
+    """"""
+    DATE = "date"
     """"""
 
 
@@ -82,6 +85,7 @@ SUPPORTED_TAG_VALUE_TYPES = [
     TagValueType.ANY_NUMBER,
     TagValueType.ANY_STRING,
     TagValueType.ONEOF_STRING,
+    TagValueType.DATE,
 ]
 SUPPORTED_APPLICABLE_TO = [
     TagApplicableTo.ALL,
@@ -96,8 +100,22 @@ SUPPORTED_TARGET_TYPES = [
 ]
 
 
+def _is_valid_iso_datetime(value: str) -> bool:
+    """Check that value is a strict ISO datetime string without timezone."""
+    if not isinstance(value, str):
+        return False
+
+    try:
+        parsed_datetime = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return False
+
+    formatted_datetime = parsed_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+    return formatted_datetime == value
+
+
 class TagMeta(KeyObject, JsonSerializable):
-    """Tag metadata: name, value type (NONE, ANY_STRING, etc.), optional possible values. Immutable."""
+    """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
 
     def __init__(
         self,
@@ -114,7 +132,7 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         :param name: Tag name.
         :type name: str
-        :param value_type: TagValueType: NONE, ANY_STRING, ANY_NUMBER, ONEOF_STRING.
+        :param value_type: TagValueType: NONE, ANY_STRING, ANY_NUMBER, ONEOF_STRING, DATE.
         :type value_type: str
         :param possible_values: Required for ONEOF_STRING; list of allowed values.
         :type possible_values: List[str], optional
@@ -606,6 +624,8 @@ class TagMeta(KeyObject, JsonSerializable):
             return isinstance(value, str)
         elif self.value_type == TagValueType.ONEOF_STRING:
             return isinstance(value, str) and (value in self._possible_values)
+        elif self.value_type == TagValueType.DATE:
+            return _is_valid_iso_datetime(value)
         else:
             raise ValueError("Unsupported TagValueType detected ({})!".format(self.value_type))
 
