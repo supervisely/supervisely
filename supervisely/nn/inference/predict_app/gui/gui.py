@@ -936,12 +936,9 @@ class PredictAppGui:
         experiment_info = model_parameters.get("experiment_info") or {}
         train_task_id = train_task_id or experiment_info.get("task_id")
         input_task_id = session_id or train_task_id
+        input_task_id = int(input_task_id) if input_task_id else None
         if input_task_id:
-            try:
-                self.api.app.workflow.add_input_task(int(input_task_id))
-                logger.debug(f"Workflow: Input model task - {input_task_id}")
-            except Exception as e:
-                logger.debug(f"Workflow: Failed to add input model task: {repr(e)}")
+            self.api.app.workflow.add_input_task(input_task_id)
 
     def _workflow_output(self, project_ids: List[int]) -> None:
         node_settings = self._workflow_app_node_settings()
@@ -970,9 +967,19 @@ class PredictAppGui:
         self.show_validator_text()
         if run_parameters is None:
             run_parameters = self.get_run_parameters()
+
+        if is_development():
+            task_id = env.task_id(raise_not_found=False)
+            if task_id is None:
+                logger.info("No task ID found in development environment. Workflow integration will be skipped.")
+            else:
+                self._workflow_output_project_ids = []
+                self._workflow_input(run_parameters)
+
         if is_production():
             self._workflow_output_project_ids = []
             self._workflow_input(run_parameters)
+
         input_parameters = run_parameters["input"]
         video_ids = input_parameters.get("video_ids", None)
         try:
@@ -981,6 +988,14 @@ class PredictAppGui:
             else:
                 run_f = self._run_images
             predictions = run_f(run_parameters)
+
+            if is_development() and self._workflow_output_project_ids:
+                task_id = env.task_id(raise_not_found=False)
+                if task_id is None:
+                    logger.info("No task ID found in development environment. Skipping workflow output.")
+                else:
+                    self._workflow_output(self._workflow_output_project_ids)
+
             if is_production() and self._workflow_output_project_ids:
                 self._workflow_output(self._workflow_output_project_ids)
             return predictions
