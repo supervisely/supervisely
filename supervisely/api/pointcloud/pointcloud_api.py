@@ -40,6 +40,13 @@ from supervisely.io.fs import (
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
 from supervisely.sly_logger import logger
+
+POINT_CLOUD_MIME_TYPES = {
+    ".pcd": "image/pcd",
+    ".las": "application/vnd.las",
+    ".laz": "application/vnd.laz",
+    ".ply": "application/x-ply",
+}
 from supervisely.imaging import image as sly_image
 
 
@@ -1145,10 +1152,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
         for batch, numbers_batch in zip(batched(items_to_upload), batched(total_nem_items_list)):
             content_dict = {}
             for idx, item in enumerate(batch):
+                ext = get_file_ext(item).lower() if isinstance(item, str) else ".pcd"
+                mime_type = POINT_CLOUD_MIME_TYPES.get(ext, "image/pcd")
                 content_dict["{}-file".format(idx)] = (
                     str(idx),
                     func_item_to_byte_stream(item),
-                    "pcd/*",
+                    mime_type,
                 )
             encoder = MultipartEncoder(fields=content_dict)
             self._api.post("point-clouds.bulk.upload", encoder)
