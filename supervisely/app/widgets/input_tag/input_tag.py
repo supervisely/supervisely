@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Union, Callable
+from typing import Callable, Dict, Union
 
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -210,7 +210,11 @@ class InputTag(Widget):
         if isinstance(input_widget, InputNumber):
             input_widget.value = 0
         if isinstance(input_widget, Input):
-            input_widget.set_value("")
+            if self._tag_meta.value_type == str(TagValueType.DATE):
+                current_datetime = datetime.now().isoformat(timespec="seconds")
+                input_widget.set_value(current_datetime)
+            else:
+                input_widget.set_value("")
         if isinstance(input_widget, RadioGroup):
             input_widget.set_value(None)
 

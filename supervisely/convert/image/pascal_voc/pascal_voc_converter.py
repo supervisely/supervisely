@@ -13,6 +13,7 @@ from supervisely import (
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.pascal_voc import pascal_voc_helper
+from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.io.fs import (
     dir_exists,
     dirs_filter,
@@ -203,7 +204,11 @@ class PascalVOCConverter(ImageConverter):
                     applicable_classes=[tag_name],
                 )
             else:
-                tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+                detected_value_types = {detect_tag_value_type(value) for value in values}
+                if detected_value_types == {TagValueType.DATE}:
+                    tag_meta = TagMeta(tag_name, TagValueType.DATE)
+                else:
+                    tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
             meta = meta.add_tag_meta(tag_meta)
         return meta
 

@@ -49,7 +49,7 @@ class Tag(KeyObject):
         :param meta: :class:`~supervisely.annotation.tag_meta.TagMeta` object with tag metadata (name, value type).
         :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :param value: Tag value; type must match :class:`~supervisely.annotation.tag_meta.TagMeta`.value_type.
-                      Date tag values must be strings in ``YYYY-MM-DDTHH:MM:SS`` format.
+                      Date tag values must be ISO datetime strings.
         :type value: str or int or float, optional
         :param sly_id: Server-side tag ID.
         :type sly_id: int, optional
@@ -117,7 +117,7 @@ class Tag(KeyObject):
     def value(self) -> str or int or float:
         """
         Tag value. Return type depends on :class:`~supervisely.annotation.tag_meta.TagValueType`.
-        Date tag values are returned as strings in ``YYYY-MM-DDTHH:MM:SS`` format.
+        Date tag values are returned as ISO datetime strings.
 
         :returns: Tag value
         :rtype: str, int or float or None

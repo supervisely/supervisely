@@ -103,13 +103,21 @@ SUPPORTED_TARGET_TYPES = [
 def _is_valid_iso_datetime(value: str) -> bool:
     if not isinstance(value, str):
         return False
-
     try:
         datetime.fromisoformat(value.replace("Z", "+00:00"))
         return True
     except ValueError:
         return False
 
+
+def detect_tag_value_type(value) -> str:
+    if value is None:
+        return TagValueType.NONE
+    if isinstance(value, (int, float)):
+        return TagValueType.ANY_NUMBER
+    if _is_valid_iso_datetime(value):
+        return TagValueType.DATE
+    return TagValueType.ANY_STRING
 
 
 class TagMeta(KeyObject, JsonSerializable):
