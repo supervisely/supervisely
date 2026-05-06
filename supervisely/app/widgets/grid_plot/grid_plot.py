@@ -43,7 +43,7 @@ class GridPlot(Widget):
             if self._columns < 1:
                 raise ValueError(f"columns ({self._columns}) < 1")
             if self._columns > len(self._widgets):
-                logger.warn(
+                logger.warning(
                     f"Number of columns ({self._columns}) > number of widgets ({len(self._widgets)}). Columns are set to {len(self._widgets)}"
                 )
                 self._columns = len(self._widgets)

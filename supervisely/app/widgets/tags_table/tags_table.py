@@ -73,14 +73,14 @@ class TagsTable(Widget):
         self._project_id = project_id
         if project_id is not None:
             if project_meta is not None:
-                logger.warn(
+                logger.warning(
                     "Both parameters project_id and project_meta were provided to TagsTable widget. Project meta tags taken from remote project and project_meta parameter is ignored."
                 )
             project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
         self._project_fs = project_fs
         if project_fs is not None:
             if project_meta is not None:
-                logger.warn(
+                logger.warning(
                     "Both parameters project_fs and project_meta were provided to TagsTable widget. Project meta tags taken from project_fs.meta and project_meta parameter is ignored."
                 )
             project_meta = project_fs.meta

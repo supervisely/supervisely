@@ -109,7 +109,7 @@ class Card(Widget):
     def collapse(self) -> None:
         """Collapses the card."""
         if self._collapsable is False:
-            logger.warn(f"Card {self.widget_id} can not be collapsed")
+            logger.warning(f"Card {self.widget_id} can not be collapsed")
             return
         self._collapsed = True
         StateJson()[self.widget_id]["collapsed"] = self._collapsed
@@ -118,7 +118,7 @@ class Card(Widget):
     def uncollapse(self) -> None:
         """Uncollapses the card."""
         if self._collapsable is False:
-            logger.warn(f"Card {self.widget_id} can not be uncollapsed")
+            logger.warning(f"Card {self.widget_id} can not be uncollapsed")
             return
         self._collapsed = False
         StateJson()[self.widget_id]["collapsed"] = self._collapsed

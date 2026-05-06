@@ -40,7 +40,7 @@ def extract_data_from_scene(lyft, scene):
         from pyquaternion import Quaternion
         from lyft_dataset_sdk.utils.geometry_utils import transform_matrix
     except ImportError as ie:
-        logger.warn(f"Lazy import failed. Error: {ie}")
+        logger.warning(f"Lazy import failed. Error: {ie}")
         return
 
     new_token = scene["first_sample_token"]

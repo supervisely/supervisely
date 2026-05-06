@@ -1518,7 +1518,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
                 if resp.get("errors")
             ]
-            logger.warn(
+            logger.warning(
                 "Not all images were uploaded within request.",
                 extra={
                     "total_cnt": len(hashes_items_to_upload),
@@ -1565,7 +1565,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 )
                 pending_hashes -= set(hashes_rcv)
                 if set(hashes_rcv) - set(hashes):
-                    logger.warn(
+                    logger.warning(
                         "Hash inconsistency in images bulk upload.",
                         extra={"sent": hashes, "received": hashes_rcv},
                     )
@@ -1584,7 +1584,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     item_data = "some bytes ..."
                 warning_items.append((h, item_data))
 
-            logger.warn(
+            logger.warning(
                 "Unable to upload images (data).",
                 extra={
                     "retry_idx": retry_idx,
@@ -3600,7 +3600,7 @@ class ImageApi(RemoveableBulkModuleApi):
             return []
 
         if len(hashes) != len(set(hashes)):
-            logger.warn("Found nonunique hashes in download task")
+            logger.warning("Found nonunique hashes in download task")
 
         for im_hash, resp_part, verified in self._download_batch_by_hashes(hashes):
             yield im_hash, sly_image.read_bytes(resp_part.content, keep_alpha)
