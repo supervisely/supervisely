@@ -1842,7 +1842,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
                 if resp.get("errors")
             ]
-            logger.warn(
+            logger.warning(
                 "Not all images were uploaded within request.",
                 extra={
                     "total_cnt": len(hashes_items_to_upload),
@@ -1887,7 +1887,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 )
                 pending_hashes -= set(hashes_rcv)
                 if set(hashes_rcv) - set(hashes):
-                    logger.warn(
+                    logger.warning(
                         "Hash inconsistency in images bulk upload.",
                         extra={"sent": hashes, "received": hashes_rcv},
                     )
@@ -1899,7 +1899,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(items_count_total - len(unique_hashes))
                 return
 
-            logger.warn(
+            logger.warning(
                 "Unable to upload videos (data).",
                 extra={
                     "retry_idx": retry_idx,

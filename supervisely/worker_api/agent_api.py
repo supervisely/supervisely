@@ -206,7 +206,7 @@ class AgentAPI:
                 data_to_send,
                 addit_headers=addit_headers,
             )
-            self.logger.warn("Endless input stream end", extra={"method": api_method_name})
+            self.logger.warning("Endless input stream end", extra={"method": api_method_name})
             if attempt != server_fail_limit - 1:
                 time.sleep(wait_server_sec)
 
@@ -247,6 +247,6 @@ class AgentAPI:
                     "Supervisely automatically changed the server address to HTTPS for you. "
                     f"Consider updating your server address to {self._base_server_adress}"
                 )
-                self.logger.warn(msg)
+                self.logger.warning(msg)
 
             self._require_https_redirect_check = False

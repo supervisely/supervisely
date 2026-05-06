@@ -116,7 +116,7 @@ def convert_geometry_to_sly(
         geometry = convert_func(coords, h, w)
         return geometry
     except Exception as e:
-        logger.warn(f"Failed to convert geometry: {shape_type}. Reason: {repr(e)}")
+        logger.warning(f"Failed to convert geometry: {shape_type}. Reason: {repr(e)}")
         return None
 
 
@@ -153,7 +153,7 @@ def _get_or_create_tag_or_cls(meta: ProjectMeta, name: str, geometry_name: Optio
     if is_tag and item.value_type != item_type or not is_tag and item.geometry_type != item_type:
         new_name = generate_new_name_for_meta(meta, name, item_type, is_tag=is_tag)
         if new_name != name:
-            logger.warn(
+            logger.warning(
                 f"Type mismatch for {'tag' if is_tag else 'class'} '{name}'. Renamed to '{new_name}'"
             )
             item = TagMeta(new_name, item_type) if is_tag else ObjClass(new_name, item_type)

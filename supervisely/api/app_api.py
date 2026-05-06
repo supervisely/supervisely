@@ -636,7 +636,7 @@ class AppApi(TaskApi):
                     if validate_json(meta, self.__custom_meta_schema):
                         data_meta.update(meta)
                     else:
-                        logger.warn("Invalid customization meta, will not be added to the node.")
+                        logger.warning("Invalid customization meta, will not be added to the node.")
                 payload = {
                     ApiField.TEAM_ID: self.team_id,
                     ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},

@@ -73,7 +73,7 @@ class LyftConverter(PointcloudConverter):
         try:
             from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
         except ImportError:
-            logger.warn(
+            logger.warning(
                 'Install "lyft_dataset_sdk" python package to import datasets in LYFT format.'
             )
             return False

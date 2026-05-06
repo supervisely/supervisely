@@ -93,13 +93,13 @@ class Polygon(VectorGeometry):
         """
         if len(exterior) < 3:
             exterior.extend([exterior[-1]] * (3 - len(exterior)))
-            logger.warn(
+            logger.warning(
                 f'"{EXTERIOR}" field must contain at least 3 points to create "Polygon" object.'
             )
             # raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
         for element in interior:
             if len(element) < 3:
-                logger.warn(
+                logger.warning(
                     f'"{element}" interior field must contain at least 3 points to create "Polygon" object.'
                 )
                 element.extend([element[-1]] * (3 - len(element)))
@@ -207,7 +207,7 @@ class Polygon(VectorGeometry):
             intersections_shpl = self_shpl.buffer(0).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_shpl)
         except Exception:
-            logger.warn("Polygon cropping exception, shapely.", exc_info=True)
+            logger.warning("Polygon cropping exception, shapely.", exc_info=True)
             # raise
             # if polygon is invalid, just print warning and skip it
             # @TODO: need more investigation here

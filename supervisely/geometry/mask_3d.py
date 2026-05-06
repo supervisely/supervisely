@@ -639,7 +639,7 @@ class Mask3D(Geometry):
         try:
             data = np.frombuffer(data_bytes, dtype=np.uint8).reshape(shape)
         except ValueError:
-            logger.warn(
+            logger.warning(
                 "Can't reshape array with 'dtype=np.uint8'. Will try to automatically convert 'dtype=np.int16' to 'np.uint8' and reshape"
             )
             data = np.frombuffer(data_bytes, dtype=np.int16)

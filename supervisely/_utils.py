@@ -228,7 +228,7 @@ def abs_url(relative_url: str) -> str:
 
     server_address = os.environ.get(SERVER_ADDRESS, "")
     if server_address == "":
-        logger.warn("SERVER_ADDRESS env variable is not defined")
+        logger.warning("SERVER_ADDRESS env variable is not defined")
     return urllib.parse.urljoin(server_address, relative_url)
 
 
