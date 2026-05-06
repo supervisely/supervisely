@@ -13,6 +13,7 @@ from supervisely import (
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.pascal_voc import pascal_voc_helper
+from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.io.fs import (
     dir_exists,
     dirs_filter,
@@ -139,7 +140,7 @@ class PascalVOCConverter(ImageConverter):
 
         possible_pascal_voc_dir = [d for d in dirs_filter(self._input_data, check_function)]
         if len(possible_pascal_voc_dir) > 1:
-            logger.warn("Multiple Pascal VOC directories not supported")
+            logger.warning("Multiple Pascal VOC directories not supported")
             return
         elif len(possible_pascal_voc_dir) == 0:
             return
@@ -203,7 +204,11 @@ class PascalVOCConverter(ImageConverter):
                     applicable_classes=[tag_name],
                 )
             else:
-                tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+                detected_value_types = {detect_tag_value_type(value) for value in values}
+                if detected_value_types == {TagValueType.DATE}:
+                    tag_meta = TagMeta(tag_name, TagValueType.DATE)
+                else:
+                    tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
             meta = meta.add_tag_meta(tag_meta)
         return meta
 
@@ -257,5 +262,5 @@ class PascalVOCConverter(ImageConverter):
                 renamed_tags,
             )
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()

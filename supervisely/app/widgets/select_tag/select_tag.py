@@ -18,6 +18,7 @@ available_value_types = [
     {"value": TagValueType.ANY_STRING, "label": "Any string"},
     {"value": TagValueType.ANY_NUMBER, "label": "Any number"},
     {"value": TagValueType.ONEOF_STRING, "label": "One of"},
+    {"value": TagValueType.DATE, "label": "Date"},
 ]
 
 
