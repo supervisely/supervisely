@@ -108,6 +108,8 @@ def create_classes_from_annotation(object: dict, object_geometry, meta: ProjectM
     geometry_type = object_geometry
     if geometry_type is None:  # should not happen
         return meta
+    
+    obj_class = None
     if geometry_type == Mask3D.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Mask3D)
     elif geometry_type == Rectangle.geometry_name():
