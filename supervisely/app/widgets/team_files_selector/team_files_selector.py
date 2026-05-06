@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 try:
     from typing import Literal
@@ -17,7 +17,7 @@ class TeamFilesSelector(Widget):
         self,
         team_id: int,
         multiple_selection: bool = False,
-        max_height: int = 500,
+        max_height: Union[int, str] = 500,
         selection_file_type: Literal["folder", "file"] = None,
         hide_header: bool = True,
         hide_empty_table: bool = True,
@@ -26,13 +26,16 @@ class TeamFilesSelector(Widget):
         ] = [],
         widget_id: str = None,
         initial_folder: str = None,
+        show_cloud_storage: bool = False,
+        show_agent_storage: bool = False,
+        disable_bucket_selection: bool = True,
     ):
         """:param team_id: Team ID for Team Files.
         :type team_id: int
         :param multiple_selection: If True, allow multiple selection.
         :type multiple_selection: bool
-        :param max_height: Max height in pixels.
-        :type max_height: int
+        :param max_height: Max height in pixels or CSS units.
+        :type max_height: int or str
         :param selection_file_type: Filter: "folder" or "file".
         :type selection_file_type: Literal["folder", "file"], optional
         :param hide_header: If True, hide table header.
@@ -45,6 +48,12 @@ class TeamFilesSelector(Widget):
         :type widget_id: str, optional
         :param initial_folder: Initial folder path.
         :type initial_folder: str, optional
+        :param show_cloud_storage: If True, show cloud storage.
+        :type show_cloud_storage: bool
+        :param show_agent_storage: If True, show agent storage.
+        :type show_agent_storage: bool
+        :param disable_bucket_selection: If True, disable bucket selection.
+        :type disable_bucket_selection: bool
 
         :raises ValueError: If additional_fields contains invalid field names.
         """
@@ -52,10 +61,13 @@ class TeamFilesSelector(Widget):
         self._team_id = team_id
 
         self._multiple_selection = multiple_selection
-        self._max_height = f"{max_height}px"
+        self._max_height = self._normalize_max_height(max_height)
         self._selection_file_type = selection_file_type
         self._hide_header = hide_header
         self._hide_empty_table = hide_empty_table
+        self._show_cloud_storage = show_cloud_storage
+        self._show_agent_storage = show_agent_storage
+        self._disable_bucket_selection = disable_bucket_selection
 
         available_fields = ["id", "createdAt", "updatedAt", "type", "size", "mimeType"]
         for field in additional_fields:
@@ -70,6 +82,14 @@ class TeamFilesSelector(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    @staticmethod
+    def _normalize_max_height(max_height: Union[int, str]) -> str:
+        if type(max_height) == int:
+            return f"{max_height}px"
+        if type(max_height) == str:
+            return max_height
+        raise ValueError(f"max_height must be int or str, got {type(max_height)}")
+
     def get_json_data(self) -> Dict:
         return {
             "teamId": self._team_id,
@@ -80,6 +100,9 @@ class TeamFilesSelector(Widget):
                 "hideHeader": self._hide_header,
                 "hideEmptyTable": self._hide_empty_table,
                 "additionalFields": self._additional_fields,
+                "showCloudStorage": self._show_cloud_storage,
+                "showAgentStorage": self._show_agent_storage,
+                "disableBucketSelection": self._disable_bucket_selection,
                 "initialFolder": {"path": self._initial_folder},
             },
         }
