@@ -104,18 +104,12 @@ def _is_valid_iso_datetime(value: str) -> bool:
     if not isinstance(value, str):
         return False
 
-    value_to_parse = value
-    if value.endswith("Z"):
-        # Python 3.8 datetime.fromisoformat()
-        # does not support the UTC "Z" suffix.
-        value_to_parse = value[:-1] + "+00:00"
-
     try:
-        datetime.fromisoformat(value_to_parse)
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return True
     except ValueError:
         return False
 
-    return True
 
 
 class TagMeta(KeyObject, JsonSerializable):

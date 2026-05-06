@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Union, Dict, Callable
 
 from supervisely.app.widgets import Widget
@@ -40,11 +41,12 @@ class InputTagList(Widget):
         :returns: Default value for the tag
         :rtype: Union[str, int, None]
         """
+        current_datetime = datetime.now().isoformat(timespec="seconds")
         DEFAULT_VALUES = {
             str(TagValueType.NONE): None,
             str(TagValueType.ANY_STRING): "",
             str(TagValueType.ANY_NUMBER): 0,
-            str(TagValueType.DATE): "1970-01-01T00:00:00",
+            str(TagValueType.DATE): current_datetime,
         }
         if tag_meta.value_type == str(TagValueType.ONEOF_STRING):
             return tag_meta.possible_values[0]

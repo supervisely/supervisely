@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, Union, Callable
 
 from supervisely.annotation.tag import Tag
@@ -87,7 +88,8 @@ class InputTag(Widget):
         self._input_widgets[str(TagValueType.ANY_NUMBER)] = InputNumber(debounce=500)
         self._input_widgets[str(TagValueType.ANY_STRING)] = Input(type="textarea")
         self._input_widgets[str(TagValueType.ONEOF_STRING)] = RadioGroup(items=[])
-        self._input_widgets[str(TagValueType.DATE)] = Input(placeholder="YYYY-MM-DDTHH:MM:SS")
+        current_datetime = datetime.now().isoformat(timespec="seconds")
+        self._input_widgets[str(TagValueType.DATE)] = Input(placeholder=current_datetime)
 
     def _get_max_width(self, value) -> str:
         """Get the maximum width for the widget.
