@@ -373,7 +373,7 @@ class Geometry(JsonSerializable):
             res = [OrientedBBox.from_bbox(bbox)]
 
         if len(res) == 0:
-            logger.warn(
+            logger.warning(
                 "Can not convert geometry {} to {} because geometry to convert is very small".format(
                     self.geometry_name(), new_geometry.geometry_name()
                 )

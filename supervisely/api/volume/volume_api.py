@@ -747,7 +747,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
                 except Exception as e:
                     exc_str = str(e)
-                    logger.warn(
+                    logger.warning(
                         "File skipped due to error: {}".format(exc_str),
                         exc_info=True,
                         extra={

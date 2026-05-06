@@ -571,7 +571,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                     else:
                         progress_cb(len(results), total)
             if len(results) != total:
-                logger.warn(
+                logger.warning(
                     f"Method '{method}': new events were created during pagination, "
                     f"downloaded={len(results)}, total={total}"
                 )

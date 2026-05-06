@@ -648,7 +648,7 @@ def clean_dir(dir_: str, ignore_errors: Optional[bool] = True) -> None:
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            logger.warn(f"Failed to delete {file_path}. Reason: {repr(e)}")
+            logger.warning(f"Failed to delete {file_path}. Reason: {repr(e)}")
             if ignore_errors is False:
                 raise e
 
@@ -1196,7 +1196,7 @@ def download(
                 "This may be due to server-side security measures, network congestion, or other issues. "
                 "Please check your server logs for more information."
             )
-            logger.warn(msg=message)
+            logger.warning(msg=message)
             raise e
 
     if cache is None:
