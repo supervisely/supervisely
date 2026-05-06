@@ -10,9 +10,9 @@ from supervisely import (
     ProjectMeta,
     Rectangle,
     TagMeta,
-    TagValueType,
     logger,
 )
+from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.io.json import load_json_file
 
 SLY_VOLUME_ANN_KEYS = ["volumeMeta", "planes", "spatialFigures", "planes"]
@@ -88,13 +88,9 @@ def match_objects_to_geometries(ann_json: dict) -> dict:
 def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectMeta:
     for tag in tags:
         tag_name = tag["name"]
-        tag_value = tag["value"]
-        if tag_value is None:
-            tag_meta = TagMeta(tag_name, TagValueType.NONE)
-        elif isinstance(tag_value, int) or isinstance(tag_value, float):
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_NUMBER)
-        else:
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+        tag_value = tag.get("value")
+        tag_value_type = detect_tag_value_type(tag_value)
+        tag_meta = TagMeta(tag_name, tag_value_type)
 
         # check existing tag_meta in meta
         existing_tag = meta.get_tag_meta(tag_name)
@@ -120,8 +116,14 @@ def create_classes_from_annotation(object: dict, object_geometry, meta: ProjectM
         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
     elif geometry_type == AnyGeometry.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=AnyGeometry)
-    elif geometry_type == Polyline:
+    elif geometry_type == Polyline.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Polyline)
+
+    if obj_class is None:
+        logger.warning(
+            f"Volume object class '{class_name}' has unknown geometry type: {geometry_type}"
+        )
+        return meta
 
     existing_class = meta.get_obj_class(class_name)
     if existing_class is None:

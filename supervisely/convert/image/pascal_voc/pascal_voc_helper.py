@@ -236,6 +236,10 @@ def xml_to_sly_labels(
                     if not isinstance(value, str):
                         value = str(value)
                     tags.append(Tag(tag_meta, value))
+                elif tag_meta.value_type == TagValueType.DATE:
+                    if not isinstance(value, str):
+                        value = str(value)
+                    tags.append(Tag(tag_meta, value))
                 elif tag_meta.value_type == TagValueType.NONE:
                     # check if value is numeric
                     try:

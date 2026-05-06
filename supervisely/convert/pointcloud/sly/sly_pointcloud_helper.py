@@ -6,9 +6,9 @@ from supervisely import (
     ObjClass,
     ProjectMeta,
     TagMeta,
-    TagValueType,
     logger,
 )
+from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.fs import get_file_name
 from supervisely.io.json import load_json_file
@@ -40,13 +40,9 @@ def get_meta_from_annotation(ann_path: str, meta: Union[ProjectMeta, None]) -> P
 def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectMeta:
     for tag in tags:
         tag_name = tag["name"]
-        tag_value = tag["value"]
-        if tag_value is None:
-            tag_meta = TagMeta(tag_name, TagValueType.NONE)
-        elif isinstance(tag_value, int) or isinstance(tag_value, float):
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_NUMBER)
-        else:
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+        tag_value = tag.get("value")
+        tag_value_type = detect_tag_value_type(tag_value)
+        tag_meta = TagMeta(tag_name, tag_value_type)
 
         # check existing tag_meta in meta
         existing_tag = meta.get_tag_meta(tag_name)
