@@ -120,7 +120,9 @@ def create_classes_from_annotation(object: dict, object_geometry, meta: ProjectM
         obj_class = ObjClass(name=class_name, geometry_type=Polyline)
 
     if obj_class is None:
-        logger.warning(f"Unknown volume object geometry type: {geometry_type}")
+        logger.warning(
+            f"Volume object class '{class_name}' has unknown geometry type: {geometry_type}"
+        )
         return meta
 
     existing_class = meta.get_obj_class(class_name)
