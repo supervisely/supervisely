@@ -30,7 +30,8 @@ class TeamFilesSelector(Widget):
         show_agent_storage: bool = False,
         disable_bucket_selection: bool = True,
     ):
-        """:param team_id: Team ID for Team Files.
+        """
+        :param team_id: Team ID for Team Files.
         :type team_id: int
         :param multiple_selection: If True, allow multiple selection.
         :type multiple_selection: bool
@@ -43,16 +44,16 @@ class TeamFilesSelector(Widget):
         :param hide_empty_table: If True, hide when empty.
         :type hide_empty_table: bool
         :param additional_fields: Extra columns to show.
-        :type additional_fields: List[Literal]
+        :type additional_fields: List[Literal["id", "createdAt", "updatedAt", "type", "size", "mimeType"]]
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional
         :param initial_folder: Initial folder path.
         :type initial_folder: str, optional
-        :param show_cloud_storage: If True, show cloud storage.
+        :param show_cloud_storage: If True, show "Cloud Storages" option in the root.
         :type show_cloud_storage: bool
-        :param show_agent_storage: If True, show agent storage.
+        :param show_agent_storage: If True, show agent storages option in the root.
         :type show_agent_storage: bool
-        :param disable_bucket_selection: If True, disable bucket selection.
+        :param disable_bucket_selection: If True, disables bucket selection in the cloud storage.
         :type disable_bucket_selection: bool
 
         :raises ValueError: If additional_fields contains invalid field names.
