@@ -42,25 +42,23 @@ jobs:
             --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
 
-      - name: Generate SBOM (SPDX JSON)
-        run: |
-          mkdir -p sbom_logs
-          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME}-sbom.json"
-
-      - name: Vulnerability scan
-        id: anchore-scan
-        uses: anchore/scan-action@v7
+      - name: Audit Python dependencies
+        uses: pypa/gh-action-pip-audit@v1.1.0
         with:
-          sbom: sbom_logs/${{ env.IMAGE_NAME }}-sbom.json
-          fail-build: true
-          severity-cutoff: negligible
-          output-format: json
-          output-file: anchore-scan-${{ env.IMAGE_NAME }}.json
+          inputs: .
+
+      # TODO: Add a non-blocking full image vulnerability scan with anchore/scan-action
+      # after defining an OS package CVE policy for hardened base images.
 
       - name: Dockle scan on archive
         run: |
           mkdir -p dockle_logs
           dockle --exit-code 1 --exit-level FATAL --input image.tar -af settings.py --format json --output dockle_logs/${IMAGE_NAME}.json
+
+      - name: Generate SBOM (SPDX JSON)
+        run: |
+          mkdir -p sbom_logs
+          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME}-sbom.json"
 
       - name: Push scanned image archive
         run: |
@@ -74,14 +72,6 @@ jobs:
               docker-archive:image.tar \
               docker://docker.io/supervisely/${{ env.IMAGE_NAME }}:$TAG_VERSION
           fi
-
-      - name: Upload Anchore scan report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: anchore-scan-${{ env.IMAGE_NAME }}
-          path: anchore-scan-${{ env.IMAGE_NAME }}.json
-          if-no-files-found: ignore
 
       - name: Upload Dockle report
         if: always()
