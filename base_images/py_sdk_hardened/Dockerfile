@@ -39,8 +39,9 @@ RUN set -eu; \
     sleep "$TIMEOUT"; \
     ATTEMPT=$((ATTEMPT + 1)); \
     done; \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.26; \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.27; \
     rm -rf \
+    /opt/venv/lib/python3.14/site-packages/pip* \
     /opt/venv/lib/python3.14/site-packages/wheel* \
     /opt/venv/lib/python3.14/site-packages/setuptools/_vendor/wheel* \
     /opt/venv/bin/pip \

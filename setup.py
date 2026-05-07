@@ -118,7 +118,7 @@ INSTALL_REQUIRES = [
     "beautifulsoup4",
     "numerize",
     "ffmpeg-python==0.2.0",
-    "python-multipart==0.0.26; python_version >= '3.10'",
+    "python-multipart==0.0.27; python_version >= '3.10'",
     "python-multipart<=0.0.20; python_version < '3.10'",
     "GitPython",
     "giturlparse",
