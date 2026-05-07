@@ -164,7 +164,6 @@ class PointcloudConverter(BaseConverter):
                     tf_indices,
                     api.pointcloud.upload_team_files_ids(dataset_id, tf_names, tf_ids),
                 ):
-                    logger.info(f"Uploaded pointcloud '{item_names[i]}' via Team Files with file ID {team_file_ids[i]}.")
                     pcd_infos_map[i] = info
             if reg_indices:
                 reg_names = [item_names[i] for i in reg_indices]
