@@ -129,27 +129,52 @@ class PointcloudConverter(BaseConverter):
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
+            team_file_ids = []
             anns = []
             for item in batch:
                 item.name = generate_free_name(
                     existing_pointcloud_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
-                if self.upload_as_links:
+                abs_path = os.path.abspath(item.path)
+                if self._team_files_id_map and abs_path in self._team_files_id_map:
+                    team_file_ids.append(self._team_files_id_map[abs_path][0])
+                    item_paths.append(None)
+                elif self.upload_as_links:
                     item_paths.append(
-                        self.remote_files_map.get(os.path.abspath(item.path), item.path)
+                        self.remote_files_map.get(abs_path, item.path)
                     )
+                    team_file_ids.append(None)
                 else:
                     item_paths.append(item.path)
+                    team_file_ids.append(None)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
 
-            pcd_infos = upload_fn(
-                dataset_id,
-                item_names,
-                item_paths,
-            )
+            # split batch by upload method
+            tf_indices = [i for i, fid in enumerate(team_file_ids) if fid is not None]
+            reg_indices = [i for i in range(len(item_names)) if i not in set(tf_indices)]
+
+            pcd_infos_map: Dict[int, object] = {}
+            if tf_indices:
+                tf_names = [item_names[i] for i in tf_indices]
+                tf_ids = [team_file_ids[i] for i in tf_indices]
+                for i, info in zip(
+                    tf_indices,
+                    api.pointcloud.upload_team_files_ids(dataset_id, tf_names, tf_ids),
+                ):
+                    pcd_infos_map[i] = info
+            if reg_indices:
+                reg_names = [item_names[i] for i in reg_indices]
+                reg_paths = [item_paths[i] for i in reg_indices]
+                for i, info in zip(
+                    reg_indices,
+                    upload_fn(dataset_id, reg_names, reg_paths),
+                ):
+                    pcd_infos_map[i] = info
+
+            pcd_infos = [pcd_infos_map[i] for i in range(len(item_names))]
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
             pcl_to_rimg_to_id: Dict[int, Dict[str, int]] = {}

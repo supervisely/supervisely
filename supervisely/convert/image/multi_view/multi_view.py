@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict, Union, Optional
+from typing import Dict, Optional, Union
 
 from supervisely import ProjectMeta, generate_free_name, is_development, logger
 from supervisely.api.api import Api, ApiContext
@@ -15,14 +15,17 @@ class MultiViewImageConverter(ImageConverter):
     """Imports multi-view image groups (multiple images per sample) for multiview labeling interface."""
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._supports_links = True
         self._force_shape_for_links = self.upload_as_links
@@ -54,7 +57,7 @@ class MultiViewImageConverter(ImageConverter):
                     return None
                 if get_file_ext(file) in SUPPORTED_IMG_EXTS:
                     group_map[root].append(os.path.join(root, file))
-            
+
         return group_map
 
     def upload_dataset(
