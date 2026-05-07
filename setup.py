@@ -79,6 +79,8 @@ version = get_version()
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
     "numpy>=1.19, <=2.3.3",
+    "av>=12.0.0, <13.0.0; python_version == '3.8'",
+    "av>=13.0.0; python_version >= '3.9'",
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "prettytable>=3.8.0, <4.0.0",
     "pillow>=5.4.1, <=12.2.0",
