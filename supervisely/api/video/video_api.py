@@ -24,7 +24,6 @@ from typing import (
 )
 
 import aiofiles
-import numpy as np
 from numerize.numerize import numerize
 from requests import Response
 from requests_toolbelt import (
