@@ -56,7 +56,8 @@ class TeamFilesSelector(Widget):
         :param disable_bucket_selection: If True, disables bucket selection in the cloud storage.
         :type disable_bucket_selection: bool
 
-        :raises ValueError: If additional_fields contains invalid field names.
+        :raises ValueError: If additional_fields contains invalid field names, or if
+            max_height is not an int or str.
         """
         self._api = Api()
         self._team_id = team_id
