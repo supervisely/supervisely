@@ -6,12 +6,22 @@ import magic
 import nrrd
 import numpy as np
 
-from supervisely import Annotation, batched, generate_free_name, is_development, ProjectMeta, logger, TagMeta, Tag, TagValueType
+from supervisely import (
+    Annotation,
+    ProjectMeta,
+    Tag,
+    TagMeta,
+    TagValueType,
+    batched,
+    generate_free_name,
+    is_development,
+    logger,
+)
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.medical2d import medical2d_helper as helper
-from supervisely.io.fs import remove_dir, get_file_ext, mkdir, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name, mkdir, remove_dir
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.volume.volume import is_nifti_file
 
@@ -21,14 +31,17 @@ class Medical2DImageConverter(ImageConverter):
     """Imports medical 2D images (NRRD, NIfTI slices) with annotations into Supervisely; supports DICOM grouping."""
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._filtered = None
         self._group_tag_names = defaultdict(int)
@@ -154,7 +167,6 @@ class Medical2DImageConverter(ImageConverter):
             existing_names = set([img.name for img in api.image.get_list(dataset_id)])
 
             api.project.images_grouping(id=dataset.project_id, enable=True, tag_name=group_tag_name)
-
 
             if log_progress:
                 progress, progress_cb = self.get_progress(self.items_count, "Uploading images...")
