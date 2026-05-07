@@ -42,82 +42,25 @@ jobs:
             --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
 
-      - name: pip-audit scan
+      - name: Generate SBOM (SPDX JSON)
         run: |
-          mkdir -p audit_logs
-          syft -q "docker-archive:image.tar" -o json > audit_logs/syft-image.json
-          . $HOME/.venv_hardened/bin/activate
-          python3 - << 'PY'
-          import json
-          from pathlib import Path
+          mkdir -p sbom_logs
+          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME}-sbom.json"
 
-          syft_path = Path("audit_logs/syft-image.json")
-          output_path = Path("audit_logs/image_python_requirements.txt")
-
-          data = json.loads(syft_path.read_text())
-          artifacts = data.get("artifacts", [])
-
-          packages = {}
-          for artifact in artifacts:
-              purl = artifact.get("purl", "")
-              name = artifact.get("name")
-              version = artifact.get("version")
-              if not name or not version:
-                  continue
-              if purl.startswith("pkg:pypi/"):
-                  packages[name.lower()] = version
-
-          lines = [f"{name}=={packages[name]}" for name in sorted(packages)]
-          output_path.write_text("\n".join(lines) + ("\n" if lines else ""))
-          PY
-
-          if [ -s audit_logs/image_python_requirements.txt ]; then
-            set +e
-            python3 -m pip_audit \
-              -r audit_logs/image_python_requirements.txt \
-              --no-deps \
-              --disable-pip \
-              --format json > audit_logs/pip_audit.json
-            PIP_AUDIT_EXIT=$?
-            set -e
-
-            if [ "$PIP_AUDIT_EXIT" -ne 0 ] && [ "$PIP_AUDIT_EXIT" -ne 1 ]; then
-              echo "pip-audit failed with unexpected exit code ${PIP_AUDIT_EXIT}."
-              exit "$PIP_AUDIT_EXIT"
-            fi
-
-            if ! jq empty audit_logs/pip_audit.json > /dev/null 2>&1; then
-              echo "pip-audit did not produce valid JSON output."
-              cat audit_logs/pip_audit.json
-              exit 1
-            fi
-
-            FIXABLE=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length > 0)]' audit_logs/pip_audit.json)
-            FIXABLE_COUNT=$(echo "$FIXABLE" | jq 'length')
-            UNFIXED_COUNT=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length == 0)] | length' audit_logs/pip_audit.json)
-
-            if [ "$UNFIXED_COUNT" -gt 0 ]; then
-              echo "pip-audit: WARNING: ${UNFIXED_COUNT} vulnerability/vulnerabilities with no fixes available (ignored)."
-            fi
-
-            if [ "$FIXABLE_COUNT" -gt 0 ]; then
-              echo "pip-audit: ${FIXABLE_COUNT} vulnerability/vulnerabilities with available fixes:"
-              echo "$FIXABLE" | jq -r '.[] | "  \(.id): fix available in \(.fix_versions | join(", "))"'
-              exit 1
-            fi
-          else
-            echo "[]" > audit_logs/pip_audit.json
-          fi
+      - name: Vulnerability scan
+        id: anchore-scan
+        uses: anchore/scan-action@v7
+        with:
+          sbom: sbom_logs/${{ env.IMAGE_NAME }}-sbom.json
+          fail-build: true
+          severity-cutoff: negligible
+          output-format: json
+          output-file: anchore-scan-${{ env.IMAGE_NAME }}.json
 
       - name: Dockle scan on archive
         run: |
           mkdir -p dockle_logs
           dockle --exit-code 1 --exit-level FATAL --input image.tar -af settings.py --format json --output dockle_logs/${IMAGE_NAME}.json
-
-      - name: Generate SBOM (SPDX JSON)
-        run: |
-          mkdir -p sbom_logs
-          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME}-sbom.json"
 
       - name: Push scanned image archive
         run: |
@@ -132,12 +75,12 @@ jobs:
               docker://docker.io/supervisely/${{ env.IMAGE_NAME }}:$TAG_VERSION
           fi
 
-      - name: Upload pip-audit report
+      - name: Upload Anchore scan report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pip-audit-${{ env.IMAGE_NAME }}
-          path: audit_logs/pip_audit.json
+          name: anchore-scan-${{ env.IMAGE_NAME }}
+          path: anchore-scan-${{ env.IMAGE_NAME }}.json
           if-no-files-found: ignore
 
       - name: Upload Dockle report
