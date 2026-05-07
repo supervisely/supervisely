@@ -93,7 +93,7 @@ jobs:
             fi
 
             FIXABLE=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length > 0)]' audit_logs/pip_audit.json)
-            FIXABLE_COUNT=$(echo "$FIXABLE" | jq 'length')
+            FIXABLE_COUNT=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length > 0)] | length' audit_logs/pip_audit.json)
             UNFIXED_COUNT=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length == 0)] | length' audit_logs/pip_audit.json)
 
             if [ "$UNFIXED_COUNT" -gt 0 ]; then
