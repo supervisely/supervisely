@@ -1074,9 +1074,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 # Point clouds uploaded to Supervisely with IDs: [19618685, 19618686]
         """
 
-        if metas is None:
-            metas = [{}] * len(paths)
-
         team_files_exts = set(POINT_CLOUD_MIME_TYPES) - {".pcd"}
         tf_indices = [i for i, p in enumerate(paths) if get_file_ext(p).lower() in team_files_exts]
         hash_indices = [i for i in range(len(paths)) if i not in set(tf_indices)]
@@ -1086,7 +1083,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         if hash_indices:
             h_names = [names[i] for i in hash_indices]
             h_paths = [paths[i] for i in hash_indices]
-            h_metas = [metas[i] for i in hash_indices]
+            h_metas = [metas[i] for i in hash_indices] if metas is not None else None
 
             def path_to_bytes_stream(path):
                 return open(path, "rb")
@@ -1102,7 +1099,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         if tf_indices:
             tf_names = [names[i] for i in tf_indices]
             tf_paths = [paths[i] for i in tf_indices]
-            tf_metas = [metas[i] for i in tf_indices]
+            tf_metas = [metas[i] for i in tf_indices] if metas is not None else None
             for i, info in zip(
                 tf_indices,
                 self.upload_paths_via_team_files(
@@ -1126,9 +1123,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
         Use this method for formats not supported by the direct hash-based upload (.pcd only).
         Temporary files are removed from Team Files after the dataset entry is created.
         """
-        if metas is None:
-            metas = [{}] * len(paths)
-
         dataset_info = self._api.dataset.get_info_by_id(dataset_id)
         team_id = dataset_info.team_id
         upload_dir = f"/sly-pointcloud-uploads/{rand_str(8)}"
