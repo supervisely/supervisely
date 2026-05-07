@@ -49,11 +49,11 @@ class TeamFilesSelector(Widget):
         :type widget_id: str, optional
         :param initial_folder: Initial folder path.
         :type initial_folder: str, optional
-        :param show_cloud_storage: If True, show "Cloud Storages" option in the root.
+        :param show_cloud_storage: If True, additionally displays `Cloud Storages` at the root level. Note: To automatically open the list of cloud storages on launch, you must also set `initial_folder` to `/sly-cloud-storage`.
         :type show_cloud_storage: bool
-        :param show_agent_storage: If True, show agent storages option in the root.
+        :param show_agent_storage: If True, additionally displays `Agent Storages` at the root level. Note: To automatically open the list of agents on launch, you must also set `initial_folder` to `/sly-agents`.
         :type show_agent_storage: bool
-        :param disable_bucket_selection: If True, disables bucket selection in the cloud storage.
+        :param disable_bucket_selection: If True, disables selection of the bucket root as a destination. Only subdirectories within the bucket can be selected.
         :type disable_bucket_selection: bool
 
         :raises ValueError: If additional_fields contains invalid field names, or if
