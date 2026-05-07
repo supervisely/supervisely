@@ -169,7 +169,7 @@ class Polyline(VectorGeometry):
             intersections_polygon = LineString(exterior).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_polygon)
         except Exception:
-            logger.warn("Line cropping exception, shapely.", exc_info=False)
+            logger.warning("Line cropping exception, shapely.", exc_info=False)
             raise
 
         res_lines_pts = shapely_figure_to_coords_list(mapping_shpl)

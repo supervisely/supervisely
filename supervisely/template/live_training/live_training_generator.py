@@ -17,8 +17,8 @@ from supervisely.imaging.color import rgb2hex
 
 # After release:
 _slug_map = {
-    "semantic segmentation": "supervisely-ecosystem/live-training---semantic-segmentation",
-    "object detection": "supervisely-ecosystem/live-training---object-detection",
+    "semantic segmentation": "supervisely-ecosystem/live-training-segmentation",
+    "object detection": "supervisely-ecosystem/live-training-detection",
 }
 # For private apps, fallback to hardcoded app_keys:
 _slug_hashes = {

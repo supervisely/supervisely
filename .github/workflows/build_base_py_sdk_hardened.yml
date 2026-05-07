@@ -105,19 +105,25 @@ jobs:
           fi
 
       - name: Upload pip-audit report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pip-audit-${{ env.IMAGE_NAME }}
           path: audit_logs/pip_audit.json
+          if-no-files-found: ignore
 
       - name: Upload Dockle report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dockle-${{ env.IMAGE_NAME }}
           path: dockle_logs/${{ env.IMAGE_NAME }}.json
+          if-no-files-found: ignore
 
       - name: Upload SBOM report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ env.IMAGE_NAME }}
           path: sbom_logs/${{ env.IMAGE_NAME }}-sbom.json
+          if-no-files-found: ignore

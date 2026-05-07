@@ -8,3 +8,6 @@ from supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_converter im
     NuscenesEpisodesConverter,
 )
 from supervisely.convert.pointcloud_episodes.kitti_360.kitti_360_converter import KITTI360Converter
+from supervisely.convert.pointcloud_episodes.semantic_kitti.semantic_kitti_converter import (
+    SemanticKITTIConverter,
+)

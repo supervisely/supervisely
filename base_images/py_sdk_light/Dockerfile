@@ -35,7 +35,7 @@ RUN pip install \
     "Werkzeug<=3.0.6" \
     scikit-video==1.1.11 \
     attrs \
-    "requests>=2.27.1"
+    "requests>=2.33.0"
 
 RUN pip install "setuptools>=80.10.1,<81"
 

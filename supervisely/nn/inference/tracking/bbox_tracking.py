@@ -20,6 +20,7 @@ from supervisely.nn.inference.inference import Uploader
 from supervisely.nn.inference.inference_request import InferenceRequest
 from supervisely.nn.inference.tracking.base_tracking import BaseTracking
 from supervisely.nn.inference.tracking.tracker_interface import (
+    SOURCE_FIGURE_ID,
     TrackerInterface,
     TrackerInterfaceV2,
 )
@@ -143,7 +144,16 @@ class BBoxTracking(BaseTracking):
                         )
                     sly_geometry = self._to_sly_geometry(geometry)
 
-                    uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
+                    uploader.put(
+                        [
+                            (
+                                sly_geometry,
+                                obj_id,
+                                video_interface._cur_frames_indexes[-1],
+                                fig_id,
+                            )
+                        ]
+                    )
 
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
@@ -353,10 +363,19 @@ class BBoxTracking(BaseTracking):
         ]
         frame_range_asc = [min(frame_range), max(frame_range)]
         progress_total = frames_count * len(figures)
+        tracked_figures_count = {}
 
         def _upload_f(items: List[FigureInfo]):
             inference_request.add_results(items)
             inference_request.done(len(items))
+            for item in items:
+                source_figure_id = item.meta.get(SOURCE_FIGURE_ID, item.id)
+                if source_figure_id is None:
+                    continue
+                source_figure_id = str(source_figure_id)
+                tracked_figures_count[source_figure_id] = (
+                    tracked_figures_count.get(source_figure_id, 0) + 1
+                )
 
         def _notify_f(items: List[FigureInfo]):
             frame_range = [
@@ -364,7 +383,10 @@ class BBoxTracking(BaseTracking):
                 max(item.frame_index for item in items),
             ]
             tracker_interface.notify_progress(
-                inference_request.progress.current, inference_request.progress.total, frame_range
+                inference_request.progress.current,
+                inference_request.progress.total,
+                frame_range,
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
 
         def _exception_handler(exception: Exception):
@@ -373,6 +395,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
             tracker_interface.notify_error(exception)
             raise Exception
@@ -394,6 +417,7 @@ class BBoxTracking(BaseTracking):
                 sly_geometry: Rectangle = deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
+                source_figure_id = figure.meta.get(SOURCE_FIGURE_ID, figure.id)
                 init = False
                 for frame_i, (frame, next_frame) in enumerate(
                     tracker_interface.frames_loader_generator(), 1
@@ -438,7 +462,10 @@ class BBoxTracking(BaseTracking):
                         {
                             ApiField.ID: figure_id,
                             ApiField.OBJECT_ID: figure.object_id,
-                            "meta": {"frame": next_frame.frame_index},
+                            "meta": {
+                                "frame": next_frame.frame_index,
+                                SOURCE_FIGURE_ID: source_figure_id,
+                            },
                             ApiField.GEOMETRY_TYPE: sly_geometry.geometry_name(),
                             ApiField.GEOMETRY: sly_geometry.to_json(),
                             ApiField.TRACK_ID: tracker_interface.track_id,
@@ -469,6 +496,7 @@ class BBoxTracking(BaseTracking):
                             inference_request.progress.current,
                             inference_request.progress.current,
                             frame_range_asc,
+                            extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
                         )
                         return
                     if uploader.has_exception():
@@ -491,6 +519,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
 
     def track(self, api: Api, state: Dict, context: Dict):

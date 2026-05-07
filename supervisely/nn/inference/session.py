@@ -575,7 +575,7 @@ class SessionJSON:
             self._on_async_inference_end()
             raise Timeout("Timeout exceeded. Pending results not received from the server.")
         if len(pending_results) == 0 and resp["is_inferring"]:
-            logger.warn(
+            logger.warning(
                 "The model is inferring yet, but new pending results have not received from the serving app. "
                 "This may lead to not all samples will be inferred."
             )

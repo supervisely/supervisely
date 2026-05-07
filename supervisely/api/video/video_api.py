@@ -47,7 +47,6 @@ from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
 from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_tag_api import VideoTagApi
-from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -69,6 +68,7 @@ from supervisely.video.video import (
     is_valid_format,
     validate_ext,
 )
+from supervisely.video_annotation.video_tag import VideoTag
 
 
 class VideoInfo(NamedTuple):
@@ -1445,6 +1445,7 @@ class VideoApi(RemoveableBulkModuleApi):
         frame_end: int,
         current: int,
         total: int,
+        extra_data: Optional[Dict] = None,
     ):
         """
         Send message to the Annotation Tool and return info if tracking was stopped
@@ -1455,22 +1456,28 @@ class VideoApi(RemoveableBulkModuleApi):
         :param frame_end: int
         :param current: int
         :param total: int
+        :param extra_data: Additional payload fields to merge into the notification data.
+        :type extra_data: Optional[Dict]
         :returns: str
         """
+
+        data = {
+            ApiField.TRACK_ID: track_id,
+            ApiField.VIDEO_ID: video_id,
+            ApiField.FRAME_RANGE: [frame_start, frame_end],
+            ApiField.PROGRESS: {
+                ApiField.CURRENT: current,
+                ApiField.TOTAL: total,
+            },
+        }
+        if extra_data is not None:
+            data.update(extra_data)
 
         response = self._api.post(
             "videos.notify-annotation-tool",
             {
                 "type": "videos:fetch-figures-in-range",
-                "data": {
-                    ApiField.TRACK_ID: track_id,
-                    ApiField.VIDEO_ID: video_id,
-                    ApiField.FRAME_RANGE: [frame_start, frame_end],
-                    ApiField.PROGRESS: {
-                        ApiField.CURRENT: current,
-                        ApiField.TOTAL: total,
-                    },
-                },
+                "data": data,
             },
         )
         return response.json()[ApiField.STOPPED]
@@ -1835,7 +1842,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
                 if resp.get("errors")
             ]
-            logger.warn(
+            logger.warning(
                 "Not all images were uploaded within request.",
                 extra={
                     "total_cnt": len(hashes_items_to_upload),
@@ -1880,7 +1887,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 )
                 pending_hashes -= set(hashes_rcv)
                 if set(hashes_rcv) - set(hashes):
-                    logger.warn(
+                    logger.warning(
                         "Hash inconsistency in images bulk upload.",
                         extra={"sent": hashes, "received": hashes_rcv},
                     )
@@ -1892,7 +1899,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(items_count_total - len(unique_hashes))
                 return
 
-            logger.warn(
+            logger.warning(
                 "Unable to upload videos (data).",
                 extra={
                     "retry_idx": retry_idx,

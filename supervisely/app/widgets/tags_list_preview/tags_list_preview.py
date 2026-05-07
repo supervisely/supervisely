@@ -12,6 +12,7 @@ VALUE_TYPE_NAME = {
     str(TagValueType.ANY_STRING): "TEXT",
     str(TagValueType.ONEOF_STRING): "ONE OF",
     str(TagValueType.ANY_NUMBER): "NUMBER",
+    str(TagValueType.DATE): "DATE",
 }
 
 
