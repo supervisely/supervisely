@@ -42,10 +42,17 @@ jobs:
             --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
 
+      - name: Install SDK for dependency audit
+        run: |
+          python3 -m venv audit-venv
+          . audit-venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install .
+
       - name: Audit Python dependencies
         uses: pypa/gh-action-pip-audit@v1.1.0
         with:
-          inputs: .
+          virtual-environment: audit-venv
 
       # TODO: Add a non-blocking full image vulnerability scan with anchore/scan-action
       # after defining an OS package CVE policy for hardened base images.
