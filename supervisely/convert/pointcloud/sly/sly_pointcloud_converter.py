@@ -104,7 +104,7 @@ class SLYPointcloudConverter(PointcloudConverter):
                     item.ann_data = ann_path
                     sly_ann_detected = True
 
-            rimg_dir_name = item.name.replace(".pcd", "_pcd")
+            rimg_dir_name = item.name.replace(".", "_")
             rimgs = rimg_dict.get(rimg_dir_name, [])
             for rimg_path in rimgs:
                 rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"

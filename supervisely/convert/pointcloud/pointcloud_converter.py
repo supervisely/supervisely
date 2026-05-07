@@ -303,7 +303,7 @@ class PointcloudConverter(BaseConverter):
                     if any(
                         p.replace("_", " ") in ["images", "related images", "photo context"]
                         for p in [dir_name, parent_dir_name]
-                    ) or dir_name.endswith("_pcd"):
+                    ) or dir_name.endswith(("_pcd", "_ply", "_las", "_laz")):
                         rimg_ann_dict[file] = full_path
                 elif self._is_image_file(full_path):
                     dir_name = os.path.basename(root)
@@ -326,7 +326,7 @@ class PointcloudConverter(BaseConverter):
         items = []
         for pcd_path in pcd_list:
             item = self.Item(pcd_path)
-            rimg_dir_name = item.name.replace(".pcd", "_pcd")
+            rimg_dir_name = item.name.replace(".", "_")
             rimgs = rimg_dict.get(rimg_dir_name, [])
             for rimg_path in rimgs:
                 rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"
@@ -342,7 +342,7 @@ class PointcloudConverter(BaseConverter):
 
     def _convert_to_pcd_if_needed(self, pcd_path: str, ext: str) -> Optional[str]:
         """Convert point cloud to .pcd format if it is in another supported format."""
-        if ext == ".pcd":
+        if ext in (".pcd", ".ply", ".las", ".laz"):
             return pcd_path
         elif ext == ".bin":
             if self.upload_as_links:
