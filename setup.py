@@ -90,7 +90,8 @@ INSTALL_REQUIRES = [
     "Shapely>=1.7.1, <=2.1.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <=1.0.1",
+    "python-dotenv>=0.19.2, <=1.0.1; python_version < '3.10'",
+    "python-dotenv==1.2.2; python_version >= '3.10'",
     "pynrrd>=0.4.2, <1.0.0",
     "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
     "pydicom>=2.3.0, <3.0.0",
@@ -117,7 +118,7 @@ INSTALL_REQUIRES = [
     "beautifulsoup4",
     "numerize",
     "ffmpeg-python==0.2.0",
-    "python-multipart==0.0.26; python_version >= '3.10'",
+    "python-multipart==0.0.27; python_version >= '3.10'",
     "python-multipart<=0.0.20; python_version < '3.10'",
     "GitPython",
     "giturlparse",

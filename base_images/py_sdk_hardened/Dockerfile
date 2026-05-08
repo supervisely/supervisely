@@ -20,7 +20,7 @@ ARG tag_ref_name
 # Install supervisely package with retry logic for PyPI CDN propagation & cleanup
 RUN set -eu; \
     python -m venv /opt/venv; \
-    /opt/venv/bin/pip install --upgrade pip==26.0.1; \
+    /opt/venv/bin/pip install --upgrade pip==26.1.0; \
     /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.2.0; \
     MAX_ATTEMPTS=8; \
     TIMEOUT=15; \
