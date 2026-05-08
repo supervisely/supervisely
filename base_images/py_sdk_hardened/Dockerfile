@@ -39,7 +39,7 @@ RUN set -eu; \
     sleep "$TIMEOUT"; \
     ATTEMPT=$((ATTEMPT + 1)); \
     done; \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0; \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 protobuf==3.20.3; \
     rm -rf \
     /opt/venv/lib/python3.14/site-packages/pip* \
     /opt/venv/lib/python3.14/site-packages/wheel* \
