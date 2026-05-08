@@ -10,10 +10,10 @@ from supervisely import (
     TagValueType,
     logger,
 )
+from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.pascal_voc import pascal_voc_helper
-from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.io.fs import (
     dir_exists,
     dirs_filter,
@@ -63,9 +63,12 @@ class PascalVOCConverter(ImageConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self.color2class_name: Optional[Dict[str, str]] = None
         self.with_instances: bool = False

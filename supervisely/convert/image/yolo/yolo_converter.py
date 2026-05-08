@@ -30,9 +30,12 @@ class YOLOConverter(ImageConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._yaml_info: dict = None
         self._with_keypoint = False
