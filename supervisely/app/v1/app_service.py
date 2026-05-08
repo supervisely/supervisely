@@ -92,6 +92,7 @@ class AppService:
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors
+        self.loop = None
         self.task_id = take_with_default(task_id, int(os.environ["TASK_ID"]))
         self.server_address = take_with_default(server_address, os.environ[SERVER_ADDRESS])
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
@@ -132,6 +133,25 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
 
+    @staticmethod
+    def _get_or_create_event_loop():
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop
+
+    def _close_event_loop(self):
+        loop = self.loop
+        if loop is not None and not loop.is_closed():
+            loop.close()
+        if loop is not None:
+            self.loop = None
+
     def is_stopped(self):
         return self.stop_event.is_set()
 
@@ -140,7 +160,7 @@ class AppService:
 
     def _run_executors(self):
         self.executor = concurrent.futures.ThreadPoolExecutor()
-        self.loop = asyncio.get_event_loop()
+        self.loop = self._get_or_create_event_loop()
         self.logger.trace(f"Operating system: {sys.platform}")
         # May want to catch other signals too
         if os.name == "nt":
@@ -481,7 +501,7 @@ class AppService:
             self.loop.create_task(self.scheduler(), name="Scheduler")
             self.loop.run_forever()
         finally:
-            self.loop.close()
+            self._close_event_loop()
             self.logger.info("Successfully shutdown the APP service.")
 
         if self._error is not None:
