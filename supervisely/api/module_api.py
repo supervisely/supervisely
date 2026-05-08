@@ -730,7 +730,12 @@ class ApiField:
     SINCE_TIME = "sinceTime"
     """"""
     TRACKED_FIGURES = "trackedFigures"
-
+    """"""
+    COLLECTION_ITEM_INDEX = "collectionItemIndex"
+    """"""
+    OMIT_FRAMES_TO_TIMECODES = "omitFramesToTimecodes"
+    """"""
+    GENERATE_UNIQUE_NAMES = "generateUniqueNames"
 
 def _get_single_item(items):
     """_get_single_item"""

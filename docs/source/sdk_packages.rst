@@ -73,6 +73,9 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     ~supervisely.api.team_api.TeamApi
     ~supervisely.api.user_api.UserApi
     ~supervisely.api.workspace_api.WorkspaceApi
+    ~supervisely.api.entity_api.EntityApi
+    ~supervisely.api.entity_api.EntityInfo
+    ~supervisely.api.entity_api.EntityDescriptor
 
 
 Video API
@@ -125,6 +128,19 @@ API for working with pointclouds in Supervisely.
     ~supervisely.api.pointcloud.pointcloud_figure_api.PointcloudFigureApi
     ~supervisely.api.pointcloud.pointcloud_object_api.PointcloudObjectApi
     ~supervisely.api.pointcloud.pointcloud_tag_api.PointcloudTagApi
+
+Entity API
+----------
+Generic API for working with entities across all project types in Supervisely.
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.api.entity_api.EntityApi
+    ~supervisely.api.entity_api.EntityInfo
+    ~supervisely.api.entity_api.EntityDescriptor
 
 Neural Networks API
 -------------------
