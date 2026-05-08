@@ -82,7 +82,7 @@ class SelectProject(Widget):
                 )
         else:
             # if self._show_label is False:
-            #     logger.warn(
+            #     logger.warning(
             #         "show_label can not be false if compact is True and default_id / workspace_id are not defined"
             #     )
             self._show_label = True

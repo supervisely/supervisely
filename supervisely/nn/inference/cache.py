@@ -85,7 +85,7 @@ class PersistentImageTTLCache(TTLCache):
         try:
             super().pop(*args, **kwargs)
         except Exception:
-            sly.logger.warn("Cache data corrupted. Cleaning the cache...", exc_info=True)
+            sly.logger.warning("Cache data corrupted. Cleaning the cache...", exc_info=True)
 
             def _delitem(self, key):
                 try:

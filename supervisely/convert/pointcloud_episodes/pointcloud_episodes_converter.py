@@ -83,9 +83,12 @@ class PointcloudEpisodeConverter(BaseConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
         self._annotation = None
         self._frame_pointcloud_map = None
         self._frame_count = None
@@ -366,7 +369,7 @@ class PointcloudEpisodeConverter(BaseConverter):
             if pcd_name in pcd_dict:
                 updated_frames_pcd_map[i] = pcd_name
                 item = self.Item(pcd_dict[pcd_name], i)
-                rimg_dir_name = pcd_name.replace(".pcd", "_pcd")
+                rimg_dir_name = pcd_name.replace(".", "_")
                 rimgs = rimg_dict.get(rimg_dir_name, [])
                 for rimg_path in rimgs:
                     rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"

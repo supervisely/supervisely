@@ -1165,7 +1165,7 @@ class Dataset(KeyObject):
             )
 
         if img_info is not None:
-            logger.warn(
+            logger.warning(
                 "img_info parameter of add_item_file() method is deprecated and can be removed in future versions. Use item_info parameter instead."
             )
             item_info = img_info

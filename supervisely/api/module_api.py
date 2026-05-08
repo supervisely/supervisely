@@ -730,6 +730,8 @@ class ApiField:
     SINCE_TIME = "sinceTime"
     """"""
     TRACKED_FIGURES = "trackedFigures"
+    """"""
+    TEAM_FILE_ID = "teamFileId"
 
 
 def _get_single_item(items):

@@ -4,32 +4,45 @@ from typing import Dict, Optional, Union
 import supervisely.convert.image.masks.image_with_masks_helper as helper
 from supervisely import (
     Annotation,
-    ProjectMeta,
-    logger,
-    ObjClass,
     Bitmap,
+    ObjClass,
     ObjClassCollection,
+    ProjectMeta,
     Rectangle,
+    logger,
 )
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import file_exists, dirs_with_marker, dir_exists, get_file_name, list_files, dirs_filter, remove_junk_from_dir, get_file_ext
+from supervisely.convert.image.image_helper import validate_image_bounds
+from supervisely.io.fs import (
+    dir_exists,
+    dirs_filter,
+    dirs_with_marker,
+    file_exists,
+    get_file_ext,
+    get_file_name,
+    list_files,
+    remove_junk_from_dir,
+)
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
-from supervisely.convert.image.image_helper import validate_image_bounds
+
 
 class ImagesWithMasksConverter(ImageConverter):
     """Imports images with per-class mask folders (PNG) and classes JSON mapping into Supervisely image project."""
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._classes_mapping = {}
 
@@ -52,7 +65,7 @@ class ImagesWithMasksConverter(ImageConverter):
             self._classes_mapping = classes_mapping
             return ProjectMeta(obj_classes=obj_class_collection)
         except Exception as e:
-            logger.warn(f"Failed to read obj_class_to_machine_color.json: {repr(e)}")
+            logger.warning(f"Failed to read obj_class_to_machine_color.json: {repr(e)}")
             return False
 
     def validate_format(self) -> bool:
@@ -161,5 +174,5 @@ class ImagesWithMasksConverter(ImageConverter):
 
             return ann
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return ann
