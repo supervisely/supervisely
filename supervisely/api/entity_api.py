@@ -455,7 +455,7 @@ class EntityApi(ModuleApiBase):
                 import supervisely as sly
 
                 api = sly.Api.from_env()
-                entity = api.entity.get_info_by_id(entity_id=12345)
+                entity = api.entity.get_info_by_id(id=12345)
                 if entity is not None:
                     print(entity.name, entity.dataset_id)
         """
