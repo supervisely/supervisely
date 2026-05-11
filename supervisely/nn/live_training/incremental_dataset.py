@@ -69,9 +69,11 @@ class IncrementalDataset:
         if mask_path is not None:
             sample['mask_path'] = mask_path
         # add to dataset
+        is_labeled = bool(annotation.labels)
+        sample["_is_labeled"] = is_labeled
         self.samples[image_id] = sample
         self.samples_list.append(sample)
-        if sample['annotations']:
+        if is_labeled:
             self.labeled_count += 1
         return sample
 
@@ -88,7 +90,6 @@ class IncrementalDataset:
         if self.save_masks_as_images:
             mask_path = self._save_mask(annotation, frame_name)
         sample = self._format_sample(frame_id, annotation, img_size, image_path, mask_path)
-        print(f"After format sample: {sample}")
         assert isinstance(sample, dict), "Sample must be a dict."
         # add extra fields for internal use
         sample["image_path"] = image_path
@@ -96,12 +97,11 @@ class IncrementalDataset:
         if mask_path is not None:
             sample["mask_path"] = mask_path
         # add to dataset
+        is_labeled = bool(annotation.labels)
+        sample["_is_labeled"] = is_labeled
         self.samples[frame_id] = sample
         self.samples_list.append(sample)
-
-        print(f"Sample: {sample}")
-
-        if sample['annotations']:
+        if is_labeled:
             self.labeled_count += 1
         return sample
 
@@ -113,7 +113,7 @@ class IncrementalDataset:
         if image_id not in self.samples:
             raise ValueError(f"Cannot update sample: Image ID {image_id} does not exist in the dataset.")
         sample = self.samples[image_id]
-        was_labeled = bool(sample['annotations'])
+        was_labeled = sample.get("_is_labeled", False)
         new_sample = self._format_sample(
             image_id,
             annotation,
@@ -122,7 +122,8 @@ class IncrementalDataset:
             sample.get('mask_path')
         )
         sample.update(new_sample)
-        is_labeled = bool(sample['annotations'])
+        is_labeled = bool(annotation.labels)
+        sample["_is_labeled"] = is_labeled
         self.labeled_count += int(is_labeled) - int(was_labeled)
         return sample
 
@@ -132,12 +133,13 @@ class IncrementalDataset:
                 f"Cannot update sample: Frame ID {frame_id} does not exist in the dataset."
             )
         sample = self.samples[frame_id]
-        was_labeled = bool(sample['annotations'])
+        was_labeled = sample.get("_is_labeled", False)
         new_sample = self._format_sample(
             frame_id, annotation, sample["size"], sample["image_path"], sample.get("mask_path")
         )
         sample.update(new_sample)
-        is_labeled = bool(sample['annotations'])
+        is_labeled = bool(annotation.labels)
+        sample["_is_labeled"] = is_labeled
         self.labeled_count += int(is_labeled) - int(was_labeled)
         return sample
 
@@ -169,6 +171,7 @@ class IncrementalDataset:
             image_path: str,
             mask_path: str = None
         ) -> dict:
+        print("test")
         sample = {
             'image_id': image_id,
             'width': image_size[0],
