@@ -314,7 +314,7 @@ class EntityApi(ModuleApiBase):
                 print(entity.id, entity.name)
 
             # Get a single entity's info
-            entity = api.entity.get_info_by_id(entity_id=456)
+            entity = api.entity.get_info_by_id(id=456)
 
             # Download entity file content to disk
             api.entity.download(id=456, path="output.bin")
