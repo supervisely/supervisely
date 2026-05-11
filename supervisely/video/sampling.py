@@ -19,7 +19,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.project.project_meta import ProjectMeta
-from supervisely import logger as default_logger
+from supervisely import logger
 from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
@@ -647,7 +647,6 @@ def _sync_build_pts_map(video_url: str, token: Optional[str], video_id: int) -> 
 async def _async_build_pts_map(
     api: Any,
     video_id: int,
-    logger: Any = default_logger,
 ) -> Tuple[List[int], bool]:
     """Build frame-index -> PTS map and detect no-CTTS B-frame streams."""
     video_url = _resolve_video_url(api, video_id)
@@ -675,13 +674,41 @@ async def async_stream_video_frames(
     video_id: int,
     start: Optional[int] = None,
     end: Optional[int] = None,
-    logger: Any = default_logger,
 ) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
-    """Stream decoded video frames by frame index."""
+    """Async generator that streams decoded video frames by frame index.
+
+    Builds a PTS map by demuxing the video, then decodes and yields frames
+    in the requested range. Automatically selects the optimal decoding
+    strategy: seek-based for most videos, or full decode from start for
+    B-frame streams without a CTTS box.
+
+    :param api: Supervisely API object.
+    :type api: Api
+    :param video_id: Video ID in Supervisely.
+    :type video_id: int
+    :param start: First frame index to yield (inclusive, 0-based). Defaults to 0.
+    :type start: int, optional
+    :param end: Last frame index to yield (inclusive, 0-based). Defaults to the last frame.
+    :type end: int, optional
+    :yields: Tuple of ``(frame_index, rgb_image)`` where ``rgb_image`` is a
+        ``numpy.ndarray`` of shape ``(H, W, 3)`` in RGB uint8 format.
+    :rtype: AsyncGenerator[Tuple[int, numpy.ndarray], None]
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.video.sampling import async_stream_video_frames
+
+            api = sly.Api.from_env()
+
+            async for frame_idx, img in async_stream_video_frames(api, video_id=123, start=0, end=9):
+                print(frame_idx, img.shape)
+    """
     pts_map, decode_from_start = await _async_build_pts_map(
         api=api,
         video_id=video_id,
-        logger=logger,
     )
 
     if not pts_map:
@@ -756,9 +783,32 @@ async def async_stream_video_frames_to_dir(
     ext: str = "png",
     progress_cb: Optional[Callable] = None,
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
-    logger: Any = default_logger,
 ) -> List[str]:
-    """Stream and save video frames to disk."""
+    """Async version of :func:`stream_video_frames_to_dir`.
+
+    Streams decoded video frames and saves them to ``output_dir`` as image
+    files named ``frame_<index:06d>.<ext>``.
+
+    :param api: Supervisely API object.
+    :type api: Api
+    :param video_id: Video ID in Supervisely.
+    :type video_id: int
+    :param output_dir: Directory where frame images will be saved.
+    :type output_dir: str
+    :param start: First frame index to save (inclusive, 0-based). Defaults to 0.
+    :type start: int, optional
+    :param end: Last frame index to save (inclusive, 0-based). Defaults to the last frame.
+    :type end: int, optional
+    :param ext: Image file extension (e.g. ``"png"``, ``"jpg"``). Defaults to ``"png"``.
+    :type ext: str, optional
+    :param progress_cb: Callable invoked with ``1`` after each frame is saved.
+    :type progress_cb: callable, optional
+    :param image_writer: Custom function ``(path, image) -> None`` for writing frames.
+        Defaults to :func:`supervisely.imaging.image.write`.
+    :type image_writer: callable, optional
+    :returns: List of absolute paths to saved frame files.
+    :rtype: List[str]
+    """
     os.makedirs(output_dir, exist_ok=True)
     if image_writer is None:
         from supervisely.imaging import image as sly_image
@@ -771,7 +821,6 @@ async def async_stream_video_frames_to_dir(
         video_id=video_id,
         start=start,
         end=end,
-        logger=logger,
     ):
         path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
         image_writer(path, img)
@@ -790,9 +839,49 @@ def stream_video_frames_to_dir(
     ext: str = "png",
     progress_cb: Optional[Callable] = None,
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
-    logger: Any = default_logger,
 ) -> List[str]:
-    """Synchronous wrapper for async_stream_video_frames_to_dir."""
+    """Stream decoded video frames and save them to a directory.
+
+    Decodes the requested frame range from the video (identified by
+    ``video_id``) and writes each frame as an image file to ``output_dir``.
+    Files are named ``frame_<index:06d>.<ext>`` (e.g. ``frame_000162.png``).
+
+    :param api: Supervisely API object.
+    :type api: Api
+    :param video_id: Video ID in Supervisely.
+    :type video_id: int
+    :param output_dir: Directory where frame images will be saved.
+        Created automatically if it does not exist.
+    :type output_dir: str
+    :param start: First frame index to save (inclusive, 0-based). Defaults to 0.
+    :type start: int, optional
+    :param end: Last frame index to save (inclusive, 0-based). Defaults to the last frame.
+    :type end: int, optional
+    :param ext: Image file extension (e.g. ``"png"``, ``"jpg"``). Defaults to ``"png"``.
+    :type ext: str, optional
+    :param progress_cb: Callable invoked with ``1`` after each frame is saved.
+        Useful for progress bars.
+    :type progress_cb: callable, optional
+    :param image_writer: Custom function ``(path, image) -> None`` for writing frames.
+        Defaults to :func:`supervisely.imaging.image.write`.
+    :type image_writer: callable, optional
+    :returns: List of absolute paths to the saved frame files.
+    :rtype: List[str]
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.video.sampling import stream_video_frames_to_dir
+
+            api = sly.Api.from_env()
+
+            paths = stream_video_frames_to_dir(
+                api, video_id=123, output_dir="/tmp/frames", start=0, end=9
+            )
+            print(paths)  # ['/tmp/frames/frame_000000.png', ...]
+    """
     return run_coroutine(
         async_stream_video_frames_to_dir(
             api=api,
@@ -803,6 +892,5 @@ def stream_video_frames_to_dir(
             ext=ext,
             progress_cb=progress_cb,
             image_writer=image_writer,
-            logger=logger,
         )
     )
