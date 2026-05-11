@@ -1,5 +1,7 @@
 import asyncio
+import concurrent.futures
 import os
+import threading
 import urllib.parse
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, Union
 
@@ -611,9 +613,20 @@ def _resolve_video_url(api: Any, video_id: int) -> str:
 
 def _av_open(video_url: str, token: Optional[str] = None) -> Any:
     """Open a PyAV container synchronously, injecting the API token header when present."""
-    import av
+    try:
+        import av
+    except ImportError as e:
+        raise ImportError(
+            "PyAV is required for video frame streaming but is not installed. "
+            "Install it with: pip install 'supervisely[video-av]'"
+        ) from e
 
-    av_options: Dict[str, str] = {}
+    av_options: Dict[str, str] = {
+        # FFmpeg read/write timeout in microseconds (30 s).
+        # Without this, av.open / container.decode can block the worker thread
+        # indefinitely when the remote server stalls or the connection drops.
+        "rw_timeout": "30000000",
+    }
     if token:
         av_options["headers"] = f"x-api-key: {token}\r\n"
     return av.open(video_url, options=av_options)
@@ -721,57 +734,92 @@ async def async_stream_video_frames(
 
     video_url = _resolve_video_url(api, video_id)
     loop = asyncio.get_running_loop()
-    container: Any = await loop.run_in_executor(None, lambda: _av_open(video_url, api.token))
+    queue: asyncio.Queue = asyncio.Queue(maxsize=8)
+    cancel_event = threading.Event()
+
+    def _put(item: Any) -> bool:
+        """Put *item* into the queue from a worker thread.
+
+        Retries with a 0.2-second timeout until the queue accepts the item or
+        ``cancel_event`` is set.  Returns ``True`` on success, ``False`` if
+        cancelled.
+        """
+        while not cancel_event.is_set():
+            fut = asyncio.run_coroutine_threadsafe(queue.put(item), loop)
+            try:
+                fut.result(timeout=0.2)
+                return True
+            except concurrent.futures.TimeoutError:
+                continue
+        return False
+
+    def _worker() -> None:
+        try:
+            container: Any = _av_open(video_url, api.token)
+            try:
+                video_streams = container.streams.video
+                if not video_streams:
+                    raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
+                v_stream = video_streams[0]
+
+                if decode_from_start:
+                    remaining: set = set(range(_start, _end + 1))
+                    for pkt in container.demux(v_stream):
+                        if cancel_event.is_set():
+                            break
+                        for frame in pkt.decode():
+                            if frame.pts is None or frame.is_corrupt:
+                                continue
+                            frame_idx = pts_to_index.get(frame.pts)
+                            if frame_idx is None or frame_idx not in remaining:
+                                continue
+                            img = frame.to_ndarray(format="rgb24")
+                            if not _put((frame_idx, img)):
+                                return
+                            remaining.discard(frame_idx)
+                        if not remaining:
+                            break
+                else:
+                    # Single seek to the first requested frame, then decode sequentially.
+                    # This avoids O(N) seeks for contiguous ranges.
+                    wanted: Dict[int, int] = {pts_map[i]: i for i in range(_start, _end + 1)}
+                    end_pts: int = pts_map[_end]
+                    container.seek(
+                        pts_map[_start], stream=v_stream, backward=True, any_frame=False
+                    )
+                    for frame in container.decode(v_stream):
+                        if cancel_event.is_set():
+                            break
+                        if frame.pts is None or frame.is_corrupt:
+                            continue
+                        frame_idx = wanted.pop(frame.pts, None)
+                        if frame_idx is not None:
+                            img = frame.to_ndarray(format="rgb24")
+                            if not _put((frame_idx, img)):
+                                return
+                        if not wanted:
+                            break
+                        if frame.pts > end_pts:
+                            break
+            finally:
+                container.close()
+        except Exception as exc:
+            _put(exc)
+        finally:
+            _put(None)  # sentinel — always sent last
+
+    future = loop.run_in_executor(None, _worker)
     try:
-        video_streams = container.streams.video
-        if not video_streams:
-            raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
-        v_stream = video_streams[0]
-
-        if decode_from_start:
-            remaining: set = set(range(_start, _end + 1))
-            for pkt in container.demux(v_stream):
-                for frame in pkt.decode():
-                    if frame.pts is None or frame.is_corrupt:
-                        continue
-                    frame_idx = pts_to_index.get(frame.pts)
-                    if frame_idx is None or frame_idx not in remaining:
-                        continue
-
-                    yield frame_idx, frame.to_ndarray(format="rgb24")
-                    remaining.discard(frame_idx)
-                    await asyncio.sleep(0)
-
-                if not remaining:
-                    break
-            return
-
-        for frame_idx in range(_start, _end + 1):
-            target_pts: int = pts_map[frame_idx]
-            container.seek(target_pts, stream=v_stream, backward=True, any_frame=False)
-
-            closest_frame: Optional[Any] = None
-            closest_dist: Optional[int] = None
-
-            for frame in container.decode(v_stream):
-                if frame.pts is None or frame.is_corrupt:
-                    continue
-
-                if frame.pts not in pts_to_index:
-                    continue
-
-                dist = abs(frame.pts - target_pts)
-                if closest_dist is None or dist < closest_dist:
-                    closest_frame = frame
-                    closest_dist = dist
-                elif frame.pts > target_pts:
-                    break
-
-            if closest_frame is not None:
-                yield frame_idx, closest_frame.to_ndarray(format="rgb24")
-                await asyncio.sleep(0)
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                raise item
+            yield item
     finally:
-        container.close()
+        cancel_event.set()
+        await future
 
 
 async def async_stream_video_frames_to_dir(
@@ -815,6 +863,7 @@ async def async_stream_video_frames_to_dir(
 
         image_writer = sly_image.write
 
+    loop = asyncio.get_running_loop()
     saved_paths: List[str] = []
     async for frame_idx, img in async_stream_video_frames(
         api=api,
@@ -823,7 +872,7 @@ async def async_stream_video_frames_to_dir(
         end=end,
     ):
         path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
-        image_writer(path, img)
+        await loop.run_in_executor(None, image_writer, path, img)
         saved_paths.append(path)
         if progress_cb is not None:
             progress_cb(1)
