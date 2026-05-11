@@ -731,16 +731,14 @@ class ApiField:
     """"""
     TRACKED_FIGURES = "trackedFigures"
     """"""
-<<<<<<< add-entities-api
     COLLECTION_ITEM_INDEX = "collectionItemIndex"
     """"""
     OMIT_FRAMES_TO_TIMECODES = "omitFramesToTimecodes"
     """"""
     GENERATE_UNIQUE_NAMES = "generateUniqueNames"
-=======
+    """"""
     TEAM_FILE_ID = "teamFileId"
-
->>>>>>> master
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
