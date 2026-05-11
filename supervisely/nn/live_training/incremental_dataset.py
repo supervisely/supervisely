@@ -37,6 +37,7 @@ class IncrementalDataset:
             self.masks_dir.mkdir(parents=True, exist_ok=True)
         self.samples: Dict[int, dict] = {}
         self.samples_list = []
+        self.labeled_count: int = 0
 
     def add(
             self,
@@ -70,6 +71,8 @@ class IncrementalDataset:
         # add to dataset
         self.samples[image_id] = sample
         self.samples_list.append(sample)
+        if sample['annotations']:
+            self.labeled_count += 1
         return sample
 
     def add_video(self, frame_id: str, frame_np: np.ndarray, annotation: sly.Annotation) -> dict:
@@ -94,6 +97,8 @@ class IncrementalDataset:
         # add to dataset
         self.samples[frame_id] = sample
         self.samples_list.append(sample)
+        if sample['annotations']:
+            self.labeled_count += 1
         return sample
 
     def update(
@@ -104,6 +109,7 @@ class IncrementalDataset:
         if image_id not in self.samples:
             raise ValueError(f"Cannot update sample: Image ID {image_id} does not exist in the dataset.")
         sample = self.samples[image_id]
+        was_labeled = bool(sample['annotations'])
         new_sample = self._format_sample(
             image_id,
             annotation,
@@ -112,6 +118,8 @@ class IncrementalDataset:
             sample.get('mask_path')
         )
         sample.update(new_sample)
+        is_labeled = bool(sample['annotations'])
+        self.labeled_count += int(is_labeled) - int(was_labeled)
         return sample
 
     def update_video(self, frame_id: str, annotation: sly.Annotation) -> dict:
@@ -120,10 +128,13 @@ class IncrementalDataset:
                 f"Cannot update sample: Frame ID {frame_id} does not exist in the dataset."
             )
         sample = self.samples[frame_id]
+        was_labeled = bool(sample['annotations'])
         new_sample = self._format_sample(
             frame_id, annotation, sample["size"], sample["image_path"], sample.get("mask_path")
         )
         sample.update(new_sample)
+        is_labeled = bool(sample['annotations'])
+        self.labeled_count += int(is_labeled) - int(was_labeled)
         return sample
 
     def add_or_update(
@@ -191,6 +202,10 @@ class IncrementalDataset:
 
     def __len__(self) -> int:
         return len(self.samples)
+
+    @property
+    def num_labeled_samples(self) -> int:
+        return self.labeled_count
 
     def get_image_ids(self) -> list:
         """Get list of image IDs in dataset"""

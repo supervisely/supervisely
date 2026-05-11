@@ -112,10 +112,11 @@ class LiveTraining:
         return self.iter > self.initial_iters
 
     def status(self):
+        labeled_count = self.dataset.num_labeled_samples if self.dataset is not None else 0
         return {
             'phase': self.phase,
             'samples_count': len(self.dataset) if self.dataset is not None else 0,
-            'waiting_samples': self.initial_samples,
+            'waiting_samples': max(0, self.initial_samples - labeled_count),
             'task_type': self.task_type,
             'iteration': self.iter,
             'loss': self._loss,
@@ -189,12 +190,17 @@ class LiveTraining:
         self,
         samples_needed: int,
         max_wait_time: int = None,
+        count_fn=None,
     ):
         sleep_interval = 0.3
         elapsed_time = 0
-        samples_before = len(self.dataset)
+        if count_fn is None:
+            samples_before = len(self.dataset)
+            def reached(): return len(self.dataset) - samples_before >= samples_needed
+        else:
+            def reached(): return count_fn() >= samples_needed
 
-        while len(self.dataset) - samples_before < samples_needed:
+        while not reached():
             if max_wait_time is not None and elapsed_time >= max_wait_time:
                 raise RuntimeError("Timeout waiting for samples")
 
@@ -216,17 +222,21 @@ class LiveTraining:
             elapsed_time += sleep_interval
 
     def _wait_for_initial_samples(self):
-        if len(self.dataset) >= self.initial_samples:
+        if self.dataset.num_labeled_samples >= self.initial_samples:
             return
 
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._is_paused = True
 
-        samples_needed = self.initial_samples - len(self.dataset)
-        logger.info(f"Waiting for {samples_needed} initial samples")
+        samples_needed = self.initial_samples - self.dataset.num_labeled_samples
+        logger.info(
+            f"Waiting for {samples_needed} more labeled samples "
+            f"({self.dataset.num_labeled_samples}/{self.initial_samples})"
+        )
         self._wait_until_samples_added(
-            samples_needed=samples_needed,
+            samples_needed=self.initial_samples,
             max_wait_time=3600,
+            count_fn=lambda: self.dataset.num_labeled_samples,
         )
 
         self._is_paused = False
@@ -359,6 +369,8 @@ class LiveTraining:
             annotation=sly_ann,
             image_name=data['image_name']
         )
+        if not sly_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
+            logger.debug(f"Added unlabeled sample {image_id}; not counted toward initial threshold")
         if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(image_id, sly_ann)
             if result is not None:
@@ -368,7 +380,7 @@ class LiveTraining:
                     f"EMA={result['ema_value']:.3f}"
                 )
 
-        if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
+        if (self.dataset.num_labeled_samples >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
 
         return {
@@ -425,6 +437,8 @@ class LiveTraining:
             annotation=img_ann,
         )
 
+        if not img_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
+            logger.debug(f"Added unlabeled sample {frame_id}; not counted toward initial threshold")
         if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(frame_id, img_ann)
             if result is not None:
@@ -434,7 +448,7 @@ class LiveTraining:
                     f"EMA={result['ema_value']:.3f}"
                 )
 
-        if (len(self.dataset) >= self.initial_samples) and self.phase == Phase.WAITING_FOR_SAMPLES:
+        if (self.dataset.num_labeled_samples >= self.initial_samples) and self.phase == Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
 
         return {
@@ -472,6 +486,8 @@ class LiveTraining:
                 annotation=img_ann,
             )
 
+            if not img_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
+                logger.debug(f"Added unlabeled sample {frame_id}; not counted toward initial threshold")
             if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
                 result = self.evaluator.evaluate(frame_id, img_ann)
                 if result is not None:
@@ -482,7 +498,7 @@ class LiveTraining:
                     )
 
             if (
-                len(self.dataset) >= self.initial_samples
+                self.dataset.num_labeled_samples >= self.initial_samples
             ) and self.phase == Phase.WAITING_FOR_SAMPLES:
                 self.phase = Phase.INITIAL_TRAINING
 
