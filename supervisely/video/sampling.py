@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, U
 import cv2
 import numpy as np
 
-from supervisely._utils import batched_iter
+from supervisely._utils import batched_iter, run_coroutine
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
@@ -699,20 +699,15 @@ async def async_stream_video_frames(
         if decode_from_start:
             remaining: set = set(range(_start, _end + 1))
             for pkt in container.demux(v_stream):
-                pkt_idx: Optional[int] = (
-                    pts_to_index.get(pkt.pts) if pkt.pts is not None and pkt.pts >= 0 else None
-                )
-                is_target = pkt_idx is not None and _start <= pkt_idx <= _end
-
-                output_frame: Optional[Any] = None
                 for frame in pkt.decode():
-                    if frame.pts is not None and not frame.is_corrupt:
-                        output_frame = frame
-                        break
+                    if frame.pts is None or frame.is_corrupt:
+                        continue
+                    frame_idx = pts_to_index.get(frame.pts)
+                    if frame_idx is None or frame_idx not in remaining:
+                        continue
 
-                if is_target and output_frame is not None:
-                    yield pkt_idx, output_frame.to_ndarray(format="rgb24")
-                    remaining.discard(pkt_idx)
+                    yield frame_idx, frame.to_ndarray(format="rgb24")
+                    remaining.discard(frame_idx)
                     await asyncio.sleep(0)
 
                 if not remaining:
@@ -796,7 +791,7 @@ def stream_video_frames_to_dir(
     logger: Any = default_logger,
 ) -> List[str]:
     """Synchronous wrapper for async_stream_video_frames_to_dir."""
-    return asyncio.run(
+    return run_coroutine(
         async_stream_video_frames_to_dir(
             api=api,
             video_id=video_id,
