@@ -88,6 +88,7 @@ class IncrementalDataset:
         if self.save_masks_as_images:
             mask_path = self._save_mask(annotation, frame_name)
         sample = self._format_sample(frame_id, annotation, img_size, image_path, mask_path)
+        print(f"After format sample: {sample}")
         assert isinstance(sample, dict), "Sample must be a dict."
         # add extra fields for internal use
         sample["image_path"] = image_path
