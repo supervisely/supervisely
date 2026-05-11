@@ -97,6 +97,9 @@ class IncrementalDataset:
         # add to dataset
         self.samples[frame_id] = sample
         self.samples_list.append(sample)
+
+        print(f"Sample: {sample}")
+
         if sample['annotations']:
             self.labeled_count += 1
         return sample
