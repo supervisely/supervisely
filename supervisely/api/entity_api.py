@@ -3,8 +3,12 @@
 
 from __future__ import annotations
 
+import asyncio
+
+import aiofiles
 from typing import (
     Any,
+    AsyncGenerator,
     Callable,
     Dict,
     Iterator,
@@ -18,6 +22,7 @@ from typing import (
 from tqdm import tqdm
 
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.io.fs import ensure_base_path, get_file_hash_async
 
 
 _CREATED_BY_FIELD = ApiField.CREATED_BY_ID[0][0]
@@ -311,8 +316,11 @@ class EntityApi(ModuleApiBase):
             # Get a single entity's info
             entity = api.entity.get_info_by_id(entity_id=456)
 
-            # Download entity file content
-            data = api.entity.download(entity_id=456)
+            # Download entity file content to disk
+            api.entity.download(id=456, path="output.bin")
+
+            # Download entity file content to memory
+            data = api.entity.download_bytes(id=456)
     """
 
     @staticmethod
@@ -768,11 +776,226 @@ class EntityApi(ModuleApiBase):
 
         return result
 
-    def download(self, id: int) -> bytes:
-        """
-        Download an entity's raw file content by its ID.
+    def _download(self, id: int, is_stream: Optional[bool] = False):
+        """Private method. Download entity with given ID."""
+        return self._api.post("entities.download", {ApiField.ID: id}, stream=is_stream)
 
-        Calls ``entities.download``.
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+    ) -> AsyncGenerator:
+        """
+        Download entity with given ID asynchronously.
+
+        :param id: Entity ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :returns: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "entities.download"
+        json_body = {ApiField.ID: id}
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+                chunk_size=chunk_size,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    def download_path(self, id: int, path: str) -> None:
+        """
+        Download entity file content by its ID and save it to local path.
+
+        :param id: Entity ID in Supervisely.
+        :type id: int
+        :param path: Local file path to save entity bytes.
+        :type path: str
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                # Download entity to local file
+                api.entity.download_path(id=12345, path="output.bin")
+        """
+        response = self._download(id, is_stream=True)
+        ensure_base_path(path)
+        with open(path, "wb") as file:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    file.write(chunk)
+
+    def download(self, id: int, path: str) -> None:
+        """Alias for :meth:`download_path` to match other media APIs."""
+        return self.download_path(id=id, path=path)
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Download entity with given ID to local path asynchronously.
+
+        :param id: Entity ID in Supervisely.
+        :type id: int
+        :param path: Local save path for entity file.
+        :type path: str
+        :param semaphore: Semaphore for limiting simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+            Check is not supported for partial downloads.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :returns: None
+        :rtype: None
+        """
+        if range_start is not None or range_end is not None:
+            check_hash = False
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as file:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    range_start=range_start,
+                    range_end=range_end,
+                    headers=headers,
+                    chunk_size=chunk_size,
+                ):
+                    await file.write(chunk)
+                    hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
+
+        if check_hash and hash_to_check is not None:
+            downloaded_hash = await get_file_hash_async(path)
+            if downloaded_hash != hash_to_check:
+                raise RuntimeError(
+                    f"Downloaded hash of entity with ID:{id} does not match the expected hash: "
+                    f"{downloaded_hash} != {hash_to_check}"
+                )
+
+        if progress_cb is not None and progress_cb_type == "number":
+            progress_cb(1)
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Download entities with given IDs and save them to local paths asynchronously.
+
+        :param ids: List of entity IDs in Supervisely.
+        :type ids: List[int]
+        :param paths: Local save paths for entities.
+        :type paths: List[str]
+        :param semaphore: Semaphore for limiting simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded files.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :raises ValueError: if len(ids) != len(paths)
+        :returns: None
+        :rtype: None
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        tasks = []
+        for entity_id, entity_path in zip(ids, paths):
+            task = self.download_path_async(
+                entity_id,
+                entity_path,
+                semaphore=semaphore,
+                headers=headers,
+                chunk_size=chunk_size,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+
+        await asyncio.gather(*tasks)
+
+    def download_bytes(self, id: int) -> bytes:
+        """
+        Download entity file content by its ID to memory.
 
         :param id: Entity ID in Supervisely.
         :type id: int
@@ -788,11 +1011,7 @@ class EntityApi(ModuleApiBase):
                 api = sly.Api.from_env()
 
                 # Download entity to memory
-                file_bytes = api.entity.download(entity_id=12345)
-
-                # Save to disk
-                with open("output.jpg", "wb") as f:
-                    f.write(file_bytes)
+                file_bytes = api.entity.download_bytes(id=12345)
         """
-        response = self._api.post("entities.download", {ApiField.ID: id})
+        response = self._download(id)
         return response.content
