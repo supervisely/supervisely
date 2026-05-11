@@ -1,14 +1,34 @@
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional, Union
 
+from supervisely import (
+    Api,
+    ObjClass,
+    PointcloudEpisodeFrame,
+    PointcloudEpisodeObject,
+    PointcloudFigure,
+    PointcloudObject,
+    ProjectMeta,
+    TagMeta,
+    TagValueType,
+    is_development,
+    logger,
+)
+from supervisely.api.api import ApiField
 from supervisely.convert.base_converter import AvailablePointcloudEpisodesConverters
+from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.convert.pointcloud.lyft.lyft_converter import LyftConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
 )
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.io import fs
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
-    PointcloudEpisodeObjectCollection,
     PointcloudEpisodeFrameCollection,
+    PointcloudEpisodeObjectCollection,
     PointcloudEpisodeTagCollection,
     PointcloudFigure,
 )
@@ -16,27 +36,6 @@ from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
     PointcloudEpisodeTag,
 )
 from supervisely.project.project_settings import LabelingInterface
-
-from pathlib import Path
-from supervisely import (
-    Api,
-    ObjClass,
-    ProjectMeta,
-    logger,
-    is_development,
-    PointcloudObject,
-    PointcloudEpisodeObject,
-    PointcloudFigure,
-    PointcloudEpisodeFrame,
-    TagMeta,
-    TagValueType,
-)
-from supervisely.io import fs
-from supervisely.convert.pointcloud.lyft import lyft_helper
-from supervisely.api.api import ApiField
-from datetime import datetime
-from supervisely.geometry.cuboid_3d import Cuboid3d
-from collections import defaultdict
 
 # from supervisely.annotation.tag_meta import TagTargetType as TagTT
 
@@ -50,9 +49,12 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._type = "point_cloud_episode"
         self._is_pcd_episode = True

@@ -40,6 +40,13 @@ from supervisely.io.fs import (
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
 from supervisely.sly_logger import logger
+
+POINT_CLOUD_MIME_TYPES = {
+    ".pcd": "image/pcd",
+    ".las": "application/vnd.las",
+    ".laz": "application/vnd.laz",
+    ".ply": "application/x-ply",
+}
 from supervisely.imaging import image as sly_image
 
 
@@ -1067,11 +1074,98 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 # Point clouds uploaded to Supervisely with IDs: [19618685, 19618686]
         """
 
-        def path_to_bytes_stream(path):
-            return open(path, "rb")
+        team_files_exts = set(POINT_CLOUD_MIME_TYPES) - {".pcd"}
+        tf_indices = [i for i, p in enumerate(paths) if get_file_ext(p).lower() in team_files_exts]
+        hash_indices = [i for i in range(len(paths)) if i not in set(tf_indices)]
 
-        hashes = self._upload_data_bulk(path_to_bytes_stream, get_file_hash, paths, progress_cb)
-        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
+        results: Dict[int, PointcloudInfo] = {}
+
+        if hash_indices:
+            h_names = [names[i] for i in hash_indices]
+            h_paths = [paths[i] for i in hash_indices]
+            h_metas = [metas[i] for i in hash_indices] if metas is not None else None
+
+            def path_to_bytes_stream(path):
+                return open(path, "rb")
+
+            hashes = self._upload_data_bulk(
+                path_to_bytes_stream, get_file_hash, h_paths, progress_cb
+            )
+            for i, info in zip(
+                hash_indices, self.upload_hashes(dataset_id, h_names, hashes, metas=h_metas)
+            ):
+                results[i] = info
+
+        if tf_indices:
+            tf_names = [names[i] for i in tf_indices]
+            tf_paths = [paths[i] for i in tf_indices]
+            tf_metas = [metas[i] for i in tf_indices] if metas is not None else None
+            for i, info in zip(
+                tf_indices,
+                self.upload_paths_via_team_files(
+                    dataset_id, tf_names, tf_paths, tf_metas, progress_cb
+                ),
+            ):
+                results[i] = info
+
+        return [results[i] for i in range(len(paths))]
+
+    def upload_paths_via_team_files(
+        self,
+        dataset_id: int,
+        names: List[str],
+        paths: List[str],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List["PointcloudInfo"]:
+        """Upload PLY/LAS/LAZ point clouds by first staging them in Team Files, then adding to dataset.
+
+        Use this method for formats not supported by the direct hash-based upload (.pcd only).
+        Temporary files are removed from Team Files after the dataset entry is created.
+        """
+        dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+        team_id = dataset_info.team_id
+        upload_dir = f"/sly-pointcloud-uploads/{rand_str(8)}"
+
+        file_ids = []
+        for path, name in zip(paths, names):
+            remote_path = f"{upload_dir}/{name}"
+            file_info = self._api.file.upload(team_id, path, remote_path)
+            file_ids.append(file_info.id)
+            if progress_cb is not None:
+                progress_cb(1)
+
+        try:
+            results = self.upload_team_files_ids(dataset_id, names, file_ids, metas)
+        finally:
+            try:
+                self._api.file.remove_dir(team_id, upload_dir, silent=True)
+            except Exception:
+                pass
+
+        return results
+
+    def upload_team_files_ids(
+        self,
+        dataset_id: int,
+        names: List[str],
+        team_file_ids: List[int],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Callable] = None,
+    ) -> List["PointcloudInfo"]:
+        """Add point clouds already present in Team Files to a dataset by their file IDs.
+
+        Use when files are already uploaded to Team Files and you want to reference them
+        directly without re-uploading.
+        """
+        return self._upload_bulk_add(
+            lambda item: (ApiField.TEAM_FILE_ID, item),
+            dataset_id,
+            names,
+            team_file_ids,
+            metas,
+            progress_cb,
+        )
 
     def check_existing_hashes(self, hashes: List[str]) -> List[str]:
         """
@@ -1145,10 +1239,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
         for batch, numbers_batch in zip(batched(items_to_upload), batched(total_nem_items_list)):
             content_dict = {}
             for idx, item in enumerate(batch):
+                ext = get_file_ext(item).lower() if isinstance(item, str) else ".pcd"
+                mime_type = POINT_CLOUD_MIME_TYPES.get(ext, "image/pcd")
                 content_dict["{}-file".format(idx)] = (
                     str(idx),
                     func_item_to_byte_stream(item),
-                    "pcd/*",
+                    mime_type,
                 )
             encoder = MultipartEncoder(fields=content_dict)
             self._api.post("point-clouds.bulk.upload", encoder)

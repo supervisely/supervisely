@@ -93,8 +93,11 @@ class SemanticKITTIConverter(PointcloudEpisodeConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
         self._label_map = {}
 
     def __str__(self) -> str:
