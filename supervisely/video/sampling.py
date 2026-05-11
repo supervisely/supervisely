@@ -1,4 +1,7 @@
-from typing import Dict, List, Union
+import asyncio
+import os
+import urllib.parse
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -15,6 +18,7 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.project.project_meta import ProjectMeta
+from supervisely import logger as default_logger
 from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
@@ -574,3 +578,235 @@ def sample_video_project(
         )
 
     return dst_project_info
+
+
+def _extract_video_url(
+    json_info: dict,
+    video_id: int,
+    server_address: str,
+    full_storage_url_key: str = "fullStorageUrl",
+) -> str:
+    """Extract and rewrite the public video URL from already-fetched video JSON info."""
+    video_url = json_info.get(full_storage_url_key)
+    if not video_url:
+        raise RuntimeError(
+            f"Cannot resolve {full_storage_url_key} for video {video_id}. "
+            "Make sure the video is fully processed on the server."
+        )
+    parsed = urllib.parse.urlparse(video_url)
+    public = urllib.parse.urlparse(server_address)
+    return urllib.parse.urlunparse(parsed._replace(scheme=public.scheme, netloc=public.netloc))
+
+
+def _resolve_video_url(api: Any, video_id: int, full_storage_url_key: str = "fullStorageUrl") -> str:
+    """Resolve and rewrite the public video URL for the current server address."""
+    json_info = api.video.get_json_info_by_id(video_id, force_metadata_for_links=False)
+    return _extract_video_url(
+        json_info=json_info,
+        video_id=video_id,
+        server_address=api.server_address,
+        full_storage_url_key=full_storage_url_key,
+    )
+
+
+def _av_open(video_url: str, token: Optional[str] = None) -> Any:
+    """Open a PyAV container synchronously, injecting the API token header when present."""
+    import av
+
+    av_options: Dict[str, str] = {}
+    if token:
+        av_options["headers"] = f"x-api-key: {token}\r\n"
+    return av.open(video_url, options=av_options)
+
+
+async def _async_build_pts_map(
+    api: Any,
+    video_id: int,
+    full_storage_url_key: str = "fullStorageUrl",
+    logger: Any = default_logger,
+) -> Tuple[List[int], bool]:
+    """Build frame-index -> PTS map and detect no-CTTS B-frame streams."""
+    video_url = _resolve_video_url(api, video_id, full_storage_url_key)
+    loop = asyncio.get_running_loop()
+    container: Any = await loop.run_in_executor(None, lambda: _av_open(video_url, api.token))
+    try:
+        video_streams = container.streams.video
+        if not video_streams:
+            raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
+        v_stream = video_streams[0]
+
+        pts_list: List[int] = []
+        saw_pts_ne_dts = False
+        for pkt in container.demux(v_stream):
+            if pkt.pts is not None and pkt.dts is not None and pkt.pts != pkt.dts:
+                saw_pts_ne_dts = True
+            if pkt.pts is not None and pkt.pts >= 0:
+                pts_list.append(pkt.pts)
+
+        pts_list.sort()
+        has_b_frames = getattr(v_stream.codec_context, "has_b_frames", 0) > 0
+        decode_from_start = has_b_frames and not saw_pts_ne_dts
+        if decode_from_start:
+            logger.warning(
+                "B-frame stream without CTTS detected; "
+                "using full decode from start for stable frame extraction.",
+                extra={"video_id": video_id},
+            )
+        logger.debug(
+            "build_pts_map: video_id=%d - %d pts values (demux, non-negative, sorted), decode_from_start=%s.",
+            video_id,
+            len(pts_list),
+            decode_from_start,
+        )
+        return pts_list, decode_from_start
+    finally:
+        container.close()
+
+
+async def async_stream_video_frames(
+    api: Any,
+    video_id: int,
+    start: Optional[int] = None,
+    end: Optional[int] = None,
+    full_storage_url_key: str = "fullStorageUrl",
+    logger: Any = default_logger,
+) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
+    """Stream decoded video frames by frame index."""
+    pts_map, decode_from_start = await _async_build_pts_map(
+        api=api,
+        video_id=video_id,
+        full_storage_url_key=full_storage_url_key,
+        logger=logger,
+    )
+
+    if not pts_map:
+        return
+
+    _start: int = max(0, start if start is not None else 0)
+    _end: int = min(max(_start, end), len(pts_map) - 1) if end is not None else len(pts_map) - 1
+
+    pts_to_index: Dict[int, int] = {pts: idx for idx, pts in enumerate(pts_map)}
+
+    video_url = _resolve_video_url(api, video_id, full_storage_url_key)
+    loop = asyncio.get_running_loop()
+    container: Any = await loop.run_in_executor(None, lambda: _av_open(video_url, api.token))
+    try:
+        video_streams = container.streams.video
+        if not video_streams:
+            raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
+        v_stream = video_streams[0]
+
+        if decode_from_start:
+            remaining: set = set(range(_start, _end + 1))
+            for pkt in container.demux(v_stream):
+                pkt_idx: Optional[int] = (
+                    pts_to_index.get(pkt.pts) if pkt.pts is not None and pkt.pts >= 0 else None
+                )
+                is_target = pkt_idx is not None and _start <= pkt_idx <= _end
+
+                output_frame: Optional[Any] = None
+                for frame in pkt.decode():
+                    if frame.pts is not None and not frame.is_corrupt:
+                        output_frame = frame
+                        break
+
+                if is_target and output_frame is not None:
+                    yield pkt_idx, output_frame.to_ndarray(format="rgb24")
+                    remaining.discard(pkt_idx)
+                    await asyncio.sleep(0)
+
+                if not remaining:
+                    break
+            return
+
+        for frame_idx in range(_start, _end + 1):
+            target_pts: int = pts_map[frame_idx]
+            container.seek(target_pts, stream=v_stream, backward=True, any_frame=False)
+
+            closest_frame: Optional[Any] = None
+            closest_dist: Optional[int] = None
+
+            for frame in container.decode(v_stream):
+                if frame.pts is None or frame.is_corrupt:
+                    continue
+
+                if frame.pts not in pts_to_index:
+                    continue
+
+                dist = abs(frame.pts - target_pts)
+                if closest_dist is None or dist < closest_dist:
+                    closest_frame = frame
+                    closest_dist = dist
+                elif frame.pts > target_pts:
+                    break
+
+            if closest_frame is not None:
+                yield frame_idx, closest_frame.to_ndarray(format="rgb24")
+                await asyncio.sleep(0)
+    finally:
+        container.close()
+
+
+async def async_stream_video_frames_to_dir(
+    api: Any,
+    video_id: int,
+    output_dir: str,
+    start: Optional[int] = None,
+    end: Optional[int] = None,
+    ext: str = "png",
+    progress_cb: Optional[Callable] = None,
+    full_storage_url_key: str = "fullStorageUrl",
+    image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
+    logger: Any = default_logger,
+) -> List[str]:
+    """Stream and save video frames to disk."""
+    os.makedirs(output_dir, exist_ok=True)
+    if image_writer is None:
+        from supervisely.imaging import image as sly_image
+
+        image_writer = sly_image.write
+
+    saved_paths: List[str] = []
+    async for frame_idx, img in async_stream_video_frames(
+        api=api,
+        video_id=video_id,
+        start=start,
+        end=end,
+        full_storage_url_key=full_storage_url_key,
+        logger=logger,
+    ):
+        path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
+        image_writer(path, img)
+        saved_paths.append(path)
+        if progress_cb is not None:
+            progress_cb(1)
+    return saved_paths
+
+
+def stream_video_frames_to_dir(
+    api: Any,
+    video_id: int,
+    output_dir: str,
+    start: Optional[int] = None,
+    end: Optional[int] = None,
+    ext: str = "png",
+    progress_cb: Optional[Callable] = None,
+    full_storage_url_key: str = "fullStorageUrl",
+    image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
+    logger: Any = default_logger,
+) -> List[str]:
+    """Synchronous wrapper for async_stream_video_frames_to_dir."""
+    return asyncio.run(
+        async_stream_video_frames_to_dir(
+            api=api,
+            video_id=video_id,
+            output_dir=output_dir,
+            start=start,
+            end=end,
+            ext=ext,
+            progress_cb=progress_cb,
+            full_storage_url_key=full_storage_url_key,
+            image_writer=image_writer,
+            logger=logger,
+        )
+    )
