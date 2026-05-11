@@ -15,6 +15,7 @@ from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueTy
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.project.project_meta import ProjectMeta
@@ -584,13 +585,13 @@ def _extract_video_url(
     json_info: dict,
     video_id: int,
     server_address: str,
-    full_storage_url_key: str = "fullStorageUrl",
 ) -> str:
     """Extract and rewrite the public video URL from already-fetched video JSON info."""
-    video_url = json_info.get(full_storage_url_key)
+
+    video_url = json_info.get(ApiField.FULL_STORAGE_URL)
     if not video_url:
         raise RuntimeError(
-            f"Cannot resolve {full_storage_url_key} for video {video_id}. "
+            f"Cannot resolve {ApiField.FULL_STORAGE_URL} for video {video_id}. "
             "Make sure the video is fully processed on the server."
         )
     parsed = urllib.parse.urlparse(video_url)
@@ -598,14 +599,13 @@ def _extract_video_url(
     return urllib.parse.urlunparse(parsed._replace(scheme=public.scheme, netloc=public.netloc))
 
 
-def _resolve_video_url(api: Any, video_id: int, full_storage_url_key: str = "fullStorageUrl") -> str:
+def _resolve_video_url(api: Any, video_id: int) -> str:
     """Resolve and rewrite the public video URL for the current server address."""
     json_info = api.video.get_json_info_by_id(video_id, force_metadata_for_links=False)
     return _extract_video_url(
         json_info=json_info,
         video_id=video_id,
         server_address=api.server_address,
-        full_storage_url_key=full_storage_url_key,
     )
 
 
@@ -619,16 +619,9 @@ def _av_open(video_url: str, token: Optional[str] = None) -> Any:
     return av.open(video_url, options=av_options)
 
 
-async def _async_build_pts_map(
-    api: Any,
-    video_id: int,
-    full_storage_url_key: str = "fullStorageUrl",
-    logger: Any = default_logger,
-) -> Tuple[List[int], bool]:
-    """Build frame-index -> PTS map and detect no-CTTS B-frame streams."""
-    video_url = _resolve_video_url(api, video_id, full_storage_url_key)
-    loop = asyncio.get_running_loop()
-    container: Any = await loop.run_in_executor(None, lambda: _av_open(video_url, api.token))
+def _sync_build_pts_map(video_url: str, token: Optional[str], video_id: int) -> Tuple[List[int], bool]:
+    """Synchronously demux video and build a sorted PTS list. Safe to run in a thread pool."""
+    container: Any = _av_open(video_url, token)
     try:
         video_streams = container.streams.video
         if not video_streams:
@@ -646,21 +639,35 @@ async def _async_build_pts_map(
         pts_list.sort()
         has_b_frames = getattr(v_stream.codec_context, "has_b_frames", 0) > 0
         decode_from_start = has_b_frames and not saw_pts_ne_dts
-        if decode_from_start:
-            logger.warning(
-                "B-frame stream without CTTS detected; "
-                "using full decode from start for stable frame extraction.",
-                extra={"video_id": video_id},
-            )
-        logger.debug(
-            "build_pts_map: video_id=%d - %d pts values (demux, non-negative, sorted), decode_from_start=%s.",
-            video_id,
-            len(pts_list),
-            decode_from_start,
-        )
         return pts_list, decode_from_start
     finally:
         container.close()
+
+
+async def _async_build_pts_map(
+    api: Any,
+    video_id: int,
+    logger: Any = default_logger,
+) -> Tuple[List[int], bool]:
+    """Build frame-index -> PTS map and detect no-CTTS B-frame streams."""
+    video_url = _resolve_video_url(api, video_id)
+    loop = asyncio.get_running_loop()
+    pts_list, decode_from_start = await loop.run_in_executor(
+        None, _sync_build_pts_map, video_url, api.token, video_id
+    )
+    if decode_from_start:
+        logger.warning(
+            "B-frame stream without CTTS detected; "
+            "using full decode from start for stable frame extraction.",
+            extra={"video_id": video_id},
+        )
+    logger.debug(
+        "build_pts_map: video_id=%d - %d pts values (demux, non-negative, sorted), decode_from_start=%s.",
+        video_id,
+        len(pts_list),
+        decode_from_start,
+    )
+    return pts_list, decode_from_start
 
 
 async def async_stream_video_frames(
@@ -668,14 +675,12 @@ async def async_stream_video_frames(
     video_id: int,
     start: Optional[int] = None,
     end: Optional[int] = None,
-    full_storage_url_key: str = "fullStorageUrl",
     logger: Any = default_logger,
 ) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
     """Stream decoded video frames by frame index."""
     pts_map, decode_from_start = await _async_build_pts_map(
         api=api,
         video_id=video_id,
-        full_storage_url_key=full_storage_url_key,
         logger=logger,
     )
 
@@ -687,7 +692,7 @@ async def async_stream_video_frames(
 
     pts_to_index: Dict[int, int] = {pts: idx for idx, pts in enumerate(pts_map)}
 
-    video_url = _resolve_video_url(api, video_id, full_storage_url_key)
+    video_url = _resolve_video_url(api, video_id)
     loop = asyncio.get_running_loop()
     container: Any = await loop.run_in_executor(None, lambda: _av_open(video_url, api.token))
     try:
@@ -750,7 +755,6 @@ async def async_stream_video_frames_to_dir(
     end: Optional[int] = None,
     ext: str = "png",
     progress_cb: Optional[Callable] = None,
-    full_storage_url_key: str = "fullStorageUrl",
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
     logger: Any = default_logger,
 ) -> List[str]:
@@ -767,7 +771,6 @@ async def async_stream_video_frames_to_dir(
         video_id=video_id,
         start=start,
         end=end,
-        full_storage_url_key=full_storage_url_key,
         logger=logger,
     ):
         path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
@@ -786,7 +789,6 @@ def stream_video_frames_to_dir(
     end: Optional[int] = None,
     ext: str = "png",
     progress_cb: Optional[Callable] = None,
-    full_storage_url_key: str = "fullStorageUrl",
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
     logger: Any = default_logger,
 ) -> List[str]:
@@ -800,7 +802,6 @@ def stream_video_frames_to_dir(
             end=end,
             ext=ext,
             progress_cb=progress_cb,
-            full_storage_url_key=full_storage_url_key,
             image_writer=image_writer,
             logger=logger,
         )
