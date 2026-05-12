@@ -258,6 +258,10 @@ setup(
             "tqdm>=4.66.3, <5.0.0",
             "pandas>=1.1.3, <=2.3.3",
         ],
+        "video-av": [
+            "av>=12.0.0, <13.0.0; python_version == '3.8'",
+            "av>=13.0.0, <18.0.0; python_version >= '3.9'",
+        ],
         "docs": [
             "sphinx==8.2.3",
             "sphinx-immaterial==0.13.9",

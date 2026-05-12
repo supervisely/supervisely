@@ -84,7 +84,6 @@ class VideoFrameAPI(ModuleApi):
 
                 import os
                 from dotenv import load_dotenv
-
                 import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
