@@ -274,7 +274,7 @@ if state.get("app_initializing", False) == True:
       return result;
     }
 
-    const runPythonScriptThrottled = _.throttle(runPythonScript, 50);
+    const runPythonScriptThrottled = window.sly.packages.lodash.throttle(runPythonScript, 50);
     {% if __webpy_script__ %}
     initPromise = loadMainPythonScript();
     {% endif %}

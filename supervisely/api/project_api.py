@@ -33,6 +33,7 @@ from supervisely._utils import (
     abs_url,
     compare_dicts,
     compress_image_url,
+    deep_merge_dicts,
     get_unix_timestamp,
     is_development,
 )
@@ -719,6 +720,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
         readme: Optional[str] = None,
+        settings: Optional[Dict] = None,
+        custom_data: Optional[Dict] = None,
+        read_only: Optional[bool] = None,
     ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
@@ -735,6 +739,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param readme: Project readme.
         :type readme: str, optional
+        :param settings: Optional project settings dict.
+        :type settings: dict, optional
+        :param custom_data: Optional custom metadata dict.
+        :type custom_data: dict, optional
+        :param read_only: Optional flag to set the project as read-only. Works only with image and video projects. If set to True, the project will be created with read-only settings, and users will not be able to modify annotations in this project. Default is False.
+        :type read_only: bool, optional
         :returns: ProjectInfo object with information about the Project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
@@ -789,7 +799,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         }
         if readme is not None:
             payload[ApiField.README] = readme
+        if settings is not None:
+            payload[ApiField.SETTINGS] = settings
+        if custom_data is not None:
+            payload[ApiField.CUSTOM_DATA] = custom_data
+
+        if type in (ProjectType.IMAGES, ProjectType.VIDEOS) and read_only:
+            payload.setdefault(ApiField.SETTINGS, {}).setdefault(ApiField.ADVANCED_SETTINGS, {})[ApiField.IS_READ_ONLY_PROJECT] = True
+
         response = self._api.post("projects.add", payload)
+
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
@@ -1497,22 +1516,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return incorrect_entities
 
-    def get_settings(self, id: int) -> Dict[str, str]:
+    def get_settings(self, id: int) -> Dict[str, Any]:
         info = self._get_info_by_id(id, "projects.info")
         if info is None:
             raise ProjectNotFound(f"Project with id={id} not found")
         return info.settings
 
-    def update_settings(self, id: int, settings: Dict[str, str]) -> None:
+    def update_settings(
+        self,
+        id: int,
+        settings: Dict[str, Any],
+        merge_with_current: bool = False,
+    ) -> None:
         """
-        Updates project wuth given project settings by id.
+        Updates project with given project settings by id.
 
         :param id: Project ID
         :type id: int
-        :param settings: Project settings
-        :type settings: Dict[str, str]
+        :param settings: Project settings to apply.
+        :type settings: Dict[str, Any]
+        :param merge_with_current: If True, deep-merges the new settings with the current settings.
+            If False, replaces the current settings entirely.
+        :type merge_with_current: bool, optional
         """
-        self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
+        if merge_with_current:
+            current_settings = self.get_settings(id)
+            settings = deep_merge_dicts(current_settings, settings)
+        payload = {ApiField.ID: id, ApiField.SETTINGS: settings}
+        self._api.post("projects.settings.update", payload)
 
     def download_images_tags(
         self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
@@ -2218,6 +2249,47 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             self._set_custom_grouping_settings_video(project_id, sync=True)
         else:
             raise ValueError("Multiview settings can only be set for image or video projects")
+
+    def set_overlay_settings(self, project_id: int) -> None:
+        """Sets the project labeling interface to overlay mode.
+
+        In overlay mode, images that share the same parent (linked via ``parent_id``)
+        are displayed as layered overlays on top of the parent image in the labeling UI.
+
+        .. note::
+            This method only changes the project's labeling interface setting.
+            To upload images as overlays of a parent image, use
+            :meth:`~supervisely.api.image_api.ImageApi.upload_overlay_images`.
+
+        :param project_id: Project ID to apply overlay settings to.
+        :type project_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.project.set_overlay_settings(project_id=123)
+        """
+        meta = ProjectMeta.from_json(self.get_meta(project_id, with_settings=True))
+        new_settings = meta.project_settings.clone(
+            labeling_interface=LabelingInterface.OVERLAY,
+        )
+        meta = meta.clone(project_settings=new_settings)
+        self.update_meta(id=project_id, meta=meta)
 
     def _set_custom_grouping_settings_video(self, project_id: int, sync: bool = True) -> None:
         """Sets the project settings for multiview videos (private method).
@@ -3023,3 +3095,31 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         custom_data["import_history"]["tasks"].append(data)
 
         self.edit_info(id, custom_data=custom_data)
+
+    def set_read_only(self, id: int, enable: bool = True) -> None:
+        """
+        Set or unset read-only status for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param enable: If True, sets the project to read-only. If False, unsets the read-only status.
+        :type enable: bool
+        :returns: None
+        :rtype: None
+        """
+        self.update_settings(
+            id,
+            {ApiField.ADVANCED_SETTINGS: {ApiField.IS_READ_ONLY_PROJECT: enable}},
+            merge_with_current=True,
+        )
+
+    def is_read_only(self, id: int) -> bool:
+        """Check if the project is read-only.
+
+        :param id: Project ID
+        :type id: int
+        :returns: True if the project is read-only, False otherwise
+        :rtype: bool
+        """
+        project_settings = self.get_settings(id)
+        return project_settings.get(ApiField.ADVANCED_SETTINGS, {}).get(ApiField.IS_READ_ONLY_PROJECT, False)

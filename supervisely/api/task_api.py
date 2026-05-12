@@ -1117,3 +1117,42 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             )
         except requests.exceptions.HTTPError as e:
             return False
+
+    def get_logs(self, task_id: int, since_time: Optional[str] = None, limit: Optional[int] = None) -> List[Dict]:
+        """
+        Returns the log entries for the given task ID in JSON format.
+        
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :param since_time: Optional ISO 8601 formatted timestamp to filter logs that were created after the specified time.
+        :type since_time: Optional[str]
+        :param limit: Optional integer to limit the number of log entries returned.
+        :type limit: Optional[int]
+        :returns: List of log entries in JSON format.
+        :rtype: List[Dict]
+        
+        :Usage Example:
+        
+            .. code-block:: python
+            
+                since_time = "2026-03-30T14:28:58.816Z"
+                limit = 100
+                task_id = 12345
+                logs = api.task.get_logs(task_id, since_time=since_time, limit=limit)
+                for log_entry in logs:
+                    print(log_entry) # {'level': 'info', 'message': "Added object class... 'timestamp': '2026-03-30T14:28:56.525Z', 'task_id': 58595}
+        """
+        payload = {
+            ApiField.ID: task_id,
+        }
+        if since_time is not None:
+            payload[ApiField.SINCE_TIME] = since_time
+        if limit is not None:
+            payload[ApiField.LIMIT] = limit
+
+        resp = self._api.get(
+            "tasks.log.download",
+            payload,
+        )
+
+        return resp.json()

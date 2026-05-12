@@ -291,7 +291,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
                     class_names, hex2rgb(hex_color)
                 )
                 if logger is not None:
-                    logger.warn(warn_str)
+                    logger.warning(warn_str)
                 if class_colors_notify is None:
                     class_colors_notify = ""
                 class_colors_notify += warn_str + "\n\n"

@@ -26,6 +26,9 @@ from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
+SOURCE_FIGURE_ID = "sourceFigureId"
+
+
 class TrackerInterface:
     """Base helper that applies tracking across video frames by fetching figures/frames and appending new geometries."""
 
@@ -79,6 +82,7 @@ class TrackerInterface:
         self.global_stop_indicatior = False
 
         self.geometries: OrderedDictType[int, Geometry] = OrderedDict()
+        self.tracked_figures_count: Dict[str, int] = {}
         self.frames_indexes: List[int] = []
         self._cur_frames_indexes: List[int] = []
         self._frames: Optional[np.ndarray] = None
@@ -167,22 +171,32 @@ class TrackerInterface:
         geometries: List[Geometry],
         object_ids: List[int],
         frame_indexes: List[int],
+        source_figure_ids: List[int] = None,
         notify: bool = True,
     ):
+        if source_figure_ids is None:
+            source_figure_ids = [None] * len(geometries)
+
         def _split(geometries: List[Geometry], object_ids: List[int], frame_indexes: List[int]):
             result = {}
-            for geometry, object_id, frame_index in zip(geometries, object_ids, frame_indexes):
-                result.setdefault(object_id, []).append((geometry, frame_index))
+            for geometry, object_id, frame_index, source_figure_id in zip(
+                geometries, object_ids, frame_indexes, source_figure_ids
+            ):
+                result.setdefault(object_id, []).append((geometry, frame_index, source_figure_id))
             return result
 
         geometries_by_object = _split(geometries, object_ids, frame_indexes)
 
         for object_id, geometries_frame_indexes in geometries_by_object.items():
-            for i, (geometry, frame_index) in enumerate(geometries_frame_indexes):
-                geometries_frame_indexes[i] = (self._crop_geometry(geometry), frame_index)
+            for i, (geometry, frame_index, source_figure_id) in enumerate(geometries_frame_indexes):
+                geometries_frame_indexes[i] = (
+                    self._crop_geometry(geometry),
+                    frame_index,
+                    source_figure_id,
+                )
             geometries_frame_indexes = [
-                (geometry, frame_index)
-                for geometry, frame_index in geometries_frame_indexes
+                (geometry, frame_index, source_figure_id)
+                for geometry, frame_index, source_figure_id in geometries_frame_indexes
                 if geometry is not None
             ]
             figures_json = [
@@ -190,12 +204,19 @@ class TrackerInterface:
                     ApiField.OBJECT_ID: object_id,
                     ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
                     ApiField.GEOMETRY: geometry.to_json(),
-                    ApiField.META: {ApiField.FRAME: frame_index},
+                    ApiField.META: {
+                        key: value
+                        for key, value in {
+                            ApiField.FRAME: frame_index,
+                            SOURCE_FIGURE_ID: source_figure_id,
+                        }.items()
+                        if value is not None
+                    },
                     ApiField.TRACK_ID: self.track_id,
                     ApiField.NN_CREATED: True,
                     ApiField.NN_UPDATED: True,
                 }
-                for geometry, frame_index in geometries_frame_indexes
+                for geometry, frame_index, source_figure_id in geometries_frame_indexes
             ]
             figures_keys = [uuid.uuid4() for _ in figures_json]
             key_id_map = KeyIdMap()
@@ -205,6 +226,13 @@ class TrackerInterface:
                 figures_keys=figures_keys,
                 key_id_map=key_id_map,
             )
+            for _, _, source_figure_id in geometries_frame_indexes:
+                if source_figure_id is None:
+                    continue
+                source_figure_id = str(source_figure_id)
+                self.tracked_figures_count[source_figure_id] = (
+                    self.tracked_figures_count.get(source_figure_id, 0) + 1
+                )
             self.logger.debug(f"Added {len(figures_json)} geometries to object #{object_id}")
             if notify:
                 self._notify(task="add geometry on frame", pos_increment=len(figures_json))
@@ -341,6 +369,7 @@ class TrackerInterface:
             fend,
             pos,
             self.stop,
+            extra_data={ApiField.TRACKED_FIGURES: self.tracked_figures_count},
         )
 
         self.logger.debug(f"Notification status: stop={self.global_stop_indicatior}")
@@ -651,6 +680,7 @@ class TrackerInterfaceV2:
         progress_current: int,
         progress_total: int,
         frame_range: List[int] = None,
+        extra_data: Optional[Dict] = None,
     ):
         logger.debug(
             f"Notify progress: {progress_current}/{progress_total} on frames {frame_range}",
@@ -673,6 +703,7 @@ class TrackerInterfaceV2:
                 frame_range[1],
                 progress_current,
                 progress_total,
+                extra_data=extra_data,
             )
             if stopped and progress_current < progress_total:
                 logger.info("Task stopped by user.", extra=self.log_extra)

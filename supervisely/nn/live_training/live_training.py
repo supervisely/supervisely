@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from .api_server import start_api_server
-from .request_queue import RequestQueue, RequestType
+from .request_queue import RequestQueue, RequestType, Request
 from .incremental_dataset import IncrementalDataset
 from .helpers import ClassMap
 from .evaluator import LiveEvaluator
@@ -15,6 +15,7 @@ import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
 from .loss_plateau_detector import LossPlateauDetector
+from .utils import TrainingStoppedException, BackgroundRequestHandler, set_exception, set_result
 from pathlib import Path
 
 class Phase:
@@ -97,6 +98,7 @@ class LiveTraining:
 
         self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
         self._last_activity_time = None
+        self._background_request_handler: BackgroundRequestHandler = None
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
@@ -144,14 +146,13 @@ class LiveTraining:
                 raise e
             else:
                 logger.error(f"Live training failed: {e}", exc_info=True)
-                final_checkpoint = self.latest_checkpoint_path
-                self.save_checkpoint(final_checkpoint)
-                save_state_json(self.state(), final_checkpoint)
-                self._upload_artifacts()
+                self._process_requests_while_finishing(str(e))
+                self._save_and_upload()
 
     def _run_from_scratch(self):
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._wait_for_initial_samples()
+        self._process_requests_while_initializing()
         self.train(checkpoint_path=None)
 
     def _run_continue(self):
@@ -160,12 +161,14 @@ class LiveTraining:
         image_ids = state.get('image_ids', [])
         if image_ids:
             self._restore_dataset(image_ids)
+        self._process_requests_while_initializing()
         self.train(checkpoint_path=checkpoint_path)
 
     def _run_finetune(self):
         checkpoint_path, _ = self._load_checkpoint()
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._wait_for_initial_samples()
+        self._process_requests_while_initializing()
         self.train(checkpoint_path=checkpoint_path)
 
     def _wait_for_start(self):
@@ -187,7 +190,7 @@ class LiveTraining:
         samples_needed: int,
         max_wait_time: int = None,
     ):
-        sleep_interval = 0.5
+        sleep_interval = 0.3
         elapsed_time = 0
         samples_before = len(self.dataset)
 
@@ -199,6 +202,7 @@ class LiveTraining:
                 self._process_pending_requests()
 
             if self._should_upload_periodically():
+                # TODO: Upload in background thread to avoid blocking requests from web UI
                 logger.info(f"Periodic upload (interval: {self._upload_interval}s)")
                 self._save_and_upload()
                 self._last_upload_time = time.time()
@@ -228,11 +232,12 @@ class LiveTraining:
         self._is_paused = False
 
     def _process_pending_requests(self):
+        # Back to synchronous processing.
+        self._stop_background_request_processing()
+        
         requests = self.request_queue.get_all()
         if not requests:
             return
-
-        new_samples_added = False
 
         for request in requests: 
             try:
@@ -244,7 +249,6 @@ class LiveTraining:
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
                     request.future.set_result(result)
-                    new_samples_added = True
                     self._last_activity_time = time.time()
 
                 elif request.type == RequestType.STATUS:
@@ -254,7 +258,7 @@ class LiveTraining:
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
-
+    
     def train(self, checkpoint_path: str = None):
         """
         Main training loop. Implement framework-specific training logic here.
@@ -519,6 +523,13 @@ class LiveTraining:
         finally:
             self._upload_in_progress = False
 
+    def _save_and_upload(self):
+        """Save checkpoint, state, and upload artifacts"""
+        logger.info("Saving checkpoint and uploading artifacts...")
+        self.save_checkpoint(self.latest_checkpoint_path)
+        save_state_json(self.state(), self.latest_checkpoint_path)
+        self._upload_artifacts()
+
     def save_checkpoint(self, checkpoint_path: str):
         pass
 
@@ -554,6 +565,7 @@ class LiveTraining:
 
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
+            self._process_requests_while_finishing("Training was stopped by user.")
             self._save_and_upload()
             sys.exit(0)
 
@@ -577,9 +589,31 @@ class LiveTraining:
         """Check if training should stop due to user inactivity"""
         return self._is_timeout_reached(self._last_activity_time, self._inactivity_timeout)
 
-    def _save_and_upload(self):
-        """Save checkpoint, state, and upload artifacts"""
-        logger.info("Saving checkpoint and uploading artifacts...")
-        self.save_checkpoint(self.latest_checkpoint_path)
-        save_state_json(self.state(), self.latest_checkpoint_path)
-        self._upload_artifacts()
+    def _process_requests_while_initializing(self):
+        def process_in_background(request: Request):
+            try:
+                if request.type == RequestType.PREDICT:
+                    set_exception(request.future, RuntimeError("Cannot run predict, the model is not ready yet."))
+                elif request.type == RequestType.ADD_SAMPLE:
+                    result = self._handle_add_sample(request.data)
+                    set_result(request.future, result)
+                elif request.type == RequestType.STATUS:
+                    result = self.status()
+                    set_result(request.future, result)
+            except Exception as e:
+                logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
+                set_exception(request.future, e)
+        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerInitializing")
+        self._background_request_handler.start()
+    
+    def _process_requests_while_finishing(self, response_message: str):
+        def process_in_background(request: Request):
+            e = TrainingStoppedException(response_message)
+            set_exception(request.future, e)
+        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerFinishing")
+        self._background_request_handler.start()
+    
+    def _stop_background_request_processing(self):
+        if self._background_request_handler is not None:
+            self._background_request_handler.stop()
+            self._background_request_handler = None

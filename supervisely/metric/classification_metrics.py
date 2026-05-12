@@ -33,7 +33,11 @@ class ClassificationMetrics(MetricsBase):
                 return True
             elif tag.meta.value_type == TagValueType.ANY_NUMBER:
                 return tag.value >= self._confidence_threshold
-            elif tag.meta.value_type == TagValueType.ANY_STRING or tag.meta.value_type == TagValueType.ONEOF_STRING:
+            elif tag.meta.value_type in [
+                TagValueType.ANY_STRING,
+                TagValueType.ONEOF_STRING,
+                TagValueType.DATE,
+            ]:
                 logger.warning("Classification tag '{}'".format(tag.name))
                 return True
 
@@ -123,4 +127,3 @@ class ClassificationMetrics(MetricsBase):
         log_line()
 
         log_line(c='*')
-

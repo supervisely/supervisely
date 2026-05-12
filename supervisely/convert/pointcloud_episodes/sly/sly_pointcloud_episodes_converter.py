@@ -38,6 +38,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             self._annotation = ann
             return True
         except Exception as e:
+            logger.warning(f"Failed to parse annotation file '{ann_path}': {e}")
             return False
 
     def validate_key_file(self, key_file_path: str) -> bool:
@@ -118,7 +119,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             if pcd_name in pcd_dict:
                 updated_frames_pcd_map[i] = pcd_name
                 item = self.Item(pcd_dict[pcd_name], i)
-                rimg_dir_name = pcd_name.replace(".pcd", "_pcd")
+                rimg_dir_name = pcd_name.replace(".", "_")
                 rimgs = rimg_dict.get(rimg_dir_name, [])
                 for rimg_path in rimgs:
                     rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"

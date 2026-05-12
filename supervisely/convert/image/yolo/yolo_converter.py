@@ -25,14 +25,17 @@ class YOLOConverter(ImageConverter):
     """Imports YOLO format (images + .txt per image, data.yaml) into Supervisely; supports detection and pose keypoints."""
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._yaml_info: dict = None
         self._with_keypoint = False
@@ -60,19 +63,19 @@ class YOLOConverter(ImageConverter):
             with open(ann_path, "r") as ann_file:
                 lines = ann_file.readlines()
                 if len(lines) == 0:
-                    logger.warn(f"Empty annotation file: {ann_path}")
+                    logger.warning(f"Empty annotation file: {ann_path}")
                     return False
                 for idx, line in enumerate(lines, start=1):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
                         if class_index not in self._coco_classes_dict:
-                            logger.warn(
+                            logger.warning(
                                 f"Class index {class_index} not found in the config yaml file: {ann_path}"
                             )
                             return False
                         if any([0 > c > 1 for c in coords]):
-                            logger.warn(
+                            logger.warning(
                                 f"The bounding coordinates must be in normalized xywh format (from 0 to 1): {ann_path}"
                             )
                             return False
@@ -81,7 +84,7 @@ class YOLOConverter(ImageConverter):
                             and (len(coords) % 2 != 0 or len(coords) < 6)
                             and not self._with_keypoint
                         ):
-                            logger.warn(
+                            logger.warning(
                                 f"Invalid coordinates for rectangle or polygon geometry: {ann_path}"
                             )
                             return False
@@ -91,7 +94,7 @@ class YOLOConverter(ImageConverter):
                             coords, self._with_keypoint, self._num_kpts, self._num_dims
                         )
                         if geometry is None:
-                            logger.warn(
+                            logger.warning(
                                 "Invalid coordinates for the class index: "
                                 f"FILE [{ann_name}], LINE [{idx}], CLASS [{class_index}]"
                             )
@@ -113,7 +116,7 @@ class YOLOConverter(ImageConverter):
             with open(key_path, "r") as config_yaml_info:
                 config_yaml = yaml.safe_load(config_yaml_info)
                 if "names" not in config_yaml:
-                    logger.warn(
+                    logger.warning(
                         "['names'] key is empty. Class names will be taken from default coco classes names"
                     )
                 classes = config_yaml.get("names", yolo_helper.coco_classes)
@@ -130,7 +133,7 @@ class YOLOConverter(ImageConverter):
                 nc = config_yaml.get("nc", len(classes))
                 if nc is not None:
                     if int(nc) != len(classes):
-                        logger.warn(
+                        logger.warning(
                             "Number of classes in ['names'] and ['nc'] are different. "
                             "Number of classes will be taken from number of classes in ['names']"
                         )
@@ -139,7 +142,7 @@ class YOLOConverter(ImageConverter):
                 colors = config_yaml.get("colors", [])
                 if len(colors) > 0:
                     if len(colors) != len(classes):
-                        logger.warn(
+                        logger.warning(
                             "Number of classes in ['names'] and ['colors'] are different. "
                             "Colors will be generated automatically"
                         )
@@ -156,23 +159,23 @@ class YOLOConverter(ImageConverter):
 
     def validate_format(self) -> bool:
         if self.upload_as_links and self.supports_links:
-            self._download_remote_ann_files()
+            self._download_remote_ann_files(exts_to_download=[self.ann_ext, self.key_file_ext])
 
         detected_ann_cnt = 0
         config_path = None
         images_list, ann_dict = [], {}
         for root, _, files in os.walk(self._input_data):
             for file in files:
+                if file in JUNK_FILES:  # add better check
+                    continue
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext == ".yaml":
                     is_valid = self.validate_key_file(full_path)
                     if is_valid:
                         config_path = full_path
-                        continue
-
-                if file in JUNK_FILES:  # add better check
                     continue
+
                 elif ext == self.ann_ext:
                     ann_dict[file] = full_path
                 elif self.is_image(full_path):
@@ -279,5 +282,5 @@ class YOLOConverter(ImageConverter):
             return Annotation(labels=labels, img_size=(height, width))
 
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()

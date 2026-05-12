@@ -1041,7 +1041,7 @@ class FileApi(ModuleApiBase):
 
         if self.is_on_agent(path) is True:
             # self.remove_from_agent(team_id, path)
-            logger.warn(
+            logger.warning(
                 f"Data '{path}' is on agent. Method does not support agent storage. Remove your data manually on the computer with agent."
             )
             return
