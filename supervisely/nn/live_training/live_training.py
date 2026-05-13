@@ -1,4 +1,7 @@
 import os
+import threading
+from typing import List, Optional
+
 import numpy as np
 from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType, Request
@@ -18,6 +21,7 @@ from .loss_plateau_detector import LossPlateauDetector
 from .utils import TrainingStoppedException, BackgroundRequestHandler, set_exception, set_result
 from pathlib import Path
 
+
 class Phase:
     """String constants describing the live-training lifecycle phases."""
 
@@ -26,12 +30,14 @@ class Phase:
     INITIAL_TRAINING = "initial_training"
     TRAINING = "training"
 
+
 class LiveTraining:
     """Base implementation of an interactive/live training loop driven by requests (start/add sample/predict/status)."""
 
     from torch import nn  # pylint: disable=import-error
+
     task_type: str = None  # Should be set in subclass
-    framework_name: str = None # Should be set in subclass
+    framework_name: str = None  # Should be set in subclass
 
     _task2geometries = {
         TaskType.OBJECT_DETECTION: [sly.Rectangle],
@@ -40,10 +46,10 @@ class LiveTraining:
     }
 
     def __init__(
-            self,
-            initial_samples: int = 2,
-            filter_classes_by_task: bool = True,
-        ):
+        self,
+        initial_samples: int = 2,
+        filter_classes_by_task: bool = True,
+    ):
         """
         :param initial_samples: Min samples before training.
         :type initial_samples: int
@@ -51,10 +57,13 @@ class LiveTraining:
         :type filter_classes_by_task: bool
         """
         from torch import nn  # pylint: disable=import-error
+
         self.initial_samples = initial_samples
         self.filter_classes_by_task = filter_classes_by_task
         if self.task_type is None and self.filter_classes_by_task:
-            raise ValueError("task_type must be set in subclass if filter_classes_by_task is set to True")
+            raise ValueError(
+                "task_type must be set in subclass if filter_classes_by_task is set to True"
+            )
         if self.framework_name is None:
             raise ValueError("framework_name must be set in subclass")
 
@@ -66,10 +75,14 @@ class LiveTraining:
         self.request_queue = RequestQueue()
 
         if os.getenv("DEVELOP_AND_DEBUG") and not sly.is_production():
-            logger.info(f"🔧 Initializing Develop & Debug application for project {self.project_id}...")
+            logger.info(
+                f"🔧 Initializing Develop & Debug application for project {self.project_id}..."
+            )
             sly.app.development.supervisely_vpn_network(action="up")
-            debug_task = sly.app.development.create_debug_task(self.team_id, port="8000", project_id=self.project_id)
-            self.task_id = debug_task['id']
+            debug_task = sly.app.development.create_debug_task(
+                self.team_id, port="8000", project_id=self.project_id
+            )
+            self.task_id = debug_task["id"]
         self.phase = Phase.READY_TO_START
         self.iter = 0
         self._loss = None
@@ -79,14 +92,16 @@ class LiveTraining:
         self.project_meta = self._fetch_project_meta(self.project_id)
         self.class_map = self._init_class_map(self.project_meta)
         self.dataset: IncrementalDataset = None
-        self.model: nn.Module  = None
+        self.model: nn.Module = None
         self.loss_plateau_detector = self._init_loss_plateau_detector()
-        self.work_dir = 'app_data'
+        self.work_dir = "app_data"
         self.latest_checkpoint_path = f"{self.work_dir}/checkpoints/latest.pth"
 
         self.checkpoint_mode = os.getenv("modal.state.checkpointMode", "scratch")
         selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
-        self.selected_experiment_task_id = int(selected_task_id_env) if selected_task_id_env else None
+        self.selected_experiment_task_id = (
+            int(selected_task_id_env) if selected_task_id_env else None
+        )
 
         self.training_start_time = None
         self._upload_in_progress = False
@@ -95,14 +110,24 @@ class LiveTraining:
         self._upload_interval = 7200
         self._last_upload_time = None
 
-        self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
+        self._inactivity_timeout = 24 * 3600  # 24 hours in seconds
         self._last_activity_time = None
         self._background_request_handler: BackgroundRequestHandler = None
+
+        # Video-aware endpoints (highlight_key_frames, tracking_by_detection)
+        # run their long-running work on background threads owned by the
+        # LiveTraining instance. They are protected by per-job cancel events.
+        self.video_info = None
+        self._tracker = None
+        self._tracker_thread: Optional[threading.Thread] = None
+        self._tracker_cancel = threading.Event()
+        self._keyframe_thread: Optional[threading.Thread] = None
+        self._keyframe_cancel = threading.Event()
 
         # Start the API server last so that every attribute touched by status()
         # (phase, iter, dataset, evaluator, ...) is already initialized before
         # the server can serve a /status call from another thread.
-        self._api_thread = start_api_server(self.app, self.request_queue, self.status)
+        self._api_thread = start_api_server(self)
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
@@ -114,16 +139,16 @@ class LiveTraining:
     def status(self):
         labeled_count = self.dataset.num_labeled_samples if self.dataset is not None else 0
         return {
-            'phase': self.phase,
-            'samples_count': len(self.dataset) if self.dataset is not None else 0,
-            'waiting_samples': max(0, self.initial_samples - labeled_count),
-            'task_type': self.task_type,
-            'iteration': self.iter,
-            'loss': self._loss,
-            'training_paused': self._is_paused,
-            'ready_to_predict': self.ready_to_predict,
-            'initial_iters': self.initial_iters,
-            'model_quality': self.evaluator.ema_value if self.evaluator else None
+            "phase": self.phase,
+            "samples_count": len(self.dataset) if self.dataset is not None else 0,
+            "waiting_samples": max(0, self.initial_samples - labeled_count),
+            "task_type": self.task_type,
+            "iteration": self.iter,
+            "loss": self._loss,
+            "training_paused": self._is_paused,
+            "ready_to_predict": self.ready_to_predict,
+            "initial_iters": self.initial_iters,
+            "model_quality": self.evaluator.ema_value if self.evaluator else None,
         }
 
     def run(self):
@@ -140,9 +165,9 @@ class LiveTraining:
         try:
             self.phase = Phase.READY_TO_START
             self._wait_for_start()
-            if self.checkpoint_mode == 'continue':
+            if self.checkpoint_mode == "continue":
                 self._run_continue()
-            elif self.checkpoint_mode == 'finetune':
+            elif self.checkpoint_mode == "finetune":
                 self._run_finetune()
             else:
                 self._run_from_scratch()
@@ -163,7 +188,7 @@ class LiveTraining:
     def _run_continue(self):
         checkpoint_path, state = self._load_checkpoint()
         self.load_state(state)
-        image_ids = state.get('image_ids', [])
+        image_ids = state.get("image_ids", [])
         if image_ids:
             self._restore_dataset(image_ids)
         self._process_requests_while_initializing()
@@ -179,11 +204,13 @@ class LiveTraining:
     def _wait_for_start(self):
         request = self.request_queue.get()
         while request.type != RequestType.START:
-            request.future.set_exception(Exception(f"Unexpected request {request.type} while waiting for START"))
+            request.future.set_exception(
+                Exception(f"Unexpected request {request.type} while waiting for START")
+            )
             request = self.request_queue.get()
         # When START is received
         status = self.status()
-        status['phase'] = Phase.WAITING_FOR_SAMPLES
+        status["phase"] = Phase.WAITING_FOR_SAMPLES
         request.future.set_result(status)
 
     def _wait_until_samples_added(
@@ -196,9 +223,14 @@ class LiveTraining:
         elapsed_time = 0
         if count_fn is None:
             samples_before = len(self.dataset)
-            def reached(): return len(self.dataset) - samples_before >= samples_needed
+
+            def reached():
+                return len(self.dataset) - samples_before >= samples_needed
+
         else:
-            def reached(): return count_fn() >= samples_needed
+
+            def reached():
+                return count_fn() >= samples_needed
 
         while not reached():
             if max_wait_time is not None and elapsed_time >= max_wait_time:
@@ -249,7 +281,7 @@ class LiveTraining:
         if not requests:
             return
 
-        for request in requests: 
+        for request in requests:
             try:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
@@ -273,6 +305,11 @@ class LiveTraining:
                 elif request.type == RequestType.ADD_SAMPLES_VIDEO:
                     result = self._handle_add_samples_video(request.data)
                     request.future.set_result(result)
+
+                elif request.type == RequestType.KEY_FRAMES:
+                    result = self._handle_key_frames(request.data)
+                    request.future.set_result(result)
+                    self._last_activity_time = time.time()
 
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
@@ -298,10 +335,45 @@ class LiveTraining:
         """
         raise NotImplementedError
 
+    def compute_key_frame_indices(self, image_nps: List[np.ndarray]) -> List[int]:
+        """
+        Return indices of representative frames among ``image_nps`` for the
+        /highlight_key_frames endpoint. Subclass picks the embedding & clustering
+        strategy.
+        """
+        raise NotImplementedError
+
+    def get_session_info(self) -> dict:
+        """Metadata for the /get_session_info endpoint. Subclass may override
+        to add framework-specific fields."""
+        return {
+            "app_name": getattr(self, "app_name", "Live Training"),
+            "session_id": self.task_id,
+            "videos_support": True,
+            "async_video_inference_support": True,
+            "tracking_on_videos_support": True,
+            "tracking_algorithms": ["botsort"],
+            "batch_inference_support": True,
+            "max_batch_size": 5,
+            "task_type": self.task_type,
+        }
+
+    def get_custom_inference_settings(self) -> dict:
+        return {"settings": {"confidence_threshold": 0.3}}
+
+    def get_output_classes_and_tags(self) -> dict:
+        return self.project_meta.to_json()
+
+    def deployment_info(self) -> dict:
+        return {
+            "deployed": bool(self.ready_to_predict),
+            "description": "Model is ready to receive requests",
+        }
+
     def _handle_predict(self, data: dict):
-        image_np = data['image']
-        image_id = data['image_id']
-        image_info = {'id': image_id}   
+        image_np = data["image"]
+        image_id = data["image_id"]
+        image_info = {"id": image_id}
         model = self.model
         was_training = model.training
         model.eval()
@@ -313,9 +385,9 @@ class LiveTraining:
                 self.evaluator.store_prediction(image_id, objects_raw, image_shape)
 
             return {
-                'objects': objects_raw,
-                'image_id': image_id,
-                'status': self.status(),
+                "objects": objects_raw,
+                "image_id": image_id,
+                "status": self.status(),
             }
         finally:
             # Restore training mode
@@ -349,29 +421,38 @@ class LiveTraining:
             if was_training:
                 model.train()
 
+    def _handle_key_frames(self, data: dict) -> dict:
+        image_nps = data["images"]
+        model = self.model
+        was_training = model.training if model is not None else False
+        if model is not None:
+            model.eval()
+        try:
+            indices = self.compute_key_frame_indices(image_nps)
+            return {"indices": list(indices)}
+        finally:
+            if model is not None and was_training:
+                model.train()
+
     def add_sample(
-            self,
-            image_id: int,
-            image_np: np.ndarray,
-            annotation: sly.Annotation,
-            image_name: str
-        ) -> dict:
+        self, image_id: int, image_np: np.ndarray, annotation: sly.Annotation, image_name: str
+    ) -> dict:
         return self.dataset.add_or_update(image_id, image_np, annotation, image_name)
 
     def _handle_add_sample(self, data: dict):
-        ann_json = data['annotation']
+        ann_json = data["annotation"]
         ann_json = self._filter_annotation(ann_json)
         sly_ann = sly.Annotation.from_json(ann_json, self.project_meta)
-        image_id = data['image_id']
+        image_id = data["image_id"]
         self.add_sample(
             image_id=image_id,
-            image_np=data['image'],
+            image_np=data["image"],
             annotation=sly_ann,
-            image_name=data['image_name']
+            image_name=data["image_name"],
         )
         if not sly_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
             logger.debug(f"Added unlabeled sample {image_id}; not counted toward initial threshold")
-        if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
+        if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(image_id, sly_ann)
             if result is not None:
                 metric_name = self.evaluator.metric_name
@@ -380,12 +461,14 @@ class LiveTraining:
                     f"EMA={result['ema_value']:.3f}"
                 )
 
-        if (self.dataset.num_labeled_samples >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
+        if (
+            self.dataset.num_labeled_samples >= self.initial_samples
+        ) and self.phase == Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
 
         return {
-            'image_id': image_id,
-            'status': self.status(),
+            "image_id": image_id,
+            "status": self.status(),
         }
 
     def add_sample_video(
@@ -414,11 +497,11 @@ class LiveTraining:
         return img_ann
 
     def _handle_add_sample_video(self, data: dict):
-        frame_idx = data["frame_idx"]
-        frame_id = f"{data['video_id']}_{frame_idx}"
+        frame_index = data["frame_index"]
+        frame_id = f"{data['video_id']}_{frame_index}"
         video_ann_json = data["video_ann_json"]
         video_objects_json, frame_ann_json = self._filter_annotation_video(
-            video_ann_json, frame_idx
+            video_ann_json, frame_index
         )
         frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
         if frame_ann_json:
@@ -448,7 +531,9 @@ class LiveTraining:
                     f"EMA={result['ema_value']:.3f}"
                 )
 
-        if (self.dataset.num_labeled_samples >= self.initial_samples) and self.phase == Phase.WAITING_FOR_SAMPLES:
+        if (
+            self.dataset.num_labeled_samples >= self.initial_samples
+        ) and self.phase == Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
 
         return {
@@ -458,13 +543,13 @@ class LiveTraining:
 
     def _handle_add_samples_video(self, data: dict):
         frame_indices = data["frame_indices"]
-        frame_ids = [f"{data['video_id']}_{frame_idx}" for frame_idx in frame_indices]
+        frame_ids = [f"{data['video_id']}_{frame_index}" for frame_index in frame_indices]
         frame_nps = data["frame_nps"]
         video_ann_json = data["video_ann_json"]
 
-        for frame_id, frame_idx, frame_np in zip(frame_ids, frame_indices, frame_nps):
+        for frame_id, frame_index, frame_np in zip(frame_ids, frame_indices, frame_nps):
             video_objects_json, frame_ann_json = self._filter_annotation_video(
-                video_ann_json, frame_idx
+                video_ann_json, frame_index
             )
             frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
             if frame_ann_json:
@@ -487,7 +572,9 @@ class LiveTraining:
             )
 
             if not img_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
-                logger.debug(f"Added unlabeled sample {frame_id}; not counted toward initial threshold")
+                logger.debug(
+                    f"Added unlabeled sample {frame_id}; not counted toward initial threshold"
+                )
             if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
                 result = self.evaluator.evaluate(frame_id, img_ann)
                 if result is not None:
@@ -516,12 +603,13 @@ class LiveTraining:
         obj_classes = list(project_meta.obj_classes)
 
         if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
-            obj_classes.insert(0, sly.ObjClass(name='_background_', geometry_type=sly.Bitmap))
+            obj_classes.insert(0, sly.ObjClass(name="_background_", geometry_type=sly.Bitmap))
 
         if self.filter_classes_by_task:
             allowed_geometries = self._task2geometries[self.task_type] + [sly.AnyGeometry]
             obj_classes = [
-                obj_class for obj_class in obj_classes
+                obj_class
+                for obj_class in obj_classes
                 if obj_class.geometry_type in allowed_geometries
             ]
 
@@ -533,11 +621,11 @@ class LiveTraining:
         allowed_geometries = self._task2geometries[self.task_type]
         allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
         filtered_objects = []
-        for obj in ann_json['objects']:
-            sly_id = obj['classId']
-            if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
+        for obj in ann_json["objects"]:
+            sly_id = obj["classId"]
+            if sly_id in self.class_map.sly_ids and obj["geometryType"] in allowed_geometries:
                 filtered_objects.append(obj)
-        ann_json['objects'] = filtered_objects
+        ann_json["objects"] = filtered_objects
         return ann_json
 
     def _filter_annotation_video(self, video_ann_json: dict, frame_index: int) -> dict:
@@ -600,12 +688,14 @@ class LiveTraining:
         self.model = model
 
     def register_dataset(self, dataset: IncrementalDataset):
-        assert hasattr(dataset, 'add_or_update'), "Dataset must implement add_or_update method. Consider inheriting from IncrementalDataset."
+        assert hasattr(
+            dataset, "add_or_update"
+        ), "Dataset must implement add_or_update method. Consider inheriting from IncrementalDataset."
         self.dataset = dataset
 
     def _load_checkpoint(self) -> tuple:
         """Resolve and configure checkpoint based on checkpoint_mode."""
-        self._process_pending_requests() 
+        self._process_pending_requests()
         checkpoint_path, class_map, state = resolve_checkpoint(
             checkpoint_mode=self.checkpoint_mode,
             selected_experiment_task_id=self.selected_experiment_task_id,
@@ -613,33 +703,33 @@ class LiveTraining:
             project_meta=self.project_meta,
             api=self.api,
             team_id=self.team_id,
-            work_dir=self.work_dir
+            work_dir=self.work_dir,
         )
 
-        self.class_map = class_map  
-        self._process_pending_requests() 
+        self.class_map = class_map
+        self._process_pending_requests()
         return checkpoint_path, state
 
     def state(self):
         state = {
-            'phase': self.phase,
-            'iter': self.iter,
-            'loss': self._loss,
-            'clases': [cls.name for cls in self.class_map.obj_classes],
-            'image_ids': self.dataset.get_image_ids() if self.dataset else [],
-            'dataset_size': len(self.dataset) if self.dataset else 0,
-            'is_paused': self._is_paused
+            "phase": self.phase,
+            "iter": self.iter,
+            "loss": self._loss,
+            "clases": [cls.name for cls in self.class_map.obj_classes],
+            "image_ids": self.dataset.get_image_ids() if self.dataset else [],
+            "dataset_size": len(self.dataset) if self.dataset else 0,
+            "is_paused": self._is_paused,
         }
         return state
 
     def load_state(self, state: dict):
-        self.phase = state.get('phase', Phase.READY_TO_START)
-        self.iter = state.get('iter', 0)
-        self._loss = state.get('loss', None)
-        self.image_ids = state.get('image_ids', [])
-        if state.get('is_paused', False):
+        self.phase = state.get("phase", Phase.READY_TO_START)
+        self.iter = state.get("iter", 0)
+        self._loss = state.get("loss", None)
+        self.image_ids = state.get("image_ids", [])
+        if state.get("is_paused", False):
             self._should_pause_after_continue = True
-        dataset_size = state.get('dataset_size', 0)
+        dataset_size = state.get("dataset_size", 0)
 
     def _restore_dataset(self, image_ids: list):
         if not image_ids:
@@ -723,22 +813,20 @@ class LiveTraining:
                 - model_config: model configuration dict
                 - loss_history: dict with loss history
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement prepare_artifacts()"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} must implement prepare_artifacts()")
 
     def _get_session_info(self) -> dict:
         """Collect training session context"""
         return {
-            'team_id': self.team_id,
-            'task_id': self.task_id,
-            'project_id': self.project_id,
-            'framework_name': self.framework_name,
-            'task_type': self.task_type,
-            'class_map': self.class_map,
-            'start_time': self.training_start_time,
-            'train_size': len(self.dataset) if self.dataset else 0,
-            'initial_samples': self.initial_samples
+            "team_id": self.team_id,
+            "task_id": self.task_id,
+            "project_id": self.project_id,
+            "framework_name": self.framework_name,
+            "task_type": self.task_type,
+            "class_map": self.class_map,
+            "start_time": self.training_start_time,
+            "train_size": len(self.dataset) if self.dataset else 0,
+            "initial_samples": self.initial_samples,
         }
 
     def _upload_artifacts(self):
@@ -752,9 +840,7 @@ class LiveTraining:
             artifacts = self.prepare_artifacts()
 
             report_url = upload_artifacts(
-                api=self.api,
-                session_info=session_info,
-                artifacts=artifacts
+                api=self.api, session_info=session_info, artifacts=artifacts
             )
 
             logger.info(f"Report: {report_url}")
@@ -835,7 +921,10 @@ class LiveTraining:
         def process_in_background(request: Request):
             try:
                 if request.type == RequestType.PREDICT or request.type == RequestType.PREDICT_BATCH:
-                    set_exception(request.future, RuntimeError("Cannot run predict, the model is not ready yet."))
+                    set_exception(
+                        request.future,
+                        RuntimeError("Cannot run predict, the model is not ready yet."),
+                    )
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
                     set_result(request.future, result)
@@ -845,17 +934,28 @@ class LiveTraining:
                 elif request.type == RequestType.ADD_SAMPLES_VIDEO:
                     result = self._handle_add_samples_video(request.data)
                     set_result(request.future, result)
+                elif request.type == RequestType.KEY_FRAMES:
+                    # Embedder is independent of the trained model, so we can
+                    # serve key-frame selection even before training starts.
+                    result = self._handle_key_frames(request.data)
+                    set_result(request.future, result)
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 set_exception(request.future, e)
-        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerInitializing")
+
+        self._background_request_handler = BackgroundRequestHandler(
+            self.request_queue, process_in_background, thread_name="RequestHandlerInitializing"
+        )
         self._background_request_handler.start()
 
     def _process_requests_while_finishing(self, response_message: str):
         def process_in_background(request: Request):
             e = TrainingStoppedException(response_message)
             set_exception(request.future, e)
-        self._background_request_handler = BackgroundRequestHandler(self.request_queue, process_in_background, thread_name="RequestHandlerFinishing")
+
+        self._background_request_handler = BackgroundRequestHandler(
+            self.request_queue, process_in_background, thread_name="RequestHandlerFinishing"
+        )
         self._background_request_handler.start()
 
     def _stop_background_request_processing(self):
