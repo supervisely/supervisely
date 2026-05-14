@@ -27,8 +27,8 @@ class TagJsonFields:
     """"""
     ID = "id"
     """"""
-    # TAG_META_ID = 'tagId'
-    # """"""
+    TAG_META_ID = "tagId"
+    """"""
 
 
 class Tag(KeyObject):
@@ -274,7 +274,18 @@ class Tag(KeyObject):
             created_at = None
             sly_id = None
         else:
-            tag_name = data[TagJsonFields.TAG_NAME]
+            if TagJsonFields.TAG_NAME in data:
+                tag_name = data[TagJsonFields.TAG_NAME]
+            elif TagJsonFields.TAG_META_ID in data:
+                tag_meta_id = data[TagJsonFields.TAG_META_ID]
+                tag_meta = tag_meta_collection.get_by_id(tag_meta_id)
+                if tag_meta is None:
+                    raise KeyError(
+                        f"Tag meta with id={tag_meta_id!r} was not found in project meta"
+                    )
+                tag_name = tag_meta.name
+            else:
+                raise KeyError(TagJsonFields.TAG_NAME)
             value = data.get(TagJsonFields.VALUE, None)
             labeler_login = data.get(TagJsonFields.LABELER_LOGIN, None)
             updated_at = data.get(TagJsonFields.UPDATED_AT, None)
