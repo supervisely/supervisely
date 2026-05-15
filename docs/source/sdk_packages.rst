@@ -36,12 +36,14 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     :template: autosummary/custom-class-template.rst
 
     ~supervisely.api.api.Api
+    ~supervisely.api.api.ApiContext
     ~supervisely.api.agent_api.AgentApi
     ~supervisely.api.annotation_api.AnnotationApi
     ~supervisely.api.app_api.AppApi
     ~supervisely.api.app_api.WorkflowSettings
     ~supervisely.api.app_api.WorkflowMeta
     ~supervisely.api.dataset_api.DatasetApi
+    ~supervisely.api.dataset_api.DatasetInfo
     ~supervisely.api.file_api.FileApi
     ~supervisely.api.guides_api.GuidesApi
     ~supervisely.api.storage_api.StorageApi
@@ -54,6 +56,8 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     ~supervisely.api.issues_api.IssuesApi
     ~supervisely.api.labeling_job_api.LabelingJobApi
     ~supervisely.api.entities_collection_api.EntitiesCollectionApi
+    ~supervisely.api.entities_collection_api.EntitiesCollectionInfo
+    ~supervisely.api.entity_annotation.figure_api.FigureInfo
     ~supervisely.api.labeling_queue_api.LabelingQueueApi
     ~supervisely.api.module_api.ApiField
     ~supervisely.api.module_api.ModuleApi
@@ -66,13 +70,40 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     ~supervisely.api.object_class_api.ObjectClassApi
     ~supervisely.api.plugin_api.PluginApi
     ~supervisely.api.project_api.ProjectApi
+    ~supervisely.api.project_api.ProjectInfo
     ~supervisely.api.project_class_api.ProjectClassApi
+    ~supervisely.api.remote_storage_api.RemoteStorageApi
     ~supervisely.api.role_api.RoleApi
     ~supervisely.api.task_api.TaskApi
     ~supervisely.api.team_api.ActivityAction
     ~supervisely.api.team_api.TeamApi
+    ~supervisely.api.team_api.TeamInfo
     ~supervisely.api.user_api.UserApi
     ~supervisely.api.workspace_api.WorkspaceApi
+    ~supervisely.api.workspace_api.WorkspaceInfo
+
+Application
+-----------
+Helpers for building Supervisely applications.
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.app.fastapi.subapp.Application
+    ~supervisely.app.v1.app_service.AppService
+
+Worker API
+----------
+Helpers for communicating with Supervisely agents and worker processes.
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.worker_api.agent_api.AgentAPI
 
 
 Video API
@@ -189,10 +220,12 @@ All the logic concerned with working with geometric objects - compute statistics
     ~supervisely.geometry.any_geometry.AnyGeometry
     ~supervisely.geometry.bitmap.Bitmap
     ~supervisely.geometry.bitmap.SkeletonizeMethod
+    ~supervisely.geometry.multichannel_bitmap.MultichannelBitmap
     ~supervisely.geometry.alpha_mask.AlphaMask
     ~supervisely.geometry.bitmap_base.BitmapBase
     ~supervisely.geometry.cuboid.Cuboid
     ~supervisely.geometry.cuboid.CuboidFace
+    ~supervisely.geometry.cuboid_2d.Cuboid2d
     ~supervisely.geometry.cuboid_3d.Cuboid3d
     ~supervisely.geometry.cuboid_3d.Vector3d
     ~supervisely.geometry.mask_3d.Mask3D
@@ -200,9 +233,12 @@ All the logic concerned with working with geometric objects - compute statistics
     ~supervisely.geometry.point.Point
     ~supervisely.geometry.point_3d.Point3d
     ~supervisely.geometry.point_location.PointLocation
+    ~supervisely.geometry.pointcloud.Pointcloud
     ~supervisely.geometry.polygon.Polygon
     ~supervisely.geometry.polyline.Polyline
+    ~supervisely.geometry.polyline_3d.Polyline3D
     ~supervisely.geometry.rectangle.Rectangle
+    ~supervisely.geometry.oriented_bbox.OrientedBBox
     ~supervisely.geometry.image_rotator.ImageRotator
     ~supervisely.geometry.vector_geometry.VectorGeometry
     ~supervisely.geometry.graph.Node
@@ -275,6 +311,8 @@ Data model for pointcloud annotations (figures, objects, tags, episodes).
     ~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation
     ~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame
     ~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection
+    ~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject
+    ~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection
     ~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag
     ~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection
 
@@ -303,6 +341,7 @@ Working with Supervisely projects on disk.
     ~supervisely.project.project_type.ProjectType
     ~supervisely.project.project_meta.ProjectMeta
     ~supervisely.project.project_meta.ProjectMetaJsonFields
+    ~supervisely.project.project_settings.ProjectSettings
     ~supervisely.project.project.Dataset
     ~supervisely.project.project.DatasetDict
     ~supervisely.project.project.OpenMode
@@ -313,6 +352,8 @@ Working with Supervisely projects on disk.
     ~supervisely.project.video_project.VideoItemPaths
     ~supervisely.project.pointcloud_project.PointcloudProject
     ~supervisely.project.pointcloud_project.PointcloudDataset
+    ~supervisely.project.pointcloud_episode_project.PointcloudEpisodeProject
+    ~supervisely.project.pointcloud_episode_project.PointcloudEpisodeDataset
     ~supervisely.project.volume_project.VolumeProject
     ~supervisely.project.volume_project.VolumeDataset
     ~supervisely.project.data_version.VersionInfo
@@ -361,6 +402,7 @@ Core video-related helpers and utilities.
     :template: autosummary/custom-module-template.rst
 
     ~supervisely.video.video
+    ~supervisely.video.sampling
 
 Video Annotation
 ----------------
