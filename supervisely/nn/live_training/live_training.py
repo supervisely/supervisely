@@ -134,7 +134,7 @@ class LiveTraining:
 
     @property
     def ready_to_predict(self):
-        return self.iter > self.initial_iters
+        return self.iter >= self.initial_iters
 
     def status(self):
         labeled_count = self.dataset.num_labeled_samples if self.dataset is not None else 0
