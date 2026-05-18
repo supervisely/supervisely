@@ -213,7 +213,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         if lt.phase == "ready_to_start":
             response.status_code = 409
             return _error_response_message(
-                "Live training is not started yet — send START before " "/highlight_key_frames."
+                "Live training is not started yet — send start request to live training app before highlighting key frames"
             )
 
         sly_api = _api_from_request(request)
