@@ -210,6 +210,12 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
     async def highlight_key_frames(request: Request, response: Response):
         """Tag uniform frames with ``need_to_label`` immediately, then prune
         in the background to the cluster medoids picked by the trainer."""
+        if lt.phase == "ready_to_start":
+            response.status_code = 409
+            return _error_response_message(
+                "Live training is not started yet — send START before " "/highlight_key_frames."
+            )
+
         sly_api = _api_from_request(request)
         state = request.state.state
         video_id = state.get("video_id")
