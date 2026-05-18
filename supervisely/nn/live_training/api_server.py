@@ -180,18 +180,31 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         state = request.state.state
         video_id = state["video_id"]
         frame_indices = state["frame_indices"]
-        frame_nps = sly_api.video.frame.download_nps(video_id, frame_indices)
-        video_ann_json = sly_api.video.annotation.download(video_id)
-        future = lt.request_queue.put(
-            RequestType.ADD_SAMPLES_VIDEO,
-            {
-                "video_id": video_id,
-                "frame_indices": frame_indices,
-                "frame_nps": frame_nps,
-                "video_ann_json": video_ann_json,
-            },
-        )
-        return await _wait_for_result(future, response)
+
+        status = lt.status()
+        if status["phase"] == "waiting_for_samples" and status["waiting_samples"] <= len(
+            frame_indices
+        ):
+            status["phase"] = "initial_training"
+
+        def _enqueue():
+            try:
+                frame_nps = sly_api.video.frame.download_nps(video_id, frame_indices)
+                video_ann_json = sly_api.video.annotation.download(video_id)
+                lt.request_queue.put(
+                    RequestType.ADD_SAMPLES_VIDEO,
+                    {
+                        "video_id": video_id,
+                        "frame_indices": frame_indices,
+                        "frame_nps": frame_nps,
+                        "video_ann_json": video_ann_json,
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"failed to run add-samples-video for video {video_id}: {e}")
+
+        threading.Thread(target=_enqueue, daemon=True, name="AddSamplesVideo").start()
+        return status
 
     @app.post("/highlight_key_frames")
     async def highlight_key_frames(request: Request, response: Response):
