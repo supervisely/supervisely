@@ -38,13 +38,16 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     ~supervisely.api.api.Api
     ~supervisely.api.api.ApiContext
     ~supervisely.api.agent_api.AgentApi
+    ~supervisely.api.agent_api.AgentInfo
     ~supervisely.api.annotation_api.AnnotationApi
+    ~supervisely.api.annotation_api.AnnotationInfo
     ~supervisely.api.app_api.AppApi
     ~supervisely.api.app_api.WorkflowSettings
     ~supervisely.api.app_api.WorkflowMeta
     ~supervisely.api.dataset_api.DatasetApi
     ~supervisely.api.dataset_api.DatasetInfo
     ~supervisely.api.file_api.FileApi
+    ~supervisely.api.file_api.FileInfo
     ~supervisely.api.guides_api.GuidesApi
     ~supervisely.api.storage_api.StorageApi
     ~supervisely.api.image_annotation_tool_api.ImageAnnotationToolApi
@@ -341,6 +344,7 @@ Working with Supervisely projects on disk.
     ~supervisely.project.project_type.ProjectType
     ~supervisely.project.project_meta.ProjectMeta
     ~supervisely.project.project_meta.ProjectMetaJsonFields
+    ~supervisely.project.project_settings.LabelingInterface
     ~supervisely.project.project_settings.ProjectSettings
     ~supervisely.project.project.Dataset
     ~supervisely.project.project.DatasetDict
