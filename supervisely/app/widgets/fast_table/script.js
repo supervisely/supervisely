@@ -179,9 +179,8 @@ Vue.component('fast-table', {
                     :class="{ 'first:sticky first:left-0 first:z-10 first:shadow-[inset_-2px_0_0_#dfe6ec]': fixColumns, 'cursor-pointer': settings.isCellClickable }"
                   >
                     <el-radio
-                      v-model="selectedRadioIdx"
+                      v-model="localSelectedRadioIdx"
                       :label="row.idx"
-                      @input="updateSelectedRadio(row)"
                       style="width: 20px;"
                       class="row-radio"
                     >
@@ -353,6 +352,8 @@ Vue.component('fast-table', {
     return {
       columnNumberLimit: 50,
       rowCheckboxModel: {},
+      localSelectedRadioIdx: null,
+      isUpdatingRadioFromProp: false,
     };
   },
 
@@ -444,6 +445,23 @@ Vue.component('fast-table', {
       immediate: true,
       handler() {
         this.syncRowCheckboxModel();
+      }
+    },
+    selectedRadioIdx: {
+      immediate: true,
+      handler(newVal) {
+        this.isUpdatingRadioFromProp = true;
+        this.localSelectedRadioIdx = newVal;
+        this.$nextTick(() => {
+          this.isUpdatingRadioFromProp = false;
+        });
+      }
+    },
+    localSelectedRadioIdx(newVal) {
+      if (newVal == null || this.isUpdatingRadioFromProp) return;
+      const row = this.data.find(r => r.idx === newVal);
+      if (row) {
+        this.updateSelectedRadio(row);
       }
     }
   },
@@ -561,8 +579,8 @@ Vue.component('fast-table', {
 
     updateSelectedRadio(row) {
       console.log('updateSelectedRadio', row);
-      row = _.cloneDeep(row)
-      this.$emit('update:selected-rows', [row])
+      const clonedRow = JSON.parse(JSON.stringify(row));
+      this.$emit('update:selected-rows', [clonedRow])
     },
 
     handleScroll() {
