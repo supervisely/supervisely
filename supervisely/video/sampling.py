@@ -679,12 +679,18 @@ def _extract_video_frame_metadata(json_info: dict) -> Tuple[List[float], Optiona
 
 
 def _get_requested_frame_range(
-    start: Optional[int], end: Optional[int], frames_count: int
+    start: Optional[int], end: Optional[int], frames_count: Optional[int]
 ) -> Optional[Tuple[int, int]]:
-    if frames_count <= 0:
-        return None
     _start = max(0, start if start is not None else 0)
-    if _start >= frames_count:
+    if frames_count is None:
+        if end is None:
+            raise RuntimeError(
+                "Cannot infer video frame range: video metadata does not include framesCount "
+                "and end was not provided."
+            )
+        _end = max(_start, end)
+        return _start, _end
+    if frames_count <= 0 or _start >= frames_count:
         return None
     _end = min(max(_start, end), frames_count - 1) if end is not None else frames_count - 1
     return _start, _end
@@ -845,7 +851,7 @@ async def async_stream_video_frames(
     """
     video_url, json_info = _resolve_video_source(api, video_id)
     frame_timecodes, frames_count = _extract_video_frame_metadata(json_info)
-    if frames_count is None:
+    if frames_count is None and frame_timecodes:
         frames_count = len(frame_timecodes)
     if frame_timecodes:
         frames_count = min(frames_count, len(frame_timecodes))
@@ -879,8 +885,10 @@ async def async_stream_video_frames(
         emitted: Set[int] = set()
 
         def _emit(frame_idx: int, img: np.ndarray) -> bool:
+            if not _put((frame_idx, img)):
+                return False
             emitted.add(frame_idx)
-            return _put((frame_idx, img))
+            return True
 
         def _download_remaining(reason: str) -> bool:
             remaining = [idx for idx in requested_indices if idx not in emitted]
@@ -899,11 +907,17 @@ async def async_stream_video_frames(
             ):
                 if not _emit(frame_idx, img):
                     return False
+            missing = [idx for idx in requested_indices if idx not in emitted]
+            if missing and not cancel_event.is_set():
+                raise RuntimeError(
+                    f"Server did not return {len(missing)} requested frames for video {video_id}."
+                )
             return True
 
         try:
             if not frame_timecodes:
-                _download_remaining("video metadata does not include framesToTimecodes")
+                if not _download_remaining("video metadata does not include framesToTimecodes"):
+                    return
                 return
 
             try:
@@ -919,11 +933,13 @@ async def async_stream_video_frames(
                     if not _emit(frame_idx, img):
                         return
             except Exception as exc:
-                _download_remaining(f"PyAV streaming failed: {exc}")
+                if not _download_remaining(f"PyAV streaming failed: {exc}"):
+                    return
                 return
 
             if len(emitted) != _end - _start + 1:
-                _download_remaining("PyAV did not return all requested frames")
+                if not _download_remaining("PyAV did not return all requested frames"):
+                    return
         except Exception as exc:
             _put(exc)
         finally:
