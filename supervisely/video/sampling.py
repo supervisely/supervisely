@@ -8,6 +8,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, U
 import cv2
 import numpy as np
 
+from supervisely import logger
 from supervisely._utils import batched_iter, run_coroutine
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
@@ -21,7 +22,6 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.project.project_meta import ProjectMeta
-from supervisely import logger
 from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
@@ -931,15 +931,23 @@ def stream_video_frames_to_dir(
             )
             print(paths)  # ['/tmp/frames/frame_000000.png', ...]
     """
-    return run_coroutine(
-        async_stream_video_frames_to_dir(
-            api=api,
-            video_id=video_id,
-            output_dir=output_dir,
-            start=start,
-            end=end,
-            ext=ext,
-            progress_cb=progress_cb,
-            image_writer=image_writer,
-        )
+    coro = async_stream_video_frames_to_dir(
+        api=api,
+        video_id=video_id,
+        output_dir=output_dir,
+        start=start,
+        end=end,
+        ext=ext,
+        progress_cb=progress_cb,
+        image_writer=image_writer,
     )
+    try:
+        running_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        running_loop = None
+
+    if running_loop is not None and running_loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return run_coroutine(coro)
