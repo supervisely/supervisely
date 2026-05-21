@@ -3,11 +3,12 @@ import concurrent.futures
 import os
 import threading
 import urllib.parse
-from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, AsyncGenerator, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import cv2
 import numpy as np
 
+from supervisely import logger
 from supervisely._utils import batched_iter, run_coroutine
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
@@ -21,7 +22,6 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.project.project_meta import ProjectMeta
-from supervisely import logger
 from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
@@ -611,6 +611,17 @@ def _resolve_video_url(api: Any, video_id: int) -> str:
     )
 
 
+def _resolve_video_source(api: Any, video_id: int) -> Tuple[str, dict]:
+    """Resolve the public video URL and return the JSON info used to build it."""
+    json_info = api.video.get_json_info_by_id(video_id, force_metadata_for_links=False)
+    video_url = _extract_video_url(
+        json_info=json_info,
+        video_id=video_id,
+        server_address=api.server_address,
+    )
+    return video_url, json_info
+
+
 def _av_open(video_url: str, token: Optional[str] = None) -> Any:
     """Open a PyAV container synchronously, injecting the API token header when present."""
     try:
@@ -657,6 +668,125 @@ def _sync_build_pts_map(video_url: str, token: Optional[str], video_id: int) -> 
         container.close()
 
 
+def _extract_video_frame_metadata(json_info: dict) -> Tuple[List[float], Optional[int]]:
+    """Return server-generated frame timecodes and frames count from video JSON info."""
+    file_meta = json_info.get("fileMeta") or {}
+    frame_timecodes = file_meta.get("framesToTimecodes") or []
+    frames_count = file_meta.get("framesCount")
+    if frames_count is not None:
+        frames_count = int(frames_count)
+    return [float(timecode) for timecode in frame_timecodes], frames_count
+
+
+def _get_requested_frame_range(
+    start: Optional[int], end: Optional[int], frames_count: Optional[int]
+) -> Optional[Tuple[int, int]]:
+    _start = max(0, start if start is not None else 0)
+    if frames_count is None:
+        if end is None:
+            raise RuntimeError(
+                "Cannot infer video frame range: video metadata does not include framesCount "
+                "and end was not provided."
+            )
+        _end = max(_start, end)
+        return _start, _end
+    if frames_count <= 0 or _start >= frames_count:
+        return None
+    _end = min(max(_start, end), frames_count - 1) if end is not None else frames_count - 1
+    return _start, _end
+
+
+def _pts_candidates_from_timecode(timecode: float, stream: Any) -> Set[int]:
+    """Build a small set of likely PTS values for a server-generated timecode."""
+    time_base = float(stream.time_base)
+    base_pts = int(round(timecode / time_base))
+    stream_start = stream.start_time or 0
+    base_values = {base_pts}
+    if stream_start:
+        base_values.add(base_pts + stream_start)
+    candidates: Set[int] = set()
+    for pts in base_values:
+        for delta in (-1, 0, 1):
+            candidate = pts + delta
+            if candidate >= 0:
+                candidates.add(candidate)
+    return candidates
+
+
+def _iter_api_download_video_frames(
+    api: Any,
+    video_id: int,
+    frame_indices: Iterable[int],
+    cancel_event: threading.Event,
+) -> Iterable[Tuple[int, np.ndarray]]:
+    """Download frames through the regular server endpoint in requested order."""
+    for batch_indices in batched_iter(frame_indices, 50):
+        if cancel_event.is_set():
+            return
+        downloaded: Dict[int, np.ndarray] = {}
+        for frame_idx, img in api.video.frame.download_nps_generator(video_id, batch_indices):
+            downloaded[frame_idx] = img
+        for frame_idx in batch_indices:
+            if cancel_event.is_set():
+                return
+            if frame_idx not in downloaded:
+                raise RuntimeError(
+                    f"Server did not return frame {frame_idx} for video {video_id}."
+                )
+            yield frame_idx, downloaded[frame_idx]
+
+
+def _iter_av_frames_by_timecodes(
+    video_url: str,
+    token: Optional[str],
+    video_id: int,
+    frame_timecodes: List[float],
+    start: int,
+    end: int,
+    cancel_event: threading.Event,
+) -> Iterable[Tuple[int, np.ndarray]]:
+    """Decode requested frames using server-generated frame timecodes as the index map."""
+    container: Any = _av_open(video_url, token)
+    try:
+        video_streams = container.streams.video
+        if not video_streams:
+            raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
+        v_stream = video_streams[0]
+
+        pts_to_indices: Dict[int, List[int]] = {}
+        for frame_idx in range(start, end + 1):
+            for pts in _pts_candidates_from_timecode(frame_timecodes[frame_idx], v_stream):
+                pts_to_indices.setdefault(pts, []).append(frame_idx)
+
+        if not pts_to_indices:
+            return
+
+        start_pts = min(_pts_candidates_from_timecode(frame_timecodes[start], v_stream))
+        end_pts = max(_pts_candidates_from_timecode(frame_timecodes[end], v_stream))
+        container.seek(start_pts, stream=v_stream, backward=True, any_frame=False)
+
+        yielded: Set[int] = set()
+        for frame in container.decode(v_stream):
+            if cancel_event.is_set():
+                return
+            if frame.pts is None or frame.is_corrupt:
+                continue
+            frame_indices = pts_to_indices.pop(frame.pts, None)
+            if frame_indices is not None:
+                img = frame.to_ndarray(format="rgb24")
+                for frame_idx in frame_indices:
+                    if frame_idx in yielded:
+                        continue
+                    yielded.add(frame_idx)
+                    yield frame_idx, img
+            if len(yielded) == end - start + 1:
+                break
+            if frame.pts > end_pts:
+                break
+    finally:
+        container.close()
+
+
 async def _async_build_pts_map(
     api: Any,
     video_id: int,
@@ -690,10 +820,10 @@ async def async_stream_video_frames(
 ) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
     """Async generator that streams decoded video frames by frame index.
 
-    Builds a PTS map by demuxing the video, then decodes and yields frames
-    in the requested range. Automatically selects the optimal decoding
-    strategy: seek-based for most videos, or full decode from start for
-    B-frame streams without a CTTS box.
+    Uses server-generated frame timecodes to seek into the source video, then
+    decodes and yields frames in the requested range. Falls back to the regular
+    server-side frame download endpoint when the source video cannot be streamed
+    directly.
 
     :param api: Supervisely API object.
     :type api: Api
@@ -719,20 +849,18 @@ async def async_stream_video_frames(
             async for frame_idx, img in async_stream_video_frames(api, video_id=123, start=0, end=9):
                 print(frame_idx, img.shape)
     """
-    pts_map, decode_from_start = await _async_build_pts_map(
-        api=api,
-        video_id=video_id,
-    )
+    video_url, json_info = _resolve_video_source(api, video_id)
+    frame_timecodes, frames_count = _extract_video_frame_metadata(json_info)
+    if frames_count is None and frame_timecodes:
+        frames_count = len(frame_timecodes)
+    if frame_timecodes:
+        frames_count = min(frames_count, len(frame_timecodes))
 
-    if not pts_map:
+    frame_range = _get_requested_frame_range(start, end, frames_count)
+    if frame_range is None:
         return
-
-    _start: int = max(0, start if start is not None else 0)
-    _end: int = min(max(_start, end), len(pts_map) - 1) if end is not None else len(pts_map) - 1
-
-    pts_to_index: Dict[int, int] = {pts: idx for idx, pts in enumerate(pts_map)}
-
-    video_url = _resolve_video_url(api, video_id)
+    _start, _end = frame_range
+    requested_indices = range(_start, _end + 1)
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue(maxsize=8)
     cancel_event = threading.Event()
@@ -754,55 +882,64 @@ async def async_stream_video_frames(
         return False
 
     def _worker() -> None:
-        try:
-            container: Any = _av_open(video_url, api.token)
-            try:
-                video_streams = container.streams.video
-                if not video_streams:
-                    raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
-                v_stream = video_streams[0]
+        emitted: Set[int] = set()
 
-                if decode_from_start:
-                    remaining: set = set(range(_start, _end + 1))
-                    for pkt in container.demux(v_stream):
-                        if cancel_event.is_set():
-                            break
-                        for frame in pkt.decode():
-                            if frame.pts is None or frame.is_corrupt:
-                                continue
-                            frame_idx = pts_to_index.get(frame.pts)
-                            if frame_idx is None or frame_idx not in remaining:
-                                continue
-                            img = frame.to_ndarray(format="rgb24")
-                            if not _put((frame_idx, img)):
-                                return
-                            remaining.discard(frame_idx)
-                        if not remaining:
-                            break
-                else:
-                    # Single seek to the first requested frame, then decode sequentially.
-                    # This avoids O(N) seeks for contiguous ranges.
-                    wanted: Dict[int, int] = {pts_map[i]: i for i in range(_start, _end + 1)}
-                    end_pts: int = pts_map[_end]
-                    container.seek(
-                        pts_map[_start], stream=v_stream, backward=True, any_frame=False
-                    )
-                    for frame in container.decode(v_stream):
-                        if cancel_event.is_set():
-                            break
-                        if frame.pts is None or frame.is_corrupt:
-                            continue
-                        frame_idx = wanted.pop(frame.pts, None)
-                        if frame_idx is not None:
-                            img = frame.to_ndarray(format="rgb24")
-                            if not _put((frame_idx, img)):
-                                return
-                        if not wanted:
-                            break
-                        if frame.pts > end_pts:
-                            break
-            finally:
-                container.close()
+        def _emit(frame_idx: int, img: np.ndarray) -> bool:
+            if not _put((frame_idx, img)):
+                return False
+            emitted.add(frame_idx)
+            return True
+
+        def _download_remaining(reason: str) -> bool:
+            remaining = [idx for idx in requested_indices if idx not in emitted]
+            if not remaining:
+                return True
+            logger.warning(
+                "Falling back to server-side video frame download: %s",
+                reason,
+                extra={"video_id": video_id, "frames_count": len(remaining)},
+            )
+            for frame_idx, img in _iter_api_download_video_frames(
+                api=api,
+                video_id=video_id,
+                frame_indices=remaining,
+                cancel_event=cancel_event,
+            ):
+                if not _emit(frame_idx, img):
+                    return False
+            missing = [idx for idx in requested_indices if idx not in emitted]
+            if missing and not cancel_event.is_set():
+                raise RuntimeError(
+                    f"Server did not return {len(missing)} requested frames for video {video_id}."
+                )
+            return True
+
+        try:
+            if not frame_timecodes:
+                if not _download_remaining("video metadata does not include framesToTimecodes"):
+                    return
+                return
+
+            try:
+                for frame_idx, img in _iter_av_frames_by_timecodes(
+                    video_url=video_url,
+                    token=api.token,
+                    video_id=video_id,
+                    frame_timecodes=frame_timecodes,
+                    start=_start,
+                    end=_end,
+                    cancel_event=cancel_event,
+                ):
+                    if not _emit(frame_idx, img):
+                        return
+            except Exception as exc:
+                if not _download_remaining(f"PyAV streaming failed: {exc}"):
+                    return
+                return
+
+            if len(emitted) != _end - _start + 1:
+                if not _download_remaining("PyAV did not return all requested frames"):
+                    return
         except Exception as exc:
             _put(exc)
         finally:
@@ -931,15 +1068,23 @@ def stream_video_frames_to_dir(
             )
             print(paths)  # ['/tmp/frames/frame_000000.png', ...]
     """
-    return run_coroutine(
-        async_stream_video_frames_to_dir(
-            api=api,
-            video_id=video_id,
-            output_dir=output_dir,
-            start=start,
-            end=end,
-            ext=ext,
-            progress_cb=progress_cb,
-            image_writer=image_writer,
-        )
+    coro = async_stream_video_frames_to_dir(
+        api=api,
+        video_id=video_id,
+        output_dir=output_dir,
+        start=start,
+        end=end,
+        ext=ext,
+        progress_cb=progress_cb,
+        image_writer=image_writer,
     )
+    try:
+        running_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        running_loop = None
+
+    if running_loop is not None and running_loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return run_coroutine(coro)
