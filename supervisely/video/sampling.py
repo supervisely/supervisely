@@ -632,22 +632,39 @@ def _av_open(video_url: str, token: Optional[str] = None) -> Any:
     return av.open(video_url, options=av_options)
 
 
-def _sync_build_pts_map(video_url: str, token: Optional[str], video_id: int) -> Tuple[List[int], bool]:
-    """Synchronously demux video and build a sorted PTS list. Safe to run in a thread pool."""
-    container: Any = _av_open(video_url, token)
+def _sync_build_pts_map(
+    video_url: str,
+    token: Optional[str],
+    video_id: int,
+    end_frame: Optional[int] = None,
+) -> Tuple[List[int], bool]:
+    """Synchronously demux video and build a sorted PTS list. Safe to run in a thread pool.
+
+    :param video_url: Public URL of the video to demux.
+    :param token: API token for authenticated access to the video URL, if required.
+    :param video_id: Video ID (for logging purposes only).
+    :param end_frame: Stop demuxing after collecting ``end_frame + 64`` PTS values.
+        Avoids scanning the entire video when only a subset of frames is needed.
+        Early termination happens at ``end_frame + 64`` instead of ``end_frame`` to account for B-frame reordering (typically ≤16 frames).
+        ``None`` reads the full video (required when ``end`` is unknown).
+    """
+    container = _av_open(video_url, token)
     try:
         video_streams = container.streams.video
         if not video_streams:
             raise RuntimeError(f"PyAV found no video streams in video {video_id}.")
         v_stream = video_streams[0]
 
-        pts_list: List[int] = []
+        pts_list = []
         saw_pts_ne_dts = False
+        stop_after = (end_frame + 64) if end_frame is not None else None
         for pkt in container.demux(v_stream):
             if pkt.pts is not None and pkt.dts is not None and pkt.pts != pkt.dts:
                 saw_pts_ne_dts = True
             if pkt.pts is not None and pkt.pts >= 0:
                 pts_list.append(pkt.pts)
+            if stop_after is not None and len(pts_list) >= stop_after:
+                break
 
         pts_list.sort()
         has_b_frames = getattr(v_stream.codec_context, "has_b_frames", 0) > 0
@@ -657,36 +674,12 @@ def _sync_build_pts_map(video_url: str, token: Optional[str], video_id: int) -> 
         container.close()
 
 
-async def _async_build_pts_map(
-    api: Any,
-    video_id: int,
-) -> Tuple[List[int], bool]:
-    """Build frame-index -> PTS map and detect no-CTTS B-frame streams."""
-    video_url = _resolve_video_url(api, video_id)
-    loop = asyncio.get_running_loop()
-    pts_list, decode_from_start = await loop.run_in_executor(
-        None, _sync_build_pts_map, video_url, api.token, video_id
-    )
-    if decode_from_start:
-        logger.warning(
-            "B-frame stream without CTTS detected; "
-            "using full decode from start for stable frame extraction.",
-            extra={"video_id": video_id},
-        )
-    logger.debug(
-        "build_pts_map: video_id=%d - %d pts values (demux, non-negative, sorted), decode_from_start=%s.",
-        video_id,
-        len(pts_list),
-        decode_from_start,
-    )
-    return pts_list, decode_from_start
-
-
 async def async_stream_video_frames(
     api: Any,
     video_id: int,
     start: Optional[int] = None,
     end: Optional[int] = None,
+    queue_maxsize: int = 32,
 ) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
     """Async generator that streams decoded video frames by frame index.
 
@@ -703,6 +696,10 @@ async def async_stream_video_frames(
     :type start: int, optional
     :param end: Last frame index to yield (inclusive, 0-based). Defaults to the last frame.
     :type end: int, optional
+    :param queue_maxsize: Decode prefetch buffer size in frames (default 32).
+        Increase on memory-rich systems for higher throughput.
+        Peak RAM ≈ ``(queue_maxsize + 1) x H x W x 3`` bytes.
+    :type queue_maxsize: int, optional
     :yields: Tuple of ``(frame_index, rgb_image)`` where ``rgb_image`` is a
         ``numpy.ndarray`` of shape ``(H, W, 3)`` in RGB uint8 format.
     :rtype: AsyncGenerator[Tuple[int, numpy.ndarray], None]
@@ -719,31 +716,48 @@ async def async_stream_video_frames(
             async for frame_idx, img in async_stream_video_frames(api, video_id=123, start=0, end=9):
                 print(frame_idx, img.shape)
     """
-    pts_map, decode_from_start = await _async_build_pts_map(
-        api=api,
-        video_id=video_id,
-    )
-
-    if not pts_map:
-        return
-
-    _start: int = max(0, start if start is not None else 0)
-    _end: int = min(max(_start, end), len(pts_map) - 1) if end is not None else len(pts_map) - 1
-
-    pts_to_index: Dict[int, int] = {pts: idx for idx, pts in enumerate(pts_map)}
 
     video_url = _resolve_video_url(api, video_id)
     loop = asyncio.get_running_loop()
-    queue: asyncio.Queue = asyncio.Queue(maxsize=8)
+
+    decode_executor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=1, thread_name_prefix="av_decode"
+    )
+
+    try:
+        pts_list, decode_from_start = await loop.run_in_executor(
+            decode_executor, _sync_build_pts_map, video_url, api.token, video_id, end
+        )
+    except Exception:
+        decode_executor.shutdown(wait=False)
+        raise
+
+    if decode_from_start:
+        logger.warning(
+            "B-frame stream without CTTS detected; "
+            "using full decode from start for stable frame extraction.",
+            extra={"video_id": video_id},
+        )
+    logger.debug(
+        "build_pts_map: video_id=%d - %d pts values (demux, non-negative, sorted), decode_from_start=%s.",
+        video_id,
+        len(pts_list),
+        decode_from_start,
+    )
+
+    if not pts_list:
+        decode_executor.shutdown(wait=False)
+        return
+
+    _start = max(0, start if start is not None else 0)
+    _end = min(max(_start, end), len(pts_list) - 1) if end is not None else len(pts_list) - 1
+
+    pts_to_index = {pts: idx for idx, pts in enumerate(pts_list)}
+
+    queue = asyncio.Queue(maxsize=queue_maxsize)
     cancel_event = threading.Event()
 
     def _put(item: Any) -> bool:
-        """Put *item* into the queue from a worker thread.
-
-        Retries with a 0.2-second timeout until the queue accepts the item or
-        ``cancel_event`` is set.  Returns ``True`` on success, ``False`` if
-        cancelled.
-        """
         while not cancel_event.is_set():
             fut = asyncio.run_coroutine_threadsafe(queue.put(item), loop)
             try:
@@ -782,10 +796,10 @@ async def async_stream_video_frames(
                 else:
                     # Single seek to the first requested frame, then decode sequentially.
                     # This avoids O(N) seeks for contiguous ranges.
-                    wanted: Dict[int, int] = {pts_map[i]: i for i in range(_start, _end + 1)}
-                    end_pts: int = pts_map[_end]
+                    wanted: Dict[int, int] = {pts_list[i]: i for i in range(_start, _end + 1)}
+                    end_pts: int = pts_list[_end]
                     container.seek(
-                        pts_map[_start], stream=v_stream, backward=True, any_frame=False
+                        pts_list[_start], stream=v_stream, backward=True, any_frame=False
                     )
                     for frame in container.decode(v_stream):
                         if cancel_event.is_set():
@@ -808,7 +822,7 @@ async def async_stream_video_frames(
         finally:
             _put(None)  # sentinel — always sent last
 
-    future = loop.run_in_executor(None, _worker)
+    future = loop.run_in_executor(decode_executor, _worker)
     try:
         while True:
             item = await queue.get()
@@ -820,6 +834,7 @@ async def async_stream_video_frames(
     finally:
         cancel_event.set()
         await future
+        decode_executor.shutdown(wait=True)
 
 
 async def async_stream_video_frames_to_dir(
@@ -831,6 +846,8 @@ async def async_stream_video_frames_to_dir(
     ext: str = "png",
     progress_cb: Optional[Callable] = None,
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
+    max_write_workers: int = 4,
+    queue_maxsize: int = 32,
 ) -> List[str]:
     """Async version of :func:`stream_video_frames_to_dir`.
 
@@ -854,6 +871,10 @@ async def async_stream_video_frames_to_dir(
     :param image_writer: Custom function ``(path, image) -> None`` for writing frames.
         Defaults to :func:`supervisely.imaging.image.write`.
     :type image_writer: callable, optional
+    :param max_write_workers: Number of parallel write threads (default 4).
+    :type max_write_workers: int, optional
+    :param queue_maxsize: Decode prefetch buffer size in frames (default 32).
+    :type queue_maxsize: int, optional
     :returns: List of absolute paths to saved frame files.
     :rtype: List[str]
     """
@@ -864,18 +885,46 @@ async def async_stream_video_frames_to_dir(
         image_writer = sly_image.write
 
     loop = asyncio.get_running_loop()
-    saved_paths: List[str] = []
-    async for frame_idx, img in async_stream_video_frames(
-        api=api,
-        video_id=video_id,
-        start=start,
-        end=end,
-    ):
-        path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
-        await loop.run_in_executor(None, image_writer, path, img)
-        saved_paths.append(path)
-        if progress_cb is not None:
-            progress_cb(1)
+    # Semaphore bounds concurrent writes in flight — primary OOM guard.
+    # When all slots are occupied, acquire() blocks the consumer loop,
+    # which fills the decode queue, which stalls the FFmpeg worker.
+    write_sem = asyncio.Semaphore(max_write_workers)
+    write_executor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=max_write_workers, thread_name_prefix="frame_write"
+    )
+    saved_paths = []
+    pending = []
+
+    async def _write_frame(path: str, img: np.ndarray) -> None:
+        try:
+            await loop.run_in_executor(write_executor, image_writer, path, img)
+        finally:
+            write_sem.release()
+
+    try:
+        async for frame_idx, img in async_stream_video_frames(
+            api=api,
+            video_id=video_id,
+            start=start,
+            end=end,
+            queue_maxsize=queue_maxsize,
+        ):
+            path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
+            await write_sem.acquire()
+            saved_paths.append(path)
+            pending.append(asyncio.create_task(_write_frame(path, img)))
+            if progress_cb is not None:
+                progress_cb(1)
+
+        if pending:
+            await asyncio.gather(*pending)
+    except Exception:
+        for task in pending:
+            task.cancel()
+        raise
+    finally:
+        write_executor.shutdown(wait=False)
+
     return saved_paths
 
 
@@ -888,6 +937,8 @@ def stream_video_frames_to_dir(
     ext: str = "png",
     progress_cb: Optional[Callable] = None,
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
+    max_write_workers: int = 4,
+    queue_maxsize: int = 32,
 ) -> List[str]:
     """Stream decoded video frames and save them to a directory.
 
@@ -914,6 +965,12 @@ def stream_video_frames_to_dir(
     :param image_writer: Custom function ``(path, image) -> None`` for writing frames.
         Defaults to :func:`supervisely.imaging.image.write`.
     :type image_writer: callable, optional
+    :param max_write_workers: Number of parallel write threads (default 4).
+        Increase on memory-rich systems for higher write throughput.
+    :type max_write_workers: int, optional
+    :param queue_maxsize: Decode prefetch buffer size in frames (default 32).
+        Peak RAM ≈ ``(queue_maxsize + max_write_workers + 1) x frame_bytes``.
+    :type queue_maxsize: int, optional
     :returns: List of absolute paths to the saved frame files.
     :rtype: List[str]
 
@@ -940,6 +997,8 @@ def stream_video_frames_to_dir(
         ext=ext,
         progress_cb=progress_cb,
         image_writer=image_writer,
+        max_write_workers=max_write_workers,
+        queue_maxsize=queue_maxsize,
     )
     try:
         running_loop = asyncio.get_running_loop()
