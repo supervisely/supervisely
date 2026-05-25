@@ -796,8 +796,8 @@ async def async_stream_video_frames(
                 else:
                     # Single seek to the first requested frame, then decode sequentially.
                     # This avoids O(N) seeks for contiguous ranges.
-                    wanted: Dict[int, int] = {pts_list[i]: i for i in range(_start, _end + 1)}
-                    end_pts: int = pts_list[_end]
+                    wanted = {pts_list[i]: i for i in range(_start, _end + 1)}
+                    end_pts = pts_list[_end]
                     container.seek(
                         pts_list[_start], stream=v_stream, backward=True, any_frame=False
                     )
