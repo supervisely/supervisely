@@ -101,7 +101,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         toolbox_session_id = state.get("toolbox_session_id")
         track_id = state.get("track_id")
 
-        n_frames = max(1, int(lt.tracking_frames_widget.value))
+        n_frames = max(1, int(lt.tracking_frames_widget.get_value()))
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
         frame_0_np = sly_api.video.frame.download_np(video_id, frame_index)
@@ -222,11 +222,11 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         )
         result = await _wait_for_result(future, response)
 
-        # Fire-and-forget auto-track of the next frame. Skipped silently if
-        # MCITrack hasn't booted yet, and skipped once the model is ready to
-        # predict on its own (otherwise both tracks would land on N+1 and
-        # produce duplicate figures). UI never blocks on it.
-        if lt.mcitrack_task_id is not None and not lt.ready_to_predict:
+        # Fire-and-forget auto-track of the next frame. Uses the model when
+        # it's ready (and IoU-matches predictions back to frame N's labels
+        # to inherit object_ids), otherwise falls back to MCITrack. Skipped
+        # silently when neither source is available. UI never blocks on it.
+        if lt.mcitrack_task_id is not None or lt.ready_to_predict:
             context = (request.state.context if hasattr(request.state, "context") else {}) or {}
             toolbox_session_id = state.get("toolbox_session_id") or context.get(
                 "toolbox_session_id"
