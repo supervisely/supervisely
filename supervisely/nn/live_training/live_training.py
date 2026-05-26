@@ -77,6 +77,14 @@ class LiveTraining:
             content=self.tracking_frames_widget,
         )
         self.app = sly.Application(layout=_layout_card)
+
+        @self.tracking_frames_widget.value_changed
+        def _log_tracking_frames_changed(new_value):
+            logger.info(
+                f"[tracking_frames_widget] value_changed callback fired: "
+                f"new_value={new_value!r}"
+            )
+
         self.api = sly.Api()
         self.request_queue = RequestQueue()
 
@@ -730,7 +738,6 @@ class LiveTraining:
         stay consistent across frames. Unmatched tracked figures are added
         at the tracked coordinates.
         """
-
         from .video_utils import remove_video_figures, upload_video_figures
         from supervisely.api.module_api import ApiField
         from supervisely.metric.matching import get_geometries_iou
@@ -906,13 +913,20 @@ class LiveTraining:
         frame_ann_json = frame_ann_json[0]
 
         filtered_objects, filtered_figures = [], []
+        seen_obj_ids = set()
         for figure in frame_ann_json["figures"]:
             obj_id = figure["objectId"]
             video_obj = [obj for obj in video_ann_json["objects"] if obj["id"] == obj_id][0]
             sly_id = video_obj["classId"]
             if sly_id in self.class_map.sly_ids and figure["geometryType"] in allowed_geometries:
                 filtered_figures.append(figure)
-                filtered_objects.append(video_obj)
+                # Multiple figures on the same frame can reference the same
+                # VideoObject (e.g. when auto-track and predict-video both
+                # upload to N+1). Dedupe so VideoObjectCollection.from_json's
+                # underlying bidict doesn't raise ValueDuplicationError.
+                if obj_id not in seen_obj_ids:
+                    seen_obj_ids.add(obj_id)
+                    filtered_objects.append(video_obj)
 
         frame_ann_json = {
             "index": frame_index,

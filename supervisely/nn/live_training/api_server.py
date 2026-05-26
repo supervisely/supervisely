@@ -153,7 +153,9 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             # Inherit object_ids from frame K-1's labels (same class, IoU > 0.5)
             # so re-predicting on consecutive frames doesn't keep creating new
             # VideoObjects for what's effectively the same tracked instance.
-            object_ids_0 = _inherit_object_ids_from_prev_frame(
+            # Also drops predictions that already have a matching figure on
+            # frame K (avoids the auto-track-then-predict-video duplicate).
+            resolved_ids = _resolve_object_ids_for_predictions(
                 sly_api,
                 video_id=video_id,
                 frame_index=frame_index,
@@ -161,6 +163,15 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                 video_info=video_info,
                 project_meta=lt.project_meta,
             )
+            kept = [(label, oid) for label, oid in zip(labels_0, resolved_ids) if oid is not None]
+            if not kept:
+                logger.info(
+                    f"[predict-video] frame {frame_index}: all predictions "
+                    f"duplicate existing figures, nothing to upload"
+                )
+                return {"created_figure_ids": []}
+            labels_0 = [label for label, _ in kept]
+            object_ids_0 = [oid for _, oid in kept]
 
         figures_0_json = [
             _label_to_video_figure_json_with_track(label, obj_id, frame_index, track_id)
@@ -501,7 +512,7 @@ def _label_to_video_figure_json_with_track(
     return fj
 
 
-def _inherit_object_ids_from_prev_frame(
+def _resolve_object_ids_for_predictions(
     api,
     video_id: int,
     frame_index: int,
@@ -509,11 +520,18 @@ def _inherit_object_ids_from_prev_frame(
     video_info,
     project_meta: sly.ProjectMeta,
 ) -> list:
-    """Return one object_id per label in ``labels``. For each prediction,
-    IoU-match (same class, > 0.5) against frame_index-1's Rectangle figures
-    to inherit the existing object_id; otherwise create a new VideoObject.
+    """For each label in ``labels``, return either:
+
+    * ``None``  — drop this prediction (a same-class Rectangle figure with
+      IoU > 0.5 already exists on ``frame_index``; we'd otherwise upload a
+      duplicate that breaks ``_filter_annotation_video`` later).
+    * ``int``   — object_id to use for the upload. Inherited from frame
+      ``frame_index - 1``'s same-class Rectangle figures (IoU > 0.5) so
+      object ids stay consistent across consecutive frames; or freshly
+      created via ``create_video_object`` if no inheritance match.
+
     Falls back to ``create_video_object`` for every label when there's no
-    previous frame or no annotation on it.
+    previous frame.
     """
     from supervisely.metric.matching import get_geometries_iou
 
@@ -524,7 +542,6 @@ def _inherit_object_ids_from_prev_frame(
         )
         return [create_video_object(api, video_info, label.obj_class) for label in labels]
 
-    prev_frame_index = frame_index - 1
     video_ann_json = api.video.annotation.download(video_id)
 
     # obj_id -> class_name (built from the video's full objects list so
@@ -535,41 +552,70 @@ def _inherit_object_ids_from_prev_frame(
         if "id" in obj and project_meta.get_obj_class_by_id(obj["classId"]) is not None
     }
 
-    prev_frame = next(
-        (fr for fr in video_ann_json.get("frames", []) if fr.get("index") == prev_frame_index),
-        None,
-    )
-    prev_sources = []  # list of (rect, object_id, class_name)
-    if prev_frame:
-        for fig_json in prev_frame.get("figures", []):
+    def _rect_figures_on(idx: int) -> list:
+        """Return [(Rectangle, object_id, class_name), ...] for one frame."""
+        fr = next(
+            (f for f in video_ann_json.get("frames", []) if f.get("index") == idx),
+            None,
+        )
+        out = []
+        if fr is None:
+            return out
+        for fig_json in fr.get("figures", []):
             if fig_json.get("geometryType") != sly.Rectangle.geometry_name():
                 continue
             obj_id = fig_json.get("objectId")
             class_name = class_by_obj_id.get(obj_id)
             if obj_id is None or class_name is None:
                 continue
-            prev_sources.append(
+            out.append(
                 (
                     sly.Rectangle.from_json(fig_json["geometry"]),
                     obj_id,
                     class_name,
                 )
             )
+        return out
+
+    existing_on_k = _rect_figures_on(frame_index)
+    prev_sources = _rect_figures_on(frame_index - 1)
     logger.info(
-        f"[predict-video] frame {frame_index}: previous frame "
-        f"{prev_frame_index} has {len(prev_sources)} Rectangle sources"
+        f"[predict-video] frame {frame_index}: existing-on-K "
+        f"{len(existing_on_k)} figures, prev frame {frame_index - 1} "
+        f"{len(prev_sources)} figures"
     )
 
     out_object_ids = []
-    used = set()
+    used_prev = set()
     for label in labels:
         if not isinstance(label.geometry, sly.Rectangle):
             out_object_ids.append(create_video_object(api, video_info, label.obj_class))
             continue
         pred_class = label.obj_class.name
+
+        # 1. Duplicate-on-K filter: drop predictions that overlap an
+        # existing same-class figure on the target frame.
+        skip = False
+        for ex_rect, ex_obj_id, ex_class in existing_on_k:
+            if ex_class != pred_class:
+                continue
+            iou = get_geometries_iou(label.geometry, ex_rect)
+            if iou > 0.5:
+                logger.info(
+                    f"[predict-video] pred {pred_class} dropped: "
+                    f"duplicates existing object_id={ex_obj_id} on frame "
+                    f"{frame_index} at IoU={iou:.3f}"
+                )
+                skip = True
+                break
+        if skip:
+            out_object_ids.append(None)
+            continue
+
+        # 2. Inherit object_id from frame K-1 by same-class IoU > 0.5.
         best_idx, best_obj_id, best_iou = -1, None, 0.5
         for idx, (rect, obj_id, class_name) in enumerate(prev_sources):
-            if idx in used:
+            if idx in used_prev:
                 continue
             if class_name != pred_class:
                 continue
@@ -584,7 +630,7 @@ def _inherit_object_ids_from_prev_frame(
                 f"(best_iou={best_iou:.3f}); new object_id={new_id}"
             )
         else:
-            used.add(best_idx)
+            used_prev.add(best_idx)
             out_object_ids.append(best_obj_id)
             logger.info(
                 f"[predict-video] pred {pred_class} matched prev "
