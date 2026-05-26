@@ -176,7 +176,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
         # Fire-and-forget auto-track of the next frame. Skipped silently if
         # MCITrack hasn't booted yet; UI never blocks on it.
-        if response.status_code < 400 and lt.mcitrack_task_id is not None:
+        if lt.mcitrack_task_id is not None:
             context = (request.state.context if hasattr(request.state, "context") else {}) or {}
             toolbox_session_id = state.get("toolbox_session_id") or context.get(
                 "toolbox_session_id"
