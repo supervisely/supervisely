@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Mapping, Type, Union
+import keyword
+from types import MappingProxyType
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Union
 
 from supervisely.api.module_api import ApiField
 
@@ -16,6 +18,18 @@ ApiFilterLike = Union[
     "ApiFilterCondition",
     "ApiFilter",
     Iterable[Union[Dict[str, Any], "ApiFilterCondition"]],
+]
+
+
+__all__ = [
+    "ApiFilter",
+    "ApiFilterCondition",
+    "ApiFilterJson",
+    "ApiFilterLike",
+    "FilterCatalog",
+    "FilterField",
+    "FilterSet",
+    "filters",
 ]
 
 
@@ -59,9 +73,8 @@ class ApiFilterCondition(dict):
 class ApiFilter(list):
     """List-like builder for standard Supervisely API filters.
 
-    The class serializes to the same wire format as the legacy raw list of
-    dictionaries, so existing APIs can accept it without changing server
-    payloads.
+    The class serializes to the API wire format: a list of condition
+    dictionaries with ``field``, ``operator`` and ``value`` keys.
     """
 
     VALID_OPERATORS = {
@@ -86,7 +99,7 @@ class ApiFilter(list):
 
     @classmethod
     def normalize(cls, filters: ApiFilterLike = None) -> ApiFilterJson:
-        """Convert supported filter inputs into a fresh legacy JSON list."""
+        """Convert supported filter inputs into a fresh JSON list."""
         if filters is None:
             return []
         if isinstance(filters, ApiFilter):
@@ -185,12 +198,20 @@ class ApiFilter(list):
         return ApiFilter(self).extend(other)
 
 
-class ApiFilterField:
+class FilterField:
     """Endpoint-specific field descriptor with operator helper methods."""
 
-    def __init__(self, field: str):
+    __slots__ = ("name", "field")
+
+    def __init__(self, field: str, name: Optional[str] = None):
         _validate_field(field)
-        self.field = field
+        if name is not None:
+            _validate_attr_name(name)
+        object.__setattr__(self, "name", name or field)
+        object.__setattr__(self, "field", field)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        raise AttributeError(f"{type(self).__name__} objects are immutable")
 
     def condition(self, operator: str, value: Any) -> ApiFilterCondition:
         return ApiFilterCondition(self.field, operator, value)
@@ -235,7 +256,122 @@ class ApiFilterField:
         return ApiFilter().gte(self.field, lower).lte(self.field, upper)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.field!r})"
+        if self.name == self.field:
+            return f"{type(self).__name__}({self.field!r})"
+        return f"{type(self).__name__}({self.name!r}, field={self.field!r})"
+
+
+class FilterSet:
+    """Named collection of fields supported by one API endpoint."""
+
+    __slots__ = ("_name", "_fields")
+
+    def __init__(self, name: str, fields: Mapping[str, str]):
+        _validate_attr_name(name)
+
+        field_objects = {}
+        for attr_name, server_field in fields.items():
+            _validate_attr_name(attr_name)
+            field_objects[attr_name] = FilterField(server_field, attr_name)
+
+        object.__setattr__(self, "_name", name)
+        object.__setattr__(self, "_fields", MappingProxyType(field_objects))
+
+    @property
+    def resource(self) -> str:
+        """Resource name for this filter set."""
+        return self._name
+
+    def fields(self) -> List[str]:
+        """Return the supported Python field names."""
+        return list(self._fields.keys())
+
+    def server_fields(self) -> Dict[str, str]:
+        """Return a copy of the Python-name to API-field mapping."""
+        return {name: field.field for name, field in self._fields.items()}
+
+    def get(self, name: str) -> FilterField:
+        """Return a field by name, raising ``KeyError`` if it is not supported."""
+        return self._fields[name]
+
+    def __getitem__(self, name: str) -> FilterField:
+        return self.get(name)
+
+    def __getattr__(self, name: str) -> FilterField:
+        try:
+            return self._fields[name]
+        except KeyError:
+            raise AttributeError(
+                f"{self._name!r} filters do not include field {name!r}"
+            )
+
+    def __contains__(self, name: object) -> bool:
+        return name in self._fields
+
+    def __iter__(self) -> Iterator[FilterField]:
+        return iter(self._fields.values())
+
+    def __len__(self) -> int:
+        return len(self._fields)
+
+    def __dir__(self) -> List[str]:
+        return sorted(set(super().__dir__()) | set(self._fields.keys()))
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        raise AttributeError(f"{type(self).__name__} objects are immutable")
+
+    def __repr__(self) -> str:
+        fields = ", ".join(self._fields.keys())
+        return f"{type(self).__name__}({self._name!r}, fields=[{fields}])"
+
+
+class FilterCatalog:
+    """Catalog of endpoint-specific API filter fields."""
+
+    __slots__ = ("_sets",)
+
+    def __init__(self, specs: Mapping[str, Mapping[str, str]]):
+        sets = {}
+        for name, fields in specs.items():
+            _validate_attr_name(name)
+            sets[name] = FilterSet(name, fields)
+        object.__setattr__(self, "_sets", MappingProxyType(sets))
+
+    def names(self) -> List[str]:
+        """Return available filter set names."""
+        return list(self._sets.keys())
+
+    def get(self, name: str) -> FilterSet:
+        """Return a filter set by name, raising ``KeyError`` if it is unknown."""
+        return self._sets[name]
+
+    def __getitem__(self, name: str) -> FilterSet:
+        return self.get(name)
+
+    def __getattr__(self, name: str) -> FilterSet:
+        try:
+            return self._sets[name]
+        except KeyError:
+            raise AttributeError(f"API filters do not include resource {name!r}")
+
+    def __contains__(self, name: object) -> bool:
+        return name in self._sets
+
+    def __iter__(self) -> Iterator[FilterSet]:
+        return iter(self._sets.values())
+
+    def __len__(self) -> int:
+        return len(self._sets)
+
+    def __dir__(self) -> List[str]:
+        return sorted(set(super().__dir__()) | set(self._sets.keys()))
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        raise AttributeError(f"{type(self).__name__} objects are immutable")
+
+    def __repr__(self) -> str:
+        names = ", ".join(self._sets.keys())
+        return f"{type(self).__name__}([{names}])"
 
 
 def _validate_field(field: str) -> None:
@@ -243,320 +379,170 @@ def _validate_field(field: str) -> None:
         raise ValueError("filter field must be a non-empty string")
 
 
+def _validate_attr_name(name: str) -> None:
+    if not isinstance(name, str) or len(name) == 0:
+        raise ValueError("filter names must be non-empty strings")
+    if not name.isidentifier() or keyword.iskeyword(name):
+        raise ValueError(f"filter name {name!r} is not a valid Python attribute")
+
+
 def _validate_operator(operator: str) -> None:
     if operator not in ApiFilter.VALID_OPERATORS:
         allowed = ", ".join(sorted(ApiFilter.VALID_OPERATORS))
-        raise ValueError(f"unsupported filter operator: {operator!r}. Allowed operators: {allowed}")
+        raise ValueError(
+            f"unsupported filter operator: {operator!r}. Allowed operators: {allowed}"
+        )
 
 
-def _make_filter_builder(name: str, fields: Mapping[str, str]) -> Type:
-    attrs = {field_name: ApiFilterField(api_field) for field_name, api_field in fields.items()}
-    attrs["__slots__"] = ()
-    attrs["__doc__"] = f"Endpoint-specific API filter fields for {name}."
-    attrs["__module__"] = __name__
-    return type(name, (), attrs)
+def _snake_to_camel(name: str) -> str:
+    chunks = name.split("_")
+    return chunks[0] + "".join(chunk[:1].upper() + chunk[1:] for chunk in chunks[1:])
 
 
-_COMMON_TIMESTAMPS = {
-    "created_at": ApiField.CREATED_AT,
-    "updated_at": ApiField.UPDATED_AT,
-}
-
-_COMMON_NAMED = {
+_FIELD_ALIASES = {
     "id": ApiField.ID,
     "name": ApiField.NAME,
-    **_COMMON_TIMESTAMPS,
+    "description": ApiField.DESCRIPTION,
+    "created_at": ApiField.CREATED_AT,
+    "updated_at": ApiField.UPDATED_AT,
+    "dataset_id": ApiField.DATASET_ID,
+    "project_id": ApiField.PROJECT_ID,
+    "workspace_id": ApiField.WORKSPACE_ID,
+    "team_id": ApiField.TEAM_ID,
+    "image_id": ApiField.IMAGE_ID,
+    "parent_id": ApiField.PARENT_ID,
+    "class_id": ApiField.CLASS_ID,
+    "entity_id": ApiField.ENTITY_ID,
+    "object_id": ApiField.OBJECT_ID,
+    "geometry_type": ApiField.GEOMETRY_TYPE,
+    "created_by_id": ApiField.CREATED_BY_ID[0][0],
+    "assigned_to_id": ApiField.ASSIGNED_TO_ID[0][0],
+    "reviewer_id": ApiField.REVIEWER_ID,
+    "labeling_queue_id": ApiField.LABELING_QUEUE_ID,
+    "labeling_exam_id": ApiField.LABELING_EXAM_ID,
+    "frame_index": ApiField.FRAME,
 }
 
 
-ImageFilter = _make_filter_builder(
-    "ImageFilter",
-    {
-        **_COMMON_NAMED,
-        "dataset_id": ApiField.DATASET_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "width": ApiField.WIDTH,
-        "height": ApiField.HEIGHT,
-        "labels_count": ApiField.LABELS_COUNT,
-        "hash": ApiField.HASH,
-        "mime": ApiField.MIME,
-        "ext": ApiField.EXT,
-        "size": ApiField.SIZE,
-    },
-)
+def _server_field(name: str) -> str:
+    return _FIELD_ALIASES.get(name, _snake_to_camel(name))
 
-ProjectFilter = _make_filter_builder(
-    "ProjectFilter",
-    {
-        **_COMMON_NAMED,
-        "workspace_id": ApiField.WORKSPACE_ID,
-        "team_id": ApiField.GROUP_ID,
-        "type": ApiField.TYPE,
-        "size": ApiField.SIZE,
-        "items_count": ApiField.ITEMS_COUNT,
-        "datasets_count": ApiField.DATASETS_COUNT,
-    },
-)
 
-DatasetFilter = _make_filter_builder(
-    "DatasetFilter",
-    {
-        **_COMMON_NAMED,
-        "project_id": ApiField.PROJECT_ID,
-        "workspace_id": ApiField.WORKSPACE_ID,
-        "team_id": ApiField.GROUP_ID,
-        "parent_id": ApiField.PARENT_ID,
-        "images_count": ApiField.IMAGES_COUNT,
-        "items_count": ApiField.ITEMS_COUNT,
-        "size": ApiField.SIZE,
-    },
-)
+def _fields(*names: str, **overrides: str) -> Dict[str, str]:
+    fields = {name: _server_field(name) for name in names}
+    fields.update(overrides)
+    return fields
 
-AnnotationFilter = _make_filter_builder(
-    "AnnotationFilter",
-    {
-        **_COMMON_NAMED,
-        "image_id": ApiField.IMAGE_ID,
-        "dataset_id": ApiField.DATASET_ID,
-        "created_at": ApiField.CREATED_AT,
-        "updated_at": ApiField.UPDATED_AT,
-    },
-)
 
-VideoFilter = _make_filter_builder(
-    "VideoFilter",
-    {
-        **_COMMON_NAMED,
-        "dataset_id": ApiField.DATASET_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "description": ApiField.DESCRIPTION,
-        "frames_count": "framesCount",
-        "size": ApiField.SIZE,
-    },
-)
+_TIMESTAMPS = ("created_at", "updated_at")
+_NAMED = ("id", "name") + _TIMESTAMPS
+_DATASET_ENTITY = ("dataset_id", "project_id")
+_DESCRIBED_ENTITY = _NAMED + _DATASET_ENTITY + ("description", "size")
 
-VolumeFilter = _make_filter_builder(
-    "VolumeFilter",
-    {
-        **_COMMON_NAMED,
-        "dataset_id": ApiField.DATASET_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "description": ApiField.DESCRIPTION,
-        "size": ApiField.SIZE,
-    },
-)
 
-PointcloudFilter = _make_filter_builder(
-    "PointcloudFilter",
-    {
-        **_COMMON_NAMED,
-        "dataset_id": ApiField.DATASET_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "description": ApiField.DESCRIPTION,
-        "size": ApiField.SIZE,
-    },
-)
+_FILTER_SPECS = {
+    "image": _fields(
+        *_NAMED,
+        *_DATASET_ENTITY,
+        "width",
+        "height",
+        "labels_count",
+        "hash",
+        "mime",
+        "ext",
+        "size",
+    ),
+    "project": _fields(
+        *_NAMED,
+        "workspace_id",
+        "type",
+        "size",
+        "items_count",
+        "datasets_count",
+        team_id=ApiField.GROUP_ID,
+    ),
+    "dataset": _fields(
+        *_NAMED,
+        "project_id",
+        "workspace_id",
+        "parent_id",
+        "images_count",
+        "items_count",
+        "size",
+        team_id=ApiField.GROUP_ID,
+    ),
+    "annotation": _fields(*_NAMED, "image_id", "dataset_id"),
+    "video": _fields(*_DESCRIBED_ENTITY, "frames_count"),
+    "volume": _fields(*_DESCRIBED_ENTITY),
+    "pointcloud": _fields(*_DESCRIBED_ENTITY),
+    "figure": _fields(
+        "id",
+        "class_id",
+        "entity_id",
+        "object_id",
+        "project_id",
+        "dataset_id",
+        "frame_index",
+        "geometry_type",
+        *_TIMESTAMPS,
+    ),
+    "object": _fields(
+        "id",
+        "class_id",
+        "entity_id",
+        "dataset_id",
+        "description",
+        "created_by_id",
+        *_TIMESTAMPS,
+    ),
+    "tag": _fields(*_NAMED, "project_id", "color"),
+    "team": _fields(*_NAMED, "role"),
+    "workspace": _fields(*_NAMED, "team_id", "description"),
+    "user": _fields(
+        "id",
+        "login",
+        "name",
+        "email",
+        "role",
+        "role_id",
+        "disabled",
+        "last_login",
+        *_TIMESTAMPS,
+    ),
+    "task": _fields(
+        "id",
+        "type",
+        "status",
+        "workspace_id",
+        "user_id",
+        "started_at",
+        "finished_at",
+        *_TIMESTAMPS,
+    ),
+    "agent": _fields(*_NAMED, "team_id", "status", "version", "type"),
+    "plugin": _fields(*_NAMED, "team_id", "description", "type"),
+    "role": _fields(*_NAMED, "description"),
+    "guide": _fields(*_NAMED, "team_id", "created_by_id"),
+    "webhook": _fields(*_NAMED, "team_id", "url", "events"),
+    "entity_collection": _fields(*_NAMED, "team_id", "project_id", "type"),
+    "labeling_job": _fields(
+        *_NAMED,
+        "team_id",
+        "workspace_id",
+        "project_id",
+        "dataset_id",
+        "created_by_id",
+        "assigned_to_id",
+        "reviewer_id",
+        "status",
+        "labeling_queue_id",
+        "labeling_exam_id",
+    ),
+    "labeling_queue_entity": _fields(*_NAMED, "status", "dataset_id", "project_id"),
+    "project_version": _fields("id", "project_id", "version", *_TIMESTAMPS),
+    "app": _fields("id", "name", "module_id", "slug", "type", "status", *_TIMESTAMPS),
+    "object_class": _fields(*_NAMED, "project_id", "geometry_type", "color"),
+}
 
-FigureFilter = _make_filter_builder(
-    "FigureFilter",
-    {
-        "id": ApiField.ID,
-        "class_id": ApiField.CLASS_ID,
-        "entity_id": ApiField.ENTITY_ID,
-        "object_id": ApiField.OBJECT_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "dataset_id": ApiField.DATASET_ID,
-        "frame_index": ApiField.FRAME,
-        "geometry_type": ApiField.GEOMETRY_TYPE,
-        **_COMMON_TIMESTAMPS,
-    },
-)
 
-ObjectFilter = _make_filter_builder(
-    "ObjectFilter",
-    {
-        "id": ApiField.ID,
-        "class_id": ApiField.CLASS_ID,
-        "entity_id": ApiField.ENTITY_ID,
-        "dataset_id": ApiField.DATASET_ID,
-        "description": ApiField.DESCRIPTION,
-        "created_by_id": ApiField.CREATED_BY_ID[0][0],
-        **_COMMON_TIMESTAMPS,
-    },
-)
-
-TagFilter = _make_filter_builder(
-    "TagFilter",
-    {
-        **_COMMON_NAMED,
-        "project_id": ApiField.PROJECT_ID,
-        "color": ApiField.COLOR,
-    },
-)
-
-TeamFilter = _make_filter_builder(
-    "TeamFilter",
-    {
-        **_COMMON_NAMED,
-        "role": ApiField.ROLE,
-    },
-)
-
-WorkspaceFilter = _make_filter_builder(
-    "WorkspaceFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "description": ApiField.DESCRIPTION,
-    },
-)
-
-UserFilter = _make_filter_builder(
-    "UserFilter",
-    {
-        "id": ApiField.ID,
-        "login": ApiField.LOGIN,
-        "name": ApiField.NAME,
-        "email": ApiField.EMAIL,
-        "role": ApiField.ROLE,
-        "role_id": ApiField.ROLE_ID,
-        "disabled": ApiField.DISABLED,
-        "last_login": ApiField.LAST_LOGIN,
-        **_COMMON_TIMESTAMPS,
-    },
-)
-
-TaskFilter = _make_filter_builder(
-    "TaskFilter",
-    {
-        "id": ApiField.ID,
-        "type": ApiField.TYPE,
-        "status": ApiField.STATUS,
-        "workspace_id": ApiField.WORKSPACE_ID,
-        "user_id": ApiField.USER_ID,
-        "started_at": ApiField.STARTED_AT,
-        "finished_at": ApiField.FINISHED_AT,
-        **_COMMON_TIMESTAMPS,
-    },
-)
-
-AgentFilter = _make_filter_builder(
-    "AgentFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "status": ApiField.STATUS,
-        "version": ApiField.VERSION,
-        "type": ApiField.TYPE,
-    },
-)
-
-PluginFilter = _make_filter_builder(
-    "PluginFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "description": ApiField.DESCRIPTION,
-        "type": ApiField.TYPE,
-    },
-)
-
-RoleFilter = _make_filter_builder(
-    "RoleFilter",
-    {
-        **_COMMON_NAMED,
-        "description": ApiField.DESCRIPTION,
-    },
-)
-
-GuideFilter = _make_filter_builder(
-    "GuideFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "created_by_id": ApiField.CREATED_BY_ID[0][0],
-    },
-)
-
-WebhookFilter = _make_filter_builder(
-    "WebhookFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "url": ApiField.URL,
-        "events": ApiField.EVENTS,
-    },
-)
-
-EntityCollectionFilter = _make_filter_builder(
-    "EntityCollectionFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "type": ApiField.TYPE,
-    },
-)
-
-LabelingJobFilter = _make_filter_builder(
-    "LabelingJobFilter",
-    {
-        **_COMMON_NAMED,
-        "team_id": ApiField.TEAM_ID,
-        "workspace_id": ApiField.WORKSPACE_ID,
-        "project_id": ApiField.PROJECT_ID,
-        "dataset_id": ApiField.DATASET_ID,
-        "created_by_id": ApiField.CREATED_BY_ID[0][0],
-        "assigned_to_id": ApiField.ASSIGNED_TO_ID[0][0],
-        "reviewer_id": ApiField.REVIEWER_ID,
-        "status": ApiField.STATUS,
-        "labeling_queue_id": ApiField.LABELING_QUEUE_ID,
-        "labeling_exam_id": ApiField.LABELING_EXAM_ID,
-    },
-)
-
-LabelingQueueEntityFilter = _make_filter_builder(
-    "LabelingQueueEntityFilter",
-    {
-        **_COMMON_NAMED,
-        "id": ApiField.ID,
-        "status": ApiField.STATUS,
-        "dataset_id": ApiField.DATASET_ID,
-        "project_id": ApiField.PROJECT_ID,
-    },
-)
-
-ProjectVersionFilter = _make_filter_builder(
-    "ProjectVersionFilter",
-    {
-        "id": ApiField.ID,
-        "project_id": ApiField.PROJECT_ID,
-        "version": ApiField.VERSION,
-        "created_at": ApiField.CREATED_AT,
-        "updated_at": ApiField.UPDATED_AT,
-    },
-)
-
-AppFilter = _make_filter_builder(
-    "AppFilter",
-    {
-        "id": ApiField.ID,
-        "name": ApiField.NAME,
-        "module_id": ApiField.MODULE_ID,
-        "slug": ApiField.SLUG,
-        "type": ApiField.TYPE,
-        "status": ApiField.STATUS,
-        "created_at": ApiField.CREATED_AT,
-        "updated_at": ApiField.UPDATED_AT,
-    },
-)
-
-ObjectClassFilter = _make_filter_builder(
-    "ObjectClassFilter",
-    {
-        **_COMMON_NAMED,
-        "project_id": ApiField.PROJECT_ID,
-        "geometry_type": ApiField.GEOMETRY_TYPE,
-        "color": ApiField.COLOR,
-    },
-)
+filters = FilterCatalog(_FILTER_SPECS)

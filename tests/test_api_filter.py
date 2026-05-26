@@ -38,8 +38,8 @@ class _ApiStub:
 
 
 class TestApiFilter(unittest.TestCase):
-    def test_endpoint_builder_and_json_serialization(self):
-        filters = sly.ImageFilter.width.gte(1024) & sly.ImageFilter.name.eq("cat.jpg")
+    def test_endpoint_catalog_and_json_serialization(self):
+        filters = sly.filters.image.width.gte(1024) & sly.filters.image.name.eq("cat.jpg")
         expected = [
             {"field": "width", "operator": ">=", "value": 1024},
             {"field": "name", "operator": "=", "value": "cat.jpg"},
@@ -48,9 +48,18 @@ class TestApiFilter(unittest.TestCase):
         self.assertEqual(filters.to_json(), expected)
         self.assertEqual(json.loads(json.dumps(filters)), expected)
         self.assertEqual(
-            json.loads(json.dumps(sly.ImageFilter.id.eq(1))),
+            json.loads(json.dumps(sly.filters.image.id.eq(1))),
             {"field": "id", "operator": "=", "value": 1},
         )
+
+    def test_catalog_discovery_and_field_mapping(self):
+        self.assertIn("image", sly.filters)
+        self.assertIn("width", sly.filters.image)
+        self.assertEqual(sly.filters.image.fields()[0:2], ["id", "name"])
+        self.assertEqual(sly.filters.project.server_fields()["team_id"], ApiField.GROUP_ID)
+        self.assertEqual(sly.filters.workspace.server_fields()["team_id"], ApiField.TEAM_ID)
+        self.assertEqual(sly.filters.figure.frame_index.field, ApiField.FRAME)
+        self.assertIs(sly.filters["image"]["width"], sly.filters.image.width)
 
     def test_generic_builder_aliases_between_and_nulls(self):
         filters = (
@@ -76,10 +85,10 @@ class TestApiFilter(unittest.TestCase):
             ],
         )
 
-    def test_normalize_backward_compatibility(self):
+    def test_normalize_raw_payloads_and_conditions(self):
         raw = {"field": "name", "operator": "=", "value": "cat"}
         old_list = [raw]
-        condition = sly.ImageFilter.height.lt(800)
+        condition = sly.filters.image.height.lt(800)
 
         self.assertEqual(sly.ApiFilter.normalize(None), [])
         self.assertEqual(sly.ApiFilter.normalize({}), [])
@@ -106,11 +115,11 @@ class TestApiFilter(unittest.TestCase):
         self.assertEqual(old_api.calls[0][1][ApiField.FILTER], expected)
 
         new_api = _ApiStub()
-        ImageApi(new_api).get_list(1, filters=sly.ImageFilter.width.gte(1024))
+        ImageApi(new_api).get_list(1, filters=sly.filters.image.width.gte(1024))
         self.assertEqual(new_api.calls[0][1][ApiField.FILTER], expected)
 
     def test_dataset_parent_filter_does_not_mutate_caller_filters(self):
-        caller_filters = [sly.DatasetFilter.name.eq("nested").to_json()]
+        caller_filters = [sly.filters.dataset.name.eq("nested").to_json()]
         original = json.loads(json.dumps(caller_filters))
 
         api = _ApiStub()
@@ -123,7 +132,7 @@ class TestApiFilter(unittest.TestCase):
         )
 
     def test_figure_image_filter_does_not_mutate_caller_filters(self):
-        caller_filters = sly.FigureFilter.class_id.eq(7)
+        caller_filters = sly.filters.figure.class_id.eq(7)
         original = sly.ApiFilter.normalize(caller_filters)
 
         api = _ApiStub()

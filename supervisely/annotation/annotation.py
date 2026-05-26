@@ -1530,9 +1530,7 @@ class Annotation:
                 img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
                 ann = sly.Annotation.from_img_path(img_path)
         """
-        img = sly_image.read(img_path)
-        img_size = img.shape[:2]
-        return cls(img_size)
+        return cls(sly_image.get_image_shape(img_path))
 
     @classmethod
     def stat_area(

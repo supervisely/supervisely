@@ -40,6 +40,8 @@ SUPPORTED_IMG_EXTS = [
     ".jfif",
 ]
 DEFAULT_IMG_EXT = ".png"
+_EXIF_ORIENTATION_TAG = 274
+_TRANSPOSED_EXIF_ORIENTATIONS = {5, 6, 7, 8}
 
 
 class CornerAnchorMode:
@@ -120,6 +122,31 @@ def has_valid_ext(path: str) -> bool:
             sly.image.has_valid_ext('/home/admin/work/docs/016_img.py') # False
     """
     return is_valid_ext(os.path.splitext(path)[1])
+
+
+def get_image_shape(path: str) -> Tuple[int, int]:
+    """
+    Returns image shape as ``(height, width)``.
+
+    The size respects EXIF orientation for formats that can store it. This keeps
+    annotation canvas dimensions consistent with uploaded image dimensions across
+    OpenCV versions.
+    """
+    ext = get_file_ext(path).lower()
+    if ext == ".nrrd":
+        data, _ = nrrd.read(path, index_order="C")
+        return data.shape[:2]
+
+    with PILImage.open(path) as image:
+        width, height = image.size
+        try:
+            orientation = image.getexif().get(_EXIF_ORIENTATION_TAG)
+            orientation = int(orientation) if orientation is not None else None
+        except Exception:
+            orientation = None
+        if orientation in _TRANSPOSED_EXIF_ORIENTATIONS:
+            width, height = height, width
+        return height, width
 
 
 def validate_ext(path: str) -> None:

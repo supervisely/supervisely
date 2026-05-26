@@ -149,7 +149,7 @@ class COCOConverter(ImageConverter):
     ) -> Annotation:
         """Convert to Supervisely format."""
         if item.ann_data is None:
-            return Annotation.from_img_path(item.path)
+            return item.create_empty_annotation()
         else:
             if not self.upload_as_links:
                 item.set_shape()
