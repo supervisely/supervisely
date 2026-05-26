@@ -124,17 +124,28 @@ class LiveTraining:
         self._keyframe_thread: Optional[threading.Thread] = None
         self._keyframe_cancel = threading.Event()
 
+        # MCITrack auto-start: looked up or launched lazily in a background
+        # thread so __init__ doesn't block. None until the thread succeeds;
+        # auto_track_next_frame silently no-ops while it's None.
+        self.workspace_id = sly.env.workspace_id()
+        self.agent_id = sly.env.agent_id()
+        self.mcitrack_module_id = 475
+        self.mcitrack_task_id: Optional[int] = None
+        self._mcitrack_ready = threading.Event()
+
         # Start the API server last so that every attribute touched by status()
         # (phase, iter, dataset, evaluator, ...) is already initialized before
         # the server can serve a /status call from another thread.
         self._api_thread = start_api_server(self)
+
+        threading.Thread(target=self._start_mcitrack_app, daemon=True, name="MCITrackBoot").start()
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
 
     @property
     def ready_to_predict(self):
-        return self.iter >= self.initial_iters
+        return self.iter > self.initial_iters
 
     def status(self):
         labeled_count = self.dataset.num_labeled_samples if self.dataset is not None else 0
@@ -627,6 +638,187 @@ class LiveTraining:
                 filtered_objects.append(obj)
         ann_json["objects"] = filtered_objects
         return ann_json
+
+    def _start_mcitrack_app(self):
+        """Find or launch the MCITrack app and wait until it answers RPCs.
+
+        Failure here is non-fatal: ``auto_track_next_frame`` silently no-ops
+        while ``self.mcitrack_task_id is None``.
+        """
+        from supervisely.api.task_api import TaskApi
+
+        try:
+            sessions = self.api.app.get_sessions(
+                self.team_id,
+                self.mcitrack_module_id,
+                statuses=[TaskApi.Status.STARTED],
+            )
+            if sessions:
+                task_id = sessions[0].task_id
+                logger.info(f"Reusing MCITrack session: task_id={task_id}")
+            else:
+                session_info = self.api.app.start(
+                    agent_id=self.agent_id,
+                    module_id=self.mcitrack_module_id,
+                    workspace_id=self.workspace_id,
+                )
+                task_id = session_info.task_id
+                logger.info(f"Started MCITrack session: task_id={task_id}")
+
+            if not self.api.app.is_ready_for_api_calls(task_id):
+                self.api.app.wait_until_ready_for_api_calls(task_id, attempts=100000)
+            time.sleep(10)  # status flips before the HTTP server is actually up
+            self.mcitrack_task_id = task_id
+            self._mcitrack_ready.set()
+            logger.info("MCITrack session is ready for /track-api requests")
+        except Exception as e:
+            logger.warning(
+                f"Failed to start MCITrack (auto-track on add-sample-video "
+                f"will be disabled): {e}"
+            )
+
+    def auto_track_next_frame(
+        self,
+        video_id: int,
+        frame_index: int,
+        api: sly.Api,
+        toolbox_session_id: Optional[str] = None,
+    ) -> None:
+        """Track every Rectangle figure on ``frame_index`` forward one frame
+        with MCITrack and reconcile against existing figures on
+        ``frame_index + 1``.
+
+        Matches by IoU > 0.5 within the same class are treated as the same
+        track: the existing figure is removed and re-added with the source
+        object_id from frame N so object ids stay consistent across frames.
+        Unmatched predictions are added at the tracked coordinates.
+        """
+        from .video_utils import remove_video_figures, upload_video_figures
+        from supervisely.api.module_api import ApiField
+        from supervisely.metric.matching import get_geometries_iou
+
+        if self.mcitrack_task_id is None:
+            return
+
+        # 1. Re-download the video annotation so we see the figure the user
+        # just committed on frame N (and any concurrent edits on N+1).
+        video_ann_json = api.video.annotation.download(video_id)
+        next_frame_index = frame_index + 1
+        if next_frame_index >= video_ann_json["framesCount"]:
+            return
+
+        # 2. obj_id -> class_name map from the video's top-level objects list.
+        class_by_obj_id = {
+            obj["id"]: self.project_meta.get_obj_class_by_id(obj["classId"]).name
+            for obj in video_ann_json.get("objects", [])
+            if "id" in obj and self.project_meta.get_obj_class_by_id(obj["classId"]) is not None
+        }
+
+        # 3. Source figures on frame N.
+        src_frame_ann_json = next(
+            (fr for fr in video_ann_json.get("frames", []) if fr.get("index") == frame_index),
+            None,
+        )
+        if not src_frame_ann_json or not src_frame_ann_json.get("figures"):
+            return
+
+        # sources is parallel-indexed with input_geometries.
+        sources = []  # list of (src_object_id, src_class_name)
+        input_geometries = []
+        for fig_json in src_frame_ann_json["figures"]:
+            if fig_json.get("geometryType") != sly.Rectangle.geometry_name():
+                continue
+            src_object_id = fig_json.get("objectId")
+            src_class = class_by_obj_id.get(src_object_id)
+            if src_object_id is None or src_class is None:
+                continue
+            input_geometries.append(
+                {"type": sly.Rectangle.geometry_name(), "data": fig_json["geometry"]}
+            )
+            sources.append((src_object_id, src_class))
+        if not input_geometries:
+            return
+
+        # 4. Ask MCITrack for predictions on frame N+1.
+        response = self.api.task.send_request(
+            self.mcitrack_task_id,
+            "track-api",
+            {},
+            context={
+                "videoId": video_id,
+                "frameIndex": frame_index,
+                "frames": 1,
+                "direction": "forward",
+                "input_geometries": input_geometries,
+            },
+            timeout=120,
+        )
+        # Shape: [[geo_obj_0, geo_obj_1, ...]] — one inner list per frame.
+        if not response or not response[0]:
+            return
+        tracked_per_obj = response[0]
+
+        # 5. Existing figures on frame N+1.
+        dst_frame_ann_json = next(
+            (fr for fr in video_ann_json.get("frames", []) if fr.get("index") == next_frame_index),
+            None,
+        )
+        existing = []  # list of (figure_id, geometry_json, class_name)
+        if dst_frame_ann_json:
+            for fig_json in dst_frame_ann_json.get("figures", []):
+                if fig_json.get("geometryType") != sly.Rectangle.geometry_name():
+                    continue
+                fig_id = fig_json.get("id")
+                if fig_id is None:
+                    # Figure not yet persisted server-side — skip the merge
+                    # path; we'd have no id to delete.
+                    continue
+                obj_class_name = class_by_obj_id.get(fig_json.get("objectId"))
+                existing.append((fig_id, fig_json["geometry"], obj_class_name))
+
+        # 6. Greedy IoU match (same class only, strict > 0.5).
+        tracked_rects = [sly.Rectangle.from_json(item["data"]) for item in tracked_per_obj]
+        existing_rects = [sly.Rectangle.from_json(geo) for _, geo, _ in existing]
+
+        figure_ids_to_remove = []
+        figures_to_add = []  # list of (geometry_json, object_id)
+        used_existing = set()
+        for t_idx, t_rect in enumerate(tracked_rects):
+            src_object_id, src_class = sources[t_idx]
+            best_e_idx, best_iou = -1, 0.5
+            for e_idx, e_rect in enumerate(existing_rects):
+                if e_idx in used_existing:
+                    continue
+                if existing[e_idx][2] != src_class:
+                    continue
+                iou = get_geometries_iou(t_rect, e_rect)
+                if iou > best_iou:
+                    best_e_idx, best_iou = e_idx, iou
+            if best_e_idx >= 0:
+                used_existing.add(best_e_idx)
+                fig_id, e_geo, _ = existing[best_e_idx]
+                figure_ids_to_remove.append(fig_id)
+                figures_to_add.append((e_geo, src_object_id))
+            else:
+                figures_to_add.append((tracked_per_obj[t_idx]["data"], src_object_id))
+
+        # 7. Push the diff — remove first so re-added geometry doesn't collide.
+        if figure_ids_to_remove:
+            remove_video_figures(api, video_id, figure_ids_to_remove, toolbox_session_id)
+
+        figures_json = [
+            {
+                ApiField.OBJECT_ID: object_id,
+                ApiField.GEOMETRY_TYPE: sly.Rectangle.geometry_name(),
+                ApiField.GEOMETRY: geometry_json,
+                ApiField.META: {ApiField.FRAME: next_frame_index},
+                ApiField.NN_CREATED: True,
+                ApiField.NN_UPDATED: True,
+            }
+            for geometry_json, object_id in figures_to_add
+        ]
+        if figures_json:
+            upload_video_figures(api, video_id, figures_json, toolbox_session_id)
 
     def _filter_annotation_video(self, video_ann_json: dict, frame_index: int) -> dict:
         # Filter objects according to class_map

@@ -14,4 +14,5 @@ from .video_utils import (
     create_video_object,
     label_to_video_figure_json,
     upload_video_figures,
+    remove_video_figures,
 )

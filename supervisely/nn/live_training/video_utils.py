@@ -164,3 +164,31 @@ def upload_video_figures(
             figure_ids.append(figure_id)
 
     return figure_ids
+
+
+def remove_video_figures(
+    api: sly.Api,
+    video_id: int,
+    figure_ids: List[int],
+    toolbox_session_id: Optional[str] = None,
+    batch_size: int = 100,
+) -> None:
+    """Bulk-DELETE figures via ``figures.bulk.remove``. Same endpoint the
+    SDK's FigureApi.remove_batch hits, but we send it directly so we can
+    attach the toolbox session id (the labeling UI needs it for undo/redo).
+    """
+    if not figure_ids:
+        return
+
+    if toolbox_session_id is not None:
+        api.headers["x-toolbox-session-id"] = toolbox_session_id
+
+    payload_extra = {}
+    if toolbox_session_id is not None:
+        payload_extra["toolboxSessionId"] = toolbox_session_id
+
+    for batch in sly.batched(list(figure_ids), batch_size=batch_size):
+        api.post(
+            "figures.bulk.remove",
+            {ApiField.FIGURE_IDS: list(batch), **payload_extra},
+        )

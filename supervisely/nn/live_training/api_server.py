@@ -105,8 +105,8 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             {"image": frame_np, "image_id": frame_id},
         )
         result = await _wait_for_result(future, response)
-        # if response.status_code >= 400:
-        #     return result
+        if response.status_code >= 400:
+            return result
 
         labels = filter_objects_by_confidence(
             result["objects"], lt.project_meta, confidence_threshold
@@ -172,16 +172,51 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                 "video_ann_json": video_ann_json,
             },
         )
-        return await _wait_for_result(future, response)
+        result = await _wait_for_result(future, response)
+
+        # Fire-and-forget auto-track of the next frame. Skipped silently if
+        # MCITrack hasn't booted yet; UI never blocks on it.
+        if response.status_code < 400 and lt.mcitrack_task_id is not None:
+            context = (request.state.context if hasattr(request.state, "context") else {}) or {}
+            toolbox_session_id = state.get("toolbox_session_id") or context.get(
+                "toolbox_session_id"
+            )
+
+            def _auto_track():
+                try:
+                    lt.auto_track_next_frame(video_id, frame_index, sly_api, toolbox_session_id)
+                except Exception as e:
+                    logger.warning(
+                        f"auto-track of frame {frame_index + 1} " f"(video {video_id}) failed: {e}"
+                    )
+
+            threading.Thread(target=_auto_track, daemon=True, name="AutoTrackNextFrame").start()
+
+        return result
 
     @app.post("/add-samples-video")
     async def add_samples_video(request: Request, response: Response):
+        """Fire-and-forget batch sample ingest.
+
+        Downloading the frames + video annotation and processing them through
+        the queue is too slow to block the caller on. Instead we:
+          1. Compute the predicted status (with an optimistic phase flip if
+             this batch will push us past ``initial_samples``).
+          2. Spawn a background thread that downloads frames, downloads the
+             video annotation, and queues ``ADD_SAMPLES_VIDEO``. Its future is
+             intentionally discarded.
+          3. Return the predicted status to the caller immediately.
+
+        Mirrors ``src/main.py::add_samples`` (orchestrator) behaviour.
+        """
         sly_api = _api_from_request(request)
         state = request.state.state
         video_id = state["video_id"]
         frame_indices = state["frame_indices"]
 
         status = lt.status()
+        # Phase.WAITING_FOR_SAMPLES is the string literal "waiting_for_samples";
+        # importing Phase here would close an import cycle with live_training.py.
         if status["phase"] == "waiting_for_samples" and status["waiting_samples"] <= len(
             frame_indices
         ):
@@ -201,7 +236,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                     },
                 )
             except Exception as e:
-                logger.warning(f"failed to run add-samples-video for video {video_id}: {e}")
+                logger.warning(f"failed to enqueue add-samples-video for video {video_id}: {e}")
 
         threading.Thread(target=_enqueue, daemon=True, name="AddSamplesVideo").start()
         return status
@@ -210,10 +245,15 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
     async def highlight_key_frames(request: Request, response: Response):
         """Tag uniform frames with ``need_to_label`` immediately, then prune
         in the background to the cluster medoids picked by the trainer."""
+        # Refuse before START arrives: any queued KEY_FRAMES request would be
+        # rejected by ``_wait_for_start``, and we don't want to leave
+        # uniform-index tags on the video for a job that can't complete.
+        # Phase.READY_TO_START is the literal "ready_to_start" — importing
+        # Phase here would close an import cycle with live_training.py.
         if lt.phase == "ready_to_start":
             response.status_code = 409
             return _error_response_message(
-                "Live training is not started yet — send start request to live training app before highlighting key frames"
+                "Live training is not started yet — send START before " "/highlight_key_frames."
             )
 
         sly_api = _api_from_request(request)
@@ -281,57 +321,57 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         lt._keyframe_thread.start()
         return {"result": "successfully highlighted key frames"}
 
-    # @app.post("/tracking_by_detection")
-    # async def tracking_by_detection(request: Request, response: Response):
-    #     if not lt.ready_to_predict:
-    #         response.status_code = 409
-    #         return _error_response_message("Model is not ready to produce any predictions yet")
+    @app.post("/tracking_by_detection")
+    async def tracking_by_detection(request: Request, response: Response):
+        if not lt.ready_to_predict:
+            response.status_code = 409
+            return _error_response_message("Model is not ready to produce any predictions yet")
 
-    #     sly_api = _api_from_request(request)
-    #     state = request.state.state
-    #     video_id = state["video_id"]
-    #     video_info = sly_api.video.get_info_by_id(video_id)
+        sly_api = _api_from_request(request)
+        state = request.state.state
+        video_id = state["video_id"]
+        video_info = sly_api.video.get_info_by_id(video_id)
 
-    #     start_frame = state.get("start_frame_index", 0)
-    #     end_frame = state.get("end_frame_index", video_info.frames_count)
-    #     step = state.get("step", 1)
-    #     batch_size = state.get("batch_size", 8)
-    #     confidence_threshold = state.get("confidence_threshold", 0.3)
-    #     track_id = state.get("track_id")
+        start_frame = state.get("start_frame_index", 0)
+        end_frame = state.get("end_frame_index", video_info.frames_count)
+        step = state.get("step", 1)
+        batch_size = state.get("batch_size", 8)
+        confidence_threshold = state.get("confidence_threshold", 0.3)
+        track_id = state.get("track_id")
 
-    #     frame_indices = list(range(start_frame, end_frame, step))
+        frame_indices = list(range(start_frame, end_frame, step))
 
-    #     from supervisely.nn.tracker import BotSortTracker
+        from supervisely.nn.tracker import BotSortTracker
 
-    #     if lt._tracker is None:
-    #         lt._tracker = BotSortTracker(device="cuda:0")
-    #     lt._tracker.reset()
+        if lt._tracker is None:
+            lt._tracker = BotSortTracker(device="cuda:0")
+        lt._tracker.reset()
 
-    #     if lt._tracker_thread is not None and lt._tracker_thread.is_alive():
-    #         lt._tracker_cancel.set()
-    #         lt._tracker_thread.join(timeout=1)
-    #     lt._tracker_cancel = threading.Event()
-    #     cancel_event = lt._tracker_cancel
+        if lt._tracker_thread is not None and lt._tracker_thread.is_alive():
+            lt._tracker_cancel.set()
+            lt._tracker_thread.join(timeout=1)
+        lt._tracker_cancel = threading.Event()
+        cancel_event = lt._tracker_cancel
 
-    #     def _run():
-    #         try:
-    #             _run_tracking_by_detection(
-    #                 lt=lt,
-    #                 api=sly_api,
-    #                 video_id=video_id,
-    #                 video_info=video_info,
-    #                 frame_indices=frame_indices,
-    #                 batch_size=batch_size,
-    #                 confidence_threshold=confidence_threshold,
-    #                 track_id=track_id,
-    #                 cancel_event=cancel_event,
-    #             )
-    #         except Exception as e:
-    #             logger.warning(f"tracking_by_detection failed for video {video_id}: {e}")
+        def _run():
+            try:
+                _run_tracking_by_detection(
+                    lt=lt,
+                    api=sly_api,
+                    video_id=video_id,
+                    video_info=video_info,
+                    frame_indices=frame_indices,
+                    batch_size=batch_size,
+                    confidence_threshold=confidence_threshold,
+                    track_id=track_id,
+                    cancel_event=cancel_event,
+                )
+            except Exception as e:
+                logger.warning(f"tracking_by_detection failed for video {video_id}: {e}")
 
-    #     lt._tracker_thread = threading.Thread(target=_run, daemon=True, name="TrackingByDetection")
-    #     lt._tracker_thread.start()
-    #     return {"message": "Track task started."}
+        lt._tracker_thread = threading.Thread(target=_run, daemon=True, name="TrackingByDetection")
+        lt._tracker_thread.start()
+        return {"message": "Track task started."}
 
     @app.post("/inference_video_id")
     async def inference_video_id(request: Request, response: Response):
@@ -406,60 +446,60 @@ def _resolve_video_info(lt: "LiveTraining", api: sly.Api, video_id: int):
     return lt.video_info
 
 
-# def _run_tracking_by_detection(
-#     lt,
-#     api,
-#     video_id,
-#     video_info,
-#     frame_indices,
-#     batch_size,
-#     confidence_threshold,
-#     track_id,
-#     cancel_event,
-# ):
-#     img_size = (video_info.frame_height, video_info.frame_width)
-#     track_id_to_obj_id = {}
+def _run_tracking_by_detection(
+    lt,
+    api,
+    video_id,
+    video_info,
+    frame_indices,
+    batch_size,
+    confidence_threshold,
+    track_id,
+    cancel_event,
+):
+    img_size = (video_info.frame_height, video_info.frame_width)
+    track_id_to_obj_id = {}
 
-#     for batch_indices in sly.batched(frame_indices, batch_size=batch_size):
-#         if cancel_event.is_set():
-#             return
-#         batch_indices = list(batch_indices)
-#         frame_nps = api.video.frame.download_nps(video_id, batch_indices)
-#         frame_ids = [f"{video_id}_{idx}" for idx in batch_indices]
+    for batch_indices in sly.batched(frame_indices, batch_size=batch_size):
+        if cancel_event.is_set():
+            return
+        batch_indices = list(batch_indices)
+        frame_nps = api.video.frame.download_nps(video_id, batch_indices)
+        frame_ids = [f"{video_id}_{idx}" for idx in batch_indices]
 
-#         future = lt.request_queue.put(
-#             RequestType.PREDICT_BATCH,
-#             {"images": frame_nps, "image_ids": frame_ids},
-#         )
-#         batch_result = future.result(timeout=600)
-#         if cancel_event.is_set():
-#             return
+        future = lt.request_queue.put(
+            RequestType.PREDICT_BATCH,
+            {"images": frame_nps, "image_ids": frame_ids},
+        )
+        batch_result = future.result(timeout=600)
+        if cancel_event.is_set():
+            return
 
-#         figures_json = []
-#         for frame_idx, frame, objects_json in zip(
-#             batch_indices, frame_nps, batch_result["objects_batch"]
-#         ):
-#             labels = filter_objects_by_confidence(
-#                 objects_json, lt.project_meta, confidence_threshold
-#             )
-#             ann = sly.Annotation(img_size=img_size, labels=labels)
+        figures_json = []
+        for frame_idx, frame, objects_json in zip(
+            batch_indices, frame_nps, batch_result["objects_batch"]
+        ):
+            labels = filter_objects_by_confidence(
+                objects_json, lt.project_meta, confidence_threshold
+            )
+            ann = sly.Annotation(img_size=img_size, labels=labels)
 
-#             matches = lt._tracker.update(frame, ann)
-#             for match in matches:
-#                 tracker_track_id = match["track_id"]
-#                 label = match["label"]
-#                 obj_id = track_id_to_obj_id.get(tracker_track_id)
-#                 if obj_id is None:
-#                     obj_id = create_video_object(api, video_info, label.obj_class)
-#                     track_id_to_obj_id[tracker_track_id] = obj_id
+            matches = lt._tracker.update(frame, ann)
+            for match in matches:
+                tracker_track_id = match["track_id"]
+                label = match["label"]
+                obj_id = track_id_to_obj_id.get(tracker_track_id)
+                if obj_id is None:
+                    obj_id = create_video_object(api, video_info, label.obj_class)
+                    track_id_to_obj_id[tracker_track_id] = obj_id
 
-#                 figure_json = label_to_video_figure_json(label, obj_id, frame_idx)
-#                 if track_id is not None:
-#                     figure_json[ApiField.TRACK_ID] = track_id
-#                 figures_json.append(figure_json)
+                figure_json = label_to_video_figure_json(label, obj_id, frame_idx)
+                if track_id is not None:
+                    figure_json[ApiField.TRACK_ID] = track_id
+                figures_json.append(figure_json)
 
-#         if figures_json:
-#             upload_video_figures(api, video_id, figures_json)
+        if figures_json:
+            upload_video_figures(api, video_id, figures_json)
 
 
 def _run_inference_video(
