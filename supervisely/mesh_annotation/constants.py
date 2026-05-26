@@ -2,9 +2,8 @@
 
 ID = "id"
 KEY = "key"
+LABELS = "labels"
 FIGURES = "figures"
-OBJECT_ID = "objectId"
-OBJECT_KEY = "objectKey"
 TAGS = "tags"
 OBJECTS = "objects"
 MESH_ID = "meshId"

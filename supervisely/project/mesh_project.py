@@ -27,7 +27,7 @@ from supervisely.io.fs import (
     touch,
 )
 from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.mesh_annotation.constants import FIGURES, KEY, OBJECTS, TAGS
+from supervisely.mesh_annotation.constants import FIGURES, KEY, LABELS, OBJECTS, TAGS
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import (
     MESH_INDEX_FIELDS,
@@ -359,19 +359,11 @@ class MeshDataset(Dataset):
 
         for item_name in self:
             ann_json = self.get_ann_json(item_name)
-            object_key_to_class = {}
             item_classes = set()
-            for obj_json in ann_json.get(OBJECTS, []):
-                class_name = obj_json.get("classTitle")
-                object_key = obj_json.get("key")
-                if class_name in class_objects:
-                    class_objects[class_name] += 1
-                if object_key is not None:
-                    object_key_to_class[object_key] = class_name
-
-            for figure_json in ann_json.get(FIGURES, []):
-                class_name = object_key_to_class.get(figure_json.get("objectKey"))
+            for label_json in ann_json.get(LABELS, []):
+                class_name = label_json.get("classTitle")
                 if class_name in class_figures:
+                    class_objects[class_name] += 1
                     class_figures[class_name] += 1
                     item_classes.add(class_name)
 
@@ -391,13 +383,13 @@ class MeshDataset(Dataset):
         stored_ann = deepcopy(ann_json)
         ann_dir = self._ann_dir_by_name(item_name)
 
-        for figure_idx, figure_json in enumerate(stored_ann.get(FIGURES, [])):
-            if not isinstance(figure_json, dict):
+        for label_idx, label_json in enumerate(stored_ann.get(LABELS, [])):
+            if not isinstance(label_json, dict):
                 continue
-            geometry = figure_json.get(ApiField.GEOMETRY)
+            geometry = label_json.get(ApiField.GEOMETRY)
             if not isinstance(geometry, dict):
                 continue
-            figure_ref = self._figure_geometry_ref(figure_json, figure_idx)
+            figure_ref = self._figure_geometry_ref(label_json, label_idx)
             for field_name in MESH_INDEX_FIELDS:
                 value = geometry.get(field_name)
                 if not self._is_indices_sequence(value):
@@ -419,10 +411,10 @@ class MeshDataset(Dataset):
     def _decode_geometry_sidecars_from_dir(cls, ann_dir: str, ann_json: Dict) -> Dict:
         restored_ann = deepcopy(ann_json)
 
-        for figure_json in restored_ann.get(FIGURES, []):
-            if not isinstance(figure_json, dict):
+        for label_json in restored_ann.get(LABELS, []):
+            if not isinstance(label_json, dict):
                 continue
-            geometry = figure_json.get(ApiField.GEOMETRY)
+            geometry = label_json.get(ApiField.GEOMETRY)
             if not isinstance(geometry, dict):
                 continue
             for field_name in MESH_INDEX_FIELDS:
@@ -737,14 +729,10 @@ def _update_key_id_map_from_annotation(key_id_map: KeyIdMap, mesh_id: int, ann_j
 
     _add_key_id(key_id_map.add_video, ann_json.get(KEY), mesh_id)
 
-    for obj_json in ann_json.get(OBJECTS, []):
-        if isinstance(obj_json, dict):
-            _add_key_id(key_id_map.add_object, obj_json.get(KEY), obj_json.get(ApiField.ID))
-            _update_key_id_map_from_tags(key_id_map, obj_json.get(TAGS, []))
-
-    for figure_json in ann_json.get(FIGURES, []):
-        if isinstance(figure_json, dict):
-            _add_key_id(key_id_map.add_figure, figure_json.get(KEY), figure_json.get(ApiField.ID))
+    for label_json in ann_json.get(LABELS, []):
+        if isinstance(label_json, dict):
+            _add_key_id(key_id_map.add_figure, label_json.get(KEY), label_json.get(ApiField.ID))
+            _update_key_id_map_from_tags(key_id_map, label_json.get(TAGS, []))
 
     _update_key_id_map_from_tags(key_id_map, ann_json.get(TAGS, []))
 

@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
-from supervisely.mesh_annotation.mesh_figure import MeshFigure
 from supervisely.mesh_annotation.mesh_indices import (
     decode_mesh_indices,
     decode_mesh_indices_base64,
@@ -12,7 +11,6 @@ from supervisely.mesh_annotation.mesh_indices import (
     encode_mesh_indices_in_json,
     encode_mesh_indices_np,
 )
-from supervisely.mesh_annotation.mesh_object import MeshObject
-from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
+from supervisely.mesh_annotation.mesh_label import MeshLabel
 from supervisely.mesh_annotation.mesh_tag import MeshTag
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection

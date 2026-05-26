@@ -1,16 +1,15 @@
 # coding: utf-8
 from __future__ import annotations
 
-from typing import List
+from typing import Iterable, List
 
 from supervisely.api.entity_annotation.object_api import ObjectApi
 from supervisely.api.mesh.mesh_tag_api import MeshObjectTagApi
-from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshObjectApi(ObjectApi):
-    """API for mesh annotation objects."""
+    """Internal API for mesh annotation object rows."""
 
     def __init__(self, api):
         super().__init__(api)
@@ -19,7 +18,7 @@ class MeshObjectApi(ObjectApi):
     def append_bulk(
         self,
         mesh_id: int,
-        objects: MeshObjectCollection,
+        objects: Iterable,
         key_id_map: KeyIdMap = None,
     ) -> List[int]:
         info = self._api.mesh.get_info_by_id(mesh_id)

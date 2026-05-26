@@ -110,10 +110,10 @@ class PerVertexLabelsMeshConverter(MeshConverter):
             return item.create_empty_annotation().to_json()
 
         renamed_classes = renamed_classes or {}
-        for obj in ann_json.get("objects", []):
-            class_title = obj.get("classTitle")
+        for label in ann_json.get("labels", []):
+            class_title = label.get("classTitle")
             if class_title is not None:
-                obj["classTitle"] = renamed_classes.get(class_title, class_title)
+                label["classTitle"] = renamed_classes.get(class_title, class_title)
         return ann_json
 
     @staticmethod
@@ -170,39 +170,29 @@ class PerVertexLabelsMeshConverter(MeshConverter):
 
     @staticmethod
     def _labels_to_annotation(labels: PLYLabels) -> Dict:
-        objects = []
-        figures = []
+        labels_json = []
 
         for (class_name, object_id), indices in sorted(
             labels.groups.items(), key=lambda item: (item[0][0], item[0][1] or -1)
         ):
             if len(indices) == 0:
                 continue
-            object_key = uuid.uuid4().hex
-            object_json = {
-                "key": object_key,
+            label_json = {
+                "key": uuid.uuid4().hex,
                 "classTitle": class_name,
                 "tags": [],
+                "geometryType": Mesh.geometry_name(),
+                "geometry": {"indices": indices},
             }
             if object_id is not None:
-                object_json["id"] = object_id
-            objects.append(object_json)
-
-            figures.append(
-                {
-                    "key": uuid.uuid4().hex,
-                    "objectKey": object_key,
-                    "geometryType": Mesh.geometry_name(),
-                    "geometry": {"indices": indices},
-                }
-            )
+                label_json["customData"] = {"sourceObjectId": object_id}
+            labels_json.append(label_json)
 
         return {
             "description": "",
             "key": uuid.uuid4().hex,
             "tags": [],
-            "objects": objects,
-            "figures": figures,
+            "labels": labels_json,
         }
 
 

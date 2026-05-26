@@ -120,9 +120,21 @@ API for working with meshes in Supervisely.
     ~supervisely.api.mesh.mesh_api.MeshApi
     ~supervisely.api.mesh.mesh_api.MeshInfo
     ~supervisely.api.mesh.mesh_annotation_api.MeshAnnotationAPI
-    ~supervisely.api.mesh.mesh_figure_api.MeshFigureApi
-    ~supervisely.api.mesh.mesh_object_api.MeshObjectApi
     ~supervisely.api.mesh.mesh_tag_api.MeshTagApi
+
+Mesh Annotation
+---------------
+Data model for mesh annotations (labels and tags).
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.mesh_annotation.mesh_annotation.MeshAnnotation
+    ~supervisely.mesh_annotation.mesh_label.MeshLabel
+    ~supervisely.mesh_annotation.mesh_tag.MeshTag
+    ~supervisely.mesh_annotation.mesh_tag_collection.MeshTagCollection
 
 Pointcloud API
 --------------

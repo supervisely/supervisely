@@ -81,7 +81,7 @@ class MeshTagApi(TagApi):
 
 
 class MeshObjectTagApi(TagApi):
-    """API for tags attached to mesh annotation objects."""
+    """Internal API for tags attached to mesh annotation object rows."""
 
     _entity_id_field = ApiField.OBJECT_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"

@@ -1,7 +1,8 @@
 # coding: utf-8
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Union
+from copy import deepcopy
+from typing import Callable, Dict, Iterable, List, Optional, Union
 
 from tqdm import tqdm
 
@@ -10,8 +11,8 @@ from requests_toolbelt import MultipartEncoder
 from supervisely._utils import batched
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.module_api import ApiField
+from supervisely.geometry.constants import GEOMETRY_SHAPE, GEOMETRY_TYPE
 from supervisely.geometry.mesh import Mesh
-from supervisely.mesh_annotation.mesh_figure import MeshFigure
 from supervisely.mesh_annotation.mesh_indices import (
     decode_mesh_indices,
     encode_mesh_indices,
@@ -20,7 +21,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshFigureApi(FigureApi):
-    """API for mesh annotation figures."""
+    """Internal API for mesh annotation figure rows."""
 
     def create(
         self,
@@ -44,7 +45,7 @@ class MeshFigureApi(FigureApi):
     def append_bulk(
         self,
         mesh_id: int,
-        figures: List[MeshFigure],
+        labels: Iterable,
         key_id_map: KeyIdMap,
     ) -> None:
         regular_figures_json = []
@@ -53,15 +54,35 @@ class MeshFigureApi(FigureApi):
         mesh_indices = []
         mesh_figures_json = []
 
-        for figure in figures:
-            figure_json = figure.to_json(key_id_map)
+        for label in labels:
+            object_id = key_id_map.get_object_id(label.key())
+            if object_id is None:
+                raise RuntimeError(
+                    "Can not upload mesh label figure: object ID not found for key {}".format(
+                        label.key()
+                    )
+                )
+
+            geometry_json = deepcopy(label.geometry.to_json())
+            geometry_json.pop(GEOMETRY_TYPE, None)
+            geometry_json.pop(GEOMETRY_SHAPE, None)
+            figure_json = {
+                ApiField.OBJECT_ID: object_id,
+                ApiField.GEOMETRY_TYPE: label.geometry.geometry_name(),
+                ApiField.GEOMETRY: geometry_json,
+            }
+            if label.priority is not None:
+                figure_json[ApiField.PRIORITY] = label.priority
+            if label.custom_data:
+                figure_json[ApiField.CUSTOM_DATA] = label.custom_data
+
             if figure_json.get(ApiField.GEOMETRY_TYPE) == Mesh.geometry_name():
-                mesh_keys.append(figure.key())
-                mesh_indices.append(figure.geometry.indices)
+                mesh_keys.append(label.key())
+                mesh_indices.append(label.geometry.indices)
                 figure_json.pop(ApiField.GEOMETRY, None)
                 mesh_figures_json.append(figure_json)
             else:
-                regular_keys.append(figure.key())
+                regular_keys.append(label.key())
                 regular_figures_json.append(figure_json)
 
         self._append_bulk(mesh_id, regular_figures_json, regular_keys, key_id_map)

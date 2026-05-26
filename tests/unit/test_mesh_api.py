@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import os
-import tarfile
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -20,10 +19,8 @@ from supervisely.convert.mesh.per_vertex_labels.per_vertex_labels_converter impo
 )
 from supervisely.convert.mesh.sly.sly_mesh_converter import SLYMeshConverter
 from supervisely.geometry.mesh import Mesh
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
-from supervisely.mesh_annotation.mesh_figure import MeshFigure
 from supervisely.mesh_annotation.mesh_indices import (
     decode_mesh_indices_base64,
     decode_mesh_indices_in_json,
@@ -31,8 +28,7 @@ from supervisely.mesh_annotation.mesh_indices import (
     encode_mesh_indices_base64,
     encode_mesh_indices_in_json,
 )
-from supervisely.mesh_annotation.mesh_object import MeshObject
-from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
+from supervisely.mesh_annotation.mesh_label import MeshLabel
 from supervisely.mesh_annotation.mesh_tag import MeshTag
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project import read_project
@@ -379,17 +375,11 @@ class TestMeshProject(unittest.TestCase):
             "description": "",
             "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "tags": [],
-            "objects": [
-                {
-                    "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    "classTitle": "car",
-                    "tags": [],
-                }
-            ],
-            "figures": [
+            "labels": [
                 {
                     "key": "cccccccccccccccccccccccccccccccc",
-                    "objectKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "classTitle": "car",
+                    "tags": [],
                     "geometryType": "mesh_indices",
                     "geometry": {"indices": indices},
                 }
@@ -411,7 +401,7 @@ class TestMeshProject(unittest.TestCase):
             self.assertEqual(project.meta.project_type, ProjectType.MESHES.value)
 
             stored_ann = load_json_file(ds.get_ann_path("sample.obj"))
-            stored_geometry = stored_ann["figures"][0]["geometry"]
+            stored_geometry = stored_ann["labels"][0]["geometry"]
             self.assertIsNone(stored_geometry["indices"])
             self.assertIn("indicesPath", stored_geometry)
             self.assertTrue(stored_geometry["indicesPath"].startswith(GEOMETRIES_DIR_NAME + "/"))
@@ -425,8 +415,8 @@ class TestMeshProject(unittest.TestCase):
                 self.assertEqual(f.read(), encode_mesh_indices(indices))
 
             restored_ann = ds.get_ann_json("sample.obj")
-            self.assertEqual(restored_ann["figures"][0]["geometry"]["indices"], indices)
-            self.assertNotIn("indicesPath", restored_ann["figures"][0]["geometry"])
+            self.assertEqual(restored_ann["labels"][0]["geometry"]["indices"], indices)
+            self.assertNotIn("indicesPath", restored_ann["labels"][0]["geometry"])
 
             reopened = read_project(project_dir)
             self.assertIsInstance(reopened, MeshProject)
@@ -489,7 +479,7 @@ class TestMeshConverter(unittest.TestCase):
             ],
         )
 
-    def test_per_vertex_labels_converter_detects_painted_ply_and_builds_mesh_figures(self):
+    def test_per_vertex_labels_converter_detects_painted_ply_and_builds_mesh_labels(self):
         with tempfile.TemporaryDirectory() as project_dir:
             self._write_per_vertex_labels_project(project_dir)
 
@@ -502,21 +492,21 @@ class TestMeshConverter(unittest.TestCase):
 
             items_by_name = {item.name: item for item in converter.get_items()}
             ann_json = converter.to_supervisely(items_by_name["labeled.ply"], converter.get_meta())
-            self.assertEqual(len(ann_json["objects"]), 2)
-            self.assertEqual(len(ann_json["figures"]), 2)
+            self.assertEqual(len(ann_json["labels"]), 2)
+            self.assertNotIn("objects", ann_json)
+            self.assertNotIn("figures", ann_json)
 
-            figures_by_class = {
-                obj["classTitle"]: figure["geometry"]["indices"]
-                for obj, figure in zip(ann_json["objects"], ann_json["figures"])
+            labels_by_class = {
+                label["classTitle"]: label["geometry"]["indices"]
+                for label in ann_json["labels"]
             }
-            self.assertEqual(figures_by_class["tooth"], [0, 1])
-            self.assertEqual(figures_by_class["gum"], [2])
-            tooth_object = [obj for obj in ann_json["objects"] if obj["classTitle"] == "tooth"][0]
-            self.assertEqual(tooth_object["id"], 500)
+            self.assertEqual(labels_by_class["tooth"], [0, 1])
+            self.assertEqual(labels_by_class["gum"], [2])
+            tooth_label = [label for label in ann_json["labels"] if label["classTitle"] == "tooth"][0]
+            self.assertEqual(tooth_label["customData"]["sourceObjectId"], 500)
 
             empty_ann = converter.to_supervisely(items_by_name["empty.ply"], converter.get_meta())
-            self.assertEqual(empty_ann["objects"], [])
-            self.assertEqual(empty_ann["figures"], [])
+            self.assertEqual(empty_ann["labels"], [])
 
     def test_per_vertex_labels_converter_honors_renamed_classes(self):
         with tempfile.TemporaryDirectory() as project_dir:
@@ -532,7 +522,7 @@ class TestMeshConverter(unittest.TestCase):
             )
 
             self.assertEqual(
-                {obj["classTitle"] for obj in ann_json["objects"]},
+                {label["classTitle"] for label in ann_json["labels"]},
                 {"tooth_1", "gum_1"},
             )
 
@@ -548,47 +538,17 @@ class TestMeshConverter(unittest.TestCase):
 
             self.assertFalse(converter.validate_format())
 
-    def test_sly_mesh_archive_fixture_detects_and_decodes_annotation(self):
-        archive_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "fixtures",
-            "mesh",
-            "sly_mesh_project.tar",
-        )
-        expected_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 42, 255, 1024]
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with tarfile.open(archive_path, "r") as archive:
-                archive.extractall(temp_dir)
-            project_dir = os.path.join(temp_dir, "sly_mesh_project")
-
-            converter = MeshConverter(project_dir).detect_format()
-
-            self.assertIsInstance(converter, SLYMeshConverter)
-            self.assertEqual(converter.items_count, 1)
-            item = converter.get_items()[0]
-            self.assertEqual(item.name, "24829663.stl")
-            ann_json = converter.to_supervisely(item, converter.get_meta())
-            self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], expected_indices)
-            self.assertNotIn("indicesPath", ann_json["figures"][0]["geometry"])
-
     def test_sly_mesh_converter_detects_fs_project_and_uploads_annotation_rows(self):
         indices = [0, 1, 2, 42, 65535]
         ann_json = {
             "description": "",
             "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "tags": [],
-            "objects": [
-                {
-                    "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    "classTitle": "car",
-                    "tags": [],
-                }
-            ],
-            "figures": [
+            "labels": [
                 {
                     "key": "cccccccccccccccccccccccccccccccc",
-                    "objectKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "classTitle": "car",
+                    "tags": [],
                     "geometryType": "mesh_indices",
                     "geometry": {"indices": indices},
                 }
@@ -603,7 +563,7 @@ class TestMeshConverter(unittest.TestCase):
             project_dir = os.path.join(temp_dir, "mesh_project")
             project = MeshProject(project_dir, OpenMode.CREATE)
             project.set_meta(
-                ProjectMeta(obj_classes=[ObjClass("car", Rectangle)], project_type=ProjectType.MESHES)
+                ProjectMeta(obj_classes=[ObjClass("car", Mesh)], project_type=ProjectType.MESHES)
             )
             ds = project.create_dataset("ds1")
             ds.add_item_file("sample.obj", src_mesh_path, ann=ann_json, _validate_item=False)
@@ -616,8 +576,8 @@ class TestMeshConverter(unittest.TestCase):
 
             item = converter.get_items()[0]
             converted_ann = converter.to_supervisely(item, converter.get_meta())
-            self.assertEqual(converted_ann["figures"][0]["geometry"]["indices"], indices)
-            self.assertNotIn("indicesPath", converted_ann["figures"][0]["geometry"])
+            self.assertEqual(converted_ann["labels"][0]["geometry"]["indices"], indices)
+            self.assertNotIn("indicesPath", converted_ann["labels"][0]["geometry"])
 
             fake = FakeApi()
             fake.project.meta = converter.get_meta()
@@ -635,10 +595,11 @@ class TestMeshConverter(unittest.TestCase):
             self.assertIn("figures.bulk.upload.geometry", method_names)
             self.assertNotIn("entities.annotations.bulk.add", method_names)
             object_call = [call for call in fake.calls if call[0] == "annotation-objects.bulk.add"][-1]
-            self.assertNotIn(ApiField.ENTITY_ID, object_call[1][ApiField.ANNOTATION_OBJECTS][0])
+            self.assertEqual(object_call[1][ApiField.ANNOTATION_OBJECTS][0][ApiField.ENTITY_ID], 1)
             figure_call = [call for call in fake.calls if call[0] == "figures.bulk.add"][-1]
             stored_figure = figure_call[1][ApiField.FIGURES][0]
             self.assertEqual(stored_figure[ApiField.GEOMETRY_TYPE], "mesh")
+            self.assertEqual(stored_figure[ApiField.OBJECT_ID], 300)
             self.assertNotIn(ApiField.GEOMETRY, stored_figure)
             geometry_call = [call for call in fake.calls if call[0] == "figures.bulk.upload.geometry"][-1]
             self.assertIn(encode_mesh_indices(indices), geometry_call[1].to_string())
@@ -655,29 +616,34 @@ class TestMeshAnnotation(unittest.TestCase):
         encoded = encode_mesh_indices_base64(indices)
         self.assertEqual(decode_mesh_indices_base64(encoded), indices)
 
-        ann_json = {"figures": [{"geometry": {"indices": indices}}]}
+        ann_json = {"labels": [{"geometry": {"indices": indices}}]}
         stored_json = encode_mesh_indices_in_json(ann_json)
-        self.assertIsInstance(stored_json["figures"][0]["geometry"]["indices"], str)
+        self.assertIsInstance(stored_json["labels"][0]["geometry"]["indices"], str)
         self.assertEqual(decode_mesh_indices_in_json(stored_json), ann_json)
 
     def test_json_round_trip(self):
-        obj_class = ObjClass("car", Rectangle)
+        obj_class = ObjClass("car", Mesh)
         tag_meta = TagMeta("scene", TagValueType.ANY_STRING)
         meta = ProjectMeta(obj_classes=[obj_class], tag_metas=[tag_meta])
 
         mesh_tag = MeshTag(tag_meta, value="outdoor")
-        mesh_object = MeshObject(obj_class)
-        figure = MeshFigure(mesh_object, Rectangle(0, 0, 10, 10))
+        label = MeshLabel(Mesh([0, 1, 2]), obj_class)
         ann = MeshAnnotation(
-            objects=MeshObjectCollection([mesh_object]),
-            figures=[figure],
+            labels=[label],
             tags=MeshTagCollection([mesh_tag]),
         )
 
         restored = MeshAnnotation.from_json(ann.to_json(), meta)
-        self.assertEqual(len(restored.objects), 1)
-        self.assertEqual(len(restored.figures), 1)
+        self.assertEqual(len(restored.labels), 1)
         self.assertEqual(len(restored.tags), 1)
+        self.assertNotIn("objects", restored.to_json())
+        self.assertNotIn("figures", restored.to_json())
+
+    def test_legacy_mesh_json_is_rejected(self):
+        meta = ProjectMeta(obj_classes=[ObjClass("car", Mesh)])
+
+        with self.assertRaises(RuntimeError):
+            MeshAnnotation.from_json({"objects": [], "figures": []}, meta)
 
     def test_download_uses_generic_annotation_rows(self):
         fake = FakeApi()
@@ -688,8 +654,8 @@ class TestMeshAnnotation(unittest.TestCase):
         ann_json = api.annotation.download(123)
 
         self.assertEqual(ann_json["meshId"], 123)
-        self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
-        self.assertEqual(len(ann_json["objects"]), 1)
+        self.assertEqual(ann_json["labels"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
+        self.assertEqual(len(ann_json["labels"]), 1)
         method_names = [method for method, _, _ in fake.calls]
         self.assertIn("annotation-objects.list", method_names)
         self.assertIn("figures.list", method_names)
@@ -698,21 +664,15 @@ class TestMeshAnnotation(unittest.TestCase):
     def test_upload_json_writes_indices_to_raw_figure_geometry(self):
         fake = FakeApi()
         fake.project.meta = ProjectMeta(
-            obj_classes=[ObjClass("car", Rectangle)], project_type=ProjectType.MESHES
+            obj_classes=[ObjClass("car", Mesh)], project_type=ProjectType.MESHES
         )
         api = MeshApi(fake)
         ann_json = {
-            "objects": [
-                {
-                    "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    "classTitle": "car",
-                    "tags": [],
-                }
-            ],
-            "figures": [
+            "labels": [
                 {
                     "key": "cccccccccccccccccccccccccccccccc",
-                    "objectKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "classTitle": "car",
+                    "tags": [],
                     "geometryType": "mesh",
                     "geometry": {"indices": [0, 1, 2, 42, 65535]},
                 }
@@ -729,6 +689,7 @@ class TestMeshAnnotation(unittest.TestCase):
         figure_call = [call for call in fake.calls if call[0] == "figures.bulk.add"][-1]
         stored_figure = figure_call[1][ApiField.FIGURES][0]
         self.assertEqual(stored_figure[ApiField.GEOMETRY_TYPE], "mesh")
+        self.assertEqual(stored_figure[ApiField.OBJECT_ID], 300)
         self.assertNotIn(ApiField.GEOMETRY, stored_figure)
         geometry_call = [call for call in fake.calls if call[0] == "figures.bulk.upload.geometry"][-1]
         self.assertIn(encode_mesh_indices([0, 1, 2, 42, 65535]), geometry_call[1].to_string())
@@ -747,26 +708,26 @@ class TestMeshAnnotation(unittest.TestCase):
 
         ann_json = api.annotation.download_bulk(4, [123])[0]
 
-        self.assertEqual(ann_json["figures"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
+        self.assertEqual(ann_json["labels"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
 
     def test_append_writes_annotation_rows(self):
         fake = FakeApi()
         fake.project.meta = ProjectMeta(
-            obj_classes=[ObjClass("car", Rectangle)], project_type=ProjectType.MESHES
+            obj_classes=[ObjClass("car", Mesh)], project_type=ProjectType.MESHES
         )
         api = MeshApi(fake)
-        obj_class = ObjClass("car", Rectangle)
-        mesh_object = MeshObject(obj_class)
-        ann = MeshAnnotation(objects=MeshObjectCollection([mesh_object]))
+        obj_class = ObjClass("car", Mesh)
+        label = MeshLabel(Mesh([0, 1, 2]), obj_class)
+        ann = MeshAnnotation(labels=[label])
 
         api.annotation.append(123, ann)
 
         methods = [method for method, _, _ in fake.calls]
         self.assertIn("annotation-objects.bulk.add", methods)
         self.assertNotIn("entities.annotations.bulk.add", methods)
-        self.assertNotIn("figures.bulk.add", methods)
+        self.assertIn("figures.bulk.add", methods)
 
-    def test_mesh_figure_upload_indices_uses_raw_geometry_storage(self):
+    def test_mesh_label_upload_indices_uses_raw_geometry_storage(self):
         fake = FakeApi()
         api = MeshApi(fake)
 

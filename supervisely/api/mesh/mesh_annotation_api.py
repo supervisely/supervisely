@@ -16,14 +16,14 @@ from supervisely.io.json import load_json_file
 from supervisely.mesh_annotation.constants import (
     FIGURES,
     KEY,
+    LABELS,
     MESH_ID,
-    OBJECT_KEY,
     OBJECTS,
     TAGS,
 )
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import MESH_INDEX_FIELDS
-from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
+from supervisely.mesh_annotation.mesh_label import MeshLabel
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -46,7 +46,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into
-            the annotation JSON when figures reference external geometry storage.
+            the annotation JSON when labels reference external geometry storage.
         :type download_mesh_geometries: bool
         :returns: Annotation JSON.
         :rtype: dict
@@ -72,7 +72,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :type dataset_id: int
         :param mesh_ids: Mesh entity IDs.
         :type mesh_ids: List[int]
-        :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into JSON when annotation figures reference external geometry.
+        :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into JSON when annotation labels reference external geometry.
         :type download_mesh_geometries: bool
         :param progress_cb: Progress callback.
         :type progress_cb: tqdm or callable, optional
@@ -128,6 +128,23 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             progress_cb=progress_cb,
         )
 
+    def upload_json(
+        self,
+        mesh_id: int,
+        ann_json: Dict,
+        dataset_id: Optional[int] = None,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> None:
+        """Upload one mesh annotation JSON."""
+        if dataset_id is None:
+            dataset_id = self._api.mesh.get_info_by_id(mesh_id).dataset_id
+        self._upload_jsons_as_entity_rows(
+            dataset_id,
+            [mesh_id],
+            [ann_json],
+            key_id_map=key_id_map,
+        )
+
     @staticmethod
     def _prepare_annotation_json(
         mesh_id: int,
@@ -135,7 +152,13 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         key_id_map: Optional[KeyIdMap],
     ) -> Dict:
         prepared_ann = dict(ann_json)
+        if OBJECTS in prepared_ann or FIGURES in prepared_ann:
+            raise RuntimeError(
+                "Legacy mesh annotation JSON with 'objects'/'figures' is not supported. "
+                "Use the 'labels' mesh annotation schema."
+            )
         prepared_ann.setdefault(MESH_ID, mesh_id)
+        prepared_ann.setdefault(LABELS, [])
         if key_id_map is not None and prepared_ann.get(KEY) is not None:
             try:
                 key_id_map.add_video(uuid.UUID(prepared_ann[KEY]), mesh_id)
@@ -162,11 +185,14 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             tags = MeshTagCollection.from_json(prepared_ann.get(TAGS, []), project_meta.tag_metas)
             self._api.mesh.tag.append_to_entity(mesh_id, project_id, tags, key_id_map=key_id_map)
 
-            objects = MeshObjectCollection.from_json(prepared_ann.get(OBJECTS, []), project_meta)
-            self._api.mesh.object.append_bulk(mesh_id, objects, key_id_map)
+            labels = [
+                MeshLabel.from_json(label_json, project_meta)
+                for label_json in prepared_ann.get(LABELS, [])
+            ]
+            self._api.mesh.object.append_bulk(mesh_id, labels, key_id_map)
 
-            figures_json, figure_keys, indices_by_key = self._prepare_figures_for_entity_rows(
-                prepared_ann.get(FIGURES, []), key_id_map
+            figures_json, figure_keys, indices_by_key = self._prepare_labels_for_entity_rows(
+                labels, key_id_map
             )
             self._api.mesh.figure._append_bulk(mesh_id, figures_json, figure_keys, key_id_map)
             upload_figure_ids = []
@@ -183,42 +209,40 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             if progress_cb is not None:
                 self._update_progress(progress_cb, 1)
 
-    def _prepare_figures_for_entity_rows(
-        self, figures_json: List[Dict], key_id_map: KeyIdMap
+    def _prepare_labels_for_entity_rows(
+        self, labels: List[MeshLabel], key_id_map: KeyIdMap
     ) -> tuple:
         prepared_figures = []
         figure_keys = []
         indices_by_key = {}
 
-        for figure_json in figures_json:
-            if not isinstance(figure_json, dict):
-                continue
-
-            prepared = deepcopy(figure_json)
-            figure_key = self._uuid_from_value(prepared.get(KEY)) or uuid.uuid4()
-            prepared[KEY] = figure_key.hex
+        for label in labels:
+            figure_key = label.key()
             figure_keys.append(figure_key)
 
-            object_id = prepared.get(ApiField.OBJECT_ID)
-            object_key = self._uuid_from_value(prepared.get(OBJECT_KEY))
-            if object_key is not None:
-                resolved = key_id_map.get_object_id(object_key)
-                if resolved is not None:
-                    object_id = resolved
+            object_id = key_id_map.get_object_id(figure_key)
             if object_id is None:
                 raise RuntimeError(
-                    "Can not upload mesh figure: objectId or resolvable objectKey is required."
+                    "Can not upload mesh label: object ID not found for key {}.".format(
+                        figure_key
+                    )
                 )
-            prepared[ApiField.OBJECT_ID] = object_id
-            prepared.pop(OBJECT_KEY, None)
 
-            geometry_type = prepared.get(ApiField.GEOMETRY_TYPE)
-            geometry = prepared.get(ApiField.GEOMETRY) or {}
-            if isinstance(geometry, dict):
-                geometry = dict(geometry)
-                for field_name in MESH_INDEX_FIELDS:
-                    geometry.pop(f"{field_name}Path", None)
-            prepared[ApiField.GEOMETRY] = geometry
+            label_json = label.to_json()
+            geometry_type = label_json[ApiField.GEOMETRY_TYPE]
+            geometry = dict(label_json.get(ApiField.GEOMETRY) or {})
+            for field_name in MESH_INDEX_FIELDS:
+                geometry.pop(f"{field_name}Path", None)
+
+            prepared = {
+                ApiField.OBJECT_ID: object_id,
+                ApiField.GEOMETRY_TYPE: geometry_type,
+                ApiField.GEOMETRY: geometry,
+            }
+            if label.priority is not None:
+                prepared[ApiField.PRIORITY] = label.priority
+            if label.custom_data:
+                prepared[ApiField.CUSTOM_DATA] = label.custom_data
 
             if geometry_type in (Mesh.geometry_name(), "mesh_indices"):
                 prepared[ApiField.GEOMETRY_TYPE] = Mesh.geometry_name()
@@ -247,14 +271,13 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         }
         tag_id_to_name = {tag.id: tag.name for tag in self._api.mesh.tag.get_list(project_id)}
 
-        objects_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
+        labels_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
         object_ids_by_mesh_id = {mesh_id: set() for mesh_id in mesh_ids}
+        used_object_ids_by_mesh_id = {mesh_id: set() for mesh_id in mesh_ids}
         object_id_to_json = {}
-        object_id_to_key = {}
         object_infos = self._api.mesh.object.get_list(dataset_id)
         for object_info in object_infos:
             object_key = uuid.uuid4()
-            object_id_to_key[object_info.id] = object_key
             object_json = {
                 KEY: object_key.hex,
                 ApiField.ID: object_info.id,
@@ -262,30 +285,35 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 TAGS: self._convert_tag_rows_to_json(object_info.tags, tag_id_to_name),
             }
             if object_info.entity_id is not None:
-                objects_by_mesh_id.setdefault(object_info.entity_id, []).append(object_json)
                 object_ids_by_mesh_id.setdefault(object_info.entity_id, set()).add(object_info.id)
             object_id_to_json[object_info.id] = object_json
 
-        figures_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
         mesh_geometry_refs = []
         raw_figures_by_mesh_id = self._api.mesh.figure.download(dataset_id, mesh_ids)
         for mesh_id, figure_infos in raw_figures_by_mesh_id.items():
             for figure_info in figure_infos:
-                object_key = object_id_to_key.get(figure_info.object_id)
-                if object_key is None:
-                    object_key = uuid.uuid4()
-                    object_id_to_key[figure_info.object_id] = object_key
+                if figure_info.object_id in used_object_ids_by_mesh_id.setdefault(mesh_id, set()):
+                    raise RuntimeError(
+                        "Can not download mesh annotation: multiple figure rows reference "
+                        "object id={!r} in mesh id={!r}.".format(figure_info.object_id, mesh_id)
+                    )
+                object_json = object_id_to_json.get(figure_info.object_id)
+                if object_json is None:
+                    raise RuntimeError(
+                        "Can not download mesh annotation: object row with id={!r} "
+                        "was not found for figure id={!r}.".format(
+                            figure_info.object_id, figure_info.id
+                        )
+                    )
+
                 figure_json = {
-                    KEY: uuid.uuid4().hex,
+                    KEY: object_json[KEY],
                     ApiField.ID: figure_info.id,
-                    OBJECT_KEY: object_key.hex,
+                    LabelJsonFields.OBJ_CLASS_NAME: object_json[LabelJsonFields.OBJ_CLASS_NAME],
+                    TAGS: object_json.get(TAGS, []),
                     ApiField.GEOMETRY_TYPE: figure_info.geometry_type,
                     ApiField.GEOMETRY: figure_info.geometry,
                 }
-                if figure_info.tags:
-                    figure_json[TAGS] = self._convert_tag_rows_to_json(
-                        figure_info.tags, tag_id_to_name
-                    )
                 if figure_info.priority is not None:
                     figure_json[ApiField.PRIORITY] = figure_info.priority
                 if figure_info.custom_data is not None:
@@ -296,19 +324,8 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                     and self._extract_mesh_indices(figure_json.get(ApiField.GEOMETRY)) is None
                 ):
                     mesh_geometry_refs.append((figure_info.id, figure_json))
-                figures_by_mesh_id.setdefault(mesh_id, []).append(figure_json)
-
-                object_json = object_id_to_json.get(figure_info.object_id)
-                if object_json is not None and LabelJsonFields.OBJ_CLASS_NAME not in figure_json:
-                    figure_json[LabelJsonFields.OBJ_CLASS_NAME] = object_json.get(
-                        LabelJsonFields.OBJ_CLASS_NAME
-                    )
-                if (
-                    object_json is not None
-                    and figure_info.object_id not in object_ids_by_mesh_id.setdefault(mesh_id, set())
-                ):
-                    objects_by_mesh_id.setdefault(mesh_id, []).append(object_json)
-                    object_ids_by_mesh_id[mesh_id].add(figure_info.object_id)
+                labels_by_mesh_id.setdefault(mesh_id, []).append(figure_json)
+                used_object_ids_by_mesh_id[mesh_id].add(figure_info.object_id)
 
         if len(mesh_geometry_refs) != 0:
             figure_ids = [figure_id for figure_id, _ in mesh_geometry_refs]
@@ -318,13 +335,20 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
         annotations = []
         for mesh_id in mesh_ids:
+            orphan_object_ids = object_ids_by_mesh_id.get(mesh_id, set()) - used_object_ids_by_mesh_id.get(
+                mesh_id, set()
+            )
+            if len(orphan_object_ids) != 0:
+                raise RuntimeError(
+                    "Can not download mesh annotation: object rows without matching figures "
+                    "found for mesh id={!r}: {!r}.".format(mesh_id, sorted(orphan_object_ids))
+                )
             annotations.append(
                 {
                     KEY: uuid.uuid4().hex,
                     MESH_ID: mesh_id,
                     TAGS: [],
-                    OBJECTS: objects_by_mesh_id.get(mesh_id, []),
-                    FIGURES: figures_by_mesh_id.get(mesh_id, []),
+                    LABELS: labels_by_mesh_id.get(mesh_id, []),
                 }
             )
             if progress_cb is not None:
@@ -359,17 +383,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         return result
 
     @staticmethod
-    def _uuid_from_value(value) -> Optional[uuid.UUID]:
-        if value is None:
-            return None
-        if isinstance(value, uuid.UUID):
-            return value
-        try:
-            return uuid.UUID(str(value))
-        except Exception:
-            return None
-
-    @staticmethod
     def _update_key_id_map(mesh_id: int, ann_json: Dict, key_id_map: Optional[KeyIdMap]) -> None:
         if key_id_map is None or not isinstance(ann_json, dict) or ann_json.get(KEY) is None:
             return
@@ -377,6 +390,16 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             key_id_map.add_video(uuid.UUID(ann_json[KEY]), mesh_id)
         except Exception:
             pass
+        for label_json in ann_json.get(LABELS, []):
+            if not isinstance(label_json, dict) or label_json.get(KEY) is None:
+                continue
+            try:
+                label_key = uuid.UUID(label_json[KEY])
+                label_id = label_json.get(ApiField.ID)
+                if label_id is not None:
+                    key_id_map.add_figure(label_key, label_id)
+            except Exception:
+                pass
 
     @staticmethod
     def _update_progress(progress_cb, value: int) -> None:

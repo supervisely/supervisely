@@ -245,9 +245,7 @@ from supervisely.mesh_annotation.mesh_indices import (
     encode_mesh_indices_in_json,
     encode_mesh_indices_np,
 )
-from supervisely.mesh_annotation.mesh_object import MeshObject
-from supervisely.mesh_annotation.mesh_object_collection import MeshObjectCollection
-from supervisely.mesh_annotation.mesh_figure import MeshFigure
+from supervisely.mesh_annotation.mesh_label import MeshLabel
 from supervisely.mesh_annotation.mesh_tag import MeshTag
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project.mesh_project import (
