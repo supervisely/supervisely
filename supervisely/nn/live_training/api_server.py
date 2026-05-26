@@ -10,8 +10,9 @@ The endpoint handlers stay framework-agnostic — anything model-specific
 import asyncio
 import concurrent.futures
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+import numpy as np
 import uvicorn
 from fastapi import FastAPI, Request, Response
 
@@ -84,9 +85,12 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
     @app.post("/predict-video")
     async def predict_video(request: Request, response: Response):
-        """Run inference on a single video frame and upload figures.
+        """Predict on the start frame; if the InputNumber widget is > 1,
+        also propagate detections forward with BotSort in a background
+        thread.
 
-        Returns ``{"created_figure_ids": [...]}``.
+        Returns ``{"created_figure_ids": [...]}`` for the start frame
+        immediately. Subsequent frames are uploaded asynchronously.
         """
         sly_api = _api_from_request(request)
         state = request.state.state
@@ -95,31 +99,77 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         confidence_threshold = state.get("confidence_threshold", 0.3)
         object_id = state.get("object_id")
         toolbox_session_id = state.get("toolbox_session_id")
+        track_id = state.get("track_id")
+
+        n_frames = max(1, int(lt.tracking_frames_widget.value))
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
-        frame_np = sly_api.video.frame.download_np(video_id, frame_index)
+        frame_0_np = sly_api.video.frame.download_np(video_id, frame_index)
         frame_id = f"{video_id}_{frame_index}"
 
         future = lt.request_queue.put(
             RequestType.PREDICT,
-            {"image": frame_np, "image_id": frame_id},
+            {"image": frame_0_np, "image_id": frame_id},
         )
         result = await _wait_for_result(future, response)
+        if response.status_code >= 400:
+            return result
 
-        labels = filter_objects_by_confidence(
+        labels_0 = filter_objects_by_confidence(
             result["objects"], lt.project_meta, confidence_threshold
         )
-        if not labels:
+        if not labels_0:
             return {"created_figure_ids": []}
 
-        if not object_id:
-            object_id = create_video_object(sly_api, video_info, labels[0].obj_class)
+        if n_frames == 1 and object_id is not None:
+            object_ids_0 = [object_id] * len(labels_0)
+        else:
+            object_ids_0 = [
+                create_video_object(sly_api, video_info, label.obj_class) for label in labels_0
+            ]
 
-        figures_json = [
-            label_to_video_figure_json(label, object_id, frame_index) for label in labels
+        figures_0_json = [
+            _label_to_video_figure_json_with_track(label, obj_id, frame_index, track_id)
+            for label, obj_id in zip(labels_0, object_ids_0)
         ]
-        figure_ids = upload_video_figures(sly_api, video_id, figures_json, toolbox_session_id)
-        return {"created_figure_ids": figure_ids}
+        figure_ids_0 = upload_video_figures(sly_api, video_id, figures_0_json, toolbox_session_id)
+
+        if n_frames > 1:
+            if lt._predict_video_thread is not None and lt._predict_video_thread.is_alive():
+                lt._predict_video_cancel.set()
+                lt._predict_video_thread.join(timeout=1)
+            lt._predict_video_cancel = threading.Event()
+            cancel_event = lt._predict_video_cancel
+
+            def _run():
+                try:
+                    _continue_predict_video_tracking(
+                        lt=lt,
+                        api=sly_api,
+                        video_id=video_id,
+                        video_info=video_info,
+                        frame_0_index=frame_index,
+                        frame_0_np=frame_0_np,
+                        labels_0=labels_0,
+                        object_ids_0=object_ids_0,
+                        n_frames=n_frames,
+                        confidence_threshold=confidence_threshold,
+                        toolbox_session_id=toolbox_session_id,
+                        track_id=track_id,
+                        cancel_event=cancel_event,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"predict-video tracking (video {video_id}, "
+                        f"start {frame_index}, n={n_frames}) failed: {e}"
+                    )
+
+            lt._predict_video_thread = threading.Thread(
+                target=_run, daemon=True, name="PredictVideoTracking"
+            )
+            lt._predict_video_thread.start()
+
+        return {"created_figure_ids": figure_ids_0}
 
     @app.post("/predict-video-batch")
     async def predict_video_batch(request: Request, response: Response):
@@ -173,8 +223,10 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         result = await _wait_for_result(future, response)
 
         # Fire-and-forget auto-track of the next frame. Skipped silently if
-        # MCITrack hasn't booted yet; UI never blocks on it.
-        if lt.mcitrack_task_id is not None:
+        # MCITrack hasn't booted yet, and skipped once the model is ready to
+        # predict on its own (otherwise both tracks would land on N+1 and
+        # produce duplicate figures). UI never blocks on it.
+        if lt.mcitrack_task_id is not None and not lt.ready_to_predict:
             context = (request.state.context if hasattr(request.state, "context") else {}) or {}
             toolbox_session_id = state.get("toolbox_session_id") or context.get(
                 "toolbox_session_id"
@@ -319,58 +371,6 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         lt._keyframe_thread.start()
         return {"result": "successfully highlighted key frames"}
 
-    @app.post("/tracking_by_detection")
-    async def tracking_by_detection(request: Request, response: Response):
-        if not lt.ready_to_predict:
-            response.status_code = 409
-            return _error_response_message("Model is not ready to produce any predictions yet")
-
-        sly_api = _api_from_request(request)
-        state = request.state.state
-        video_id = state["video_id"]
-        video_info = sly_api.video.get_info_by_id(video_id)
-
-        start_frame = state.get("start_frame_index", 0)
-        end_frame = state.get("end_frame_index", video_info.frames_count)
-        step = state.get("step", 1)
-        batch_size = state.get("batch_size", 8)
-        confidence_threshold = state.get("confidence_threshold", 0.3)
-        track_id = state.get("track_id")
-
-        frame_indices = list(range(start_frame, end_frame, step))
-
-        from supervisely.nn.tracker import BotSortTracker
-
-        if lt._tracker is None:
-            lt._tracker = BotSortTracker(device="cuda:0")
-        lt._tracker.reset()
-
-        if lt._tracker_thread is not None and lt._tracker_thread.is_alive():
-            lt._tracker_cancel.set()
-            lt._tracker_thread.join(timeout=1)
-        lt._tracker_cancel = threading.Event()
-        cancel_event = lt._tracker_cancel
-
-        def _run():
-            try:
-                _run_tracking_by_detection(
-                    lt=lt,
-                    api=sly_api,
-                    video_id=video_id,
-                    video_info=video_info,
-                    frame_indices=frame_indices,
-                    batch_size=batch_size,
-                    confidence_threshold=confidence_threshold,
-                    track_id=track_id,
-                    cancel_event=cancel_event,
-                )
-            except Exception as e:
-                logger.warning(f"tracking_by_detection failed for video {video_id}: {e}")
-
-        lt._tracker_thread = threading.Thread(target=_run, daemon=True, name="TrackingByDetection")
-        lt._tracker_thread.start()
-        return {"message": "Track task started."}
-
     @app.post("/inference_video_id")
     async def inference_video_id(request: Request, response: Response):
         if not lt.ready_to_predict:
@@ -444,20 +444,54 @@ def _resolve_video_info(lt: "LiveTraining", api: sly.Api, video_id: int):
     return lt.video_info
 
 
-def _run_tracking_by_detection(
+def _label_to_video_figure_json_with_track(
+    label: sly.Label,
+    object_id: int,
+    frame_index: int,
+    track_id: Optional[int],
+) -> dict:
+    fj = label_to_video_figure_json(label, object_id, frame_index)
+    if track_id is not None:
+        fj[ApiField.TRACK_ID] = track_id
+    return fj
+
+
+def _continue_predict_video_tracking(
     lt,
     api,
     video_id,
     video_info,
-    frame_indices,
-    batch_size,
-    confidence_threshold,
-    track_id,
-    cancel_event,
+    frame_0_index: int,
+    frame_0_np: np.ndarray,
+    labels_0: list,
+    object_ids_0: list,
+    n_frames: int,
+    confidence_threshold: float,
+    toolbox_session_id: Optional[str],
+    track_id: Optional[int],
+    cancel_event: threading.Event,
 ):
-    img_size = (video_info.frame_height, video_info.frame_width)
-    track_id_to_obj_id = {}
+    from supervisely.nn.tracker import BotSortTracker
 
+    if lt._predict_video_tracker is None:
+        lt._predict_video_tracker = BotSortTracker(device="cuda:0")
+    tracker = lt._predict_video_tracker
+    tracker.reset()
+
+    img_size = (video_info.frame_height, video_info.frame_width)
+
+    # Seed: feed frame 0 into the tracker and pair returned tracks back to
+    # the object_ids we just created. Order-preserving on a freshly-reset
+    # tracker (no prior tracks to confuse it).
+    matches_0 = tracker.update(frame_0_np, sly.Annotation(img_size=img_size, labels=labels_0))
+    track_id_to_obj_id = {m["track_id"]: oid for m, oid in zip(matches_0, object_ids_0)}
+
+    frame_indices = list(range(frame_0_index + 1, frame_0_index + n_frames))
+    frame_indices = [i for i in frame_indices if i < video_info.frames_count]
+    if not frame_indices:
+        return
+
+    batch_size = 5
     for batch_indices in sly.batched(frame_indices, batch_size=batch_size):
         if cancel_event.is_set():
             return
@@ -482,7 +516,7 @@ def _run_tracking_by_detection(
             )
             ann = sly.Annotation(img_size=img_size, labels=labels)
 
-            matches = lt._tracker.update(frame, ann)
+            matches = tracker.update(frame, ann)
             for match in matches:
                 tracker_track_id = match["track_id"]
                 label = match["label"]
@@ -497,7 +531,7 @@ def _run_tracking_by_detection(
                 figures_json.append(figure_json)
 
         if figures_json:
-            upload_video_figures(api, video_id, figures_json)
+            upload_video_figures(api, video_id, figures_json, toolbox_session_id)
 
 
 def _run_inference_video(

@@ -1,8 +1,8 @@
 """Framework-agnostic helpers for the video-aware live training endpoints.
 
 These helpers are intentionally subclass-independent so the SDK can serve
-``/predict-video``, ``/highlight_key_frames``, ``/tracking_by_detection``,
-and ``/inference_video_id`` without dragging detection-specific code into
+``/predict-video``, ``/highlight_key_frames``, and ``/inference_video_id``
+without dragging detection-specific code into
 the base class.
 """
 

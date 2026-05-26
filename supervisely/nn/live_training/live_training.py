@@ -10,6 +10,7 @@ from .helpers import ClassMap
 from .evaluator import LiveEvaluator
 import supervisely as sly
 from supervisely import logger
+from supervisely.app.widgets import Card, InputNumber
 from supervisely.nn import TaskType
 from datetime import datetime
 import signal
@@ -70,7 +71,16 @@ class LiveTraining:
         self.project_id = sly.env.project_id()
         self.team_id = sly.env.team_id()
         self.task_id = sly.env.task_id(raise_not_found=False)
-        self.app = sly.Application()
+        self.tracking_frames_widget = InputNumber(value=1, min=1, max=300, step=1, controls=True)
+        _layout_card = Card(
+            title="Tracking frames per predict-video",
+            description=(
+                "Number of frames /predict-video propagates BotSort tracks "
+                "forward. 1 = single-frame prediction (current behaviour)."
+            ),
+            content=self.tracking_frames_widget,
+        )
+        self.app = sly.Application(layout=_layout_card)
         self.api = sly.Api()
         self.request_queue = RequestQueue()
 
@@ -114,13 +124,13 @@ class LiveTraining:
         self._last_activity_time = None
         self._background_request_handler: BackgroundRequestHandler = None
 
-        # Video-aware endpoints (highlight_key_frames, tracking_by_detection)
+        # Video-aware endpoints (highlight_key_frames, /predict-video N>1)
         # run their long-running work on background threads owned by the
         # LiveTraining instance. They are protected by per-job cancel events.
         self.video_info = None
-        self._tracker = None
-        self._tracker_thread: Optional[threading.Thread] = None
-        self._tracker_cancel = threading.Event()
+        self._predict_video_tracker = None
+        self._predict_video_thread: Optional[threading.Thread] = None
+        self._predict_video_cancel = threading.Event()
         self._keyframe_thread: Optional[threading.Thread] = None
         self._keyframe_cancel = threading.Event()
 
