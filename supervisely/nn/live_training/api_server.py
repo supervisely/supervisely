@@ -30,6 +30,7 @@ from .video_utils import (
     label_to_video_figure_json,
     load_uniform_video_frames,
     refresh_meta,
+    remove_video_figures,
     upload_video_figures,
 )
 
@@ -686,6 +687,49 @@ def _continue_predict_video_tracking(
     if not frame_indices:
         return
 
+    from supervisely.metric.matching import get_geometries_iou
+
+    # Snapshot existing same-class Rectangle figures on every target frame so
+    # we can replace overlapping ones with the model's predictions (otherwise
+    # we'd leave duplicate figures behind, like the user just hit on frame 10).
+    frame_indices_set = set(frame_indices)
+    video_ann_json = api.video.annotation.download(video_id)
+    class_by_obj_id = {
+        obj["id"]: lt.project_meta.get_obj_class_by_id(obj["classId"]).name
+        for obj in video_ann_json.get("objects", [])
+        if "id" in obj
+        and obj.get("classId") is not None
+        and lt.project_meta.get_obj_class_by_id(obj["classId"]) is not None
+    }
+    existing_by_frame: dict = {}
+    for fr in video_ann_json.get("frames", []):
+        idx = fr.get("index")
+        if idx not in frame_indices_set:
+            continue
+        out = []
+        for fig_json in fr.get("figures", []):
+            if fig_json.get("geometryType") != sly.Rectangle.geometry_name():
+                continue
+            obj_id = fig_json.get("objectId")
+            fig_id = fig_json.get("id")
+            class_name = class_by_obj_id.get(obj_id)
+            if obj_id is None or fig_id is None or class_name is None:
+                continue
+            out.append(
+                {
+                    "rect": sly.Rectangle.from_json(fig_json["geometry"]),
+                    "obj_id": obj_id,
+                    "class": class_name,
+                    "fig_id": fig_id,
+                }
+            )
+        if out:
+            existing_by_frame[idx] = out
+    logger.info(
+        f"[predict-video tracker] existing same-class Rectangle figures per "
+        f"frame: { {k: len(v) for k, v in existing_by_frame.items()} }"
+    )
+
     batch_size = 5
     for batch_indices in sly.batched(frame_indices, batch_size=batch_size):
         if cancel_event.is_set():
@@ -705,6 +749,7 @@ def _continue_predict_video_tracking(
             return
 
         figures_json = []
+        figure_ids_to_remove = []
         for frame_idx, frame, objects_json in zip(
             batch_indices, frame_nps, batch_result["objects_batch"]
         ):
@@ -718,6 +763,10 @@ def _continue_predict_video_tracking(
                 f"[predict-video tracker] frame {frame_idx}: "
                 f"{len(labels)} preds -> {len(matches)} matches"
             )
+
+            existing_here = existing_by_frame.get(frame_idx, [])
+            used_existing = set()
+
             for match in matches:
                 tracker_track_id = match["track_id"]
                 label = match["label"]
@@ -726,11 +775,36 @@ def _continue_predict_video_tracking(
                     obj_id = create_video_object(api, video_info, label.obj_class)
                     track_id_to_obj_id[tracker_track_id] = obj_id
 
+                pred_class = label.obj_class.name
+                best_ex_i, best_iou = -1, 0.5
+                for ex_i, ex in enumerate(existing_here):
+                    if ex_i in used_existing or ex["class"] != pred_class:
+                        continue
+                    iou = get_geometries_iou(label.geometry, ex["rect"])
+                    if iou > best_iou:
+                        best_ex_i, best_iou = ex_i, iou
+                if best_ex_i >= 0:
+                    used_existing.add(best_ex_i)
+                    ex = existing_here[best_ex_i]
+                    figure_ids_to_remove.append(ex["fig_id"])
+                    logger.info(
+                        f"[predict-video tracker] frame {frame_idx}: "
+                        f"replacing existing fig_id={ex['fig_id']} "
+                        f"object_id={ex['obj_id']} with prediction "
+                        f"object_id={obj_id} at IoU={best_iou:.3f}"
+                    )
+
                 figure_json = label_to_video_figure_json(label, obj_id, frame_idx)
                 if track_id is not None:
                     figure_json[ApiField.TRACK_ID] = track_id
                 figures_json.append(figure_json)
 
+        if figure_ids_to_remove:
+            logger.info(
+                f"[predict-video tracker] removing {len(figure_ids_to_remove)} "
+                f"existing figures: {figure_ids_to_remove}"
+            )
+            remove_video_figures(api, video_id, figure_ids_to_remove, toolbox_session_id)
         if figures_json:
             logger.info(
                 f"[predict-video tracker] uploading {len(figures_json)} "
