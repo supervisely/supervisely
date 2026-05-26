@@ -2,7 +2,6 @@ import mimetypes
 import os
 from typing import Dict, List, Optional, Tuple, Union
 
-import cv2
 import magic
 import nrrd
 
@@ -18,7 +17,7 @@ from supervisely import (
 )
 from supervisely.api.api import ApiContext
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
+from supervisely.imaging.image import SUPPORTED_IMG_EXTS, get_image_shape, is_valid_ext
 from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
@@ -81,11 +80,11 @@ class ImageConverter(BaseConverter):
                         image = image_helper.read_tiff_image(self.path)
                     elif is_valid_ext(file_ext):
                         logger.debug(f"Found image file: {self.path}.")
-                        image = cv2.imread(self.path)
+                        self._shape = get_image_shape(self.path)
 
                     if image is not None:
                         self._shape = image.shape[:2]
-                    else:
+                    elif self._shape is None:
                         self._shape = [0, 0]
             except Exception as e:
                 logger.warning(f"Failed to read image shape: {e}, shape is set to [0, 0]")
@@ -207,7 +206,7 @@ class ImageConverter(BaseConverter):
 
                 anns = []
                 for info, item in zip(img_infos, valid_batch_items):
-                    if self._force_shape_for_links:
+                    if info.height is not None and info.width is not None:
                         item.set_shape((info.height, info.width))
                     anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
 
