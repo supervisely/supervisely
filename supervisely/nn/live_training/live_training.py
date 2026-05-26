@@ -73,11 +73,7 @@ class LiveTraining:
         self.task_id = sly.env.task_id(raise_not_found=False)
         self.tracking_frames_widget = InputNumber(value=1, min=1, max=300, step=1, controls=True)
         _layout_card = Card(
-            title="Tracking frames per predict-video",
-            description=(
-                "Number of frames /predict-video propagates BotSort tracks "
-                "forward. 1 = single-frame prediction (current behaviour)."
-            ),
+            title="Number of frames to track",
             content=self.tracking_frames_widget,
         )
         self.app = sly.Application(layout=_layout_card)
@@ -520,6 +516,7 @@ class LiveTraining:
     def _handle_add_sample_video(self, data: dict):
         frame_index = data["frame_index"]
         frame_id = f"{data['video_id']}_{frame_index}"
+        frame_np = data["frame_np"]
         video_ann_json = data["video_ann_json"]
         video_objects_json, frame_ann_json = self._filter_annotation_video(
             video_ann_json, frame_index
@@ -537,13 +534,18 @@ class LiveTraining:
             img_ann = sly.Annotation((frame_h, frame_w), labels=[])
         self.add_sample_video(
             frame_id=frame_id,
-            frame_np=data["frame_np"],
+            frame_np=frame_np,
             annotation=img_ann,
         )
 
         if not img_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
             logger.debug(f"Added unlabeled sample {frame_id}; not counted toward initial threshold")
         if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
+            # Seed predictions for this frame so EMA updates on every added
+            # sample (otherwise the user must manually trigger predict on
+            # the same frame for model_quality to move).
+            if self.ready_to_predict:
+                self._predict_and_store_for_evaluator(frame_id, frame_np)
             result = self.evaluator.evaluate(frame_id, img_ann)
             if result is not None:
                 metric_name = self.evaluator.metric_name
@@ -597,6 +599,8 @@ class LiveTraining:
                     f"Added unlabeled sample {frame_id}; not counted toward initial threshold"
                 )
             if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
+                if self.ready_to_predict:
+                    self._predict_and_store_for_evaluator(frame_id, frame_np)
                 result = self.evaluator.evaluate(frame_id, img_ann)
                 if result is not None:
                     metric_name = self.evaluator.metric_name
@@ -614,6 +618,25 @@ class LiveTraining:
             "image_ids": frame_ids,
             "status": self.status(),
         }
+
+    def _predict_and_store_for_evaluator(self, image_id, image_np):
+        """Run a single-image prediction and stash it on the evaluator so
+        the next ``evaluator.evaluate`` call has something to compare GT
+        against. Toggles model.eval()/train() like ``_handle_predict``.
+        """
+        model = self.model
+        if model is None:
+            return
+        was_training = model.training
+        model.eval()
+        try:
+            objects_raw = self.predict(model, image_np=image_np, image_info={"id": image_id})
+            self.evaluator.store_prediction(image_id, objects_raw, image_np.shape[:2])
+        except Exception as e:
+            logger.warning(f"failed to seed evaluator prediction for {image_id}: {e}")
+        finally:
+            if was_training:
+                model.train()
 
     def _fetch_project_meta(self, project_id: int) -> sly.ProjectMeta:
         project_meta = self.api.project.get_meta(project_id)

@@ -112,6 +112,8 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             {"image": frame_0_np, "image_id": frame_id},
         )
         result = await _wait_for_result(future, response)
+        if response.status_code is not None and response.status_code >= 400:
+            return result
 
         labels_0 = filter_objects_by_confidence(
             result["objects"], lt.project_meta, confidence_threshold
