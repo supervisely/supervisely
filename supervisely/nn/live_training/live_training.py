@@ -744,7 +744,12 @@ class LiveTraining:
         from supervisely.metric.matching import get_geometries_iou
 
         use_model = self.ready_to_predict
+        logger.info(
+            f"[auto-track] entered: video={video_id} frame={frame_index} "
+            f"use_model={use_model} mcitrack_task_id={self.mcitrack_task_id}"
+        )
         if not use_model and self.mcitrack_task_id is None:
+            logger.info("[auto-track] no source available, skipping")
             return
 
         # 1. Re-download the video annotation so we see the figure the user
@@ -752,6 +757,10 @@ class LiveTraining:
         video_ann_json = api.video.annotation.download(video_id)
         next_frame_index = frame_index + 1
         if next_frame_index >= video_ann_json["framesCount"]:
+            logger.info(
+                f"[auto-track] next_frame {next_frame_index} >= "
+                f"framesCount {video_ann_json['framesCount']}, skipping"
+            )
             return
 
         # 2. obj_id -> class_name map from the video's top-level objects list.
@@ -767,6 +776,7 @@ class LiveTraining:
             None,
         )
         if not src_frame_ann_json or not src_frame_ann_json.get("figures"):
+            logger.info(f"[auto-track] no figures on frame {frame_index}, skipping")
             return
 
         # Three parallel lists describing frame N's Rectangle figures:
@@ -789,7 +799,12 @@ class LiveTraining:
                 {"type": sly.Rectangle.geometry_name(), "data": fig_json["geometry"]}
             )
         if not sources:
+            logger.info(
+                f"[auto-track] no Rectangle sources on frame {frame_index} "
+                f"after class_by_obj_id filter, skipping"
+            )
             return
+        logger.info(f"[auto-track] frame {frame_index} sources: {sources}")
 
         # 4. Predict on frame N+1 — either via the model or via MCITrack.
         #    Build (tracked_per_obj, tracked_sources) parallel lists for the
@@ -797,6 +812,7 @@ class LiveTraining:
         video_info = self.video_info or api.video.get_info_by_id(video_id)
 
         if use_model:
+            logger.info(f"[auto-track] model path: predicting on frame {next_frame_index}")
             next_frame_id = f"{video_id}_{next_frame_index}"
             next_frame_np = api.video.frame.download_np(video_id, next_frame_index)
             future = self.request_queue.put(
@@ -809,6 +825,11 @@ class LiveTraining:
                 logger.warning(f"model predict on frame {next_frame_index} failed: {e}")
                 return
             pred_labels = filter_objects_by_confidence(result["objects"], self.project_meta, 0.3)
+            logger.info(
+                f"[auto-track] model returned "
+                f"{len(result.get('objects', []))} raw, "
+                f"{len(pred_labels)} after conf>=0.3"
+            )
             tracked_per_obj = []
             tracked_sources = []  # parallel: (src_object_id, src_class_name)
             for label in pred_labels:
@@ -825,6 +846,15 @@ class LiveTraining:
                         best_obj_id, best_iou = src_obj_id, iou
                 if best_obj_id is None:
                     best_obj_id = create_video_object(api, video_info, label.obj_class)
+                    logger.info(
+                        f"[auto-track] pred {pred_class} unmatched (best_iou="
+                        f"{best_iou:.3f}); created new object_id={best_obj_id}"
+                    )
+                else:
+                    logger.info(
+                        f"[auto-track] pred {pred_class} matched src "
+                        f"object_id={best_obj_id} at IoU={best_iou:.3f}"
+                    )
                 tracked_per_obj.append(
                     {
                         "type": sly.Rectangle.geometry_name(),
@@ -853,7 +883,12 @@ class LiveTraining:
             tracked_sources = sources  # parallel by construction
 
         if not tracked_per_obj:
+            logger.info("[auto-track] tracked_per_obj empty, skipping reconcile")
             return
+        logger.info(
+            f"[auto-track] tracked_per_obj count={len(tracked_per_obj)}, "
+            f"tracked_sources={tracked_sources}"
+        )
 
         # 5. Existing figures on frame N+1.
         dst_frame_ann_json = next(
@@ -872,6 +907,11 @@ class LiveTraining:
                     continue
                 obj_class_name = class_by_obj_id.get(fig_json.get("objectId"))
                 existing.append((fig_id, fig_json["geometry"], obj_class_name))
+        logger.info(
+            f"[auto-track] frame {next_frame_index} existing figures: "
+            f"count={len(existing)} ids={[e[0] for e in existing]} "
+            f"classes={[e[2] for e in existing]}"
+        )
 
         # 6. Greedy IoU match (same class only, strict > 0.5).
         tracked_rects = [sly.Rectangle.from_json(item["data"]) for item in tracked_per_obj]
@@ -898,6 +938,13 @@ class LiveTraining:
                 figures_to_add.append((e_geo, src_object_id))
             else:
                 figures_to_add.append((tracked_per_obj[t_idx]["data"], src_object_id))
+
+        logger.info(
+            f"[auto-track] reconcile: remove {len(figure_ids_to_remove)} "
+            f"existing figures (ids={figure_ids_to_remove}), "
+            f"add {len(figures_to_add)} new with object_ids="
+            f"{[oid for _, oid in figures_to_add]}"
+        )
 
         # 7. Push the diff — remove first so re-added geometry doesn't collide.
         if figure_ids_to_remove:

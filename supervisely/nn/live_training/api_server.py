@@ -101,7 +101,12 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         toolbox_session_id = state.get("toolbox_session_id")
         track_id = state.get("track_id")
 
-        n_frames = max(1, int(lt.tracking_frames_widget.get_value()))
+        raw_widget_value = lt.tracking_frames_widget.get_value()
+        n_frames = max(1, int(raw_widget_value))
+        logger.info(
+            f"[predict-video] video_id={video_id} frame_index={frame_index} "
+            f"widget.get_value()={raw_widget_value!r} -> n_frames={n_frames}"
+        )
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
         frame_0_np = sly_api.video.frame.download_np(video_id, frame_index)
@@ -117,6 +122,11 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
         labels_0 = filter_objects_by_confidence(
             result["objects"], lt.project_meta, confidence_threshold
+        )
+        logger.info(
+            f"[predict-video] frame {frame_index}: model returned "
+            f"{len(result.get('objects', []))} raw, "
+            f"{len(labels_0)} after conf>={confidence_threshold}"
         )
         if not labels_0:
             return {"created_figure_ids": []}
@@ -135,7 +145,12 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         figure_ids_0 = upload_video_figures(sly_api, video_id, figures_0_json, toolbox_session_id)
 
         if n_frames > 1:
+            logger.info(
+                f"[predict-video] N>1: spawning PredictVideoTracking for "
+                f"frames {frame_index+1}..{frame_index+n_frames-1}"
+            )
             if lt._predict_video_thread is not None and lt._predict_video_thread.is_alive():
+                logger.info("[predict-video] cancelling in-flight PredictVideoTracking")
                 lt._predict_video_cancel.set()
                 lt._predict_video_thread.join(timeout=1)
             lt._predict_video_cancel = threading.Event()
@@ -226,6 +241,11 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         # it's ready (and IoU-matches predictions back to frame N's labels
         # to inherit object_ids), otherwise falls back to MCITrack. Skipped
         # silently when neither source is available. UI never blocks on it.
+        logger.info(
+            f"[add-sample-video] video={video_id} frame={frame_index} "
+            f"ready_to_predict={lt.ready_to_predict} "
+            f"mcitrack_task_id={lt.mcitrack_task_id}"
+        )
         if lt.mcitrack_task_id is not None or lt.ready_to_predict:
             context = (request.state.context if hasattr(request.state, "context") else {}) or {}
             toolbox_session_id = state.get("toolbox_session_id") or context.get(
@@ -473,7 +493,14 @@ def _continue_predict_video_tracking(
 ):
     from supervisely.nn.tracker import BotSortTracker
 
+    logger.info(
+        f"[predict-video tracker] entered: video={video_id} "
+        f"frame_0={frame_0_index} n_frames={n_frames} "
+        f"seed_labels={len(labels_0)} object_ids_0={object_ids_0}"
+    )
+
     if lt._predict_video_tracker is None:
+        logger.info("[predict-video tracker] constructing BotSortTracker(cuda:0)")
         lt._predict_video_tracker = BotSortTracker(device="cuda:0")
     tracker = lt._predict_video_tracker
     tracker.reset()
@@ -485,15 +512,21 @@ def _continue_predict_video_tracking(
     # tracker (no prior tracks to confuse it).
     matches_0 = tracker.update(frame_0_np, sly.Annotation(img_size=img_size, labels=labels_0))
     track_id_to_obj_id = {m["track_id"]: oid for m, oid in zip(matches_0, object_ids_0)}
+    logger.info(
+        f"[predict-video tracker] seed: {len(matches_0)} matches_0 -> "
+        f"track_id_to_obj_id={track_id_to_obj_id}"
+    )
 
     frame_indices = list(range(frame_0_index + 1, frame_0_index + n_frames))
     frame_indices = [i for i in frame_indices if i < video_info.frames_count]
+    logger.info(f"[predict-video tracker] will process frames={frame_indices}")
     if not frame_indices:
         return
 
     batch_size = 5
     for batch_indices in sly.batched(frame_indices, batch_size=batch_size):
         if cancel_event.is_set():
+            logger.info("[predict-video tracker] cancelled before batch")
             return
         batch_indices = list(batch_indices)
         frame_nps = api.video.frame.download_nps(video_id, batch_indices)
@@ -505,6 +538,7 @@ def _continue_predict_video_tracking(
         )
         batch_result = future.result(timeout=600)
         if cancel_event.is_set():
+            logger.info("[predict-video tracker] cancelled after PREDICT_BATCH")
             return
 
         figures_json = []
@@ -517,6 +551,10 @@ def _continue_predict_video_tracking(
             ann = sly.Annotation(img_size=img_size, labels=labels)
 
             matches = tracker.update(frame, ann)
+            logger.info(
+                f"[predict-video tracker] frame {frame_idx}: "
+                f"{len(labels)} preds -> {len(matches)} matches"
+            )
             for match in matches:
                 tracker_track_id = match["track_id"]
                 label = match["label"]
@@ -531,6 +569,10 @@ def _continue_predict_video_tracking(
                 figures_json.append(figure_json)
 
         if figures_json:
+            logger.info(
+                f"[predict-video tracker] uploading {len(figures_json)} "
+                f"figures for batch {batch_indices}"
+            )
             upload_video_figures(api, video_id, figures_json, toolbox_session_id)
 
 
