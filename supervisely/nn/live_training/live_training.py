@@ -1154,6 +1154,34 @@ class LiveTraining:
             score_thr=0.3,
         )
 
+    def _release_gpu(self):
+        """Drop the training model and any GPU-resident helpers, then empty
+        the CUDA cache. Called during shutdown so the GPU is freed during
+        the (slow) artifact upload rather than held until process exit.
+        """
+        try:
+            if self.model is not None:
+                try:
+                    self.model.to("cpu")
+                except Exception:
+                    pass
+                del self.model
+                self.model = None
+            if getattr(self, "_predict_video_tracker", None) is not None:
+                del self._predict_video_tracker
+                self._predict_video_tracker = None
+            try:
+                import torch
+
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+            except Exception as e:
+                logger.warning(f"torch.cuda cleanup failed: {e}")
+            logger.info("Released model and emptied CUDA cache")
+        except Exception as e:
+            logger.warning(f"_release_gpu failed: {e}")
+
     def _add_shutdown_callback(self):
         """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
         self._upload_in_progress = False
@@ -1161,15 +1189,29 @@ class LiveTraining:
         def signal_handler(signum, frame):
             if self._upload_in_progress:
                 # Already uploading - force exit on second signal
-                signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
-                signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
+                signal.signal(signal.SIGINT, lambda s, f: os._exit(1))
+                signal.signal(signal.SIGTERM, lambda s, f: os._exit(1))
                 return
 
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
             self._process_requests_while_finishing("Training was stopped by user.")
-            self._save_and_upload()
-            sys.exit(0)
+            try:
+                logger.info("Saving checkpoint and uploading artifacts...")
+                self.save_checkpoint(self.latest_checkpoint_path)
+                save_state_json(self.state(), self.latest_checkpoint_path)
+            finally:
+                # Free the GPU as soon as the checkpoint is on disk so the
+                # ~minute-long artifact upload doesn't hold it.
+                self._release_gpu()
+            try:
+                self._upload_artifacts()
+            except Exception as e:
+                logger.warning(f"artifact upload failed during shutdown: {e}")
+            # os._exit bypasses Python's interpreter shutdown — non-daemon
+            # threads (mmengine data loaders, CUDA internals) won't be able
+            # to keep the process alive past this point.
+            os._exit(0)
 
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
