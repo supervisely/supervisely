@@ -102,10 +102,26 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         track_id = state.get("track_id")
 
         raw_widget_value = lt.tracking_frames_widget.get_value()
+        widget_id = lt.tracking_frames_widget.widget_id
+        try:
+            from supervisely.app import StateJson
+
+            sj = StateJson()
+            widget_in_state = widget_id in sj
+            widget_state_entry = sj.get(widget_id) if widget_in_state else None
+            sj_keys = list(sj.keys())
+        except Exception as e:
+            widget_in_state = f"err:{e}"
+            widget_state_entry = None
+            sj_keys = []
         n_frames = max(1, int(raw_widget_value))
         logger.info(
             f"[predict-video] video_id={video_id} frame_index={frame_index} "
-            f"widget.get_value()={raw_widget_value!r} -> n_frames={n_frames}"
+            f"widget_id={widget_id} get_value()={raw_widget_value!r} "
+            f"_value={lt.tracking_frames_widget._value!r} "
+            f"widget_in_state={widget_in_state} "
+            f"widget_state_entry={widget_state_entry!r} "
+            f"state_keys={sj_keys} -> n_frames={n_frames}"
         )
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
@@ -134,9 +150,17 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         if n_frames == 1 and object_id is not None:
             object_ids_0 = [object_id] * len(labels_0)
         else:
-            object_ids_0 = [
-                create_video_object(sly_api, video_info, label.obj_class) for label in labels_0
-            ]
+            # Inherit object_ids from frame K-1's labels (same class, IoU > 0.5)
+            # so re-predicting on consecutive frames doesn't keep creating new
+            # VideoObjects for what's effectively the same tracked instance.
+            object_ids_0 = _inherit_object_ids_from_prev_frame(
+                sly_api,
+                video_id=video_id,
+                frame_index=frame_index,
+                labels=labels_0,
+                video_info=video_info,
+                project_meta=lt.project_meta,
+            )
 
         figures_0_json = [
             _label_to_video_figure_json_with_track(label, obj_id, frame_index, track_id)
@@ -237,16 +261,17 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         )
         result = await _wait_for_result(future, response)
 
-        # Fire-and-forget auto-track of the next frame. Uses the model when
-        # it's ready (and IoU-matches predictions back to frame N's labels
-        # to inherit object_ids), otherwise falls back to MCITrack. Skipped
-        # silently when neither source is available. UI never blocks on it.
+        # Fire-and-forget auto-track of the next frame. Only used while the
+        # model isn't ready to predict — once it is, the labeling UI calls
+        # /predict-video for the next frame itself (which does its own
+        # previous-frame IoU inheritance). Running both paths would upload
+        # two figures to N+1 (one from each).
         logger.info(
             f"[add-sample-video] video={video_id} frame={frame_index} "
             f"ready_to_predict={lt.ready_to_predict} "
             f"mcitrack_task_id={lt.mcitrack_task_id}"
         )
-        if lt.mcitrack_task_id is not None or lt.ready_to_predict:
+        if lt.mcitrack_task_id is not None and not lt.ready_to_predict:
             context = (request.state.context if hasattr(request.state, "context") else {}) or {}
             toolbox_session_id = state.get("toolbox_session_id") or context.get(
                 "toolbox_session_id"
@@ -474,6 +499,98 @@ def _label_to_video_figure_json_with_track(
     if track_id is not None:
         fj[ApiField.TRACK_ID] = track_id
     return fj
+
+
+def _inherit_object_ids_from_prev_frame(
+    api,
+    video_id: int,
+    frame_index: int,
+    labels: list,
+    video_info,
+    project_meta: sly.ProjectMeta,
+) -> list:
+    """Return one object_id per label in ``labels``. For each prediction,
+    IoU-match (same class, > 0.5) against frame_index-1's Rectangle figures
+    to inherit the existing object_id; otherwise create a new VideoObject.
+    Falls back to ``create_video_object`` for every label when there's no
+    previous frame or no annotation on it.
+    """
+    from supervisely.metric.matching import get_geometries_iou
+
+    if frame_index <= 0:
+        logger.info(
+            f"[predict-video] frame {frame_index}: no previous frame, "
+            f"creating fresh VideoObjects for all {len(labels)} predictions"
+        )
+        return [create_video_object(api, video_info, label.obj_class) for label in labels]
+
+    prev_frame_index = frame_index - 1
+    video_ann_json = api.video.annotation.download(video_id)
+
+    # obj_id -> class_name (built from the video's full objects list so
+    # objects whose only figure is on prev frame are still resolvable).
+    class_by_obj_id = {
+        obj["id"]: project_meta.get_obj_class_by_id(obj["classId"]).name
+        for obj in video_ann_json.get("objects", [])
+        if "id" in obj and project_meta.get_obj_class_by_id(obj["classId"]) is not None
+    }
+
+    prev_frame = next(
+        (fr for fr in video_ann_json.get("frames", []) if fr.get("index") == prev_frame_index),
+        None,
+    )
+    prev_sources = []  # list of (rect, object_id, class_name)
+    if prev_frame:
+        for fig_json in prev_frame.get("figures", []):
+            if fig_json.get("geometryType") != sly.Rectangle.geometry_name():
+                continue
+            obj_id = fig_json.get("objectId")
+            class_name = class_by_obj_id.get(obj_id)
+            if obj_id is None or class_name is None:
+                continue
+            prev_sources.append(
+                (
+                    sly.Rectangle.from_json(fig_json["geometry"]),
+                    obj_id,
+                    class_name,
+                )
+            )
+    logger.info(
+        f"[predict-video] frame {frame_index}: previous frame "
+        f"{prev_frame_index} has {len(prev_sources)} Rectangle sources"
+    )
+
+    out_object_ids = []
+    used = set()
+    for label in labels:
+        if not isinstance(label.geometry, sly.Rectangle):
+            out_object_ids.append(create_video_object(api, video_info, label.obj_class))
+            continue
+        pred_class = label.obj_class.name
+        best_idx, best_obj_id, best_iou = -1, None, 0.5
+        for idx, (rect, obj_id, class_name) in enumerate(prev_sources):
+            if idx in used:
+                continue
+            if class_name != pred_class:
+                continue
+            iou = get_geometries_iou(label.geometry, rect)
+            if iou > best_iou:
+                best_idx, best_obj_id, best_iou = idx, obj_id, iou
+        if best_obj_id is None:
+            new_id = create_video_object(api, video_info, label.obj_class)
+            out_object_ids.append(new_id)
+            logger.info(
+                f"[predict-video] pred {pred_class} unmatched "
+                f"(best_iou={best_iou:.3f}); new object_id={new_id}"
+            )
+        else:
+            used.add(best_idx)
+            out_object_ids.append(best_obj_id)
+            logger.info(
+                f"[predict-video] pred {pred_class} matched prev "
+                f"object_id={best_obj_id} at IoU={best_iou:.3f}"
+            )
+    return out_object_ids
 
 
 def _continue_predict_video_tracking(

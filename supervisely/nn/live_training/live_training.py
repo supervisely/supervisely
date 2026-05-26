@@ -718,38 +718,29 @@ class LiveTraining:
         toolbox_session_id: Optional[str] = None,
     ) -> None:
         """Propagate the labels on ``frame_index`` to ``frame_index + 1``
-        and reconcile against existing figures there.
+        with MCITrack and reconcile against existing figures there.
 
-        Source of predictions on N+1:
-          * Model (when ``self.ready_to_predict`` is True). Predictions are
-            IoU-matched to frame N's labels (same class, > 0.5) so they
-            inherit ``object_id`` instead of producing a new one every call.
-            Unmatched predictions get a new VideoObject.
-          * MCITrack (otherwise). Each tracked geometry carries its source
-            ``object_id`` by construction.
+        Only runs while ``ready_to_predict`` is False — once the model can
+        predict, the labeling UI's own /predict-video call on N+1 handles
+        propagation (with previous-frame IoU inheritance) and we'd
+        otherwise upload two figures to the same frame.
 
         Existing N+1 figures with same-class IoU > 0.5 against a tracked
         figure are removed and re-added with the source ``object_id`` so ids
-        stay consistent across frames.
+        stay consistent across frames. Unmatched tracked figures are added
+        at the tracked coordinates.
         """
 
-        from .video_utils import (
-            create_video_object,
-            filter_objects_by_confidence,
-            remove_video_figures,
-            upload_video_figures,
-        )
-        from .request_queue import RequestType
+        from .video_utils import remove_video_figures, upload_video_figures
         from supervisely.api.module_api import ApiField
         from supervisely.metric.matching import get_geometries_iou
 
-        use_model = self.ready_to_predict
         logger.info(
             f"[auto-track] entered: video={video_id} frame={frame_index} "
-            f"use_model={use_model} mcitrack_task_id={self.mcitrack_task_id}"
+            f"mcitrack_task_id={self.mcitrack_task_id}"
         )
-        if not use_model and self.mcitrack_task_id is None:
-            logger.info("[auto-track] no source available, skipping")
+        if self.mcitrack_task_id is None:
+            logger.info("[auto-track] MCITrack not available, skipping")
             return
 
         # 1. Re-download the video annotation so we see the figure the user
@@ -779,12 +770,8 @@ class LiveTraining:
             logger.info(f"[auto-track] no figures on frame {frame_index}, skipping")
             return
 
-        # Three parallel lists describing frame N's Rectangle figures:
-        #   sources[i]            = (src_object_id, src_class_name)
-        #   src_rects[i]          = sly.Rectangle (for IoU in the model path)
-        #   input_geometries[i]   = {"type", "data"} dict (for MCITrack)
-        sources = []
-        src_rects = []
+        # sources is parallel-indexed with input_geometries.
+        sources = []  # list of (src_object_id, src_class_name)
         input_geometries = []
         for fig_json in src_frame_ann_json["figures"]:
             if fig_json.get("geometryType") != sly.Rectangle.geometry_name():
@@ -794,97 +781,34 @@ class LiveTraining:
             if src_object_id is None or src_class is None:
                 continue
             sources.append((src_object_id, src_class))
-            src_rects.append(sly.Rectangle.from_json(fig_json["geometry"]))
             input_geometries.append(
                 {"type": sly.Rectangle.geometry_name(), "data": fig_json["geometry"]}
             )
-        if not sources:
-            logger.info(
-                f"[auto-track] no Rectangle sources on frame {frame_index} "
-                f"after class_by_obj_id filter, skipping"
-            )
+        if not input_geometries:
+            logger.info(f"[auto-track] no Rectangle sources on frame {frame_index}, skipping")
             return
         logger.info(f"[auto-track] frame {frame_index} sources: {sources}")
 
-        # 4. Predict on frame N+1 — either via the model or via MCITrack.
-        #    Build (tracked_per_obj, tracked_sources) parallel lists for the
-        #    reconcile step below.
-        video_info = self.video_info or api.video.get_info_by_id(video_id)
-
-        if use_model:
-            logger.info(f"[auto-track] model path: predicting on frame {next_frame_index}")
-            next_frame_id = f"{video_id}_{next_frame_index}"
-            next_frame_np = api.video.frame.download_np(video_id, next_frame_index)
-            future = self.request_queue.put(
-                RequestType.PREDICT,
-                {"image": next_frame_np, "image_id": next_frame_id},
-            )
-            try:
-                result = future.result(timeout=120)
-            except Exception as e:
-                logger.warning(f"model predict on frame {next_frame_index} failed: {e}")
-                return
-            pred_labels = filter_objects_by_confidence(result["objects"], self.project_meta, 0.3)
-            logger.info(
-                f"[auto-track] model returned "
-                f"{len(result.get('objects', []))} raw, "
-                f"{len(pred_labels)} after conf>=0.3"
-            )
-            tracked_per_obj = []
-            tracked_sources = []  # parallel: (src_object_id, src_class_name)
-            for label in pred_labels:
-                if not isinstance(label.geometry, sly.Rectangle):
-                    continue
-                pred_class = label.obj_class.name
-                # Match this prediction back to a source on N by IoU+class.
-                best_obj_id, best_iou = None, 0.5
-                for src_idx, (src_obj_id, src_class) in enumerate(sources):
-                    if pred_class != src_class:
-                        continue
-                    iou = get_geometries_iou(label.geometry, src_rects[src_idx])
-                    if iou > best_iou:
-                        best_obj_id, best_iou = src_obj_id, iou
-                if best_obj_id is None:
-                    best_obj_id = create_video_object(api, video_info, label.obj_class)
-                    logger.info(
-                        f"[auto-track] pred {pred_class} unmatched (best_iou="
-                        f"{best_iou:.3f}); created new object_id={best_obj_id}"
-                    )
-                else:
-                    logger.info(
-                        f"[auto-track] pred {pred_class} matched src "
-                        f"object_id={best_obj_id} at IoU={best_iou:.3f}"
-                    )
-                tracked_per_obj.append(
-                    {
-                        "type": sly.Rectangle.geometry_name(),
-                        "data": label.geometry.to_json(),
-                    }
-                )
-                tracked_sources.append((best_obj_id, pred_class))
-        else:
-            response = self.api.task.send_request(
-                self.mcitrack_task_id,
-                "track-api",
-                {},
-                context={
-                    "videoId": video_id,
-                    "frameIndex": frame_index,
-                    "frames": 1,
-                    "direction": "forward",
-                    "input_geometries": input_geometries,
-                },
-                timeout=120,
-            )
-            # Shape: [[geo_obj_0, geo_obj_1, ...]] — one inner list per frame.
-            if not response or not response[0]:
-                return
-            tracked_per_obj = response[0]
-            tracked_sources = sources  # parallel by construction
-
-        if not tracked_per_obj:
-            logger.info("[auto-track] tracked_per_obj empty, skipping reconcile")
+        # 4. Ask MCITrack for predictions on frame N+1.
+        response = self.api.task.send_request(
+            self.mcitrack_task_id,
+            "track-api",
+            {},
+            context={
+                "videoId": video_id,
+                "frameIndex": frame_index,
+                "frames": 1,
+                "direction": "forward",
+                "input_geometries": input_geometries,
+            },
+            timeout=120,
+        )
+        # Shape: [[geo_obj_0, geo_obj_1, ...]] — one inner list per frame.
+        if not response or not response[0]:
+            logger.info("[auto-track] MCITrack returned empty, skipping reconcile")
             return
+        tracked_per_obj = response[0]
+        tracked_sources = sources  # parallel by construction
         logger.info(
             f"[auto-track] tracked_per_obj count={len(tracked_per_obj)}, "
             f"tracked_sources={tracked_sources}"
