@@ -17,10 +17,11 @@ VIDEOS = "videos"
 ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
 
-# @TODO: reimplement to support different item types - videos, volumes, 3d episodes, ...
+# @TODO: reimplement top-level item keys with a modality-neutral bucket name.
+# The existing "videos" bucket is also used by point clouds, volumes, episodes, and meshes.
 class KeyIdMap:
     """
-    Bidirectional mapping between UUID keys and integer IDs for video annotations.
+    Bidirectional mapping between UUID keys and integer IDs for entity annotations.
 
     Used to keep stable references between objects/figures/tags (UUID keys) and server-side IDs
     during JSON (de)serialization and API interactions.

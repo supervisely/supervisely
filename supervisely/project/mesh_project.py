@@ -39,7 +39,7 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import tqdm_sly
+from supervisely.task.progress import tqdm_sly, update_progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -659,7 +659,7 @@ def download_mesh_project(
                     item_info=item_info,
                 )
                 if progress_cb is not None:
-                    _update_progress(progress_cb, 1)
+                    update_progress(progress_cb, 1)
 
             if log_progress:
                 ds_progress(len(batch))
@@ -718,7 +718,7 @@ def upload_mesh_project(
                 ann = dataset_fs.get_ann(item_name, project_fs.meta)
                 api.mesh.annotation.append(mesh_id, ann, key_id_map)
             if ds_progress is not None:
-                _update_progress(ds_progress, len(item_names))
+                update_progress(ds_progress, len(item_names))
 
     return project.id, project.name
 
@@ -750,10 +750,3 @@ def _add_key_id(add_fn: Callable, key, id) -> None:
         add_fn(uuid.UUID(str(key)), id)
     except Exception:
         pass
-
-
-def _update_progress(progress_cb, value: int) -> None:
-    if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
-        progress_cb.update(value)
-    else:
-        progress_cb(value)

@@ -23,9 +23,9 @@ from supervisely.mesh_annotation.constants import (
 )
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import MESH_INDEX_FIELDS
-from supervisely.mesh_annotation.mesh_label import MeshLabel
-from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import update_progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -37,6 +37,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_id: int,
         key_id_map: Optional[KeyIdMap] = None,
         download_mesh_geometries: bool = True,
+        skip_orphan_objects: bool = False,
     ) -> Dict:
         """
         Download mesh annotation by mesh ID.
@@ -48,12 +49,17 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into
             the annotation JSON when labels reference external geometry storage.
         :type download_mesh_geometries: bool
+        :param skip_orphan_objects: If ``True``, skip orphan object rows during download with a warning.
+        :type skip_orphan_objects: bool
         :returns: Annotation JSON.
         :rtype: dict
         """
         dataset_id = self._api.mesh.get_info_by_id(mesh_id).dataset_id
         ann_json = self.download_bulk(
-            dataset_id, [mesh_id], download_mesh_geometries=download_mesh_geometries
+            dataset_id,
+            [mesh_id],
+            download_mesh_geometries=download_mesh_geometries,
+            skip_orphan_objects=skip_orphan_objects,
         )[0]
         self._update_key_id_map(mesh_id, ann_json, key_id_map)
         return ann_json
@@ -64,6 +70,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_ids: List[int],
         download_mesh_geometries: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        skip_orphan_objects: bool = False,
     ) -> List[Dict]:
         """
         Download mesh annotation transfer JSONs by mesh IDs.
@@ -76,11 +83,13 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :type download_mesh_geometries: bool
         :param progress_cb: Progress callback.
         :type progress_cb: tqdm or callable, optional
+        :param skip_orphan_objects: If ``True``, skip orphan object rows during download with a warning.
+        :type skip_orphan_objects: bool
         :returns: Annotation JSONs ordered like ``mesh_ids``.
         :rtype: List[dict]
         """
         return self._download_bulk_from_entity_rows(
-            dataset_id, mesh_ids, download_mesh_geometries, progress_cb
+            dataset_id, mesh_ids, download_mesh_geometries, progress_cb, skip_orphan_objects
         )
 
     def append(
@@ -119,7 +128,25 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 f"mesh_ids and ann_paths must have the same length: "
                 f"{len(mesh_ids)} != {len(ann_paths)}."
             )
-        dataset_id = self._api.mesh.get_info_by_id(mesh_ids[0]).dataset_id
+        if len(mesh_ids) == 0:
+            return
+
+        dataset_id_to_mesh_ids = {}
+        project_id_to_mesh_ids = {}
+        for mesh_id in mesh_ids:
+            mesh_info = self._api.mesh.get_info_by_id(mesh_id)
+            dataset_id_to_mesh_ids.setdefault(mesh_info.dataset_id, []).append(mesh_id)
+            project_id_to_mesh_ids.setdefault(mesh_info.project_id, []).append(mesh_id)
+
+        if len(dataset_id_to_mesh_ids) != 1 or len(project_id_to_mesh_ids) != 1:
+            logger.warning(
+                "Can not upload mesh annotations from multiple projects or datasets. "
+                f"Project to mesh ids: {project_id_to_mesh_ids}. "
+                f"Dataset to mesh ids: {dataset_id_to_mesh_ids}."
+            )
+            raise RuntimeError("All meshes must belong to the same project and dataset.")
+
+        dataset_id = next(iter(dataset_id_to_mesh_ids))
         self._upload_jsons_as_entity_rows(
             dataset_id,
             mesh_ids,
@@ -181,79 +208,14 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
         for mesh_id, ann_json in zip(mesh_ids, anns_json):
             prepared_ann = self._prepare_annotation_json(mesh_id, ann_json, key_id_map)
+            ann = MeshAnnotation.from_json(prepared_ann, project_meta, key_id_map)
 
-            tags = MeshTagCollection.from_json(prepared_ann.get(TAGS, []), project_meta.tag_metas)
-            self._api.mesh.tag.append_to_entity(mesh_id, project_id, tags, key_id_map=key_id_map)
-
-            labels = [
-                MeshLabel.from_json(label_json, project_meta)
-                for label_json in prepared_ann.get(LABELS, [])
-            ]
-            self._api.mesh.object.append_bulk(mesh_id, labels, key_id_map)
-
-            figures_json, figure_keys, indices_by_key = self._prepare_labels_for_entity_rows(
-                labels, key_id_map
-            )
-            self._api.mesh.figure._append_bulk(mesh_id, figures_json, figure_keys, key_id_map)
-            upload_figure_ids = []
-            upload_indices = []
-            for figure_key in figure_keys:
-                indices = indices_by_key.get(figure_key)
-                if indices is None:
-                    continue
-                upload_figure_ids.append(key_id_map.get_figure_id(figure_key))
-                upload_indices.append(indices)
-            if len(upload_figure_ids) != 0:
-                self._api.mesh.figure.upload_indices_batch(upload_figure_ids, upload_indices)
+            self._api.mesh.tag.append_to_entity(mesh_id, project_id, ann.tags, key_id_map=key_id_map)
+            self._api.mesh.object.append_bulk(mesh_id, ann.labels, key_id_map)
+            self._api.mesh.figure.append_bulk(mesh_id, ann.labels, key_id_map)
 
             if progress_cb is not None:
-                self._update_progress(progress_cb, 1)
-
-    def _prepare_labels_for_entity_rows(
-        self, labels: List[MeshLabel], key_id_map: KeyIdMap
-    ) -> tuple:
-        prepared_figures = []
-        figure_keys = []
-        indices_by_key = {}
-
-        for label in labels:
-            figure_key = label.key()
-            figure_keys.append(figure_key)
-
-            object_id = key_id_map.get_object_id(figure_key)
-            if object_id is None:
-                raise RuntimeError(
-                    "Can not upload mesh label: object ID not found for key {}.".format(
-                        figure_key
-                    )
-                )
-
-            label_json = label.to_json()
-            geometry_type = label_json[ApiField.GEOMETRY_TYPE]
-            geometry = dict(label_json.get(ApiField.GEOMETRY) or {})
-            for field_name in MESH_INDEX_FIELDS:
-                geometry.pop(f"{field_name}Path", None)
-
-            prepared = {
-                ApiField.OBJECT_ID: object_id,
-                ApiField.GEOMETRY_TYPE: geometry_type,
-                ApiField.GEOMETRY: geometry,
-            }
-            if label.priority is not None:
-                prepared[ApiField.PRIORITY] = label.priority
-            if label.custom_data:
-                prepared[ApiField.CUSTOM_DATA] = label.custom_data
-
-            if geometry_type in (Mesh.geometry_name(), "mesh_indices"):
-                prepared[ApiField.GEOMETRY_TYPE] = Mesh.geometry_name()
-                indices = self._extract_mesh_indices(geometry)
-                if indices is not None:
-                    indices_by_key[figure_key] = indices
-                prepared.pop(ApiField.GEOMETRY, None)
-
-            prepared_figures.append(prepared)
-
-        return prepared_figures, figure_keys, indices_by_key
+                update_progress(progress_cb, 1)
 
     def _download_bulk_from_entity_rows(
         self,
@@ -261,6 +223,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_ids: List[int],
         download_mesh_geometries: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        skip_orphan_objects: bool = False,
     ) -> List[Dict]:
         if len(mesh_ids) == 0:
             return []
@@ -275,7 +238,16 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         object_ids_by_mesh_id = {mesh_id: set() for mesh_id in mesh_ids}
         used_object_ids_by_mesh_id = {mesh_id: set() for mesh_id in mesh_ids}
         object_id_to_json = {}
-        object_infos = self._api.mesh.object.get_list(dataset_id)
+        object_infos = self._api.mesh.object.get_list(
+            dataset_id,
+            filters=[
+                {
+                    ApiField.FIELD: ApiField.ENTITY_ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: mesh_ids,
+                }
+            ],
+        )
         for object_info in object_infos:
             object_key = uuid.uuid4()
             object_json = {
@@ -339,10 +311,14 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 mesh_id, set()
             )
             if len(orphan_object_ids) != 0:
-                raise RuntimeError(
+                message = (
                     "Can not download mesh annotation: object rows without matching figures "
                     "found for mesh id={!r}: {!r}.".format(mesh_id, sorted(orphan_object_ids))
                 )
+                if skip_orphan_objects:
+                    logger.warning(message)
+                else:
+                    raise RuntimeError(message)
             annotations.append(
                 {
                     KEY: uuid.uuid4().hex,
@@ -352,7 +328,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 }
             )
             if progress_cb is not None:
-                self._update_progress(progress_cb, 1)
+                update_progress(progress_cb, 1)
         return annotations
 
     @staticmethod
@@ -400,10 +376,3 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                     key_id_map.add_figure(label_key, label_id)
             except Exception:
                 pass
-
-    @staticmethod
-    def _update_progress(progress_cb, value: int) -> None:
-        if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
-            progress_cb.update(value)
-        else:
-            progress_cb(value)

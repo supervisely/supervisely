@@ -3,12 +3,15 @@
 import os
 import tempfile
 import unittest
+import uuid
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import requests
 
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.mesh import mesh_annotation_api as mesh_annotation_api_module
 from supervisely.api.mesh.mesh_api import MeshApi, MeshInfo
 from supervisely.api.mesh.mesh_tag_api import MeshTagApi
 from supervisely.api.module_api import ApiField
@@ -176,6 +179,7 @@ class FakeApi:
         self.annotation_response = None
         self.object_response = []
         self.figure_response = []
+        self.mesh_infos = {}
         self.fail_team_file_id_upload = False
 
     def post(self, method, data, **kwargs):
@@ -183,7 +187,7 @@ class FakeApi:
         if method == "entities.list":
             return Response({"total": 0, "perPage": 100, "pagesCount": 1, "entities": []})
         if method == "entities.info":
-            return Response(mesh_json(mesh_id=data["id"]))
+            return Response(self.mesh_infos.get(data["id"], mesh_json(mesh_id=data["id"])))
         if method == "entities.download":
             return Response(b"mesh-bytes")
         if method == "entities.bulk.add":
@@ -339,6 +343,28 @@ class TestMeshApi(unittest.TestCase):
         self.assertEqual(data["entities"][0][ApiField.TEAM_FILE_ID], 1000)
         self.assertNotIn(ApiField.HASH, data["entities"][0])
 
+    def test_upload_paths_reserves_duplicate_team_file_names(self):
+        fake = FakeApi()
+        api = MeshApi(fake)
+
+        paths = []
+        try:
+            for _ in range(2):
+                fd, path = tempfile.mkstemp(suffix=".obj")
+                os.close(fd)
+                paths.append(path)
+
+            api.upload_paths(4, ["local.obj", "local.obj"], paths)
+        finally:
+            for path in paths:
+                os.remove(path)
+
+        dst_paths = fake.file.upload_bulk_calls[0][2]
+        self.assertEqual(
+            dst_paths,
+            ["/supervisely/mesh_uploads/4/local.obj", "/supervisely/mesh_uploads/4/local_000.obj"],
+        )
+
     def test_upload_paths_does_not_fall_back_to_link_when_team_file_id_is_unavailable(self):
         fake = FakeApi()
         fake.fail_team_file_id_upload = True
@@ -366,6 +392,16 @@ class TestMeshApi(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             api.upload_links(4, ["bad.glb"], ["https://example.com/bad.glb"])
+
+        fd, path = tempfile.mkstemp(suffix=".stl")
+        os.close(fd)
+        try:
+            with self.assertRaises(ValueError):
+                api.upload_paths(4, ["bad.glb"], [path])
+            with self.assertRaises(ValueError):
+                api.upload_paths(4, ["valid.obj"], [path])
+        finally:
+            os.remove(path)
 
 
 class TestMeshProject(unittest.TestCase):
@@ -647,7 +683,7 @@ class TestMeshAnnotation(unittest.TestCase):
 
     def test_download_uses_generic_annotation_rows(self):
         fake = FakeApi()
-        fake.object_response = [object_json()]
+        fake.object_response = [object_json(entity_id=123)]
         fake.figure_response = [figure_json()]
         api = MeshApi(fake)
 
@@ -660,6 +696,11 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertIn("annotation-objects.list", method_names)
         self.assertIn("figures.list", method_names)
         self.assertNotIn("entities.annotations.bulk.info", method_names)
+        object_call = [call for call in fake.calls if call[0] == "annotation-objects.list"][-1]
+        self.assertEqual(
+            object_call[1][ApiField.FILTER],
+            [{ApiField.FIELD: ApiField.ENTITY_ID, ApiField.OPERATOR: "in", ApiField.VALUE: [123]}],
+        )
 
     def test_upload_json_writes_indices_to_raw_figure_geometry(self):
         fake = FakeApi()
@@ -696,7 +737,7 @@ class TestMeshAnnotation(unittest.TestCase):
 
     def test_download_hydrates_external_mesh_indices_geometry(self):
         fake = FakeApi()
-        fake.object_response = [object_json()]
+        fake.object_response = [object_json(entity_id=123)]
         fake.figure_response = [
             figure_json(
                 figure_id=987,
@@ -709,6 +750,81 @@ class TestMeshAnnotation(unittest.TestCase):
         ann_json = api.annotation.download_bulk(4, [123])[0]
 
         self.assertEqual(ann_json["labels"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
+
+    def test_download_orphan_objects_is_strict_by_default(self):
+        fake = FakeApi()
+        fake.object_response = [
+            object_json(object_id=300, entity_id=123),
+            object_json(object_id=301, entity_id=123),
+        ]
+        fake.figure_response = [figure_json(object_id=300)]
+        api = MeshApi(fake)
+
+        with self.assertRaises(RuntimeError):
+            api.annotation.download_bulk(4, [123])
+
+    def test_download_orphan_objects_can_be_skipped(self):
+        fake = FakeApi()
+        fake.object_response = [
+            object_json(object_id=300, entity_id=123),
+            object_json(object_id=301, entity_id=123),
+        ]
+        fake.figure_response = [figure_json(object_id=300)]
+        api = MeshApi(fake)
+
+        with patch.object(mesh_annotation_api_module.logger, "warning") as warning:
+            ann_json = api.annotation.download_bulk(4, [123], skip_orphan_objects=True)[0]
+
+        warning.assert_called_once()
+        self.assertEqual(len(ann_json["labels"]), 1)
+
+    def test_upload_paths_requires_one_project_and_dataset(self):
+        fake = FakeApi()
+        fake.mesh_infos = {
+            123: mesh_json(mesh_id=123, datasetId=4, projectId=3),
+            124: mesh_json(mesh_id=124, datasetId=5, projectId=3),
+        }
+        api = MeshApi(fake)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ann_paths = []
+            for idx in range(2):
+                ann_path = os.path.join(temp_dir, f"ann_{idx}.json")
+                dump_json_file({"labels": []}, ann_path)
+                ann_paths.append(ann_path)
+
+            with patch.object(mesh_annotation_api_module.logger, "warning") as warning:
+                with self.assertRaises(RuntimeError):
+                    api.annotation.upload_paths([123, 124], ann_paths)
+
+            warning.assert_called_once()
+            self.assertIn("Dataset to mesh ids", warning.call_args.args[0])
+        self.assertNotIn("annotation-objects.bulk.add", [method for method, _, _ in fake.calls])
+
+    def test_upload_json_updates_key_id_map_for_existing_label_id(self):
+        fake = FakeApi()
+        fake.project.meta = ProjectMeta(
+            obj_classes=[ObjClass("car", Mesh)], project_type=ProjectType.MESHES
+        )
+        api = MeshApi(fake)
+        key_id_map = KeyIdMap()
+        label_key = uuid.UUID("cccccccccccccccccccccccccccccccc")
+        ann_json = {
+            "labels": [
+                {
+                    "id": 555,
+                    "key": label_key.hex,
+                    "classTitle": "car",
+                    "tags": [],
+                    "geometryType": "mesh",
+                    "geometry": {"indices": [0, 1, 2]},
+                }
+            ],
+        }
+
+        api.annotation.upload_json(123, ann_json, dataset_id=4, key_id_map=key_id_map)
+
+        self.assertEqual(key_id_map.get_figure_id(label_key), 700)
 
     def test_append_writes_annotation_rows(self):
         fake = FakeApi()
@@ -736,6 +852,18 @@ class TestMeshAnnotation(unittest.TestCase):
         method, data, _ = fake.calls[-1]
         self.assertEqual(method, "figures.bulk.upload.geometry")
         self.assertIn(b"\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00*\x00\x00\x00\xff\xff\x00\x00", data.to_string())
+
+    def test_download_indices_batch_reports_item_progress(self):
+        api = MeshApi(FakeApi())
+        api.figure._download_geometries_generator = lambda ids: [
+            (11, SimpleNamespace(content=encode_mesh_indices([1, 2, 3]))),
+            (12, SimpleNamespace(content=encode_mesh_indices([4, 5, 6]))),
+        ]
+        progress = []
+
+        api.figure.download_indices_batch([11, 12], progress_cb=progress.append)
+
+        self.assertEqual(progress, [1, 1])
 
     def test_append_entity_tag_payload(self):
         fake = FakeApi()

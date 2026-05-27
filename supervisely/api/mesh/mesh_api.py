@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import PurePosixPath
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 from urllib.parse import urlparse
 
@@ -226,6 +227,17 @@ class MeshApi(RemoveableBulkModuleApi):
         if ext not in ALLOWED_MESH_EXTENSIONS:
             allowed = ", ".join(sorted(ALLOWED_MESH_EXTENSIONS))
             raise ValueError(f"Unsupported mesh extension {ext!r}. Allowed extensions: {allowed}.")
+
+    @staticmethod
+    def _reserve_unique_path(path: str, reserved_paths: set) -> str:
+        candidate = path
+        suffix = 0
+        parsed_path = PurePosixPath(path)
+        while candidate in reserved_paths:
+            candidate = str(parsed_path.with_name(f"{parsed_path.stem}_{suffix:03d}{parsed_path.suffix}"))
+            suffix += 1
+        reserved_paths.add(candidate)
+        return candidate
 
     def _remove_batch_api_method_name(self):
         return "entities.bulk.remove"
@@ -641,7 +653,14 @@ class MeshApi(RemoveableBulkModuleApi):
         if len(names) == 0:
             return []
         for name, path in zip(names, paths):
+            self._validate_mesh_name(name)
             self._validate_mesh_name(path)
+            name_ext = get_file_ext(name).lower()
+            path_ext = get_file_ext(path).lower()
+            if name_ext != path_ext:
+                raise ValueError(
+                    f"The name extension '{name_ext}' does not match the file extension '{path_ext}'"
+                )
             if not os.path.isfile(path):
                 raise FileNotFoundError(path)
 
@@ -650,9 +669,11 @@ class MeshApi(RemoveableBulkModuleApi):
         team_files_dir = team_files_dir or f"/supervisely/mesh_uploads/{dataset_id}"
 
         dst_paths = []
+        reserved_dst_paths = set()
         for name in names:
             remote_path = f"{team_files_dir.rstrip('/')}/{name}"
-            dst_paths.append(self._api.file.get_free_name(team_id, remote_path))
+            free_path = self._api.file.get_free_name(team_id, remote_path)
+            dst_paths.append(self._reserve_unique_path(free_path, reserved_dst_paths))
 
         file_infos = self._api.file.upload_bulk(team_id, paths, dst_paths, progress_cb=progress_cb)
         team_file_ids = [file_info.id for file_info in file_infos]

@@ -17,6 +17,7 @@ from supervisely.mesh_annotation.mesh_indices import (
     decode_mesh_indices,
     encode_mesh_indices,
 )
+from supervisely.task.progress import update_progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -97,12 +98,15 @@ class MeshFigureApi(FigureApi):
         figure_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[List[int]]:
-        """Download mesh figure index geometry as raw little-endian uint32 data."""
+        """Download mesh figure index geometry as raw little-endian uint32 data.
+
+        Progress is updated by one for each downloaded figure geometry.
+        """
         geometries = {}
         for figure_id, part in self._download_geometries_generator(figure_ids):
             geometries[figure_id] = decode_mesh_indices(part.content)
             if progress_cb is not None:
-                progress_cb(len(part.content))
+                update_progress(progress_cb, 1)
 
         if len(geometries) != len(figure_ids):
             raise RuntimeError("Not all mesh geometries were downloaded")
