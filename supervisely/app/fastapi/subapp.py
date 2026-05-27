@@ -1031,8 +1031,8 @@ def enable_hot_reload_on_debug(app: FastAPI):
         )
 
         app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
-        app.add_event_handler("startup", hot_reload.startup)
-        app.add_event_handler("shutdown", hot_reload.shutdown)
+        _add_event_handler(app, "startup", hot_reload.startup)
+        _add_event_handler(app, "shutdown", hot_reload.shutdown)
         templates.env.globals["HOTRELOAD"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
         logger.debug("Debugger (gettrace) detected, UI hot-reload is enabled")
@@ -1075,6 +1075,15 @@ def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
         return await process_server_error(request, exc)
+
+
+def _add_event_handler(app: FastAPI, event_type: str, func: Callable[[], Any]) -> None:
+    router = getattr(app, "router", None)
+    add_router_event_handler = getattr(router, "add_event_handler", None)
+    if add_router_event_handler is not None:
+        add_router_event_handler(event_type, func)
+        return
+    app.add_event_handler(event_type, func)
 
 
 def _init(
@@ -1210,7 +1219,6 @@ def _init(
                 )
             return app.cached_template
 
-        @app.on_event("shutdown")
         def shutdown():
             from supervisely.app.content import ContentOrigin
 
@@ -1219,6 +1227,8 @@ def _init(
             resp = run_sync(client.get("/"))
             assert resp.status_code == 200
             logger.info("Application has been shut down successfully")
+
+        _add_event_handler(app, "shutdown", shutdown)
 
         if static_dir is not None:
             app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
@@ -1375,8 +1385,8 @@ class Application(metaclass=Singleton):
                 self._fastapi.add_websocket_route(
                     "/hot-reload", route=self.hot_reload, name="hot-reload"
                 )
-                self._fastapi.add_event_handler("startup", self.hot_reload.startup)
-                self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
+                _add_event_handler(self._fastapi, "startup", self.hot_reload.startup)
+                _add_event_handler(self._fastapi, "shutdown", self.hot_reload.shutdown)
 
                 # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
                 templates.env.globals["HOTRELOAD"] = "1"

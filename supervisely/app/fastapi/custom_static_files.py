@@ -1,3 +1,4 @@
+import inspect
 import os
 import typing
 
@@ -9,6 +10,8 @@ from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.staticfiles import NotModifiedResponse
 from starlette.types import Scope
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
+
+_FILE_RESPONSE_SUPPORTS_METHOD = "method" in inspect.signature(FileResponse).parameters
 
 INVALID_RANGE_STATUS_CODE = getattr(status, "HTTP_416_RANGE_NOT_SATISFIABLE", None)
 if INVALID_RANGE_STATUS_CODE is None:
@@ -93,9 +96,13 @@ class CustomStaticFiles(StaticFiles):
             )
 
         else:
-            response = FileResponse(
-                full_path, status_code=status_code, stat_result=stat_result, method=method
-            )
+            file_response_kwargs = {
+                "status_code": status_code,
+                "stat_result": stat_result,
+            }
+            if _FILE_RESPONSE_SUPPORTS_METHOD:
+                file_response_kwargs["method"] = method
+            response = FileResponse(full_path, **file_response_kwargs)
         if self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)
         return response

@@ -28,16 +28,25 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         :param directory: Path to templates directory.
         :type directory: typing.Union[str, PathLike]
         """
-        super().__init__(directory)
+        if hasattr(_fastapi_Jinja2Templates, "_create_env"):
+            super().__init__(directory)
+        else:
+            loader = jinja2.FileSystemLoader(directory)
+            super().__init__(env=self._create_sly_env(loader))
 
-    def _create_env(self, directory: typing.Union[str, PathLike]) -> "jinja2.Environment":
-        env_fastapi = super()._create_env(directory)
+    @staticmethod
+    def _create_sly_env(loader: "jinja2.BaseLoader") -> "jinja2.Environment":
         env_sly = jinja2.Environment(
-            loader=env_fastapi.loader,
+            loader=loader,
             autoescape=True,
             variable_start_string="{{{",
             variable_end_string="}}}",
         )
+        return env_sly
+
+    def _create_env(self, directory: typing.Union[str, PathLike]) -> "jinja2.Environment":
+        env_fastapi = super()._create_env(directory)
+        env_sly = self._create_sly_env(env_fastapi.loader)
         try:
             env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
         except:
