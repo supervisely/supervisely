@@ -78,6 +78,7 @@ from supervisely.io.env import (
 from supervisely.io.fs import (
     OFFSETS_PKL_BATCH_SIZE,
     OFFSETS_PKL_SUFFIX,
+    RestrictedUnpickler,
     clean_dir,
     ensure_base_path,
     get_file_ext,
@@ -197,10 +198,11 @@ class BlobImageInfo:
             current_batch = []
 
             with open(file_path, "rb") as f:
+                unpickler = RestrictedUnpickler(f)
                 while True:
                     try:
-                        # Load one pickle object at a time
-                        data = pickle.load(f)
+                        # Load one pickle object at a time using restricted unpickler
+                        data = unpickler.load()
 
                         if isinstance(data, list):
                             # More efficient way to process lists

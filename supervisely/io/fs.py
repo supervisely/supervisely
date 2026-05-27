@@ -43,6 +43,28 @@ OFFSETS_PKL_SUFFIX = "_offsets.pkl"  # suffix for pickle file with image offsets
 OFFSETS_PKL_BATCH_SIZE = 10000  # 10k images per batch when loading from pickle
 
 
+import pickle
+import builtins
+
+class RestrictedUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == "supervisely.api.image_api" and name == "BlobImageInfo":
+            from supervisely.api.image_api import BlobImageInfo
+            return BlobImageInfo
+        if module == "builtins" and name in ("list", "dict", "str", "int", "float", "bool", "set", "tuple", "NoneType"):
+            return getattr(builtins, name)
+        if module == "collections" and name == "OrderedDict":
+            import collections
+            return collections.OrderedDict
+        if module == "numpy.core.multiarray" or module == "numpy":
+            import numpy
+            return getattr(numpy, name)
+        if module == "pandas.core.frame" or module == "pandas":
+            import pandas
+            return getattr(pandas, name)
+        raise pickle.UnpicklingError(f"global '{module}.{name}' is forbidden")
+
+
 def get_file_name(path: str) -> str:
     """
     Extracts file name from a given path.
