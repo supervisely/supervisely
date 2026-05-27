@@ -526,9 +526,12 @@ class LiveTraining:
     def _save_and_upload(self):
         """Save checkpoint, state, and upload artifacts"""
         logger.info("Saving checkpoint and uploading artifacts...")
-        self.save_checkpoint(self.latest_checkpoint_path)
-        save_state_json(self.state(), self.latest_checkpoint_path)
-        self._upload_artifacts()
+        try:
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+            self._upload_artifacts()
+        except Exception as e:
+            logger.warning(f"Failed to save checkpoint: {e}")
 
     def save_checkpoint(self, checkpoint_path: str):
         pass
