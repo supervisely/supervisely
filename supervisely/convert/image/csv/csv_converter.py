@@ -8,23 +8,23 @@ from tqdm import tqdm
 import supervisely.convert.image.csv.csv_helper as csv_helper
 from supervisely import (
     Annotation,
+    ProjectMeta,
+    TagCollection,
     batched,
     generate_free_name,
     is_development,
     logger,
-    ProjectMeta,
-    TagCollection,
 )
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
+from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name_with_ext,
     list_files_recursively,
 )
-from supervisely.io.env import team_id
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 
@@ -98,6 +98,7 @@ class CSVConverter(ImageConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
         """:param input_data: Path to CSV/TSV/TXT or directory.
         :type input_data: str
@@ -107,8 +108,12 @@ class CSVConverter(ImageConverter):
         :type upload_as_links: bool
         :param remote_files_map: Map for link upload.
         :type remote_files_map: Dict[str, str], optional
+        :param team_files_id_map: Map for team files upload.
+        :type team_files_id_map: Dict[str, str], optional
         """
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._supports_links = True
         self._csv_reader = None

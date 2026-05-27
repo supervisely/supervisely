@@ -107,7 +107,7 @@ def _docker_pull(docker_api, docker_image_name, logger, raise_exception=True):
                 "Please, run the task again or contact support team."
             )
         else:
-            logger.warn("Pulling step is skipped. Unable to pull image: {!r}.".format(str(e)))
+            logger.warning("Pulling step is skipped. Unable to pull image: {!r}.".format(str(e)))
 
 
 def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception=True):
@@ -187,7 +187,7 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
             #     "Please, run the task again or contact support team."
             # )
         else:
-            logger.warn("Pulling step is skipped. Unable to pull image: {!r}.".format(repr(e)))
+            logger.warning("Pulling step is skipped. Unable to pull image: {!r}.".format(repr(e)))
 
 
 def _docker_image_exists(docker_api, docker_image_name):

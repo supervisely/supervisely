@@ -2,8 +2,12 @@ from typing import Dict, Optional, Union
 
 from supervisely.convert.base_converter import AvailablePointcloudEpisodesConverters
 from supervisely.convert.pointcloud.bag.bag_converter import BagConverter
-from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import PointcloudEpisodeConverter
-from supervisely.pointcloud_annotation.pointcloud_episode_annotation import PointcloudEpisodeAnnotation
+from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
+    PointcloudEpisodeConverter,
+)
+from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
+    PointcloudEpisodeAnnotation,
+)
 from supervisely.project.project_settings import LabelingInterface
 
 
@@ -29,14 +33,17 @@ class BagEpisodesConverter(BagConverter, PointcloudEpisodeConverter):
             return PointcloudEpisodeAnnotation()
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._type = "point_cloud_episode"
         self._is_pcd_episode = True

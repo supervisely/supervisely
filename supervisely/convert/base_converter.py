@@ -198,6 +198,7 @@ class BaseConverter:
         labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, Tuple[int, str]]] = None,
     ):
         """:param input_data: Path to input directory or archive.
         :type input_data: str
@@ -207,6 +208,8 @@ class BaseConverter:
         :type upload_as_links: bool
         :param remote_files_map: Map of local paths to remote paths for link upload.
         :type remote_files_map: Dict[str, str], optional
+        :param team_files_id_map: Map of local paths to (file_id, remote_path) for team files uploads.
+        :type team_files_id_map: Dict[str, Tuple[int, str]], optional
 
         :raises ValueError: If labeling_interface is invalid.
         """
@@ -218,6 +221,7 @@ class BaseConverter:
         # import as links settings
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
+        self._team_files_id_map: Optional[Dict[str, Tuple[int, str]]] = team_files_id_map
         self._supports_links = False  # if converter supports uploading by links
         self._force_shape_for_links = False
         self._api = Api.from_env() if self._upload_as_links else None
@@ -253,6 +257,10 @@ class BaseConverter:
     @property
     def remote_files_map(self) -> Dict[str, str]:
         return self._remote_files_map
+
+    @property
+    def team_files_id_map(self) -> Optional[Dict[str, Tuple[int, str]]]:
+        return self._team_files_id_map
 
     @property
     def supports_links(self) -> bool:
@@ -310,6 +318,7 @@ class BaseConverter:
                 self._labeling_interface,
                 self._upload_as_links,
                 self._remote_files_map,
+                self._team_files_id_map,
             )
 
             if not converter.validate_labeling_interface():

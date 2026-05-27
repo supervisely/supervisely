@@ -360,7 +360,7 @@ from supervisely.app.fastapi.subapp import Event
 try:
     setup_certificates()
 except Exception as e:
-    logger.warn(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)
+    logger.warning(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)
 
 # Configure minimum instance version automatically from versions.json
 # if new changes in Supervisely Python SDK require upgrade of the Supervisely instance.

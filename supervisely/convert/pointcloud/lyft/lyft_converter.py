@@ -56,9 +56,12 @@ class LyftConverter(PointcloudConverter):
         labeling_interface: str,
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
         """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
         self._is_pcd_episode = False
         self._lyft = None
 
@@ -73,7 +76,7 @@ class LyftConverter(PointcloudConverter):
         try:
             from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
         except ImportError:
-            logger.warn(
+            logger.warning(
                 'Install "lyft_dataset_sdk" python package to import datasets in LYFT format.'
             )
             return False
