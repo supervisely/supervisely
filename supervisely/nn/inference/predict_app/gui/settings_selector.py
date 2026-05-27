@@ -41,6 +41,7 @@ from supervisely.nn.inference.inference import (
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
 from supervisely.nn.inference.predict_app.gui.utils import (
+    get_image_infos_by_collection_ids,
     video_annotation_from_predictions,
 )
 from supervisely.nn.model.model_api import ModelAPI, Prediction
@@ -376,7 +377,14 @@ class Preview:
         if video_ids is None:
             project_id = input_settings.get("project_id", None)
             dataset_ids = input_settings.get("dataset_ids", None)
-            if dataset_ids:
+            collection_ids = input_settings.get("collection_ids", None)
+            if collection_ids is not None:
+                if len(collection_ids) == 0:
+                    raise RuntimeError("No collections selected")
+                images = get_image_infos_by_collection_ids(self.api, collection_ids)
+                if not images:
+                    raise RuntimeError("No images found in the selected collections")
+            elif dataset_ids:
                 images = []
                 candidate_ids = list(dataset_ids)
                 random.shuffle(candidate_ids)
