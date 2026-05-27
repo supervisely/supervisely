@@ -7,6 +7,7 @@ import errno
 import hashlib
 import mimetypes
 import os
+import pickle
 import re
 import shutil
 import subprocess
@@ -20,6 +21,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -41,6 +43,45 @@ from supervisely.task.progress import Progress
 JUNK_FILES = [".DS_Store", "__MACOSX", "._.DS_Store", "Thumbs.db", "desktop.ini"]
 OFFSETS_PKL_SUFFIX = "_offsets.pkl"  # suffix for pickle file with image offsets
 OFFSETS_PKL_BATCH_SIZE = 10000  # 10k images per batch when loading from pickle
+
+
+class BaseRestrictedUnpickler(pickle.Unpickler):
+    """Base unpickler that enforces an allowlist of modules and classes.
+
+    Prevents Remote Code Execution via malicious pickle payloads (CWE-502).
+    Any class not covered by the allowlist raises :exc:`pickle.UnpicklingError`
+    instead of being imported and instantiated.
+
+    Subclasses configure the allowlist via two class-level attributes:
+
+    * ``_ALLOWED`` — exact ``{module: {class_name, ...}}`` whitelist.
+      Takes priority over ``_ALLOWED_MODULE_PREFIXES``.
+    * ``_ALLOWED_MODULE_PREFIXES`` — tuple of module-name prefixes.
+      Every class whose module starts with one of these prefixes is allowed.
+
+    Both attributes can be combined: exact entries in ``_ALLOWED`` are checked
+    first; if no match is found the prefix list is tried next.
+    """
+
+    _ALLOWED: Dict[str, Set[str]] = {}
+    _ALLOWED_MODULE_PREFIXES: Tuple[str, ...] = ()
+
+    def find_class(self, module: str, name: str):
+        # 1. Exact module+class whitelist (highest priority, e.g. tight sinks)
+        allowed_names = self._ALLOWED.get(module)
+        if allowed_names is not None and name in allowed_names:
+            return super().find_class(module, name)
+
+        # 2. Module-prefix whitelist (broader allow, e.g. all supervisely.*)
+        if self._ALLOWED_MODULE_PREFIXES and any(
+            module == prefix or module.startswith(prefix + ".")
+            for prefix in self._ALLOWED_MODULE_PREFIXES
+        ):
+            return super().find_class(module, name)
+
+        raise pickle.UnpicklingError(
+            f"Blocked unsafe class during deserialization: {module}.{name}"
+        )
 
 
 def get_file_name(path: str) -> str:
