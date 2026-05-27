@@ -57,6 +57,7 @@ from supervisely.collection.key_indexed_collection import (
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
+    BaseRestrictedUnpickler,
     clean_dir,
     copy_file,
     copy_file_async,
@@ -71,7 +72,6 @@ from supervisely.io.fs import (
     mkdir,
     silent_remove,
     subdirs_tree,
-    RestrictedUnpickler,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
@@ -84,13 +84,24 @@ from supervisely.task.progress import tqdm_sly
 TF_BLOB_DIR = "blob-files"  # directory for project blob files in team files
 
 
-class CustomUnpickler(RestrictedUnpickler):
+class CustomUnpickler(BaseRestrictedUnpickler):
     """
     Custom Unpickler for loading pickled objects of the same class with differing definitions.
-    Handles cases where a class object is reconstructed using a newer definition with additional fields
-    or an outdated definition missing some fields.
-    Supports loading namedtuple objects with missing or extra fields.
+
+    Inherits the allowlist security mechanism from
+    :class:`~supervisely.io.fs.BaseRestrictedUnpickler` (CWE-502 mitigation) and
+    adds backward-compatibility handling for NamedTuple classes whose field set
+    has changed between SDK versions (missing or extra fields).
     """
+
+    # Modules allowed during deserialization of .bin project files.
+    _ALLOWED_MODULE_PREFIXES = (
+        "supervisely",
+        "builtins",
+        "collections",
+        "_collections",
+        "datetime",
+    )
 
     def __init__(self, file, **kwargs):
         """
@@ -105,7 +116,7 @@ class CustomUnpickler(RestrictedUnpickler):
 
     def find_class(self, module, name):
         prefix = "Pickled"
-        cls = super().find_class(module, name)
+        cls = super().find_class(module, name)  # * security check + class resolution
         if hasattr(cls, "_fields") and "Info" in cls.__name__:
             orig_new = cls.__new__
 
