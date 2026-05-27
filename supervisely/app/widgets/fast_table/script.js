@@ -467,21 +467,31 @@ Vue.component('fast-table', {
   },
 
   methods: {
-    _updateData() {
-      this.$emit('filters-changed')
+    _updateData(payload = {}) {
+      this.$emit('filters-changed', payload)
+    },
+
+    scheduleDataUpdate(payload = {}, useDebounce = false) {
+      this.$nextTick(() => {
+        if (useDebounce) {
+          this.updateData(payload);
+          return;
+        }
+        this._updateData(payload);
+      });
     },
 
     searchChanged(val) {
       this.$emit('update:search', val);
-      this.updateData();
     },
 
     go(dir) {
       if (dir === -1 && !this.canGoBack) return;
       if (dir === +1 && !this.canGoForward) return;
 
-      this.$emit('update:page', this.page + dir);
-      this.updateData();
+      const nextPage = this.page + dir;
+
+      this.$emit('update:page', nextPage);
     },
 
     onHeaderCellClick(idx) {
@@ -492,8 +502,9 @@ Vue.component('fast-table', {
       if (this.sort.column !== idx) order = 'asc';
       else order = this.sort.order === 'asc' ? 'desc' : 'asc';
 
-      this.$emit('update:sort', { order, column: idx });
-      this.updateData();
+      const nextSort = { order, column: idx };
+
+      this.$emit('update:sort', nextSort);
     },
 
     selectAllRows(checked) {
@@ -611,6 +622,6 @@ Vue.component('fast-table', {
   },
 
   created() {
-      this.updateData = _.debounce(this._updateData, 300);
+      this.updateData = _.debounce((payload) => this._updateData(payload), 300);
   },
 });
