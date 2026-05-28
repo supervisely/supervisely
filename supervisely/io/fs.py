@@ -32,6 +32,8 @@ from tqdm import tqdm
 from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from supervisely.api.image_api import BlobImageInfo
 
 from supervisely.io.fs_cache import FileCache
@@ -1940,3 +1942,41 @@ def save_blob_offsets_pkl(
 
     BlobImageInfo.dump_to_pickle(offsets_batch_generator, output_path)
     return output_path
+
+
+def encode_uint32_le(values: Union[List[int], "np.ndarray"]) -> bytes:
+    """
+    Encode a sequence of non-negative integers as little-endian uint32 bytes.
+
+    :param values: Sequence of integers in range [0, 2**32 - 1].
+    :type values: Union[List[int], np.ndarray]
+    :returns: Little-endian uint32 byte buffer (4 bytes per value), empty bytes for empty input.
+    :rtype: bytes
+    """
+    import numpy as np
+
+    arr = values if isinstance(values, np.ndarray) else np.asarray(list(values))
+    if arr.size == 0:
+        return b""
+    if not np.issubdtype(arr.dtype, np.integer):
+        raise ValueError("Values to encode must be integers.")
+    if np.any(arr < 0):
+        raise ValueError("Values to encode must be non-negative.")
+    if np.any(arr > np.iinfo(np.uint32).max):
+        raise ValueError("Values to encode must fit into uint32.")
+    return arr.astype("<u4", copy=False).tobytes()
+
+
+def decode_uint32_le(data: bytes) -> List[int]:
+    """
+    Decode little-endian uint32 bytes into a list of integers.
+
+    :param data: Little-endian uint32 byte buffer (trailing bytes that do not form a full uint32 are ignored).
+    :type data: bytes
+    :returns: List of decoded integers.
+    :rtype: List[int]
+    """
+    import numpy as np
+
+    aligned_len = len(data) - (len(data) % 4)
+    return np.frombuffer(data[:aligned_len], dtype="<u4").tolist()
