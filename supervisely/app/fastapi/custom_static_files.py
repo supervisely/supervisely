@@ -48,8 +48,11 @@ class CustomStaticFiles(StaticFiles):
                 pos = f.tell()
                 while pos <= end:
                     read_size = min(chunk_size, end + 1 - pos)
+                    chunk = f.read(read_size)
+                    if not chunk:
+                        break
+                    yield chunk
                     pos = f.tell()
-                    yield f.read(read_size)
 
         def _get_range_header(range_header: str, file_size: int) -> typing.Tuple[int, int]:
             def _invalid_range():

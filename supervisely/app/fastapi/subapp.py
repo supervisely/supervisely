@@ -14,7 +14,6 @@ from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-import arel
 import jinja2
 import numpy as np
 import psutil
@@ -59,6 +58,11 @@ from supervisely.sly_logger import create_formatter, logger
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
+
+try:
+    import arel
+except ImportError:
+    arel = None
 
 import logging
 
@@ -1023,6 +1027,9 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
+        if arel is None:
+            logger.warning("UI hot-reload is disabled because arel is not installed")
+            return
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 
@@ -1380,19 +1387,23 @@ class Application(metaclass=Singleton):
 
         if not headless:
             if is_development() and hot_reload:
-                templates = Jinja2Templates()
-                self.hot_reload = arel.HotReload([])
-                self._fastapi.add_websocket_route(
-                    "/hot-reload", route=self.hot_reload, name="hot-reload"
-                )
-                _add_event_handler(self._fastapi, "startup", self.hot_reload.startup)
-                _add_event_handler(self._fastapi, "shutdown", self.hot_reload.shutdown)
+                if arel is None:
+                    logger.warning("Hot reload is disabled because arel is not installed.")
+                    hot_reload = False
+                else:
+                    templates = Jinja2Templates()
+                    self.hot_reload = arel.HotReload([])
+                    self._fastapi.add_websocket_route(
+                        "/hot-reload", route=self.hot_reload, name="hot-reload"
+                    )
+                    _add_event_handler(self._fastapi, "startup", self.hot_reload.startup)
+                    _add_event_handler(self._fastapi, "shutdown", self.hot_reload.shutdown)
 
-                # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
-                templates.env.globals["HOTRELOAD"] = "1"
-                templates.env.globals["hot_reload"] = self.hot_reload
+                    # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
+                    templates.env.globals["HOTRELOAD"] = "1"
+                    templates.env.globals["hot_reload"] = self.hot_reload
 
-                logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+                    logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
             if is_production():
                 # to save offline session
