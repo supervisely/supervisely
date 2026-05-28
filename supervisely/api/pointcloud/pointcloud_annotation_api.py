@@ -122,6 +122,22 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
         return self._download(info.dataset_id, pointcloud_id)
 
+    def download_bulk(self, dataset_id: int, entity_ids: List[int]) -> List[Dict]:
+        """
+        Download point cloud annotation JSONs in bulk and inject ``point_cloud`` geometries
+        that are stored separately (new format). Inline geometries (old format) are kept as is.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param entity_ids: Point cloud IDs.
+        :type entity_ids: List[int]
+        :returns: List of annotation JSONs.
+        :rtype: List[dict]
+        """
+        anns_json = super().download_bulk(dataset_id, entity_ids)
+        self._api.pointcloud.figure.inject_geometries_into_annotations(anns_json)
+        return anns_json
+
     def append(
         self,
         pointcloud_id: int,
@@ -281,4 +297,5 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         tasks = [fetch_with_semaphore(batch) for batch in batched(pointcloud_ids)]
         responses = await asyncio.gather(*tasks)
         json_response = [item for response in responses for item in response]
+        self._api.pointcloud.figure.inject_geometries_into_annotations(json_response)
         return json_response
