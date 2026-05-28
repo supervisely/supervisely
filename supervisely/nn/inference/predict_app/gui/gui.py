@@ -27,6 +27,7 @@ from supervisely.nn.inference.predict_app.gui.utils import (
     copy_items_to_project,
     create_project,
     disable_enable,
+    get_image_infos_by_collection_ids,
     update_custom_button_params,
     video_annotation_from_predictions,
 )
@@ -701,9 +702,15 @@ class PredictAppGui:
         input_parameters = run_parameters["input"]
         input_project_id = input_parameters.get("project_id", None)
         input_dataset_ids = input_parameters.get("dataset_ids", [])
+        input_collection_ids = input_parameters.get("collection_ids", None)
         input_image_ids = input_parameters.get("image_ids", [])
         if input_image_ids:
             input_args["image_ids"] = input_image_ids
+        elif input_collection_ids is not None:
+            input_args["image_ids"] = [
+                info.id
+                for info in get_image_infos_by_collection_ids(self.api, input_collection_ids)
+            ]
         elif input_dataset_ids:
             input_args["dataset_ids"] = input_dataset_ids
         elif input_project_id:
@@ -746,6 +753,8 @@ class PredictAppGui:
         image_infos = []
         if input_image_ids:
             image_infos = self.api.image.get_info_by_id_batch(input_image_ids)
+        elif input_collection_ids is not None:
+            image_infos = get_image_infos_by_collection_ids(self.api, input_collection_ids)
         elif input_dataset_ids:
             for dataset_id in input_dataset_ids:
                 image_infos.extend(self.api.image.get_list(dataset_id))
@@ -909,6 +918,13 @@ class PredictAppGui:
                 project_ids.add(dataset_info.project_id)
             except Exception as e:
                 logger.debug(f"Workflow: Failed to resolve input dataset: {repr(e)}")
+
+        for collection_id in input_parameters.get("collection_ids", []) or []:
+            try:
+                collection_info = self.api.entities_collection.get_info_by_id(collection_id)
+                project_ids.add(collection_info.project_id)
+            except Exception as e:
+                logger.debug(f"Workflow: Failed to resolve input collection: {repr(e)}")
 
         image_ids = input_parameters.get("image_ids", []) or []
         if image_ids:
