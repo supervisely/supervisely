@@ -358,6 +358,10 @@ Vue.component('fast-table', {
   },
 
   computed: {
+    lodash() {
+      return (window.sly && window.sly.packages && window.sly.packages.lodash) || window._;
+    },
+
     canGoBack() {
       return this.page - 1 > 0;
     },
@@ -390,7 +394,7 @@ Vue.component('fast-table', {
     },
 
     classesMap() {
-      return this.projectMeta ? _.keyBy(this.projectMeta.classes, 'title') : {};
+      return this.projectMeta ? this.lodash.keyBy(this.projectMeta.classes, 'title') : {};
     },
 
     needsRightGradient() {
@@ -512,7 +516,7 @@ Vue.component('fast-table', {
             const key = this.rowKeyValue(r);
             if (!selectedIdx.has(key)) {
               if (quota <= 0) break;
-              result.push(_.cloneDeep(r));
+              result.push(this.lodash.cloneDeep(r));
               selectedIdx.add(key);
               quota -= 1;
             }
@@ -522,7 +526,7 @@ Vue.component('fast-table', {
           for (const r of this.data) {
             const key = this.rowKeyValue(r);
             if (!selectedIdx.has(key)) {
-              result.push(_.cloneDeep(r));
+              result.push(this.lodash.cloneDeep(r));
               selectedIdx.add(key);
             }
           }
@@ -560,7 +564,7 @@ Vue.component('fast-table', {
       if (checked) {
         if (max && max > 0) {
           if (max === 1) {
-            result = [_.cloneDeep(row)];
+            result = [this.lodash.cloneDeep(row)];
             this.$emit('update:selected-rows', result);
             return;
           }
@@ -570,7 +574,7 @@ Vue.component('fast-table', {
             return;
           }
         }
-        if (!exists) result = [...current, _.cloneDeep(row)];
+        if (!exists) result = [...current, this.lodash.cloneDeep(row)];
       } else {
         if (exists) result = current.filter(r => this.rowKeyValue(r) !== key);
       }
@@ -592,7 +596,8 @@ Vue.component('fast-table', {
 
     highlight(text) {
       if (!this.search) return text;
-      return text.toString().replace(new RegExp(this.search, 'gi'), match => '<span class="bg-yellow-400">'+match+'</span>');
+      const escaped = this.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return text.toString().replace(new RegExp(escaped, 'gi'), match => '<span class="bg-yellow-400">'+match+'</span>');
     },
 
     rowKeyValue(row) {
@@ -607,10 +612,10 @@ Vue.component('fast-table', {
   },
 
   beforeDestroy() {
-    this.$refs.scrollBox.addEventListener('scroll', this.handleScroll);
+    this.$refs.scrollBox.removeEventListener('scroll', this.handleScroll);
   },
 
   created() {
-      this.updateData = _.debounce(this._updateData, 300);
+      this.updateData = this.lodash.debounce(this._updateData, 300);
   },
 });
