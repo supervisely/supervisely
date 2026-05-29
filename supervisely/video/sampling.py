@@ -892,14 +892,17 @@ async def async_stream_video_frames_to_dir(
     write_executor = concurrent.futures.ThreadPoolExecutor(
         max_workers=max_write_workers, thread_name_prefix="frame_write"
     )
-    saved_paths = []
     pending = []
 
-    async def _write_frame(path: str, img: np.ndarray) -> None:
+    async def _write_frame(path: str, img: np.ndarray) -> str:
         try:
             await loop.run_in_executor(write_executor, image_writer, path, img)
         finally:
             write_sem.release()
+        # Report success only after the file is actually on disk.
+        if progress_cb is not None:
+            progress_cb(1)
+        return path
 
     try:
         async for frame_idx, img in async_stream_video_frames(
@@ -911,16 +914,15 @@ async def async_stream_video_frames_to_dir(
         ):
             path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
             await write_sem.acquire()
-            saved_paths.append(path)
             pending.append(asyncio.create_task(_write_frame(path, img)))
-            if progress_cb is not None:
-                progress_cb(1)
 
-        if pending:
-            await asyncio.gather(*pending)
+        # gather preserves submission order, so saved_paths stays frame-ordered
+        # and contains only paths whose writes completed successfully.
+        saved_paths = list(await asyncio.gather(*pending)) if pending else []
     except Exception:
         for task in pending:
             task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
         raise
     finally:
         write_executor.shutdown(wait=False)
