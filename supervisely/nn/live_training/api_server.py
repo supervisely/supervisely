@@ -101,21 +101,23 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         object_id = state.get("object_id")
         toolbox_session_id = state.get("toolbox_session_id")
         track_id = state.get("track_id")
+        n_frames = state.get("n_frames")
 
-        raw_widget_value = lt.tracking_frames_widget.get_value()
-        widget_id = lt.tracking_frames_widget.widget_id
-        try:
-            from supervisely.app import StateJson
+        if not n_frames:
+            raw_widget_value = lt.tracking_frames_widget.get_value()
+            widget_id = lt.tracking_frames_widget.widget_id
+            try:
+                from supervisely.app import StateJson
 
-            sj = StateJson()
-            widget_in_state = widget_id in sj
-            widget_state_entry = sj.get(widget_id) if widget_in_state else None
-            sj_keys = list(sj.keys())
-        except Exception as e:
-            widget_in_state = f"err:{e}"
-            widget_state_entry = None
-            sj_keys = []
-        n_frames = max(1, int(raw_widget_value))
+                sj = StateJson()
+                widget_in_state = widget_id in sj
+                widget_state_entry = sj.get(widget_id) if widget_in_state else None
+                sj_keys = list(sj.keys())
+            except Exception as e:
+                widget_in_state = f"err:{e}"
+                widget_state_entry = None
+                sj_keys = []
+            n_frames = max(1, int(raw_widget_value))
         logger.info(
             f"[predict-video] video_id={video_id} frame_index={frame_index} "
             f"widget_id={widget_id} get_value()={raw_widget_value!r} "
