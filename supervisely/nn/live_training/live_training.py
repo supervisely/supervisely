@@ -183,6 +183,8 @@ class LiveTraining:
         # When START is received — refresh meta in case classes were added after app launch
         self.project_meta = self._fetch_project_meta(self.project_id)
         self.class_map = self._init_class_map(self.project_meta)
+        if self.dataset is not None:
+            self.dataset.update_class_map(self.class_map.class2idx)
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
         request.future.set_result(status)

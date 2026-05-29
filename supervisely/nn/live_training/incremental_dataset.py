@@ -38,6 +38,9 @@ class IncrementalDataset:
         self.samples: Dict[int, dict] = {}
         self.samples_list = []
 
+    def update_class_map(self, class2idx: dict):
+        self.class2idx = class2idx
+
     def add(
             self,
             image_id: int,
