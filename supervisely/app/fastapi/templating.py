@@ -46,7 +46,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
 
     def _create_env(self, directory: typing.Union[str, PathLike]) -> "jinja2.Environment":
         create_env = getattr(_fastapi_Jinja2Templates, "_create_env", None)
-        if create_env is None:
+        if not callable(create_env):
             loader = jinja2.FileSystemLoader(directory)
             return self._create_sly_env(loader)
 
