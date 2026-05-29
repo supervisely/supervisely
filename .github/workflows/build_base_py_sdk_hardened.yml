@@ -9,12 +9,25 @@ on:
         required: true
         type: string
         default: ""
+      sdk_install_source:
+        description: "Install Supervisely SDK from PyPI or this checked-out branch"
+        required: false
+        type: choice
+        default: pypi
+        options:
+          - pypi
+          - local
   workflow_call:
     inputs:
       tag_version:
         description: "Docker Image Tag (without 'v')"
         required: true
         type: string
+      sdk_install_source:
+        description: "Install Supervisely SDK from PyPI or this checked-out branch"
+        required: false
+        type: string
+        default: pypi
 
 jobs:
   deploy:
@@ -38,6 +51,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/base_images/py_sdk_hardened \
             --opt build-arg:tag_ref_name=${{ env.TAG_VERSION }} \
+            --opt build-arg:sdk_install_source=${{ inputs.sdk_install_source }} \
             --output type=docker,name=docker.io/supervisely/${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }},dest=image.tar \
             --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
