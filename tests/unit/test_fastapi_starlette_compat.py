@@ -1,8 +1,11 @@
 from types import SimpleNamespace
 
+import jinja2
 import pytest
 
+import supervisely.app.fastapi.templating as fastapi_templating
 import supervisely.app.fastapi.subapp as fastapi_subapp
+from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.singleton import Singleton
 
 
@@ -59,6 +62,29 @@ def test_add_event_handler_prefers_router_api():
     fastapi_subapp._add_event_handler(app, "startup", startup)
 
     assert app.router.events == [("startup", startup)]
+
+
+def test_jinja2templates_create_env_keeps_sly_delimiters_and_url_for(monkeypatch, tmp_path):
+    sentinel_url_for = object()
+
+    def create_env(self, directory):
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(directory))
+        env.globals["url_for"] = sentinel_url_for
+        return env
+
+    monkeypatch.setattr(
+        fastapi_templating._fastapi_Jinja2Templates,
+        "_create_env",
+        create_env,
+        raising=False,
+    )
+
+    templates = object.__new__(Jinja2Templates)
+    env = templates._create_env(str(tmp_path))
+
+    assert env.variable_start_string == "{{{"
+    assert env.variable_end_string == "}}}"
+    assert env.globals["url_for"] is sentinel_url_for
 
 
 def test_add_event_handler_falls_back_to_app_api():

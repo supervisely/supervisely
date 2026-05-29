@@ -45,13 +45,15 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         return env_sly
 
     def _create_env(self, directory: typing.Union[str, PathLike]) -> "jinja2.Environment":
-        env_fastapi = super()._create_env(directory)
+        create_env = getattr(_fastapi_Jinja2Templates, "_create_env", None)
+        if create_env is None:
+            loader = jinja2.FileSystemLoader(directory)
+            return self._create_sly_env(loader)
+
+        env_fastapi = create_env(self, directory)
         env_sly = self._create_sly_env(env_fastapi.loader)
-        try:
+        if "url_for" in env_fastapi.globals:
             env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
-        except:
-            # for fastapi version==0.108.0
-            pass
         return env_sly
 
     def TemplateResponse(
