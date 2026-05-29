@@ -20,6 +20,14 @@ js_frontend_version = "v0.0.56"
 pyodide_version = "v0.25.0"
 
 
+def _call_fastapi_create_env(
+    create_env: typing.Callable[..., "jinja2.Environment"],
+    instance: "Jinja2Templates",
+    directory: typing.Union[str, PathLike],
+) -> "jinja2.Environment":
+    return create_env(instance, directory)
+
+
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     """FastAPI Jinja2 templates with Supervisely widget context and custom variable delimiters ({{{ }}})."""
 
@@ -50,7 +58,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             loader = jinja2.FileSystemLoader(directory)
             return self._create_sly_env(loader)
 
-        env_fastapi = create_env(self, directory)
+        env_fastapi = _call_fastapi_create_env(create_env, self, directory)
         env_sly = self._create_sly_env(env_fastapi.loader)
         if "url_for" in env_fastapi.globals:
             env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
