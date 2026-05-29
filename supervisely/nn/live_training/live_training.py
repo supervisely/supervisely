@@ -744,7 +744,8 @@ class LiveTraining:
 
         logger.info(
             f"[auto-track] entered: video={video_id} frame={frame_index} "
-            f"mcitrack_task_id={self.mcitrack_task_id}"
+            f"mcitrack_task_id={self.mcitrack_task_id} "
+            f"toolbox_session_id={toolbox_session_id!r}"
         )
         if self.mcitrack_task_id is None:
             logger.info("[auto-track] MCITrack not available, skipping")

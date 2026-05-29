@@ -102,8 +102,13 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         toolbox_session_id = state.get("toolbox_session_id")
         track_id = state.get("track_id")
         n_frames = state.get("n_frames")
-
-        if not n_frames:
+        if n_frames:
+            n_frames = max(1, int(n_frames))
+            logger.info(
+                f"[predict-video] video_id={video_id} frame_index={frame_index} "
+                f"n_frames={n_frames} (from request state)"
+            )
+        else:
             raw_widget_value = lt.tracking_frames_widget.get_value()
             widget_id = lt.tracking_frames_widget.widget_id
             try:
@@ -118,14 +123,14 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                 widget_state_entry = None
                 sj_keys = []
             n_frames = max(1, int(raw_widget_value))
-        logger.info(
-            f"[predict-video] video_id={video_id} frame_index={frame_index} "
-            f"widget_id={widget_id} get_value()={raw_widget_value!r} "
-            f"_value={lt.tracking_frames_widget._value!r} "
-            f"widget_in_state={widget_in_state} "
-            f"widget_state_entry={widget_state_entry!r} "
-            f"state_keys={sj_keys} -> n_frames={n_frames}"
-        )
+            logger.info(
+                f"[predict-video] video_id={video_id} frame_index={frame_index} "
+                f"widget_id={widget_id} get_value()={raw_widget_value!r} "
+                f"_value={lt.tracking_frames_widget._value!r} "
+                f"widget_in_state={widget_in_state} "
+                f"widget_state_entry={widget_state_entry!r} "
+                f"state_keys={sj_keys} -> n_frames={n_frames} (from widget)"
+            )
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
         frame_0_np = sly_api.video.frame.download_np(video_id, frame_index)
@@ -280,16 +285,17 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         # /predict-video for the next frame itself (which does its own
         # previous-frame IoU inheritance). Running both paths would upload
         # two figures to N+1 (one from each).
+        context = (request.state.context if hasattr(request.state, "context") else {}) or {}
+        toolbox_session_id = state.get("toolbox_session_id") or context.get("toolbox_session_id")
         logger.info(
             f"[add-sample-video] video={video_id} frame={frame_index} "
             f"ready_to_predict={lt.ready_to_predict} "
-            f"mcitrack_task_id={lt.mcitrack_task_id}"
+            f"mcitrack_task_id={lt.mcitrack_task_id} "
+            f"toolbox_session_id={toolbox_session_id!r} "
+            f"state_keys={list(state.keys())} "
+            f"context_keys={list(context.keys())}"
         )
         if lt.mcitrack_task_id is not None and not lt.ready_to_predict:
-            context = (request.state.context if hasattr(request.state, "context") else {}) or {}
-            toolbox_session_id = state.get("toolbox_session_id") or context.get(
-                "toolbox_session_id"
-            )
 
             def _auto_track():
                 try:
