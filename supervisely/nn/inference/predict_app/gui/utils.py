@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
@@ -236,6 +237,22 @@ def get_items_infos(
     else:
         raise NotImplementedError(f"Items of type {project_type} are not supported")
     return items_infos
+
+
+def get_image_infos_by_collection_ids(api: Api, collection_ids: List[int]) -> List[ImageInfo]:
+    seen_ids: Set[int] = set()
+    image_infos: List[ImageInfo] = []
+
+    for collection_id in collection_ids or []:
+        for image_info in api.entities_collection.get_items(
+            collection_id, CollectionTypeFilter.DEFAULT
+        ):
+            if image_info.id in seen_ids:
+                continue
+            seen_ids.add(image_info.id)
+            image_infos.append(image_info)
+
+    return image_infos
 
 
 def copy_items_to_project(

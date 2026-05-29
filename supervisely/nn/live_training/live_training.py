@@ -180,7 +180,9 @@ class LiveTraining:
             else:
                 request.future.set_exception(Exception(f"Unexpected request {request.type} while waiting for START"))
             request = self.request_queue.get()
-        # When START is received
+        # When START is received — refresh meta in case classes were added after app launch
+        self.project_meta = self._fetch_project_meta(self.project_id)
+        self.class_map = self._init_class_map(self.project_meta)
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
         request.future.set_result(status)
@@ -525,10 +527,15 @@ class LiveTraining:
 
     def _save_and_upload(self):
         """Save checkpoint, state, and upload artifacts"""
+        if self.iter == 0:
+            return
         logger.info("Saving checkpoint and uploading artifacts...")
-        self.save_checkpoint(self.latest_checkpoint_path)
-        save_state_json(self.state(), self.latest_checkpoint_path)
-        self._upload_artifacts()
+        try:
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+            self._upload_artifacts()
+        except Exception as e:
+            logger.warning(f"Failed to save checkpoint: {e}")
 
     def save_checkpoint(self, checkpoint_path: str):
         pass
