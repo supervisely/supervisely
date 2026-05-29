@@ -596,7 +596,8 @@ Vue.component('fast-table', {
 
     highlight(text) {
       if (!this.search) return text;
-      return text.toString().replace(new RegExp(this.search, 'gi'), match => '<span class="bg-yellow-400">'+match+'</span>');
+      const escaped = this.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return text.toString().replace(new RegExp(escaped, 'gi'), match => '<span class="bg-yellow-400">'+match+'</span>');
     },
 
     rowKeyValue(row) {
@@ -611,7 +612,7 @@ Vue.component('fast-table', {
   },
 
   beforeDestroy() {
-    this.$refs.scrollBox.addEventListener('scroll', this.handleScroll);
+    this.$refs.scrollBox.removeEventListener('scroll', this.handleScroll);
   },
 
   created() {
