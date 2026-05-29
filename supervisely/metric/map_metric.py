@@ -51,7 +51,7 @@ class MAPMetric(MetricsBase):
         for label in all_labels_pred:
             label_confidence = self._get_confidence_value(label)
             if label_confidence is None:
-                logger.warn(f'Found a label with class {label.obj_class.name!r} that does not have a '
+                logger.warning(f'Found a label with class {label.obj_class.name!r} that does not have a '
                             f'{self._confidence_tag_name!r} tag attached. Skipping this object for metric computation.')
             elif label_confidence >= self._confidence_threshold:
                 labels_pred.append(label)

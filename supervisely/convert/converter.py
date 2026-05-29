@@ -73,12 +73,13 @@ class ImportManager:
         self._labeling_interface = labeling_interface
         self._upload_as_links = upload_as_links
         self._remote_files_map = {}
+        self._team_files_id_map: dict = {}
         self._modality = project_type
 
         if isinstance(input_data, str):
             input_data = [input_data]
 
-        self._input_data = get_data_dir()
+        self._input_data = os.path.abspath(get_data_dir())
         for data in input_data:
             self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
@@ -116,6 +117,7 @@ class ImportManager:
             self._labeling_interface,
             self._upload_as_links,
             self._remote_files_map,
+            self._team_files_id_map,
         )
         return modality_converter.detect_format()
 
@@ -149,7 +151,13 @@ class ImportManager:
                 if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
                     self._scan_remote_files(input_data)
                 logger.info(f"Input data is a remote file: {input_data}. Downloading...")
-                return self._download_input_data(input_data)
+                local_path = self._download_input_data(input_data)
+                if self._is_team_files_path(input_data) and str(self._modality) in [
+                    ProjectType.POINT_CLOUDS.value,
+                    ProjectType.POINT_CLOUD_EPISODES.value,
+                ]:
+                    self._build_team_files_id_map(input_data, local_path, is_dir=False)
+                return local_path
         elif self._api.storage.dir_exists(self._team_id, input_data):
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
@@ -162,9 +170,38 @@ class ImportManager:
                 if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
                     self._scan_remote_files(input_data, is_dir=True)
                 logger.info(f"Input data is a remote directory: {input_data}. Downloading...")
-                return self._download_input_data(input_data, is_dir=True)
+                local_path = self._download_input_data(input_data, is_dir=True)
+                if self._is_team_files_path(input_data) and str(self._modality) in [
+                    ProjectType.POINT_CLOUDS.value,
+                    ProjectType.POINT_CLOUD_EPISODES.value,
+                ]:
+                    self._build_team_files_id_map(input_data, local_path, is_dir=True)
+                return local_path
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
+
+    _CLOUD_STORAGE_PREFIXES = ("s3://", "azure://", "google://", "agent://", "fs://")
+
+    def _is_team_files_path(self, path: str) -> bool:
+        return not any(path.startswith(prefix) for prefix in self._CLOUD_STORAGE_PREFIXES)
+
+    def _build_team_files_id_map(self, remote_path: str, local_path: str, is_dir: bool = False):
+        """Build {local_abs_path: (file_id, remote_path)} for all files from Team Files."""
+        if is_dir:
+            files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
+            dir_path = remote_path.rstrip("/")
+            for file in files:
+                if not hasattr(file, "id") or file.id is None:
+                    continue
+                new_local = os.path.abspath(file.path.replace(dir_path, local_path))
+                self._team_files_id_map[new_local] = (file.id, file.path)
+        else:
+            file_info = self._api.storage.get_info_by_path(self._team_id, remote_path)
+            if file_info and hasattr(file_info, "id") and file_info.id is not None:
+                self._team_files_id_map[os.path.abspath(local_path)] = (
+                    file_info.id,
+                    remote_path,
+                )
 
     def _download_input_data(self, remote_path, is_dir=False):
         """Download input data from Supervisely"""
@@ -206,7 +243,7 @@ class ImportManager:
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
 
-        local_path = os.path.join(get_data_dir(), dir_name)
+        local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
@@ -232,7 +269,7 @@ class ImportManager:
         dir_name = os.path.basename(dir_path)
 
         local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
-        mkdir(local_path, remove_content_if_exists=True)
+        mkdir(local_path, remove_content_if_exists=False)
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)

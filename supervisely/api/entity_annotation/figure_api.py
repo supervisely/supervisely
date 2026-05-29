@@ -8,6 +8,7 @@ import json
 import re
 from collections import defaultdict
 from typing import (
+    Any,
     AsyncGenerator,
     Callable,
     Dict,
@@ -497,7 +498,11 @@ class FigureApi(RemoveableBulkModuleApi):
         return figure_ids
 
     def download(
-        self, dataset_id: int, image_ids: List[int] = None, skip_geometry: bool = False
+        self,
+        dataset_id: int,
+        image_ids: List[int] = None,
+        skip_geometry: bool = False,
+        filters: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -508,9 +513,50 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
+        :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
+        :type filters: List[Dict[str, Any]], optional
 
         :returns: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 40568
+                image_id = 4877489
+
+                all_figures = api.image.figure.download(dataset_id, [image_id])
+                print(len(all_figures[image_id]))
+
+                filtered_figures = api.image.figure.download(
+                    dataset_id,
+                    [image_id],
+                    filters=[
+                        {
+                            "type": "objects_class",
+                            "data": {
+                                "from": 1,
+                                "to": 9999,
+                                "include": True,
+                                "classId": 154344,
+                            },
+                        }
+                    ],
+                )
+                print(len(filtered_figures[image_id]))
         """
         fields = [
             ApiField.ID,
@@ -535,21 +581,24 @@ class FigureApi(RemoveableBulkModuleApi):
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
 
-        if image_ids is None:
-            filters = []
-        else:
-            filters = [
+        list_filter = []
+        if image_ids is not None:
+            list_filter.append(
                 {
                     ApiField.FIELD: ApiField.ENTITY_ID,
                     ApiField.OPERATOR: "in",
                     ApiField.VALUE: image_ids,
                 }
-            ]
+            )
+
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
-            ApiField.FILTER: filters,
+            ApiField.FILTER: list_filter,
         }
+        if filters:
+            data[ApiField.PROJECT_ID] = self._api.dataset.get_info_by_id(dataset_id).project_id
+            data[ApiField.FILTERS] = filters
         resp = self._api.post("figures.list", data)
         infos = resp.json()
         images_figures = defaultdict(list)
@@ -848,6 +897,7 @@ class FigureApi(RemoveableBulkModuleApi):
         dataset_id: int,
         image_ids: Optional[List[int]] = None,
         skip_geometry: bool = False,
+        filters: Optional[List[Dict[str, Any]]] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
         batch_size: int = 300,
@@ -862,6 +912,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
+        :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
+        :type filters: List[Dict[str, Any]], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param log_progress: If True, log the progress of the download.
@@ -889,9 +941,29 @@ class FigureApi(RemoveableBulkModuleApi):
 
                 api = sly.Api.from_env()
 
-                dataset_id = 12345
-                download_coroutine = api.image.figure.download_async(dataset_id)
+                dataset_id = 40568
+                image_id = 4877489
+
+                download_coroutine = api.image.figure.download_async(dataset_id, [image_id])
                 figures = sly.run_coroutine(download_coroutine)
+
+                filtered_figures = sly.run_coroutine(
+                    api.image.figure.download_async(
+                        dataset_id,
+                        [image_id],
+                        filters=[
+                            {
+                                "type": "objects_class",
+                                "data": {
+                                    "from": 1,
+                                    "to": 9999,
+                                    "include": True,
+                                    "classId": 154344,
+                                },
+                            }
+                        ],
+                    )
+                )
         """
         fields = [
             ApiField.ID,
@@ -921,6 +993,9 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
         }
+        if filters:
+            base_data[ApiField.PROJECT_ID] = self._api.dataset.get_info_by_id(dataset_id).project_id
+            base_data[ApiField.FILTERS] = filters
 
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
@@ -989,19 +1064,18 @@ class FigureApi(RemoveableBulkModuleApi):
 
         if image_ids is None:
             # Single task for all figures in dataset
-            filters = []
-            tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
+            tasks.append(_get_all_pages([], progress_cb=progress_cb))
         else:
             # Batch image_ids and create tasks for each batch
             for batch_ids in batched(image_ids, batch_size):
-                filters = [
+                list_filters = [
                     {
                         ApiField.FIELD: ApiField.ENTITY_ID,
                         ApiField.OPERATOR: "in",
                         ApiField.VALUE: list(batch_ids),
                     }
                 ]
-                tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
+                tasks.append(_get_all_pages(list_filters, progress_cb=progress_cb))
                 # Small delay between batches to reduce server load
                 await asyncio.sleep(0.02)
 
@@ -1022,6 +1096,7 @@ class FigureApi(RemoveableBulkModuleApi):
         dataset_id: int,
         image_ids: Optional[List[int]] = None,
         skip_geometry: bool = False,
+        filters: Optional[List[Dict[str, Any]]] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
         batch_size: int = 300,
@@ -1038,6 +1113,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
+        :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
+        :type filters: List[Dict[str, Any]], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param log_progress: If True, log the progress of the download.
@@ -1066,8 +1143,25 @@ class FigureApi(RemoveableBulkModuleApi):
 
                 api = sly.Api.from_env()
 
-                dataset_id = 12345
-                figures = api.image.figure.download_fast(dataset_id)
+                dataset_id = 40568
+                image_id = 4877489
+                figures = api.image.figure.download_fast(dataset_id, [image_id])
+
+                filtered_figures = api.image.figure.download_fast(
+                    dataset_id,
+                    [image_id],
+                    filters=[
+                        {
+                            "type": "objects_class",
+                            "data": {
+                                "from": 1,
+                                "to": 9999,
+                                "include": True,
+                                "classId": 154344,
+                            },
+                        }
+                    ],
+                )
         """
         try:
             return run_coroutine(
@@ -1075,6 +1169,7 @@ class FigureApi(RemoveableBulkModuleApi):
                     dataset_id=dataset_id,
                     image_ids=image_ids,
                     skip_geometry=skip_geometry,
+                    filters=filters,
                     semaphore=semaphore,
                     log_progress=log_progress,
                     batch_size=batch_size,
@@ -1089,6 +1184,7 @@ class FigureApi(RemoveableBulkModuleApi):
                 dataset_id=dataset_id,
                 image_ids=image_ids,
                 skip_geometry=skip_geometry,
+                filters=filters,
             )
 
     def restore_batch(self, ids: List[int], progress_cb: Optional[Callable] = None, batch_size: int = 50):

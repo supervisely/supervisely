@@ -45,6 +45,7 @@ class AvailableImageConverters:
     LABEL_ME = "label_me"
     LABEL_STUDIO = "label_studio"
     HIGH_COLOR_DEPTH = "high_color_depth"
+    OVERLAY = "overlay"
 
 
 class AvailableVideoConverters:
@@ -75,6 +76,7 @@ class AvailablePointcloudEpisodesConverters:
     BAG = "rosbag"
     LYFT = "lyft"
     KITTI360 = "kitti360"
+    SEMANTIC_KITTI = "semantic_kitti"
 
 
 class AvailableVolumeConverters:
@@ -92,6 +94,7 @@ class BaseConverter:
     Detects input format, validates annotations, builds :class:`~supervisely.project.project_meta.ProjectMeta`
     and provides methods to upload converted data.
     """
+
     unsupported_exts = [".gif", ".html", ".htm"]
 
     class BaseItem:
@@ -188,6 +191,7 @@ class BaseConverter:
         labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, Tuple[int, str]]] = None,
     ):
         """:param input_data: Path to input directory or archive.
         :type input_data: str
@@ -197,6 +201,8 @@ class BaseConverter:
         :type upload_as_links: bool
         :param remote_files_map: Map of local paths to remote paths for link upload.
         :type remote_files_map: Dict[str, str], optional
+        :param team_files_id_map: Map of local paths to (file_id, remote_path) for team files uploads.
+        :type team_files_id_map: Dict[str, Tuple[int, str]], optional
 
         :raises ValueError: If labeling_interface is invalid.
         """
@@ -208,6 +214,7 @@ class BaseConverter:
         # import as links settings
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
+        self._team_files_id_map: Optional[Dict[str, Tuple[int, str]]] = team_files_id_map
         self._supports_links = False  # if converter supports uploading by links
         self._force_shape_for_links = False
         self._api = Api.from_env() if self._upload_as_links else None
@@ -243,6 +250,10 @@ class BaseConverter:
     @property
     def remote_files_map(self) -> Dict[str, str]:
         return self._remote_files_map
+
+    @property
+    def team_files_id_map(self) -> Optional[Dict[str, Tuple[int, str]]]:
+        return self._team_files_id_map
 
     @property
     def supports_links(self) -> bool:
@@ -300,6 +311,7 @@ class BaseConverter:
                 self._labeling_interface,
                 self._upload_as_links,
                 self._remote_files_map,
+                self._team_files_id_map,
             )
 
             if not converter.validate_labeling_interface():
@@ -388,6 +400,7 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+
             def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
                 if old_cls.geometry_type == new_cls.geometry_type:
                     if old_cls.geometry_type == GraphNodes:
@@ -479,7 +492,7 @@ class BaseConverter:
 
         return meta1.clone(project_settings=new_settings)
 
-    def _download_remote_ann_files(self) -> None:
+    def _download_remote_ann_files(self, exts_to_download=None) -> None:
         """
         Download all annotation files from Cloud Storage to the local storage.
         Needed to detect annotation format if "upload_as_links" is enabled.
@@ -487,10 +500,12 @@ class BaseConverter:
         if not self.upload_as_links:
             return
 
+        valid_exts = exts_to_download if exts_to_download else [self.ann_ext]
+
         ann_archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
 
         anns_to_download = {
-            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
+            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) in valid_exts
         }
         if not anns_to_download and not ann_archives:
             return

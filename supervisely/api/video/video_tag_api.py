@@ -169,7 +169,7 @@ class VideoTagApi(TagApi):
         """
 
         request_data = {ApiField.TAG_ID: project_meta_tag_id, ApiField.VIDEO_ID: video_id}
-        if value:
+        if value is not None and value != "":
             request_data[ApiField.VALUE] = value
         if non_final_value is True:
             is_finished = False

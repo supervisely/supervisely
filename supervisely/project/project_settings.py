@@ -21,6 +21,7 @@ class LabelingInterface(str, StrEnum):
     MEDICAL_IMAGING_SINGLE = "medical_imaging_single"
     IMAGES_WITH_16_COLOR = "images_with_16_color"
     MULTISPECTRAL = "multispectral"
+    OVERLAY = "overlay"
     MULTIVIEW = "multi_view"
     IMAGE_MATTING = "image_matting"
     FISHEYE = "fisheye"
@@ -132,7 +133,7 @@ class ProjectSettings(JsonSerializable):
         self.labeling_interface = labeling_interface
 
         if multiview_enabled is False and multiview_is_synced is True:
-            logger.warn(
+            logger.warning(
                 "The 'Group Images sync mode' is enabled, but it won't effect while multi-view mode is disabled. Please enable the multi-view mode (a.k.a. 'Group Images mode')."
             )
 

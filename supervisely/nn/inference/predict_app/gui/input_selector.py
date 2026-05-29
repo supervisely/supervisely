@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
@@ -70,6 +71,8 @@ class InputSelector:
             team_is_selectable=False,
             workspace_is_selectable=False,
             show_select_all_datasets_checkbox=True,
+            allow_collection_selection=True,
+            collection_selection_text="Work with collections",
         )
         self.select_image_container = Container(widgets=[self.select_dataset_for_images])
         self._radio_item_images = RadioGroup.Item(
@@ -155,6 +158,14 @@ class InputSelector:
         def _images_dataset_changed(dataset_ids):
             self.validator_text.hide()
 
+        @self.select_dataset_for_images.collection_changed
+        def _images_collection_changed(collection_ids):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_images.selection_mode_changed
+        def _images_selection_mode_changed(use_collections: bool):
+            self.validator_text.hide()
+
         @self.select_dataset_for_video.project_changed
         def _videos_project_changed(project_id: int):
             self._refresh_video_table_called()
@@ -217,6 +228,7 @@ class InputSelector:
         if project_info is None:
             project_info = self.api.project.get_info_by_id(project_id)
         if project_info.type == ProjectType.IMAGES.value:
+            self.select_dataset_for_images.set_collection_selection_mode(False)
             self.select_dataset_for_images.set_project_id(project_id)
             self.select_dataset_for_images.select_all()
             self.radio.set_value(ProjectType.IMAGES.value)
@@ -238,6 +250,7 @@ class InputSelector:
         project_id = project_ids.pop()
         project_info = self.api.project.get_info_by_id(project_id)
         if project_info.type == ProjectType.IMAGES.value:
+            self.select_dataset_for_images.set_collection_selection_mode(False)
             self.select_dataset_for_images.set_project_id(project_id)
             self.select_dataset_for_images.set_dataset_ids(dataset_ids)
             self.radio.set_value(ProjectType.IMAGES.value)
@@ -249,6 +262,32 @@ class InputSelector:
             self.radio.set_value(ProjectType.VIDEOS.value)
         else:
             raise ValueError(f"Project of type {project_info.type} is not supported.")
+
+    def select_collections(
+        self,
+        collection_ids: List[int],
+        collection_infos: List[EntitiesCollectionInfo] = None,
+    ):
+        if collection_infos is None:
+            collection_infos = [
+                self.api.entities_collection.get_info_by_id(collection_id)
+                for collection_id in collection_ids
+            ]
+        collection_infos = [info for info in collection_infos if info is not None]
+        if len(collection_infos) != len(collection_ids):
+            raise ValueError("Some collections were not found")
+        project_ids = {info.project_id for info in collection_infos}
+        if len(project_ids) > 1:
+            raise ValueError("Cannot select collections from different projects")
+
+        project_id = project_ids.pop()
+        project_info = self.api.project.get_info_by_id(project_id)
+        if project_info.type != ProjectType.IMAGES.value:
+            raise ValueError("Collections are currently supported only for image projects")
+
+        self.select_dataset_for_images.set_project_id(project_id)
+        self.select_dataset_for_images.set_collection_ids(collection_ids)
+        self.radio.set_value(ProjectType.IMAGES.value)
 
     def select_videos(self, video_ids: List[int], video_infos: List[VideoInfo] = None):
         if video_infos is None:
@@ -273,8 +312,10 @@ class InputSelector:
         return [
             # Images Selector
             self.select_dataset_for_images,
+            self.select_dataset_for_images._use_collections_checkbox,
             self.select_dataset_for_images._select_project,
             self.select_dataset_for_images._select_dataset,
+            self.select_dataset_for_images._select_collection,
             # Videos Selector
             self.select_dataset_for_video,
             self.select_dataset_for_video._select_project,
@@ -287,8 +328,15 @@ class InputSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         if self.radio.get_value() == ProjectType.IMAGES.value:
+            project_id = self.select_dataset_for_images.get_selected_project_id()
+            if self.select_dataset_for_images.is_collection_selection_mode():
+                return {
+                    "project_id": project_id,
+                    "collection_ids": self.select_dataset_for_images.get_selected_collection_ids()
+                    or [],
+                }
             return {
-                "project_id": self.select_dataset_for_images.get_selected_project_id(),
+                "project_id": project_id,
                 "dataset_ids": self.select_dataset_for_images.get_selected_ids(),
             }
         if self.radio.get_value() == ProjectType.VIDEOS.value:
@@ -310,7 +358,20 @@ class InputSelector:
             self.select_videos(video_ids, video_infos)
         elif "dataset_ids" in data:
             dataset_ids = data["dataset_ids"]
-            self.select_datasets(dataset_ids)
+            if dataset_ids:
+                self.select_datasets(dataset_ids)
+            elif "project_id" in data:
+                self.select_dataset_for_images.set_collection_selection_mode(False)
+                self.select_dataset_for_images.set_project_id(data["project_id"])
+                self.radio.set_value(ProjectType.IMAGES.value)
+        elif "collection_ids" in data:
+            collection_ids = data["collection_ids"]
+            if collection_ids:
+                self.select_collections(collection_ids)
+            elif "project_id" in data:
+                self.select_dataset_for_images.set_project_id(data["project_id"])
+                self.select_dataset_for_images.set_collection_selection_mode(True)
+                self.radio.set_value(ProjectType.IMAGES.value)
         elif "project_id" in data:
             project_id = data["project_id"]
             self.select_project(project_id)
@@ -325,6 +386,21 @@ class InputSelector:
     def validate_step(self) -> bool:
         self.validator_text.hide()
         if self.radio.get_value() == ProjectType.IMAGES.value:
+            if self.select_dataset_for_images.is_collection_selection_mode():
+                selected_project_id = self.select_dataset_for_images.get_selected_project_id()
+                selected_collection_ids = (
+                    self.select_dataset_for_images.get_selected_collection_ids() or []
+                )
+                if selected_project_id is None:
+                    self.validator_text.set(text="Select a project", status="error")
+                    self.validator_text.show()
+                    return False
+                if len(selected_collection_ids) == 0:
+                    self.validator_text.set(text="Select at least one collection", status="error")
+                    self.validator_text.show()
+                    return False
+                return True
+
             selected_ids = self.select_dataset_for_images.get_selected_ids()
             if selected_ids is None:
                 self.validator_text.set(text="Select a project", status="error")

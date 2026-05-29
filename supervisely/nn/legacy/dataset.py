@@ -72,7 +72,7 @@ class CorruptedSampleCatcher(object):
             self._lock.acquire()
             if uid not in self._failed_uids:
                 self._failed_uids.add(uid)
-                logger.warn('Sample processing error.', exc_info=True, extra={**log_dct, 'exc_str': str(e)})
+                logger.warning('Sample processing error.', exc_info=True, extra={**log_dct, 'exc_str': str(e)})
             fail_cnt = len(self._failed_uids)
             self._lock.release()
 

@@ -72,11 +72,39 @@ jobs:
           PY
 
           if [ -s audit_logs/image_python_requirements.txt ]; then
+            set +e
             python3 -m pip_audit \
               -r audit_logs/image_python_requirements.txt \
               --no-deps \
               --disable-pip \
               --format json > audit_logs/pip_audit.json
+            PIP_AUDIT_EXIT=$?
+            set -e
+
+            if [ "$PIP_AUDIT_EXIT" -ne 0 ] && [ "$PIP_AUDIT_EXIT" -ne 1 ]; then
+              echo "pip-audit failed with unexpected exit code ${PIP_AUDIT_EXIT}."
+              exit "$PIP_AUDIT_EXIT"
+            fi
+
+            if ! jq empty audit_logs/pip_audit.json > /dev/null 2>&1; then
+              echo "pip-audit did not produce valid JSON output."
+              cat audit_logs/pip_audit.json
+              exit 1
+            fi
+
+            FIXABLE=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length > 0)]' audit_logs/pip_audit.json)
+            FIXABLE_COUNT=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length > 0)] | length' audit_logs/pip_audit.json)
+            UNFIXED_COUNT=$(jq '[.dependencies[] | (.vulns // [])[] | select(.fix_versions | length == 0)] | length' audit_logs/pip_audit.json)
+
+            if [ "$UNFIXED_COUNT" -gt 0 ]; then
+              echo "pip-audit: WARNING: ${UNFIXED_COUNT} vulnerability/vulnerabilities with no fixes available (ignored)."
+            fi
+
+            if [ "$FIXABLE_COUNT" -gt 0 ]; then
+              echo "pip-audit: ${FIXABLE_COUNT} vulnerability/vulnerabilities with available fixes:"
+              echo "$FIXABLE" | jq -r '.[] | "  \(.id): fix available in \(.fix_versions | join(", "))"'
+              exit 1
+            fi
           else
             echo "[]" > audit_logs/pip_audit.json
           fi
@@ -105,19 +133,25 @@ jobs:
           fi
 
       - name: Upload pip-audit report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pip-audit-${{ env.IMAGE_NAME }}
           path: audit_logs/pip_audit.json
+          if-no-files-found: ignore
 
       - name: Upload Dockle report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dockle-${{ env.IMAGE_NAME }}
           path: dockle_logs/${{ env.IMAGE_NAME }}.json
+          if-no-files-found: ignore
 
       - name: Upload SBOM report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ env.IMAGE_NAME }}
           path: sbom_logs/${{ env.IMAGE_NAME }}-sbom.json
+          if-no-files-found: ignore

@@ -1,4 +1,5 @@
-from typing import Dict, Union, Callable
+from datetime import datetime
+from typing import Callable, Dict, Union
 
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -19,6 +20,7 @@ VALUE_TYPE_NAME = {
     str(TagValueType.ANY_STRING): "TEXT",
     str(TagValueType.ONEOF_STRING): "ONE OF",
     str(TagValueType.ANY_NUMBER): "NUMBER",
+    str(TagValueType.DATE): "DATE",
 }
 
 VALUE_TYPES = [
@@ -26,6 +28,7 @@ VALUE_TYPES = [
     str(TagValueType.ANY_NUMBER),
     str(TagValueType.ANY_STRING),
     str(TagValueType.ONEOF_STRING),
+    str(TagValueType.DATE),
 ]
 
 
@@ -85,6 +88,8 @@ class InputTag(Widget):
         self._input_widgets[str(TagValueType.ANY_NUMBER)] = InputNumber(debounce=500)
         self._input_widgets[str(TagValueType.ANY_STRING)] = Input(type="textarea")
         self._input_widgets[str(TagValueType.ONEOF_STRING)] = RadioGroup(items=[])
+        current_datetime = datetime.now().isoformat(timespec="seconds")
+        self._input_widgets[str(TagValueType.DATE)] = Input(placeholder=current_datetime)
 
     def _get_max_width(self, value) -> str:
         """Get the maximum width for the widget.
@@ -205,7 +210,11 @@ class InputTag(Widget):
         if isinstance(input_widget, InputNumber):
             input_widget.value = 0
         if isinstance(input_widget, Input):
-            input_widget.set_value("")
+            if self._tag_meta.value_type == str(TagValueType.DATE):
+                current_datetime = datetime.now().isoformat(timespec="seconds")
+                input_widget.set_value(current_datetime)
+            else:
+                input_widget.set_value("")
         if isinstance(input_widget, RadioGroup):
             input_widget.set_value(None)
 

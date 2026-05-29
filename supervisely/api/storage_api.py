@@ -193,7 +193,7 @@ class StorageApi(FileApi):
 
         except requests.exceptions.RequestException as e:
             if self.is_on_agent(path) is True:
-                logger.warn(f"Failed to list files on agent {path}: {repr(e)}", exc_info=True)
+                logger.warning(f"Failed to list files on agent {path}: {repr(e)}", exc_info=True)
                 return []
             else:
                 raise e
