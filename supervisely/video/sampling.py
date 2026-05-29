@@ -5,6 +5,8 @@ import threading
 import urllib.parse
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, Union
 
+from tqdm import tqdm
+
 import cv2
 import numpy as np
 
@@ -637,7 +639,8 @@ def _sync_build_pts_map(
     token: Optional[str],
     video_id: int,
     end_frame: Optional[int] = None,
-) -> Tuple[List[int], bool]:
+    packet_cb: Optional[Callable[[], None]] = None,
+) -> Tuple[List[int], bool, Any]:
     """Synchronously demux video and build a sorted PTS list. Safe to run in a thread pool.
 
     :param video_url: Public URL of the video to demux.
@@ -647,8 +650,20 @@ def _sync_build_pts_map(
         Avoids scanning the entire video when only a subset of frames is needed.
         Early termination happens at ``end_frame + 64`` instead of ``end_frame`` to account for B-frame reordering (typically ≤16 frames).
         ``None`` reads the full video (required when ``end`` is unknown).
+    :param packet_cb: Optional callable invoked for each valid packet collected.
+        Intended for progress reporting (e.g. ``tqdm.update``).
+    :returns: Tuple ``(pts_list, decode_from_start, container)``. For the seek-based
+        decode path (``decode_from_start is False``) the open container is returned
+        so the caller can reuse it for decoding, avoiding a second TCP/HTTP(S)
+        handshake — a significant win for remote/S3 videos. For the
+        ``decode_from_start`` path the container is closed and ``None`` is returned,
+        because that path requires a pristine container (decoding from the very
+        beginning). The caller owns closing the returned container.
     """
+    logger.debug("Opening video container for video_id=%d ...", video_id)
     container = _av_open(video_url, token)
+    logger.debug("Video container opened, starting demux for video_id=%d.", video_id)
+    keep_open = False
     try:
         video_streams = container.streams.video
         if not video_streams:
@@ -663,15 +678,21 @@ def _sync_build_pts_map(
                 saw_pts_ne_dts = True
             if pkt.pts is not None and pkt.pts >= 0:
                 pts_list.append(pkt.pts)
+                if packet_cb is not None:
+                    packet_cb()
             if stop_after is not None and len(pts_list) >= stop_after:
                 break
 
         pts_list.sort()
         has_b_frames = getattr(v_stream.codec_context, "has_b_frames", 0) > 0
         decode_from_start = has_b_frames and not saw_pts_ne_dts
-        return pts_list, decode_from_start
+        # Reuse the already-open container for the seek-based decode path; the
+        # decode-from-start path needs a fresh container, so close this one.
+        keep_open = not decode_from_start
+        return pts_list, decode_from_start, (container if keep_open else None)
     finally:
-        container.close()
+        if not keep_open:
+            container.close()
 
 
 async def async_stream_video_frames(
@@ -680,6 +701,7 @@ async def async_stream_video_frames(
     start: Optional[int] = None,
     end: Optional[int] = None,
     queue_maxsize: int = 32,
+    show_decoding_progress: bool = False,
 ) -> AsyncGenerator[Tuple[int, np.ndarray], None]:
     """Async generator that streams decoded video frames by frame index.
 
@@ -700,6 +722,11 @@ async def async_stream_video_frames(
         Increase on memory-rich systems for higher throughput.
         Peak RAM ≈ ``(queue_maxsize + 1) x H x W x 3`` bytes.
     :type queue_maxsize: int, optional
+    :param show_decoding_progress: If ``True``, display tqdm progress bars for the low-level
+        I/O phases: the demuxing phase (building the PTS map) and, for the B-frame full-decode path, the decoding phase. 
+        Both bars count packets (``pkt``) and are independent of the per-frame ``progress_cb``.
+        Default ``False``.
+    :type show_decoding_progress: bool, optional
     :yields: Tuple of ``(frame_index, rgb_image)`` where ``rgb_image`` is a
         ``numpy.ndarray`` of shape ``(H, W, 3)`` in RGB uint8 format.
     :rtype: AsyncGenerator[Tuple[int, numpy.ndarray], None]
@@ -717,7 +744,6 @@ async def async_stream_video_frames(
                 print(frame_idx, img.shape)
     """
 
-    video_url = _resolve_video_url(api, video_id)
     loop = asyncio.get_running_loop()
 
     decode_executor = concurrent.futures.ThreadPoolExecutor(
@@ -725,12 +751,35 @@ async def async_stream_video_frames(
     )
 
     try:
-        pts_list, decode_from_start = await loop.run_in_executor(
-            decode_executor, _sync_build_pts_map, video_url, api.token, video_id, end
+        video_url = _resolve_video_url(api, video_id)
+    except Exception:
+        decode_executor.shutdown(wait=False)
+        raise
+
+    demux_bar = (
+        tqdm(desc=f"Demuxing video ID {video_id}", unit="pkt", leave=False)
+        if show_decoding_progress
+        else None
+    )
+
+    packet_cb = demux_bar.update if demux_bar is not None else None
+
+    try:
+        pts_list, decode_from_start, prebuilt_container = await loop.run_in_executor(
+            decode_executor,
+            _sync_build_pts_map,
+            video_url,
+            api.token,
+            video_id,
+            end,
+            packet_cb,
         )
     except Exception:
         decode_executor.shutdown(wait=False)
         raise
+    finally:
+        if demux_bar is not None:
+            demux_bar.close()
 
     if decode_from_start:
         logger.warning(
@@ -746,6 +795,9 @@ async def async_stream_video_frames(
     )
 
     if not pts_list:
+        if prebuilt_container is not None:
+            # Close on the executor thread to keep PyAV access single-threaded.
+            await loop.run_in_executor(decode_executor, prebuilt_container.close)
         decode_executor.shutdown(wait=False)
         return
 
@@ -767,9 +819,18 @@ async def async_stream_video_frames(
                 continue
         return False
 
-    def _worker() -> None:
+    def _worker(container: Any) -> None:
         try:
-            container: Any = _av_open(video_url, api.token)
+            if container is None:
+                # decode_from_start path: open a fresh, pristine container.
+                logger.debug("Opening video container for decoding video_id=%d ...", video_id)
+                container = _av_open(video_url, api.token)
+                logger.debug(
+                    "Video container opened, starting decode for video_id=%d.", video_id
+                )
+            else:
+                # Reusing the container already opened during PTS map building.
+                logger.debug("Reusing open container for decoding video_id=%d.", video_id)
             try:
                 video_streams = container.streams.video
                 if not video_streams:
@@ -777,22 +838,33 @@ async def async_stream_video_frames(
                 v_stream = video_streams[0]
 
                 if decode_from_start:
-                    remaining: set = set(range(_start, _end + 1))
-                    for pkt in container.demux(v_stream):
-                        if cancel_event.is_set():
-                            break
-                        for frame in pkt.decode():
-                            if frame.pts is None or frame.is_corrupt:
-                                continue
-                            frame_idx = pts_to_index.get(frame.pts)
-                            if frame_idx is None or frame_idx not in remaining:
-                                continue
-                            img = frame.to_ndarray(format="rgb24")
-                            if not _put((frame_idx, img)):
-                                return
-                            remaining.discard(frame_idx)
-                        if not remaining:
-                            break
+                    decode_bar = (
+                        tqdm(desc=f"Decoding video ID {video_id}", unit="pkt", leave=False)
+                        if show_decoding_progress
+                        else None
+                    )
+                    try:
+                        remaining: set = set(range(_start, _end + 1))
+                        for pkt in container.demux(v_stream):
+                            if decode_bar is not None:
+                                decode_bar.update()
+                            if cancel_event.is_set():
+                                break
+                            for frame in pkt.decode():
+                                if frame.pts is None or frame.is_corrupt:
+                                    continue
+                                frame_idx = pts_to_index.get(frame.pts)
+                                if frame_idx is None or frame_idx not in remaining:
+                                    continue
+                                img = frame.to_ndarray(format="rgb24")
+                                if not _put((frame_idx, img)):
+                                    return
+                                remaining.discard(frame_idx)
+                            if not remaining:
+                                break
+                    finally:
+                        if decode_bar is not None:
+                            decode_bar.close()
                 else:
                     # Single seek to the first requested frame, then decode sequentially.
                     # This avoids O(N) seeks for contiguous ranges.
@@ -822,7 +894,7 @@ async def async_stream_video_frames(
         finally:
             _put(None)  # sentinel — always sent last
 
-    future = loop.run_in_executor(decode_executor, _worker)
+    future = loop.run_in_executor(decode_executor, _worker, prebuilt_container)
     try:
         while True:
             item = await queue.get()
@@ -848,6 +920,7 @@ async def async_stream_video_frames_to_dir(
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
     max_write_workers: int = 4,
     queue_maxsize: int = 32,
+    show_decoding_progress: bool = False,
 ) -> List[str]:
     """Async version of :func:`stream_video_frames_to_dir`.
 
@@ -875,6 +948,9 @@ async def async_stream_video_frames_to_dir(
     :type max_write_workers: int, optional
     :param queue_maxsize: Decode prefetch buffer size in frames (default 32).
     :type queue_maxsize: int, optional
+    :param show_decoding_progress: If ``True``, display tqdm progress bars for the demuxing
+        and (B-frame) decoding phases. See :func:`async_stream_video_frames` for details.
+    :type show_decoding_progress: bool, optional
     :returns: List of absolute paths to saved frame files.
     :rtype: List[str]
     """
@@ -911,6 +987,7 @@ async def async_stream_video_frames_to_dir(
             start=start,
             end=end,
             queue_maxsize=queue_maxsize,
+            show_decoding_progress=show_decoding_progress,
         ):
             path = os.path.join(output_dir, f"frame_{frame_idx:06d}.{ext}")
             await write_sem.acquire()
@@ -941,6 +1018,7 @@ def stream_video_frames_to_dir(
     image_writer: Optional[Callable[[str, np.ndarray], None]] = None,
     max_write_workers: int = 4,
     queue_maxsize: int = 32,
+    show_decoding_progress: bool = False,
 ) -> List[str]:
     """Stream decoded video frames and save them to a directory.
 
@@ -973,6 +1051,9 @@ def stream_video_frames_to_dir(
     :param queue_maxsize: Decode prefetch buffer size in frames (default 32).
         Peak RAM ≈ ``(queue_maxsize + max_write_workers + 1) x frame_bytes``.
     :type queue_maxsize: int, optional
+    :param show_decoding_progress: If ``True``, display tqdm progress bars for the demuxing
+        and (B-frame) decoding phases. See :func:`async_stream_video_frames` for details.
+    :type show_decoding_progress: bool, optional
     :returns: List of absolute paths to the saved frame files.
     :rtype: List[str]
 
@@ -1001,6 +1082,7 @@ def stream_video_frames_to_dir(
         image_writer=image_writer,
         max_write_workers=max_write_workers,
         queue_maxsize=queue_maxsize,
+        show_decoding_progress=show_decoding_progress,
     )
     try:
         running_loop = asyncio.get_running_loop()
