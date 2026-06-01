@@ -8,6 +8,7 @@ from supervisely import (
     PointcloudFigure,
     PointcloudObject,
     ProjectMeta,
+    logger,
 )
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
@@ -49,16 +50,17 @@ class PCDSemanticLabelsConverter(PointcloudConverter):
 
         items = []
         meta = ProjectMeta()
+        has_labeled_items = False
         for pcd_path in pcd_paths:
             indices_by_class = helpers.read_pcd_label_indices(pcd_path, class_mapping)
-            if len(indices_by_class) == 0:
-                continue
+            if len(indices_by_class) > 0:
+                has_labeled_items = True
             for class_name in indices_by_class.keys():
                 if meta.get_obj_class(class_name) is None:
                     meta = meta.add_obj_class(ObjClass(class_name, Pointcloud))
             items.append(self.Item(pcd_path, ann_data=indices_by_class))
 
-        if len(items) == 0:
+        if len(items) == 0 or not has_labeled_items:
             return False
 
         self._meta = meta
@@ -76,6 +78,9 @@ class PCDSemanticLabelsConverter(PointcloudConverter):
         if meta is None:
             meta = self._meta
         renamed_classes = renamed_classes if renamed_classes is not None else {}
+
+        if not item.ann_data:
+            return item.create_empty_annotation()
 
         objects = []
         figures = []
