@@ -117,7 +117,9 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         result = response.json()
         if len(result) == 0:
             return PointcloudEpisodeAnnotation().to_json()
-        return response.json()[0]
+        ann_json = result[0]
+        self._api.pointcloud_episode.figure.inject_geometries_into_annotations([ann_json])
+        return ann_json
 
     def download_bulk(self, dataset_id, entity_ids):
         """Not supported for point cloud episodes."""
