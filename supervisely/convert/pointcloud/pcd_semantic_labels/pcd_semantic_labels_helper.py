@@ -65,8 +65,10 @@ def read_pcd_label_indices(pcd_path: str, class_mapping: Dict[int, str]) -> Dict
         types = header.get("TYPE")
         counts = _parse_ints(header.get("COUNT"))
         points = _parse_int(header.get("POINTS", [None])[0])
-        if not fields or not sizes or not types or not counts or points is None:
+        if not fields or not sizes or not types or points is None:
             return {}
+        if counts is None:
+            counts = [1] * len(fields)
         if (
             len(fields) != len(sizes)
             or len(fields) != len(types)
@@ -85,7 +87,8 @@ def read_pcd_label_indices(pcd_path: str, class_mapping: Dict[int, str]) -> Dict
 
         data_format = header["DATA"][0].lower()
         if data_format == "ascii":
-            labels = _read_ascii_labels(pcd_path, data_offset, points, label_index)
+            label_column = sum(counts[:label_index])
+            labels = _read_ascii_labels(pcd_path, data_offset, points, label_column)
         else:
             label_offset = sum(
                 size * count for size, count in zip(sizes[:label_index], counts[:label_index])
@@ -133,7 +136,7 @@ def _read_ascii_labels(
     pcd_path: str,
     data_offset: int,
     points: int,
-    label_index: int,
+    label_column: int,
 ) -> List[int]:
     labels = []
     with open(pcd_path, "rb") as file:
@@ -143,9 +146,9 @@ def _read_ascii_labels(
             if line == b"":
                 break
             parts = line.decode("ascii", errors="replace").split()
-            if len(parts) <= label_index:
+            if len(parts) <= label_column:
                 continue
-            labels.append(int(float(parts[label_index])))
+            labels.append(int(float(parts[label_column])))
     return labels
 
 
