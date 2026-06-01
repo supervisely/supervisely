@@ -5,6 +5,8 @@ from typing import Dict, List, Optional
 from supervisely import logger
 from supervisely.io.json import load_json_file
 
+LABEL_FIELD_NAMES = ["classification", "label", "labels"]
+
 
 def read_class_mapping(mapping_path: str) -> Dict[int, str]:
     data = load_json_file(mapping_path)
@@ -75,10 +77,11 @@ def read_pcd_label_indices(pcd_path: str, class_mapping: Dict[int, str]) -> Dict
             or len(fields) != len(counts)
         ):
             return {}
-        if "labels" not in fields:
+        label_field_name = next((field for field in LABEL_FIELD_NAMES if field in fields), None)
+        if label_field_name is None:
             return {}
 
-        label_index = fields.index("labels")
+        label_index = fields.index(label_field_name)
         if counts[label_index] != 1:
             logger.warning(
                 f"Skipping labels in PCD file {pcd_path}: COUNT for labels must be 1."
