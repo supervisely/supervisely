@@ -147,6 +147,13 @@ class LiveTraining:
         self.mcitrack_task_id: Optional[int] = None
         self._mcitrack_ready = threading.Event()
 
+        # Set by /highlight_key_frames once the uniform "need_to_label" tags
+        # are uploaded. After that the labeling UI's "finish and next" jumps
+        # across key frames (e.g. 0 -> 7), so MCITrack auto-tracking on the
+        # literal next frame is no longer useful — gate the /add-sample-video
+        # auto-track on this event being clear.
+        self._keyframes_uploaded = threading.Event()
+
         # Start the API server last so that every attribute touched by status()
         # (phase, iter, dataset, evaluator, ...) is already initialized before
         # the server can serve a /status call from another thread.

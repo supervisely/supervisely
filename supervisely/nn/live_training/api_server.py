@@ -291,11 +291,16 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             f"[add-sample-video] video={video_id} frame={frame_index} "
             f"ready_to_predict={lt.ready_to_predict} "
             f"mcitrack_task_id={lt.mcitrack_task_id} "
+            f"keyframes_uploaded={lt._keyframes_uploaded.is_set()} "
             f"toolbox_session_id={toolbox_session_id!r} "
             f"state_keys={list(state.keys())} "
             f"context_keys={list(context.keys())}"
         )
-        if lt.mcitrack_task_id is not None and not lt.ready_to_predict:
+        if (
+            lt.mcitrack_task_id is not None
+            and not lt.ready_to_predict
+            and not lt._keyframes_uploaded.is_set()
+        ):
 
             def _auto_track():
                 try:
@@ -404,6 +409,16 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             {ApiField.VIDEO_ID: video_id, ApiField.TAGS: tags_json},
         )
         uniform_tag_ids = [obj[ApiField.ID] for obj in resp.json()]
+
+        # Tags are on the server now → the labeling UI's "finish and next"
+        # will jump across key frames, so MCITrack tracking onto the
+        # literal next frame is no longer useful. Block future
+        # /add-sample-video auto-track spawns.
+        lt._keyframes_uploaded.set()
+        logger.info(
+            f"[highlight_key_frames] uploaded {len(uniform_tag_ids)} uniform "
+            f"need_to_label tags; auto-track on /add-sample-video disabled"
+        )
 
         # Cancel any in-flight keyframe job and start a fresh one.
         if lt._keyframe_thread is not None and lt._keyframe_thread.is_alive():
