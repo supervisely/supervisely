@@ -16,31 +16,43 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ARG tag_ref_name
+ARG sdk_install_source=pypi
+
+COPY . /tmp/supervisely-src
 
 # Install supervisely package with retry logic for PyPI CDN propagation & cleanup
 RUN set -eu; \
     python -m venv /opt/venv; \
     /opt/venv/bin/pip install --upgrade pip==26.1.0; \
-    /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.2.0; \
-    MAX_ATTEMPTS=8; \
-    TIMEOUT=15; \
-    ATTEMPT=1; \
-    while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do \
-    echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Installing supervisely==$tag_ref_name..."; \
-    if /opt/venv/bin/pip install --no-cache-dir supervisely==$tag_ref_name; then \
-    echo "Supervisely installed successfully"; \
-    break; \
+    /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.2.0 requests; \
+    if [ "$sdk_install_source" = "local" ]; then \
+        echo "Installing Supervisely from checked-out branch as version ${tag_ref_name}..."; \
+        RELEASE_VERSION="$tag_ref_name" /opt/venv/bin/pip install --no-cache-dir --no-build-isolation /tmp/supervisely-src; \
+    elif [ "$sdk_install_source" = "pypi" ]; then \
+        MAX_ATTEMPTS=8; \
+        TIMEOUT=15; \
+        ATTEMPT=1; \
+        while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do \
+        echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Installing supervisely==$tag_ref_name..."; \
+        if /opt/venv/bin/pip install --no-cache-dir supervisely==$tag_ref_name; then \
+        echo "Supervisely installed successfully"; \
+        break; \
+        fi; \
+        if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then \
+        echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2; \
+        exit 1; \
+        fi; \
+        echo "Installation failed. Waiting ${TIMEOUT}s..."; \
+        sleep "$TIMEOUT"; \
+        ATTEMPT=$((ATTEMPT + 1)); \
+        done; \
+    else \
+        echo "ERROR: Unsupported sdk_install_source=$sdk_install_source. Use 'pypi' or 'local'." >&2; \
+        exit 1; \
     fi; \
-    if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then \
-    echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2; \
-    exit 1; \
-    fi; \
-    echo "Installation failed. Waiting ${TIMEOUT}s..."; \
-    sleep "$TIMEOUT"; \
-    ATTEMPT=$((ATTEMPT + 1)); \
-    done; \
     /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.27; \
     rm -rf \
+    /tmp/supervisely-src \
     /opt/venv/lib/python3.14/site-packages/wheel* \
     /opt/venv/lib/python3.14/site-packages/setuptools/_vendor/wheel* \
     /opt/venv/bin/pip \

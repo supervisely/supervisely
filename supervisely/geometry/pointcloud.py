@@ -1,7 +1,17 @@
 # coding: utf-8
 
-from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID, INDICES
+from __future__ import annotations
+
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    ID,
+    INDICES,
+    LABELER_LOGIN,
+    UPDATED_AT,
+)
 from supervisely.geometry.geometry import Geometry
+
 
 # pointcloud mask (segmentation)
 class Pointcloud(Geometry):
@@ -82,3 +92,16 @@ class Pointcloud(Geometry):
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
         return cls(indices, sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+
+    def to_bytes(self) -> bytes:
+        """Encode point indices as little-endian uint32 bytes for separate geometry storage."""
+        from supervisely.io.fs import encode_uint32_le
+
+        return encode_uint32_le(self._indices)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> Pointcloud:
+        """Create a Pointcloud from little-endian uint32 index bytes."""
+        from supervisely.io.fs import decode_uint32_le
+
+        return cls(indices=decode_uint32_le(data))

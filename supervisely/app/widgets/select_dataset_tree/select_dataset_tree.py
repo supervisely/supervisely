@@ -6,6 +6,7 @@ from supervisely.app.widgets import Widget
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.field.field import Field
+from supervisely.app.widgets.select_collection.select_collection import SelectCollection
 from supervisely.app.widgets.select.select import Select
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
 from supervisely.project.project_type import ProjectType
@@ -31,6 +32,9 @@ class SelectDatasetTree(Widget):
         append_to_body: bool = True,
         widget_id: Union[str, None] = None,
         show_select_all_datasets_checkbox: bool = True,
+        allow_collection_selection: bool = False,
+        collection_selection_text: str = "Work with collections",
+        show_select_all_collections_checkbox: bool = True,
         width: int = 193,
         show_selectors_labels: bool = False,
     ):
@@ -118,6 +122,8 @@ class SelectDatasetTree(Widget):
         self._team_changed_callbacks = []
         self._workspace_changed_callbacks = []
         self._project_changed_callbacks = []
+        self._collection_changed_callbacks = []
+        self._selection_mode_changed_callbacks = []
 
         # Extract values from Enum to match the .type property of the ProjectInfo object.
         self._project_types = None
@@ -139,7 +145,12 @@ class SelectDatasetTree(Widget):
         self._select_workspace = None
         self._select_project = None
         self._select_dataset = None
+        self._select_collection = None
+        self._select_collection_field = None
+        self._use_collections_checkbox = None
         self._width = width
+        self._allow_collection_selection = allow_collection_selection
+        self._collection_selection_text = collection_selection_text
 
         # Flags
         self._team_is_selectable = team_is_selectable
@@ -152,8 +163,14 @@ class SelectDatasetTree(Widget):
             # If the widget is not compact, create team, workspace, and project selectors.
             self._create_selectors(team_is_selectable, workspace_is_selectable)
 
+        if self._allow_collection_selection:
+            self._create_collection_selection_checkbox()
+
         # Create the dataset selector.
         self._create_dataset_selector(flat, always_open, select_all_datasets)
+
+        if self._allow_collection_selection:
+            self._create_collection_selector(show_select_all_collections_checkbox)
 
         # Create the checkbox to select all datasets if needed.
         self._select_all_datasets_checkbox = None
@@ -164,6 +181,9 @@ class SelectDatasetTree(Widget):
         # Group the selectors and the dataset selector into a container.
         self._content = Container(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+        if self._allow_collection_selection:
+            self._update_selection_mode_visibility()
 
     def disable(self):
         """Disable the widget in the UI."""
@@ -333,6 +353,24 @@ class SelectDatasetTree(Widget):
         self._project_changed_callbacks.append(func)
         return func
 
+    def collection_changed(self, func: Callable) -> Callable:
+        """Decorator to set the callback function for the collection changed event."""
+        if not self._allow_collection_selection:
+            raise ValueError("Collection selection is not enabled for this widget.")
+
+        @self._select_collection.value_changed
+        def _click(items: Union[List[int], int]):
+            func(items)
+
+        return _click
+
+    def selection_mode_changed(self, func: Callable) -> Callable:
+        """Decorator to set the callback function for the selection mode changed event."""
+        if not self._allow_collection_selection:
+            raise ValueError("Collection selection is not enabled for this widget.")
+        self._selection_mode_changed_callbacks.append(func)
+        return func
+
     def value_changed(self, func: Callable) -> Callable:
         """Decorator to set the callback function for the value changed event.
 
@@ -376,10 +414,12 @@ class SelectDatasetTree(Widget):
 
             if checked:
                 self._select_dataset.select_all()
-                self._select_dataset_field.hide()
+                if not self.is_collection_selection_mode():
+                    self._select_dataset_field.hide()
             else:
                 self._select_dataset.clear_selected()
-                self._select_dataset_field.show()
+                if not self.is_collection_selection_mode():
+                    self._select_dataset_field.show()
 
         if select_all_datasets:
             self._select_dataset_field.hide()
@@ -387,6 +427,51 @@ class SelectDatasetTree(Widget):
 
         self._widgets.append(select_all_datasets_checkbox)
         self._select_all_datasets_checkbox = select_all_datasets_checkbox
+
+    def _create_collection_selection_checkbox(self) -> None:
+        self._use_collections_checkbox = Checkbox(self._collection_selection_text)
+
+        @self._use_collections_checkbox.value_changed
+        def _use_collections_checkbox_handler(checked: bool) -> None:
+            self._update_selection_mode_visibility()
+            for callback in self._selection_mode_changed_callbacks:
+                callback(checked)
+
+        self._widgets.append(self._use_collections_checkbox)
+
+    def _create_collection_selector(self, show_select_all_collections_checkbox: bool) -> None:
+        self._select_collection = SelectCollection(
+            project_id=self._project_id,
+            multiselect=self._multiselect,
+            compact=True,
+            show_select_all_collections_checkbox=show_select_all_collections_checkbox,
+            width=self._width,
+        )
+        self._select_collection_field = Field(self._select_collection, title="Collections")
+        self._select_collection_field.hide()
+        self._widgets.append(self._select_collection_field)
+
+    def _update_selection_mode_visibility(self) -> None:
+        if not self._allow_collection_selection:
+            return
+
+        if self.is_collection_selection_mode():
+            self._select_dataset_field.hide()
+            if self._select_all_datasets_checkbox is not None:
+                self._select_all_datasets_checkbox.hide()
+            if self._select_collection_field is not None:
+                self._select_collection_field.show()
+        else:
+            if self._select_all_datasets_checkbox is not None:
+                self._select_all_datasets_checkbox.show()
+                if self._select_all_datasets_checkbox.is_checked():
+                    self._select_dataset_field.hide()
+                else:
+                    self._select_dataset_field.show()
+            else:
+                self._select_dataset_field.show()
+            if self._select_collection_field is not None:
+                self._select_collection_field.hide()
 
     def _create_dataset_selector(
         self, flat: bool, always_open: bool, select_all_datasets: bool
@@ -460,12 +545,18 @@ class SelectDatasetTree(Widget):
             self._select_dataset.set_items(self._read_datasets(project_id))
             self._project_id = project_id
 
+            if self._select_collection is not None:
+                self._select_collection.set_project_id(project_id)
+
             if (
                 self._select_all_datasets_checkbox is not None
                 and self._select_all_datasets_checkbox.is_checked()
             ):
                 self._select_dataset.select_all()
-                self._select_dataset_field.hide()
+                if not self.is_collection_selection_mode():
+                    self._select_dataset_field.hide()
+
+            self._update_selection_mode_visibility()
 
             for callback in self._project_changed_callbacks:
                 callback(project_id)
@@ -592,6 +683,11 @@ class SelectDatasetTree(Widget):
         """
         self.project_id = project_id
 
+        if self._select_collection is not None:
+            self._select_collection.set_project_id(project_id)
+
+        self._update_selection_mode_visibility()
+
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected dataset(s).
 
@@ -640,3 +736,35 @@ class SelectDatasetTree(Widget):
     def select_all(self) -> None:
         """Select all datasets."""
         self._select_dataset.select_all()
+
+    def is_collection_selection_mode(self) -> bool:
+        """Return True if widget is currently working with collections."""
+        return (
+            self._allow_collection_selection
+            and self._use_collections_checkbox is not None
+            and self._use_collections_checkbox.is_checked()
+        )
+
+    def set_collection_selection_mode(self, use_collections: bool) -> None:
+        """Switch between dataset mode and collection mode."""
+        if not self._allow_collection_selection:
+            raise ValueError("Collection selection is not enabled for this widget.")
+
+        if use_collections:
+            self._use_collections_checkbox.check()
+        else:
+            self._use_collections_checkbox.uncheck()
+        self._update_selection_mode_visibility()
+
+    def get_selected_collection_ids(self) -> Optional[List[int]]:
+        """Get selected collection IDs in multiselect mode."""
+        if not self._allow_collection_selection:
+            raise ValueError("Collection selection is not enabled for this widget.")
+        return self._select_collection.get_selected_ids()
+
+    def set_collection_ids(self, collection_ids: List[int]) -> None:
+        """Set selected collection IDs and switch widget to collections mode."""
+        if not self._allow_collection_selection:
+            raise ValueError("Collection selection is not enabled for this widget.")
+        self.set_collection_selection_mode(True)
+        self._select_collection.set_selected_ids(collection_ids)
