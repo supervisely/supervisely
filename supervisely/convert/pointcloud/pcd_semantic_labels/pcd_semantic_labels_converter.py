@@ -27,7 +27,7 @@ class PCDSemanticLabelsConverter(PointcloudConverter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._supports_links = True
+        self._supports_links = False
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.PCD_SEMANTIC_LABELS
