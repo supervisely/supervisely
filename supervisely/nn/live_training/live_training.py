@@ -173,7 +173,7 @@ class LiveTraining:
         return {
             "phase": self.phase,
             "samples_count": len(self.dataset) if self.dataset is not None else 0,
-            "waiting_samples": max(0, self.initial_samples - labeled_count),
+            "waiting_samples": self.initial_samples,
             "task_type": self.task_type,
             "iteration": self.iter,
             "loss": self._loss,
