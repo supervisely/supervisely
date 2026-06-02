@@ -169,7 +169,6 @@ class LiveTraining:
         return self.iter > self.initial_iters
 
     def status(self):
-        labeled_count = self.dataset.num_labeled_samples if self.dataset is not None else 0
         return {
             "phase": self.phase,
             "samples_count": len(self.dataset) if self.dataset is not None else 0,
