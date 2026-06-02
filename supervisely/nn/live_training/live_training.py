@@ -12,6 +12,7 @@ import supervisely as sly
 from supervisely import logger
 from supervisely.app.widgets import Card, InputNumber
 from supervisely.nn import TaskType
+from supervisely.project.project_type import ProjectType
 from datetime import datetime
 import signal
 import sys
@@ -141,11 +142,18 @@ class LiveTraining:
         # MCITrack auto-start: looked up or launched lazily in a background
         # thread so __init__ doesn't block. None until the thread succeeds;
         # auto_track_next_frame silently no-ops while it's None.
+        # Only relevant for video projects — images don't need frame-to-frame
+        # tracking, so we skip the lookup/launch entirely for image projects.
         self.workspace_id = sly.env.workspace_id()
         self.agent_id = sly.env.agent_id()
         self.mcitrack_module_id = 475
         self.mcitrack_task_id: Optional[int] = None
         self._mcitrack_ready = threading.Event()
+        try:
+            self.project_type = self.api.project.get_info_by_id(self.project_id).type
+        except Exception as e:
+            logger.warning(f"Failed to fetch project type, assuming images: {e}")
+            self.project_type = str(ProjectType.IMAGES)
 
         # Set by /highlight_key_frames once the uniform "need_to_label" tags
         # are uploaded. After that the labeling UI's "finish and next" jumps
@@ -159,7 +167,15 @@ class LiveTraining:
         # the server can serve a /status call from another thread.
         self._api_thread = start_api_server(self)
 
-        threading.Thread(target=self._start_mcitrack_app, daemon=True, name="MCITrackBoot").start()
+        if self.project_type == str(ProjectType.VIDEOS):
+            threading.Thread(
+                target=self._start_mcitrack_app, daemon=True, name="MCITrackBoot"
+            ).start()
+        else:
+            logger.info(
+                f"Project type is {self.project_type!r}, skipping MCITrack auto-start "
+                f"(only used for video projects)"
+            )
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
