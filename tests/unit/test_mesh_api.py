@@ -25,6 +25,7 @@ from supervisely.geometry.mesh import Mesh
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import (
+    decode_mesh_indices,
     decode_mesh_indices_base64,
     decode_mesh_indices_in_json,
     encode_mesh_indices,
@@ -651,11 +652,20 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(raw, b"\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00*\x00\x00\x00\xff\xff\x00\x00")
         encoded = encode_mesh_indices_base64(indices)
         self.assertEqual(decode_mesh_indices_base64(encoded), indices)
+        with self.assertRaisesRegex(ValueError, "divisible by 4"):
+            decode_mesh_indices(b"\x00\x00\x00")
 
         ann_json = {"labels": [{"geometry": {"indices": indices}}]}
         stored_json = encode_mesh_indices_in_json(ann_json)
         self.assertIsInstance(stored_json["labels"][0]["geometry"]["indices"], str)
         self.assertEqual(decode_mesh_indices_in_json(stored_json), ann_json)
+
+    def test_mesh_accepts_list_subclasses(self):
+        class IndexList(list):
+            pass
+
+        indices = IndexList([1, 2, 3])
+        self.assertEqual(Mesh(indices).indices, [1, 2, 3])
 
     def test_json_round_trip(self):
         obj_class = ObjClass("car", Mesh)
@@ -674,6 +684,15 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(len(restored.tags), 1)
         self.assertNotIn("objects", restored.to_json())
         self.assertNotIn("figures", restored.to_json())
+
+    def test_mesh_label_serializes_class_id_from_single_source(self):
+        obj_class = ObjClass("car", Mesh, sly_id=44)
+
+        label_json = MeshLabel(Mesh([0, 1, 2]), obj_class, class_id=55).to_json()
+        self.assertEqual(label_json[ApiField.CLASS_ID], 55)
+
+        label_json = MeshLabel(Mesh([0, 1, 2]), obj_class).to_json()
+        self.assertEqual(label_json[ApiField.CLASS_ID], 44)
 
     def test_legacy_mesh_json_is_rejected(self):
         meta = ProjectMeta(obj_classes=[ObjClass("car", Mesh)])

@@ -145,10 +145,9 @@ class MeshLabel:
             ApiField.NN_UPDATED: self._nn_updated,
         }
 
-        if self.obj_class.sly_id is not None:
-            data_json[LabelJsonFields.OBJ_CLASS_ID] = self.obj_class.sly_id
-        if self.class_id is not None:
-            data_json[CLASS_ID] = self.class_id
+        class_id = self.class_id if self.class_id is not None else self.obj_class.sly_id
+        if class_id is not None:
+            data_json[CLASS_ID] = class_id
         if self.sly_id is not None:
             data_json[LabelJsonFields.ID] = self.sly_id
         if self.priority is not None:

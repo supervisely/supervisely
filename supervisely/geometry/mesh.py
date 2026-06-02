@@ -42,7 +42,7 @@ class Mesh(Geometry):
         )
         if indices is None:
             indices = []
-        if type(indices) is not list:
+        if not isinstance(indices, list):
             raise TypeError('"indices" param has to be of type list, got {!r}'.format(type(indices)))
         self._indices = indices
 

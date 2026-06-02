@@ -45,8 +45,9 @@ def encode_mesh_indices_np(indices: Iterable[int]) -> bytes:
 
 def decode_mesh_indices_np(data: bytes) -> List[int]:
     """Decode little-endian uint32 mesh index bytes."""
-    aligned_len = len(data) - (len(data) % 4)
-    return np.frombuffer(data[:aligned_len], dtype="<u4").tolist()
+    if len(data) % 4 != 0:
+        raise ValueError("Encoded mesh indices byte length must be divisible by 4.")
+    return np.frombuffer(data, dtype="<u4").tolist()
 
 
 def encode_mesh_indices(indices: Iterable[int]) -> bytes:
