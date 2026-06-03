@@ -20,7 +20,12 @@ import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
 from .loss_plateau_detector import LossPlateauDetector
-from .utils import TrainingStoppedException, BackgroundRequestHandler, set_exception, set_result
+from .utils import (
+    TrainingStoppedException,
+    BackgroundRequestHandler,
+    set_exception,
+    set_result,
+)
 from pathlib import Path
 
 
@@ -72,7 +77,9 @@ class LiveTraining:
         self.project_id = sly.env.project_id()
         self.team_id = sly.env.team_id()
         self.task_id = sly.env.task_id(raise_not_found=False)
-        self.tracking_frames_widget = InputNumber(value=1, min=1, max=300, step=1, controls=True)
+        self.tracking_frames_widget = InputNumber(
+            value=1, min=1, max=300, step=1, controls=True
+        )
         _layout_card = Card(
             title="Number of frames to track",
             content=self.tracking_frames_widget,
@@ -124,6 +131,13 @@ class LiveTraining:
         self.evaluator = self.init_evaluator()
         self._upload_interval = 7200
         self._last_upload_time = None
+
+        # Cache of sly.Annotation objects keyed by image_id (or frame_id for
+        # videos). Populated on every labeled add_sample so the evaluator
+        # bootstrap (see _bootstrap_initial_evaluation) can score the model on
+        # previously-seen GT without re-fetching from the API.
+        self._sly_annotations_cache: dict = {}
+        self._initial_eval_done = False
 
         self._inactivity_timeout = 24 * 3600  # 24 hours in seconds
         self._last_activity_time = None
@@ -182,7 +196,7 @@ class LiveTraining:
 
     @property
     def ready_to_predict(self):
-        return self.iter > self.initial_iters
+        return self.iter >= self.initial_iters
 
     def status(self):
         return {
@@ -295,7 +309,9 @@ class LiveTraining:
                 self._last_upload_time = time.time()
 
             if self._should_stop():
-                logger.warning(f"No activity for {self._inactivity_timeout / 3600:.1f} hours")
+                logger.warning(
+                    f"No activity for {self._inactivity_timeout / 3600:.1f} hours"
+                )
                 self._save_and_upload()
                 sys.exit(0)
 
@@ -361,7 +377,9 @@ class LiveTraining:
                     self._last_activity_time = time.time()
 
             except Exception as e:
-                logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
+                logger.error(
+                    f"Error processing request {request.type}: {e}", exc_info=True
+                )
                 request.future.set_exception(e)
 
     def train(self, checkpoint_path: str = None):
@@ -427,7 +445,9 @@ class LiveTraining:
         was_training = model.training
         model.eval()
         try:
-            objects_raw = self.predict(self.model, image_np=image_np, image_info=image_info)
+            objects_raw = self.predict(
+                self.model, image_np=image_np, image_info=image_info
+            )
 
             if self.evaluator:
                 image_shape = image_np.shape[:2]
@@ -456,7 +476,9 @@ class LiveTraining:
             )
 
             if self.evaluator:
-                for image_id, image_np, objects_raw in zip(image_ids, image_nps, objects_raw_batch):
+                for image_id, image_np, objects_raw in zip(
+                    image_ids, image_nps, objects_raw_batch
+                ):
                     image_shape = image_np.shape[:2]
                     self.evaluator.store_prediction(image_id, objects_raw, image_shape)
 
@@ -484,7 +506,11 @@ class LiveTraining:
                 model.train()
 
     def add_sample(
-        self, image_id: int, image_np: np.ndarray, annotation: sly.Annotation, image_name: str
+        self,
+        image_id: int,
+        image_np: np.ndarray,
+        annotation: sly.Annotation,
+        image_name: str,
     ) -> dict:
         return self.dataset.add_or_update(image_id, image_np, annotation, image_name)
 
@@ -499,8 +525,12 @@ class LiveTraining:
             annotation=sly_ann,
             image_name=data["image_name"],
         )
+        if sly_ann.labels:
+            self._sly_annotations_cache[image_id] = sly_ann
         if not sly_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
-            logger.debug(f"Added unlabeled sample {image_id}; not counted toward initial threshold")
+            logger.debug(
+                f"Added unlabeled sample {image_id}; not counted toward initial threshold"
+            )
         if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(image_id, sly_ann)
             if result is not None:
@@ -553,14 +583,19 @@ class LiveTraining:
         video_objects_json, frame_ann_json = self._filter_annotation_video(
             video_ann_json, frame_index
         )
-        frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
+        frame_h, frame_w = (
+            video_ann_json["size"]["height"],
+            video_ann_json["size"]["width"],
+        )
         if frame_ann_json:
             key_id_map = sly.KeyIdMap()
             video_obj_col = sly.VideoObjectCollection.from_json(
                 video_objects_json, self.project_meta, key_id_map
             )
             frames_count = video_ann_json["framesCount"]
-            frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, key_id_map)
+            frame_ann = sly.Frame.from_json(
+                frame_ann_json, video_obj_col, frames_count, key_id_map
+            )
             img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
         else:
             img_ann = sly.Annotation((frame_h, frame_w), labels=[])
@@ -569,9 +604,13 @@ class LiveTraining:
             frame_np=frame_np,
             annotation=img_ann,
         )
+        if img_ann.labels:
+            self._sly_annotations_cache[frame_id] = img_ann
 
         if not img_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
-            logger.debug(f"Added unlabeled sample {frame_id}; not counted toward initial threshold")
+            logger.debug(
+                f"Added unlabeled sample {frame_id}; not counted toward initial threshold"
+            )
         if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
             # Seed predictions for this frame so EMA updates on every added
             # sample (otherwise the user must manually trigger predict on
@@ -598,7 +637,9 @@ class LiveTraining:
 
     def _handle_add_samples_video(self, data: dict):
         frame_indices = data["frame_indices"]
-        frame_ids = [f"{data['video_id']}_{frame_index}" for frame_index in frame_indices]
+        frame_ids = [
+            f"{data['video_id']}_{frame_index}" for frame_index in frame_indices
+        ]
         frame_nps = data["frame_nps"]
         video_ann_json = data["video_ann_json"]
 
@@ -606,7 +647,10 @@ class LiveTraining:
             video_objects_json, frame_ann_json = self._filter_annotation_video(
                 video_ann_json, frame_index
             )
-            frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
+            frame_h, frame_w = (
+                video_ann_json["size"]["height"],
+                video_ann_json["size"]["width"],
+            )
             if frame_ann_json:
                 key_id_map = sly.KeyIdMap()
                 video_obj_col = sly.VideoObjectCollection.from_json(
@@ -651,6 +695,55 @@ class LiveTraining:
             "status": self.status(),
         }
 
+    def _bootstrap_initial_evaluation(self, n_samples: int = 3):
+        """Score the model on a few labeled samples right after warmup so
+        ``evaluator.ema_value`` is non-None by the time the next /status
+        call lands. Otherwise the UI shows "quality 0%" until the user
+        manually triggers a predict.
+        """
+        import random
+        from PIL import Image
+
+        if self.evaluator is None or self.model is None:
+            return
+        if not self._sly_annotations_cache or self.dataset is None:
+            return
+
+        candidate_ids = [
+            sample_id
+            for sample_id in self._sly_annotations_cache.keys()
+            if sample_id in self.dataset.samples
+        ]
+        if not candidate_ids:
+            return
+
+        k = min(n_samples, len(candidate_ids))
+        picked = random.sample(candidate_ids, k)
+        logger.info(
+            f"[bootstrap-eval] scoring model on {k} labeled sample(s) "
+            f"to seed evaluator.ema_value"
+        )
+
+        for sample_id in picked:
+            try:
+                image_path = self.dataset.samples[sample_id]["image_path"]
+                image_np = np.array(Image.open(image_path).convert("RGB"))
+                self._predict_and_store_for_evaluator(sample_id, image_np)
+                result = self.evaluator.evaluate(
+                    sample_id, self._sly_annotations_cache[sample_id]
+                )
+                if result is not None:
+                    metric_name = self.evaluator.metric_name
+                    logger.info(
+                        f"[bootstrap-eval] {sample_id}: "
+                        f"{metric_name}={result['metric_value']:.3f}, "
+                        f"EMA={result['ema_value']:.3f}"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"[bootstrap-eval] failed for sample {sample_id}: {e}"
+                )
+
     def _predict_and_store_for_evaluator(self, image_id, image_np):
         """Run a single-image prediction and stash it on the evaluator so
         the next ``evaluator.evaluate`` call has something to compare GT
@@ -662,7 +755,9 @@ class LiveTraining:
         was_training = model.training
         model.eval()
         try:
-            objects_raw = self.predict(model, image_np=image_np, image_info={"id": image_id})
+            objects_raw = self.predict(
+                model, image_np=image_np, image_info={"id": image_id}
+            )
             self.evaluator.store_prediction(image_id, objects_raw, image_np.shape[:2])
         except Exception as e:
             logger.warning(f"failed to seed evaluator prediction for {image_id}: {e}")
@@ -679,10 +774,14 @@ class LiveTraining:
         obj_classes = list(project_meta.obj_classes)
 
         if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
-            obj_classes.insert(0, sly.ObjClass(name="_background_", geometry_type=sly.Bitmap))
+            obj_classes.insert(
+                0, sly.ObjClass(name="_background_", geometry_type=sly.Bitmap)
+            )
 
         if self.filter_classes_by_task:
-            allowed_geometries = self._task2geometries[self.task_type] + [sly.AnyGeometry]
+            allowed_geometries = self._task2geometries[self.task_type] + [
+                sly.AnyGeometry
+            ]
             obj_classes = [
                 obj_class
                 for obj_class in obj_classes
@@ -699,7 +798,10 @@ class LiveTraining:
         filtered_objects = []
         for obj in ann_json["objects"]:
             sly_id = obj["classId"]
-            if sly_id in self.class_map.sly_ids and obj["geometryType"] in allowed_geometries:
+            if (
+                sly_id in self.class_map.sly_ids
+                and obj["geometryType"] in allowed_geometries
+            ):
                 filtered_objects.append(obj)
         ann_json["objects"] = filtered_objects
         return ann_json
@@ -790,12 +892,17 @@ class LiveTraining:
         class_by_obj_id = {
             obj["id"]: self.project_meta.get_obj_class_by_id(obj["classId"]).name
             for obj in video_ann_json.get("objects", [])
-            if "id" in obj and self.project_meta.get_obj_class_by_id(obj["classId"]) is not None
+            if "id" in obj
+            and self.project_meta.get_obj_class_by_id(obj["classId"]) is not None
         }
 
         # 3. Source figures on frame N.
         src_frame_ann_json = next(
-            (fr for fr in video_ann_json.get("frames", []) if fr.get("index") == frame_index),
+            (
+                fr
+                for fr in video_ann_json.get("frames", [])
+                if fr.get("index") == frame_index
+            ),
             None,
         )
         if not src_frame_ann_json or not src_frame_ann_json.get("figures"):
@@ -817,7 +924,9 @@ class LiveTraining:
                 {"type": sly.Rectangle.geometry_name(), "data": fig_json["geometry"]}
             )
         if not input_geometries:
-            logger.info(f"[auto-track] no Rectangle sources on frame {frame_index}, skipping")
+            logger.info(
+                f"[auto-track] no Rectangle sources on frame {frame_index}, skipping"
+            )
             return
         logger.info(f"[auto-track] frame {frame_index} sources: {sources}")
 
@@ -848,7 +957,11 @@ class LiveTraining:
 
         # 5. Existing figures on frame N+1.
         dst_frame_ann_json = next(
-            (fr for fr in video_ann_json.get("frames", []) if fr.get("index") == next_frame_index),
+            (
+                fr
+                for fr in video_ann_json.get("frames", [])
+                if fr.get("index") == next_frame_index
+            ),
             None,
         )
         existing = []  # list of (figure_id, geometry_json, class_name)
@@ -870,7 +983,9 @@ class LiveTraining:
         )
 
         # 6. Greedy IoU match (same class only, strict > 0.5).
-        tracked_rects = [sly.Rectangle.from_json(item["data"]) for item in tracked_per_obj]
+        tracked_rects = [
+            sly.Rectangle.from_json(item["data"]) for item in tracked_per_obj
+        ]
         existing_rects = [sly.Rectangle.from_json(geo) for _, geo, _ in existing]
 
         figure_ids_to_remove = []
@@ -904,7 +1019,9 @@ class LiveTraining:
 
         # 7. Push the diff — remove first so re-added geometry doesn't collide.
         if figure_ids_to_remove:
-            remove_video_figures(api, video_id, figure_ids_to_remove, toolbox_session_id)
+            remove_video_figures(
+                api, video_id, figure_ids_to_remove, toolbox_session_id
+            )
 
         figures_json = [
             {
@@ -941,9 +1058,14 @@ class LiveTraining:
         seen_obj_ids = set()
         for figure in frame_ann_json["figures"]:
             obj_id = figure["objectId"]
-            video_obj = [obj for obj in video_ann_json["objects"] if obj["id"] == obj_id][0]
+            video_obj = [
+                obj for obj in video_ann_json["objects"] if obj["id"] == obj_id
+            ][0]
             sly_id = video_obj["classId"]
-            if sly_id in self.class_map.sly_ids and figure["geometryType"] in allowed_geometries:
+            if (
+                sly_id in self.class_map.sly_ids
+                and figure["geometryType"] in allowed_geometries
+            ):
                 filtered_figures.append(figure)
                 # Multiple figures on the same frame can reference the same
                 # VideoObject (e.g. when auto-track and predict-video both
@@ -963,9 +1085,21 @@ class LiveTraining:
     def after_train_step(self, loss: float):
         self.iter += 1
         self._loss = loss
+        if (
+            self.iter >= self.initial_iters
+            and not self._initial_eval_done
+            and self.evaluator is not None
+        ):
+            self._initial_eval_done = True
+            try:
+                self._bootstrap_initial_evaluation(n_samples=3)
+            except Exception as e:
+                logger.warning(f"[bootstrap-eval] unexpected failure: {e}")
         if self._should_pause_after_continue:
             self._is_paused = True
-            logger.info("Training was paused. Waiting for 1 new sample before resuming...")
+            logger.info(
+                "Training was paused. Waiting for 1 new sample before resuming..."
+            )
             self._wait_until_samples_added(samples_needed=1, max_wait_time=None)
             self._should_pause_after_continue = False
             logger.info("New sample added. Resuming training...")
@@ -980,7 +1114,9 @@ class LiveTraining:
                 )
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
-                logger.debug(f"Resuming training. Next iteration will be {self.iter + 1}")
+                logger.debug(
+                    f"Resuming training. Next iteration will be {self.iter + 1}"
+                )
         self._process_pending_requests()
 
     def register_model(self, model: nn.Module):
@@ -1055,8 +1191,13 @@ class LiveTraining:
                 ann = sly.Annotation.from_json(ann_json, self.project_meta)
 
                 self.dataset.add_or_update(
-                    image_id=img_id, image_np=image_np, annotation=ann, image_name=img_info.name
+                    image_id=img_id,
+                    image_np=image_np,
+                    annotation=ann,
+                    image_name=img_info.name,
                 )
+                if ann.labels:
+                    self._sly_annotations_cache[img_id] = ann
 
                 restored_count += 1
 
@@ -1087,9 +1228,14 @@ class LiveTraining:
                 frame_ann = sly.Frame.from_json(
                     frame_ann_json, video_obj_col, frames_count, key_id_map
                 )
-                frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
+                frame_h, frame_w = (
+                    video_ann_json["size"]["height"],
+                    video_ann_json["size"]["width"],
+                )
                 img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
                 self.dataset.add_or_update_video(frame_id, frame_np, img_ann)
+                if img_ann.labels:
+                    self._sly_annotations_cache[frame_id] = img_ann
 
                 restored_count += 1
 
@@ -1112,7 +1258,9 @@ class LiveTraining:
                 - model_config: model configuration dict
                 - loss_history: dict with loss history
         """
-        raise NotImplementedError(f"{self.__class__.__name__} must implement prepare_artifacts()")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement prepare_artifacts()"
+        )
 
     def _get_session_info(self) -> dict:
         """Collect training session context"""
@@ -1261,12 +1409,17 @@ class LiveTraining:
 
     def _should_stop(self) -> bool:
         """Check if training should stop due to user inactivity"""
-        return self._is_timeout_reached(self._last_activity_time, self._inactivity_timeout)
+        return self._is_timeout_reached(
+            self._last_activity_time, self._inactivity_timeout
+        )
 
     def _process_requests_while_initializing(self):
         def process_in_background(request: Request):
             try:
-                if request.type == RequestType.PREDICT or request.type == RequestType.PREDICT_BATCH:
+                if (
+                    request.type == RequestType.PREDICT
+                    or request.type == RequestType.PREDICT_BATCH
+                ):
                     set_exception(
                         request.future,
                         RuntimeError("Cannot run predict, the model is not ready yet."),
@@ -1286,11 +1439,15 @@ class LiveTraining:
                     result = self._handle_key_frames(request.data)
                     set_result(request.future, result)
             except Exception as e:
-                logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
+                logger.error(
+                    f"Error processing request {request.type}: {e}", exc_info=True
+                )
                 set_exception(request.future, e)
 
         self._background_request_handler = BackgroundRequestHandler(
-            self.request_queue, process_in_background, thread_name="RequestHandlerInitializing"
+            self.request_queue,
+            process_in_background,
+            thread_name="RequestHandlerInitializing",
         )
         self._background_request_handler.start()
 
@@ -1300,7 +1457,9 @@ class LiveTraining:
             set_exception(request.future, e)
 
         self._background_request_handler = BackgroundRequestHandler(
-            self.request_queue, process_in_background, thread_name="RequestHandlerFinishing"
+            self.request_queue,
+            process_in_background,
+            thread_name="RequestHandlerFinishing",
         )
         self._background_request_handler.start()
 
