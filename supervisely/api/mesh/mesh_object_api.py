@@ -21,12 +21,10 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 class MeshObjectApi(FigureApi):
     """API for mesh annotation objects.
 
-    Following the image annotation model, a mesh "object" is a single per-label
-    entity that references its mesh entity directly (``entityId`` + ``classId``),
-    exactly like an image figure. The labeling UI calls these *objects*, hence the
-    name (see the ``# @TODO: rename to object like in labeling UI`` note on
-    :class:`~supervisely.api.image_api.ImageApi`). Mesh index geometry is stored as
-    a separate blob in geometry storage, analogous to alpha-mask geometry.
+    A mesh annotation is a flat list of objects, each referencing its mesh entity
+    directly (``entityId`` + ``classId``). The nested "figures" entity used by
+    video/pointcloud annotations is not applicable to mesh annotations. Object
+    index geometry is stored as a separate blob in geometry storage.
     """
 
     def create(
@@ -37,63 +35,63 @@ class MeshObjectApi(FigureApi):
         class_id: int,
         custom_data: Optional[dict] = None,
     ) -> int:
-        figure_json = {
+        object_json = {
             ApiField.ENTITY_ID: mesh_id,
             ApiField.GEOMETRY_TYPE: geometry_type,
             ApiField.GEOMETRY: geometry_json,
         }
         if class_id is not None:
-            figure_json[ApiField.CLASS_ID] = class_id
+            object_json[ApiField.CLASS_ID] = class_id
         if custom_data is not None:
-            figure_json[ApiField.CUSTOM_DATA] = custom_data
-        return self.create_bulk([figure_json], entity_id=mesh_id)[0]
+            object_json[ApiField.CUSTOM_DATA] = custom_data
+        return self.create_bulk([object_json], entity_id=mesh_id)[0]
 
     def append_bulk(
         self,
         mesh_id: int,
-        figures_json: List[Dict],
-        figures_keys: List,
+        objects_json: List[Dict],
+        objects_keys: List,
         key_id_map: KeyIdMap,
     ) -> None:
-        """Create mesh objects (image-style figures) and map label keys to figure IDs."""
-        self._append_bulk(mesh_id, figures_json, figures_keys, key_id_map)
+        """Create mesh objects and map their label keys to the assigned object IDs."""
+        self._append_bulk(mesh_id, objects_json, objects_keys, key_id_map)
 
     def download_indices_batch(
         self,
-        figure_ids: List[int],
+        object_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[List[int]]:
         """Download mesh object index geometry as raw little-endian uint32 data.
 
-        Progress is updated by one for each downloaded figure geometry.
+        Progress is updated by one for each downloaded object geometry.
         """
         geometries = {}
-        for figure_id, part in self._download_geometries_generator(figure_ids):
-            geometries[figure_id] = decode_mesh_indices(part.content)
+        for object_id, part in self._download_geometries_generator(object_ids):
+            geometries[object_id] = decode_mesh_indices(part.content)
             if progress_cb is not None:
                 update_progress(progress_cb, 1)
 
-        if len(geometries) != len(figure_ids):
+        if len(geometries) != len(object_ids):
             raise RuntimeError("Not all mesh geometries were downloaded")
-        return [geometries[figure_id] for figure_id in figure_ids]
+        return [geometries[object_id] for object_id in object_ids]
 
-    def upload_indices_batch(self, figure_ids: List[int], indices_batch: List[List[int]]) -> None:
+    def upload_indices_batch(self, object_ids: List[int], indices_batch: List[List[int]]) -> None:
         """Upload mesh object index geometry as raw little-endian uint32 data."""
-        if len(figure_ids) != len(indices_batch):
+        if len(object_ids) != len(indices_batch):
             raise ValueError(
-                f"figure_ids and indices_batch must have the same length: "
-                f"{len(figure_ids)} != {len(indices_batch)}."
+                f"object_ids and indices_batch must have the same length: "
+                f"{len(object_ids)} != {len(indices_batch)}."
             )
 
-        for batch in batched(list(zip(figure_ids, indices_batch)), batch_size=100):
+        for batch in batched(list(zip(object_ids, indices_batch)), batch_size=100):
             batch_ids, batch_indices = zip(*batch)
             fields = []
-            for figure_id, indices in zip(batch_ids, batch_indices):
-                fields.append((ApiField.FIGURE_ID, str(figure_id)))
+            for object_id, indices in zip(batch_ids, batch_indices):
+                fields.append((ApiField.FIGURE_ID, str(object_id)))
                 fields.append(
                     (
                         ApiField.GEOMETRY,
-                        (str(figure_id), encode_mesh_indices(indices), "application/octet-stream"),
+                        (str(object_id), encode_mesh_indices(indices), "application/octet-stream"),
                     )
                 )
             encoder = MultipartEncoder(fields=fields)

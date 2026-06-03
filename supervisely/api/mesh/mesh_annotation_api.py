@@ -36,11 +36,10 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 class MeshAnnotationAPI(EntityAnnotationAPI):
     """API for mesh annotations.
 
-    Follows the **image** annotation model rather than the video/pointcloud one:
-    a mesh annotation is a flat list of labels, each persisted as a single mesh
-    object (``api.mesh.object`` — an image-style figure referencing ``entityId`` +
-    ``classId``, no separate annotation-object rows). Mesh index geometry is stored
-    as a separate blob in geometry storage, analogous to alpha-mask geometry.
+    A mesh annotation is a flat list of labels, each persisted as a single mesh
+    object (``api.mesh.object``) referencing its mesh entity directly. The nested
+    "figures" entity used by video/pointcloud annotations is not applicable here.
+    Object index geometry is stored as a separate blob in geometry storage.
     """
 
     def download(
@@ -104,32 +103,32 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
         labels_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
         mesh_geometry_refs = []
-        figures_by_mesh_id = self._api.mesh.object.download(dataset_id, mesh_ids)
-        for mesh_id, figure_infos in figures_by_mesh_id.items():
-            for figure_info in figure_infos:
+        objects_by_mesh_id = self._api.mesh.object.download(dataset_id, mesh_ids)
+        for mesh_id, object_infos in objects_by_mesh_id.items():
+            for object_info in object_infos:
                 label_json = {
                     KEY: uuid.uuid4().hex,
-                    ApiField.ID: figure_info.id,
-                    LabelJsonFields.OBJ_CLASS_NAME: class_id_to_name.get(figure_info.class_id),
-                    TAGS: self._convert_tag_rows_to_json(figure_info.tags, tag_id_to_name),
-                    ApiField.GEOMETRY_TYPE: figure_info.geometry_type,
-                    ApiField.GEOMETRY: figure_info.geometry,
+                    ApiField.ID: object_info.id,
+                    LabelJsonFields.OBJ_CLASS_NAME: class_id_to_name.get(object_info.class_id),
+                    TAGS: self._convert_tag_rows_to_json(object_info.tags, tag_id_to_name),
+                    ApiField.GEOMETRY_TYPE: object_info.geometry_type,
+                    ApiField.GEOMETRY: object_info.geometry,
                 }
-                if figure_info.priority is not None:
-                    label_json[ApiField.PRIORITY] = figure_info.priority
-                if figure_info.custom_data is not None:
-                    label_json[ApiField.CUSTOM_DATA] = figure_info.custom_data
+                if object_info.priority is not None:
+                    label_json[ApiField.PRIORITY] = object_info.priority
+                if object_info.custom_data is not None:
+                    label_json[ApiField.CUSTOM_DATA] = object_info.custom_data
                 if (
                     download_mesh_geometries
-                    and figure_info.geometry_type == Mesh.geometry_name()
-                    and self._extract_mesh_indices(figure_info.geometry) is None
+                    and object_info.geometry_type == Mesh.geometry_name()
+                    and self._extract_mesh_indices(object_info.geometry) is None
                 ):
-                    mesh_geometry_refs.append((figure_info.id, label_json))
+                    mesh_geometry_refs.append((object_info.id, label_json))
                 labels_by_mesh_id.setdefault(mesh_id, []).append(label_json)
 
         if len(mesh_geometry_refs) != 0:
-            figure_ids = [figure_id for figure_id, _ in mesh_geometry_refs]
-            indices_batch = self._api.mesh.object.download_indices_batch(figure_ids)
+            object_ids = [object_id for object_id, _ in mesh_geometry_refs]
+            indices_batch = self._api.mesh.object.download_indices_batch(object_ids)
             for (_, label_json), indices in zip(mesh_geometry_refs, indices_batch):
                 label_json[ApiField.GEOMETRY] = {INDICES: indices}
 
@@ -215,8 +214,8 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     ) -> None:
         name_to_class_id = self._api.object_class.get_name_to_id_map(project_id)
 
-        figures_json = []
-        figures_keys = []
+        objects_json = []
+        objects_keys = []
         mesh_keys = []
         mesh_indices = []
         for label in ann.labels:
@@ -224,39 +223,39 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             geometry_json.pop(GEOMETRY_TYPE, None)
             geometry_json.pop(GEOMETRY_SHAPE, None)
 
-            figure_json = {
+            object_json = {
                 ApiField.ENTITY_ID: mesh_id,
                 ApiField.GEOMETRY_TYPE: label.geometry.geometry_name(),
                 TAGS: label.tags.to_json(key_id_map),
             }
             class_id = name_to_class_id.get(label.obj_class.name)
             if class_id is not None:
-                figure_json[CLASS_ID] = class_id
+                object_json[CLASS_ID] = class_id
             if label.priority is not None:
-                figure_json[ApiField.PRIORITY] = label.priority
+                object_json[ApiField.PRIORITY] = label.priority
             if label.custom_data:
-                figure_json[ApiField.CUSTOM_DATA] = label.custom_data
+                object_json[ApiField.CUSTOM_DATA] = label.custom_data
 
             if isinstance(label.geometry, Mesh):
-                # Mesh index geometry is stored as a separate blob (like alpha mask).
+                # Object index geometry is stored as a separate blob.
                 mesh_keys.append(label.key())
                 mesh_indices.append(label.geometry.indices)
             else:
-                figure_json[ApiField.GEOMETRY] = geometry_json
+                object_json[ApiField.GEOMETRY] = geometry_json
 
-            figures_json.append(figure_json)
-            figures_keys.append(label.key())
+            objects_json.append(object_json)
+            objects_keys.append(label.key())
 
         # Entity-level (annotation) tags.
         self._api.mesh.tag.append_to_entity(mesh_id, project_id, ann.tags, key_id_map=key_id_map)
 
-        # Create objects (image-style figures) and map label keys -> figure IDs.
-        self._api.mesh.object.append_bulk(mesh_id, figures_json, figures_keys, key_id_map)
+        # Create objects and map label keys to the assigned object IDs.
+        self._api.mesh.object.append_bulk(mesh_id, objects_json, objects_keys, key_id_map)
 
-        # Upload mesh index geometry blobs to the created objects.
-        mesh_figure_ids = [key_id_map.get_figure_id(key) for key in mesh_keys]
-        if len(mesh_figure_ids) != 0:
-            self._api.mesh.object.upload_indices_batch(mesh_figure_ids, mesh_indices)
+        # Upload object index geometry blobs to the created objects.
+        mesh_object_ids = [key_id_map.get_figure_id(key) for key in mesh_keys]
+        if len(mesh_object_ids) != 0:
+            self._api.mesh.object.upload_indices_batch(mesh_object_ids, mesh_indices)
 
     @staticmethod
     def _prepare_annotation_json(
