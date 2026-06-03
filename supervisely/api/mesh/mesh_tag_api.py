@@ -78,34 +78,3 @@ class MeshTagApi(TagApi):
     def update_value(self, tag_id: int, value: Union[str, int]) -> None:
         """Update the value of a tag on a mesh entity."""
         self._api.post("tags.entities.update-value", {ApiField.ID: tag_id, ApiField.VALUE: value})
-
-
-class MeshObjectTagApi(TagApi):
-    """Internal API for tags attached to mesh annotation object rows."""
-
-    _entity_id_field = ApiField.OBJECT_ID
-    _method_bulk_add = "annotation-objects.tags.bulk.add"
-
-    def add(
-        self,
-        tag_meta_id: int,
-        object_id: int,
-        value: Optional[Union[str, int, float]] = None,
-    ) -> int:
-        request_body = {
-            ApiField.TAG_ID: tag_meta_id,
-            ApiField.OBJECT_ID: object_id,
-        }
-        if value is not None:
-            request_body[ApiField.VALUE] = value
-        response = self._api.post("annotation-objects.tags.add", request_body)
-        return response.json()[ApiField.ID]
-
-    def remove(self, tag_id: int) -> None:
-        self._api.post("annotation-objects.tags.remove", {ApiField.ID: tag_id})
-
-    def update(self, tag_id: int, value: Union[str, int, float]) -> None:
-        self._api.post(
-            "annotation-objects.tags.update-value",
-            {ApiField.ID: tag_id, ApiField.VALUE: value},
-        )

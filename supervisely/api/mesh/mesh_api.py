@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, rand_str
 from supervisely.api.mesh.mesh_annotation_api import MeshAnnotationAPI
-from supervisely.api.mesh.mesh_figure_api import MeshFigureApi
 from supervisely.api.mesh.mesh_object_api import MeshObjectApi
 from supervisely.api.mesh.mesh_tag_api import MeshTagApi
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi, _get_single_item
@@ -134,7 +133,6 @@ class MeshApi(RemoveableBulkModuleApi):
             api.mesh = self
         self.annotation = MeshAnnotationAPI(api)
         self.object = MeshObjectApi(api)
-        self.figure = MeshFigureApi(api)
         self.tag = MeshTagApi(api)
 
     @staticmethod
