@@ -63,6 +63,7 @@ class AvailablePointcloudConverters:
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
+    PCD_SEMANTIC_LABELS = "pcd_semantic_labels"
     BAG = "rosbag"
     LYFT = "lyft"
     NUSCENES = "nuscenes"
