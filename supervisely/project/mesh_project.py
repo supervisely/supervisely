@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import re
-import uuid
 from copy import deepcopy
 from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
@@ -27,7 +26,7 @@ from supervisely.io.fs import (
     touch,
 )
 from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.mesh_annotation.constants import FIGURES, KEY, LABELS, OBJECTS, TAGS
+from supervisely.mesh_annotation.constants import KEY, LABELS
 from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import (
     MESH_INDEX_FIELDS,
@@ -40,7 +39,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly, update_progress
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 ANNOTATION_FILE_NAME = "annotation.json"
@@ -264,19 +262,15 @@ class MeshDataset(Dataset):
             ann_json = self._decode_geometry_sidecars(item_name, ann_json)
         return ann_json
 
-    def get_ann(
-        self, item_name, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
-    ) -> MeshAnnotation:
-        return self.annotation_class.from_json(self.get_ann_json(item_name), project_meta, key_id_map)
+    def get_ann(self, item_name, project_meta: ProjectMeta) -> MeshAnnotation:
+        return self.annotation_class.from_json(self.get_ann_json(item_name), project_meta)
 
-    def set_ann(
-        self, item_name: str, ann: MeshAnnotation, key_id_map: Optional[KeyIdMap] = None
-    ) -> None:
+    def set_ann(self, item_name: str, ann: MeshAnnotation) -> None:
         if not isinstance(ann, self.annotation_class):
             raise TypeError(
                 f"Type of 'ann' should be {self.annotation_class.__name__}, not a {type(ann).__name__}"
             )
-        self.set_ann_dict(item_name, ann.to_json(key_id_map))
+        self.set_ann_dict(item_name, ann.to_json())
 
     def set_ann_file(self, item_name: str, ann_path: str) -> None:
         if type(ann_path) is not str:
@@ -466,10 +460,6 @@ class MeshProject(Project):
     class DatasetDict(KeyIndexedCollection):
         item_type = MeshDataset
 
-    def __init__(self, directory: str, mode: OpenMode):
-        self._key_id_map: KeyIdMap = None
-        super().__init__(directory, mode)
-
     @classmethod
     def read_single(cls, dir) -> "MeshProject":
         return read_project_wrapper(dir, cls)
@@ -484,17 +474,6 @@ class MeshProject(Project):
             meta_json["projectType"] = self.type
             new_meta = ProjectMeta.from_json(meta_json)
         super().set_meta(new_meta)
-
-    @property
-    def key_id_map(self) -> KeyIdMap:
-        return self._key_id_map
-
-    def set_key_id_map(self, new_map: KeyIdMap):
-        self._key_id_map = new_map
-        self._key_id_map.dump_json(self._get_key_id_map_path())
-
-    def _get_key_id_map_path(self):
-        return os.path.join(self.directory, "key_id_map.json")
 
     def get_classes_stats(
         self,
@@ -592,7 +571,6 @@ def download_mesh_project(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> MeshProject:
-    key_id_map = KeyIdMap()
     project_fs = MeshProject(dest_dir, OpenMode.CREATE)
 
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
@@ -649,7 +627,6 @@ def download_mesh_project(
                     touch(mesh_file_path)
                     mesh_file_path = None
 
-                _update_key_id_map_from_annotation(key_id_map, mesh_id, ann_json)
                 item_info = mesh_info._asdict() if download_meshes_info else None
                 dataset_fs.add_item_file(
                     mesh_name,
@@ -664,7 +641,6 @@ def download_mesh_project(
             if log_progress:
                 ds_progress(len(batch))
 
-    project_fs.set_key_id_map(key_id_map)
     return project_fs
 
 
@@ -689,7 +665,6 @@ def upload_mesh_project(
     if progress_cb is not None:
         log_progress = False
 
-    key_id_map = KeyIdMap()
     name_to_dsinfo = {}
     for dataset_fs in sorted(project_fs, key=lambda ds: len(ds.parents)):
         dataset_fs: MeshDataset
@@ -716,37 +691,8 @@ def upload_mesh_project(
             mesh_ids = [mesh_info.id for mesh_info in mesh_infos]
             for mesh_id, item_name in zip(mesh_ids, item_names):
                 ann = dataset_fs.get_ann(item_name, project_fs.meta)
-                api.mesh.annotation.append(mesh_id, ann, key_id_map)
+                api.mesh.annotation.append(mesh_id, ann)
             if ds_progress is not None:
                 update_progress(ds_progress, len(item_names))
 
     return project.id, project.name
-
-
-def _update_key_id_map_from_annotation(key_id_map: KeyIdMap, mesh_id: int, ann_json: Dict) -> None:
-    if not isinstance(ann_json, dict):
-        return
-
-    _add_key_id(key_id_map.add_video, ann_json.get(KEY), mesh_id)
-
-    for label_json in ann_json.get(LABELS, []):
-        if isinstance(label_json, dict):
-            _add_key_id(key_id_map.add_figure, label_json.get(KEY), label_json.get(ApiField.ID))
-            _update_key_id_map_from_tags(key_id_map, label_json.get(TAGS, []))
-
-    _update_key_id_map_from_tags(key_id_map, ann_json.get(TAGS, []))
-
-
-def _update_key_id_map_from_tags(key_id_map: KeyIdMap, tags_json: List[Dict]) -> None:
-    for tag_json in tags_json or []:
-        if isinstance(tag_json, dict):
-            _add_key_id(key_id_map.add_tag, tag_json.get(KEY), tag_json.get(ApiField.ID))
-
-
-def _add_key_id(add_fn: Callable, key, id) -> None:
-    if key is None:
-        return
-    try:
-        add_fn(uuid.UUID(str(key)), id)
-    except Exception:
-        pass

@@ -15,7 +15,6 @@ from supervisely.mesh_annotation.mesh_indices import (
     encode_mesh_indices,
 )
 from supervisely.task.progress import update_progress
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshObjectApi(FigureApi):
@@ -46,15 +45,11 @@ class MeshObjectApi(FigureApi):
             object_json[ApiField.CUSTOM_DATA] = custom_data
         return self.create_bulk([object_json], entity_id=mesh_id)[0]
 
-    def append_bulk(
-        self,
-        mesh_id: int,
-        objects_json: List[Dict],
-        objects_keys: List,
-        key_id_map: KeyIdMap,
-    ) -> None:
-        """Create mesh objects and map their label keys to the assigned object IDs."""
-        self._append_bulk(mesh_id, objects_json, objects_keys, key_id_map)
+    def append_bulk(self, mesh_id: int, objects_json: List[Dict]) -> List[int]:
+        """Create mesh objects and return their assigned IDs, ordered like ``objects_json``."""
+        if len(objects_json) == 0:
+            return []
+        return self.create_bulk(objects_json, entity_id=mesh_id)
 
     def download_indices_batch(
         self,

@@ -25,7 +25,6 @@ from supervisely.mesh_annotation.constants import KEY, TAGS
 from supervisely.mesh_annotation.mesh_tag import MeshTag
 from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshLabel:
@@ -129,7 +128,7 @@ class MeshLabel:
     def key(self) -> uuid.UUID:
         return self._key
 
-    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
+    def to_json(self) -> Dict:
         geometry_json = deepcopy(self.geometry.to_json())
         geometry_json.pop(GEOMETRY_TYPE, None)
         geometry_json.pop(GEOMETRY_SHAPE, None)
@@ -138,7 +137,7 @@ class MeshLabel:
             KEY: self.key().hex,
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
-            TAGS: self.tags.to_json(key_id_map),
+            TAGS: self.tags.to_json(),
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
             ApiField.GEOMETRY: geometry_json,
             ApiField.NN_CREATED: self._nn_created,
@@ -155,11 +154,6 @@ class MeshLabel:
         if self.custom_data:
             data_json[ApiField.CUSTOM_DATA] = self.custom_data
 
-        if key_id_map is not None:
-            figure_id = key_id_map.get_figure_id(self.key())
-            if figure_id is not None:
-                data_json[LabelJsonFields.ID] = figure_id
-
         self._add_creation_info(data_json)
         return data_json
 
@@ -168,7 +162,6 @@ class MeshLabel:
         cls,
         data: Dict,
         project_meta: ProjectMeta,
-        key_id_map: Optional[KeyIdMap] = None,
     ) -> "MeshLabel":
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
@@ -191,8 +184,6 @@ class MeshLabel:
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
         label_id = data.get(LabelJsonFields.ID)
-        if key_id_map is not None and label_id is not None:
-            key_id_map.add_figure(key, label_id)
 
         nn_created = data.get(ApiField.NN_CREATED, False)
         nn_updated = data.get(ApiField.NN_UPDATED, False)
@@ -200,7 +191,7 @@ class MeshLabel:
         return cls(
             geometry=geometry,
             obj_class=obj_class,
-            tags=MeshTagCollection.from_json(data.get(TAGS, []), project_meta.tag_metas, key_id_map),
+            tags=MeshTagCollection.from_json(data.get(TAGS, []), project_meta.tag_metas),
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             key=key,
             sly_id=label_id,

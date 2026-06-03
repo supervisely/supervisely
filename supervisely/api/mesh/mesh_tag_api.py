@@ -6,7 +6,6 @@ from typing import List, Optional, Union
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.module_api import ApiField
 from supervisely.mesh_annotation.constants import KEY
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshTagApi(TagApi):
@@ -50,12 +49,11 @@ class MeshTagApi(TagApi):
         entity_id: int,
         project_id: int,
         tags,
-        key_id_map: KeyIdMap = None,
     ) -> List[int]:
         if len(tags) == 0:
             return []
 
-        tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
+        tags_json, _ = self._tags_to_json(tags, project_id=project_id)
         for tag_json in tags_json:
             tag_json[ApiField.ENTITY_ID] = entity_id
 
@@ -66,9 +64,7 @@ class MeshTagApi(TagApi):
                 ApiField.TAGS: [self._clean_entity_tag_json(tag_json) for tag_json in tags_json],
             },
         )
-        ids = [obj[ApiField.ID] for obj in response.json()]
-        KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
-        return ids
+        return [obj[ApiField.ID] for obj in response.json()]
 
 
     def remove(self, tag_id: int) -> None:

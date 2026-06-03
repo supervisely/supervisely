@@ -30,7 +30,6 @@ from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
 from supervisely.mesh_annotation.mesh_indices import MESH_INDEX_FIELDS
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import update_progress
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshAnnotationAPI(EntityAnnotationAPI):
@@ -40,12 +39,15 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     object (``api.mesh.object``) referencing its mesh entity directly. The nested
     "figures" entity used by video/pointcloud annotations is not applicable here.
     Object index geometry is stored as a separate blob in geometry storage.
+
+    Like image annotations, server-side IDs are carried inline in the annotation
+    JSON (``label["id"]``); there is no ``KeyIdMap``. On upload, objects are
+    associated with their labels by order.
     """
 
     def download(
         self,
         mesh_id: int,
-        key_id_map: Optional[KeyIdMap] = None,
         download_mesh_geometries: bool = True,
     ) -> Dict:
         """
@@ -53,8 +55,6 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
         :param mesh_id: Mesh ID in Supervisely.
         :type mesh_id: int
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param download_mesh_geometries: Download raw mesh index geometry blobs and patch them into
             the annotation JSON when labels reference external geometry storage.
         :type download_mesh_geometries: bool
@@ -62,13 +62,11 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         :rtype: dict
         """
         dataset_id = self._api.mesh.get_info_by_id(mesh_id).dataset_id
-        ann_json = self.download_bulk(
+        return self.download_bulk(
             dataset_id,
             [mesh_id],
             download_mesh_geometries=download_mesh_geometries,
         )[0]
-        self._update_key_id_map(mesh_id, ann_json, key_id_map)
-        return ann_json
 
     def download_bulk(
         self,
@@ -146,34 +144,25 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 update_progress(progress_cb, 1)
         return annotations
 
-    def append(
-        self,
-        mesh_id: int,
-        ann: Union[MeshAnnotation, Dict],
-        key_id_map: Optional[KeyIdMap] = None,
-    ) -> None:
+    def append(self, mesh_id: int, ann: Union[MeshAnnotation, Dict]) -> None:
         """Append a full mesh annotation to the mesh entity."""
-        if key_id_map is None:
-            key_id_map = KeyIdMap()
         info = self._api.mesh.get_info_by_id(mesh_id)
-        ann_obj = self._coerce_annotation(ann, info.project_id, mesh_id, key_id_map)
-        self._upload_annotation(mesh_id, info.project_id, ann_obj, key_id_map)
+        ann_obj = self._coerce_annotation(ann, info.project_id)
+        self._upload_annotation(mesh_id, info.project_id, ann_obj)
 
     def upload_json(
         self,
         mesh_id: int,
         ann_json: Dict,
         dataset_id: Optional[int] = None,  # kept for backward compatibility
-        key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """Upload one mesh annotation JSON."""
-        self.append(mesh_id, ann_json, key_id_map=key_id_map)
+        self.append(mesh_id, ann_json)
 
     def upload_paths(
         self,
         mesh_ids: List[int],
         ann_paths: List[str],
-        key_id_map: Optional[KeyIdMap] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """Upload mesh annotations from local JSON files."""
@@ -182,10 +171,8 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 f"mesh_ids and ann_paths must have the same length: "
                 f"{len(mesh_ids)} != {len(ann_paths)}."
             )
-        if key_id_map is None:
-            key_id_map = KeyIdMap()
         for mesh_id, ann_path in zip(mesh_ids, ann_paths):
-            self.append(mesh_id, load_json_file(ann_path), key_id_map=key_id_map)
+            self.append(mesh_id, load_json_file(ann_path))
             if progress_cb is not None:
                 update_progress(progress_cb, 1)
 
@@ -193,16 +180,13 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         self,
         ann: Union[MeshAnnotation, Dict],
         project_id: int,
-        mesh_id: int,
-        key_id_map: KeyIdMap,
     ) -> MeshAnnotation:
         if isinstance(ann, MeshAnnotation):
-            key_id_map.add_video(ann.key(), mesh_id)
             return ann
         if isinstance(ann, dict):
-            prepared_ann = self._prepare_annotation_json(mesh_id, ann, key_id_map)
+            prepared_ann = self._prepare_annotation_json(ann)
             project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
-            return MeshAnnotation.from_json(prepared_ann, project_meta, key_id_map)
+            return MeshAnnotation.from_json(prepared_ann, project_meta)
         raise TypeError(f"Unsupported mesh annotation type: {type(ann).__name__}")
 
     def _upload_annotation(
@@ -210,13 +194,11 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         mesh_id: int,
         project_id: int,
         ann: MeshAnnotation,
-        key_id_map: KeyIdMap,
     ) -> None:
         name_to_class_id = self._api.object_class.get_name_to_id_map(project_id)
 
         objects_json = []
-        objects_keys = []
-        mesh_keys = []
+        mesh_positions = []  # indices into objects_json whose geometry is stored separately
         mesh_indices = []
         for label in ann.labels:
             geometry_json = deepcopy(label.geometry.to_json())
@@ -226,7 +208,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             object_json = {
                 ApiField.ENTITY_ID: mesh_id,
                 ApiField.GEOMETRY_TYPE: label.geometry.geometry_name(),
-                TAGS: label.tags.to_json(key_id_map),
+                TAGS: label.tags.to_json(),
             }
             class_id = name_to_class_id.get(label.obj_class.name)
             if class_id is not None:
@@ -238,44 +220,33 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
             if isinstance(label.geometry, Mesh):
                 # Object index geometry is stored as a separate blob.
-                mesh_keys.append(label.key())
+                mesh_positions.append(len(objects_json))
                 mesh_indices.append(label.geometry.indices)
             else:
                 object_json[ApiField.GEOMETRY] = geometry_json
 
             objects_json.append(object_json)
-            objects_keys.append(label.key())
 
         # Entity-level (annotation) tags.
-        self._api.mesh.tag.append_to_entity(mesh_id, project_id, ann.tags, key_id_map=key_id_map)
+        self._api.mesh.tag.append_to_entity(mesh_id, project_id, ann.tags)
 
-        # Create objects and map label keys to the assigned object IDs.
-        self._api.mesh.object.append_bulk(mesh_id, objects_json, objects_keys, key_id_map)
+        # Create objects; IDs come back ordered like objects_json.
+        object_ids = self._api.mesh.object.append_bulk(mesh_id, objects_json)
 
-        # Upload object index geometry blobs to the created objects.
-        mesh_object_ids = [key_id_map.get_figure_id(key) for key in mesh_keys]
-        if len(mesh_object_ids) != 0:
+        # Upload object index geometry blobs to the matching objects (by order).
+        if len(mesh_positions) != 0:
+            mesh_object_ids = [object_ids[position] for position in mesh_positions]
             self._api.mesh.object.upload_indices_batch(mesh_object_ids, mesh_indices)
 
     @staticmethod
-    def _prepare_annotation_json(
-        mesh_id: int,
-        ann_json: Dict,
-        key_id_map: Optional[KeyIdMap],
-    ) -> Dict:
+    def _prepare_annotation_json(ann_json: Dict) -> Dict:
         prepared_ann = dict(ann_json)
         if OBJECTS in prepared_ann or FIGURES in prepared_ann:
             raise RuntimeError(
                 "Legacy mesh annotation JSON with 'objects'/'figures' is not supported. "
                 "Use the 'labels' mesh annotation schema."
             )
-        prepared_ann.setdefault(MESH_ID, mesh_id)
         prepared_ann.setdefault(LABELS, [])
-        if key_id_map is not None and prepared_ann.get(KEY) is not None:
-            try:
-                key_id_map.add_video(uuid.UUID(prepared_ann[KEY]), mesh_id)
-            except Exception:
-                pass
         return prepared_ann
 
     @staticmethod
@@ -304,22 +275,3 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 tag_json[ApiField.ID] = tag_row[ApiField.ID]
             result.append(tag_json)
         return result
-
-    @staticmethod
-    def _update_key_id_map(mesh_id: int, ann_json: Dict, key_id_map: Optional[KeyIdMap]) -> None:
-        if key_id_map is None or not isinstance(ann_json, dict) or ann_json.get(KEY) is None:
-            return
-        try:
-            key_id_map.add_video(uuid.UUID(ann_json[KEY]), mesh_id)
-        except Exception:
-            pass
-        for label_json in ann_json.get(LABELS, []):
-            if not isinstance(label_json, dict) or label_json.get(KEY) is None:
-                continue
-            try:
-                label_key = uuid.UUID(label_json[KEY])
-                label_id = label_json.get(ApiField.ID)
-                if label_id is not None:
-                    key_id_map.add_figure(label_key, label_id)
-            except Exception:
-                pass
