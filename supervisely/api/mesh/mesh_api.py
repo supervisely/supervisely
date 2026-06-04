@@ -509,6 +509,65 @@ class MeshApi(RemoveableBulkModuleApi):
             parent_ids=parent_ids,
         )
 
+    def upload_ids(
+        self,
+        dataset_id: int,
+        names: List[str],
+        ids: List[int],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        descriptions: Optional[List[str]] = None,
+        parent_ids: Optional[List[int]] = None,
+    ) -> List[MeshInfo]:
+        """
+        Upload meshes from given source IDs to a dataset (server-side copy).
+
+        Mirrors :meth:`~supervisely.api.image_api.ImageApi.upload_ids`: each source
+        mesh is re-registered in the destination dataset by its ID; the binary is
+        not downloaded or re-uploaded.
+
+        :param dataset_id: Destination dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: Destination mesh names with extension. Must match *ids* length.
+        :type names: List[str]
+        :param ids: Source mesh IDs in Supervisely.
+        :type ids: List[int]
+        :param metas: Per-mesh metadata dictionaries. Defaults to empty dicts.
+        :type metas: List[dict], optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: tqdm or callable, optional
+        :param descriptions: Per-mesh human-readable descriptions.
+        :type descriptions: List[str], optional
+        :param parent_ids: Per-mesh parent entity IDs.
+        :type parent_ids: List[int], optional
+        :returns: List of :class:`MeshInfo` objects in the same order as *ids*.
+        :rtype: List[:class:`~supervisely.api.mesh.mesh_api.MeshInfo`]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+
+                src_infos = api.mesh.get_list(src_dataset_id)
+                names = [info.name for info in src_infos]
+                ids = [info.id for info in src_infos]
+                new_infos = api.mesh.upload_ids(dst_dataset_id, names, ids)
+        """
+        if metas is None:
+            metas = [{}] * len(names)
+        return self._upload_bulk_add(
+            lambda item: (ApiField.ENTITY_ID, item),
+            dataset_id,
+            names,
+            ids,
+            metas=metas,
+            progress_cb=progress_cb,
+            descriptions=descriptions,
+            parent_ids=parent_ids,
+        )
+
     def _upload_by_team_file_ids(
         self,
         dataset_id: int,
