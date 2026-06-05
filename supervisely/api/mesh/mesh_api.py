@@ -45,6 +45,7 @@ class MeshInfo(NamedTuple):
                 size=None,
                 custom_data={},
                 objects_count=0,
+                tags=[],
                 created_by_id=5,
                 created_at="2026-01-01T00:00:00.000Z",
                 updated_at="2026-01-01T00:00:00.000Z",
@@ -101,6 +102,9 @@ class MeshInfo(NamedTuple):
 
     #: int: Number of annotation objects attached to this mesh.
     objects_count: int
+
+    #: list: Mesh :class:`~supervisely.mesh_annotation.mesh_tag.MeshTag` server rows.
+    tags: list
 
     #: int: ID of the user who created the mesh.
     created_by_id: int
@@ -161,6 +165,7 @@ class MeshApi(RemoveableBulkModuleApi):
             ApiField.SIZE,
             ApiField.CUSTOM_DATA,
             ApiField.OBJECTS_COUNT,
+            ApiField.TAGS,
             ApiField.CREATED_BY_ID,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
@@ -202,6 +207,7 @@ class MeshApi(RemoveableBulkModuleApi):
             ApiField.SIZE,
             ApiField.CUSTOM_DATA,
             ApiField.OBJECTS_COUNT,
+            ApiField.TAGS,
             "createdBy",
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,

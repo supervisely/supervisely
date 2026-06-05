@@ -7,6 +7,8 @@ from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
+from supervisely._utils import batched
+from supervisely.annotation.tag import TagJsonFields
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
@@ -100,6 +102,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         tag_id_to_name = {tag.id: tag.name for tag in self._api.mesh.tag.get_list(project_id)}
 
         labels_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
+        entity_tags_by_mesh_id = self._download_entity_tags(dataset_id, mesh_ids, tag_id_to_name)
         mesh_geometry_refs = []
         objects_by_mesh_id = self._api.mesh.object.download(dataset_id, mesh_ids)
         for mesh_id, object_infos in objects_by_mesh_id.items():
@@ -136,13 +139,38 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
                 {
                     KEY: uuid.uuid4().hex,
                     MESH_ID: mesh_id,
-                    TAGS: [],
+                    TAGS: entity_tags_by_mesh_id.get(mesh_id, []),
                     LABELS: labels_by_mesh_id.get(mesh_id, []),
                 }
             )
             if progress_cb is not None:
                 update_progress(progress_cb, 1)
         return annotations
+
+    def _download_entity_tags(
+        self,
+        dataset_id: int,
+        mesh_ids: List[int],
+        tag_id_to_name: Dict[int, str],
+    ) -> Dict[int, List[Dict]]:
+        tags_by_mesh_id = {mesh_id: [] for mesh_id in mesh_ids}
+        for batch in batched(mesh_ids, batch_size=500):
+            mesh_infos = self._api.mesh.get_list(
+                dataset_id=dataset_id,
+                filters=[
+                    {
+                        ApiField.FIELD: ApiField.ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: list(batch),
+                    }
+                ],
+                fields=[ApiField.ID, ApiField.TAGS],
+            )
+            for mesh_info in mesh_infos:
+                tags_by_mesh_id[mesh_info.id] = self._convert_tag_rows_to_json(
+                    mesh_info.tags, tag_id_to_name
+                )
+        return tags_by_mesh_id
 
     def append(self, mesh_id: int, ann: Union[MeshAnnotation, Dict]) -> None:
         """
@@ -334,9 +362,17 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             if tag_name is None:
                 continue
             tag_json = {ApiField.NAME: tag_name}
+            if ApiField.TAG_ID in tag_row:
+                tag_json[ApiField.TAG_ID] = tag_row[ApiField.TAG_ID]
             if ApiField.VALUE in tag_row:
                 tag_json[ApiField.VALUE] = tag_row[ApiField.VALUE]
             if ApiField.ID in tag_row:
                 tag_json[ApiField.ID] = tag_row[ApiField.ID]
+            if TagJsonFields.LABELER_LOGIN in tag_row:
+                tag_json[TagJsonFields.LABELER_LOGIN] = tag_row[TagJsonFields.LABELER_LOGIN]
+            if ApiField.CREATED_AT in tag_row:
+                tag_json[ApiField.CREATED_AT] = tag_row[ApiField.CREATED_AT]
+            if ApiField.UPDATED_AT in tag_row:
+                tag_json[ApiField.UPDATED_AT] = tag_row[ApiField.UPDATED_AT]
             result.append(tag_json)
         return result

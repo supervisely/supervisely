@@ -62,7 +62,22 @@ def mesh_json(mesh_id=1, name="mesh.obj", **kwargs):
         "size": None,
         "customData": {},
         "objectsCount": 0,
+        "tags": [],
         "createdBy": 5,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+    }
+    data.update(kwargs)
+    return data
+
+
+def tag_info_json(tag_id=55, name="weather", **kwargs):
+    data = {
+        "id": tag_id,
+        "projectId": 3,
+        "name": name,
+        "settings": {},
+        "color": [255, 0, 0],
         "createdAt": "2026-01-01T00:00:00.000Z",
         "updatedAt": "2026-01-01T00:00:00.000Z",
     }
@@ -180,13 +195,22 @@ class FakeApi:
         self.annotation_response = None
         self.object_response = []
         self.figure_response = []
+        self.entity_response = []
+        self.tag_response = []
         self.mesh_infos = {}
         self.fail_team_file_id_upload = False
 
     def post(self, method, data, **kwargs):
         self.calls.append((method, data, kwargs))
         if method == "entities.list":
-            return Response({"total": 0, "perPage": 100, "pagesCount": 1, "entities": []})
+            return Response(
+                {
+                    "total": len(self.entity_response),
+                    "perPage": 100,
+                    "pagesCount": 1,
+                    "entities": self.entity_response,
+                }
+            )
         if method == "entities.info":
             return Response(self.mesh_infos.get(data["id"], mesh_json(mesh_id=data["id"])))
         if method == "entities.download":
@@ -208,7 +232,14 @@ class FakeApi:
         if method == "tags.entities.bulk.add":
             return Response([{"id": 900 + idx} for idx, _ in enumerate(data["tags"])])
         if method == "tags.list":
-            return Response({"total": 0, "perPage": 100, "pagesCount": 1, "entities": []})
+            return Response(
+                {
+                    "total": len(self.tag_response),
+                    "perPage": 100,
+                    "pagesCount": 1,
+                    "entities": self.tag_response,
+                }
+            )
         if method == "annotation-objects.list":
             return Response(
                 {
@@ -274,6 +305,45 @@ class TestMeshApi(unittest.TestCase):
         self.assertIsInstance(info, MeshInfo)
         self.assertEqual(info.name, "scan.stl")
         self.assertEqual(info.created_by_id, 5)
+        self.assertEqual(info.tags, [])
+
+    def test_mesh_info_tags_default_fields_and_conversion(self):
+        raw_tags = [
+            {
+                ApiField.ENTITY_ID: 123,
+                ApiField.TAG_ID: 55,
+                ApiField.ID: 901,
+                ApiField.VALUE: "clear",
+            }
+        ]
+        fake = FakeApi()
+        fake.mesh_infos = {123: mesh_json(mesh_id=123, tags=raw_tags)}
+        fake.entity_response = [mesh_json(mesh_id=123, tags=raw_tags)]
+        api = MeshApi(fake)
+
+        self.assertIn(ApiField.TAGS, api.default_fields())
+        self.assertIn(ApiField.TAGS, api.info_sequence())
+
+        info = api.get_info_by_id(123)
+        self.assertEqual(info.tags, raw_tags)
+        method, data, _ = fake.calls[-1]
+        self.assertEqual(method, "entities.info")
+        self.assertIn(ApiField.TAGS, data[ApiField.FIELDS])
+
+        infos = api.get_list(dataset_id=4)
+        self.assertEqual(infos[0].tags, raw_tags)
+        method, data, _ = fake.calls[-1]
+        self.assertEqual(method, "entities.list")
+        self.assertIn(ApiField.TAGS, data[ApiField.FIELDS])
+
+    def test_mesh_info_tags_missing_custom_field_is_none(self):
+        api = MeshApi(FakeApi())
+        data = mesh_json()
+        data.pop(ApiField.TAGS)
+
+        info = api._convert_json_info(data)
+
+        self.assertIsNone(info.tags)
 
     def test_get_list_uses_generic_entities_payload(self):
         fake = FakeApi()
@@ -719,6 +789,56 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(
             object_call[1][ApiField.FILTER],
             [{ApiField.FIELD: ApiField.ENTITY_ID, ApiField.OPERATOR: "in", ApiField.VALUE: [123]}],
+        )
+
+    def test_mesh_entity_tags_download_bulk_from_entity_list(self):
+        tag_row = {
+            ApiField.ENTITY_ID: 123,
+            ApiField.TAG_ID: 55,
+            ApiField.ID: 901,
+            ApiField.VALUE: "clear",
+            "labelerLogin": "german",
+            ApiField.CREATED_AT: "2026-06-05T12:39:38.928Z",
+            ApiField.UPDATED_AT: "2026-06-05T12:39:38.928Z",
+        }
+        fake = FakeApi()
+        fake.tag_response = [tag_info_json(tag_id=55, name="weather")]
+        fake.entity_response = [
+            mesh_json(mesh_id=123, tags=[tag_row]),
+            mesh_json(mesh_id=124, tags=[]),
+        ]
+        api = MeshApi(fake)
+
+        ann_jsons = api.annotation.download_bulk(4, [123, 124])
+
+        self.assertEqual(
+            ann_jsons[0]["tags"],
+            [
+                {
+                    ApiField.NAME: "weather",
+                    ApiField.TAG_ID: 55,
+                    ApiField.VALUE: "clear",
+                    ApiField.ID: 901,
+                    "labelerLogin": "german",
+                    ApiField.CREATED_AT: "2026-06-05T12:39:38.928Z",
+                    ApiField.UPDATED_AT: "2026-06-05T12:39:38.928Z",
+                }
+            ],
+        )
+        self.assertEqual(ann_jsons[1]["tags"], [])
+
+        entity_calls = [
+            call
+            for call in fake.calls
+            if call[0] == "entities.list"
+            and call[1][ApiField.FIELDS] == [ApiField.ID, ApiField.TAGS]
+        ]
+        self.assertEqual(len(entity_calls), 1)
+        _, data, _ = entity_calls[0]
+        self.assertEqual(data[ApiField.DATASET_ID], 4)
+        self.assertEqual(
+            data[ApiField.FILTER],
+            [{ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "in", ApiField.VALUE: [123, 124]}],
         )
 
     def test_upload_json_writes_indices_to_raw_figure_geometry(self):
