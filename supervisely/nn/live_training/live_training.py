@@ -426,7 +426,8 @@ class LiveTraining:
             'clases': [cls.name for cls in self.class_map.obj_classes],
             'image_ids': self.dataset.get_image_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
-            'is_paused': self._is_paused
+            'is_paused': self._is_paused,
+            'evaluator': self.evaluator.state_dict() if self.evaluator else None,
         }
         return state
 
@@ -438,6 +439,9 @@ class LiveTraining:
         if state.get('is_paused', False):
             self._should_pause_after_continue = True
         dataset_size = state.get('dataset_size', 0)
+        evaluator_state = state.get('evaluator')
+        if self.evaluator and evaluator_state:
+            self.evaluator.load_state_dict(evaluator_state)
 
     def _restore_dataset(self, image_ids: list):
         if not image_ids:
