@@ -423,8 +423,19 @@ class FastTable(Widget):
     @page_size.setter
     def page_size(self, size: int):
         self._page_size = size
+        self._active_page = 1
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["pageSize"] = self._page_size
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        StateJson()[self.widget_id]["page"] = self._active_page
         DataJson().send_changes()
+        StateJson().send_changes()
 
     def set_sort(
         self, func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]

@@ -1337,13 +1337,23 @@ class TestFastTableBugFixes:
         assert DataJson()[table.widget_id]["projectMeta"] is not None
 
     def test_page_size_setter_updates_datajson(self):
-        """page_size setter must write the new value to DataJson."""
-        from supervisely.app.content import DataJson
+        """page_size setter must write new value to DataJson AND re-slice data."""
+        from supervisely.app.content import DataJson, StateJson
 
-        table = FastTable(data=[[1, 2]], columns=["a", "b"])
-        table.page_size = 25
-        assert DataJson()[table.widget_id]["pageSize"] == 25
-        assert table._page_size == 25
+        # Build 25-row table; default page_size=10 shows rows 0-9
+        data = [[i, i * 2] for i in range(25)]
+        table = FastTable(data=data, columns=["a", "b"])
+        assert len(DataJson()[table.widget_id]["data"]) == 10
+
+        table.page_size = 5
+        assert DataJson()[table.widget_id]["pageSize"] == 5
+        assert table._page_size == 5
+        # After re-slicing, first page must contain exactly 5 rows
+        assert len(DataJson()[table.widget_id]["data"]) == 5
+        # total is still 25
+        assert DataJson()[table.widget_id]["total"] == 25
+        # page must be reset to 1
+        assert StateJson()[table.widget_id]["page"] == 1
 
     # ------------------------------------------------------------------
     # HIGH #2 — pop_row() gapped labels: second call raised KeyError
