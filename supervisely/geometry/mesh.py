@@ -22,6 +22,11 @@ class Mesh(Geometry):
 
     @staticmethod
     def geometry_name():
+        """Return the string name of this geometry type.
+
+        :returns: Geometry name (``"mesh"``).
+        :rtype: str
+        """
         return "mesh"
 
     def __init__(
@@ -33,6 +38,22 @@ class Mesh(Geometry):
         updated_at=None,
         created_at=None,
     ):
+        """Initialize a mesh geometry from selected vertex/face indices.
+
+        :param indices: Mesh vertex/face indices. Defaults to an empty list.
+        :type indices: Optional[List[int]]
+        :param sly_id: Geometry ID in Supervisely.
+        :type sly_id: Optional[int]
+        :param class_id: Object class ID in Supervisely.
+        :type class_id: Optional[int]
+        :param labeler_login: Login of the user who created the geometry.
+        :type labeler_login: Optional[str]
+        :param updated_at: Timestamp of the last update.
+        :type updated_at: Optional[str]
+        :param created_at: Timestamp of creation.
+        :type created_at: Optional[str]
+        :raises TypeError: If ``indices`` is not a list.
+        """
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,
@@ -48,9 +69,18 @@ class Mesh(Geometry):
 
     @property
     def indices(self):
+        """Mesh vertex/face indices (returned as a copy of the list).
+
+        :rtype: List[int]
+        """
         return self._indices.copy()
 
     def to_json(self):
+        """Serialize the mesh geometry to a JSON-serializable dict.
+
+        :returns: Dict with the mesh indices, geometry shape/type and creation metadata.
+        :rtype: dict
+        """
         res = {
             INDICES: self.indices,
             GEOMETRY_SHAPE: self.geometry_name(),
@@ -61,6 +91,14 @@ class Mesh(Geometry):
 
     @classmethod
     def from_json(cls, data):
+        """Deserialize a mesh geometry from a JSON dict.
+
+        :param data: Mesh geometry in JSON format.
+        :type data: dict
+        :returns: Deserialized mesh geometry.
+        :rtype: :class:`~supervisely.geometry.mesh.Mesh`
+        :raises ValueError: If the ``indices`` field is present but is not a list.
+        """
         indices = data.get(INDICES)
         if indices is not None and not isinstance(indices, list):
             raise ValueError(
@@ -95,5 +133,12 @@ class Mesh(Geometry):
 
     @classmethod
     def from_file(cls, file_path: str) -> Mesh:
+        """Create a Mesh from a file of little-endian uint32 index bytes.
+
+        :param file_path: Path to the binary file with encoded mesh indices.
+        :type file_path: str
+        :returns: Mesh geometry decoded from the file.
+        :rtype: :class:`~supervisely.geometry.mesh.Mesh`
+        """
         with open(file_path, "rb") as f:
             return cls.from_bytes(f.read())

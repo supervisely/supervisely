@@ -13,4 +13,5 @@ class MeshTagCollection(PointcloudTagCollection):
     item_type = MeshTag
 
     def __iter__(self) -> Iterator[MeshTag]:
+        """Iterate over the :class:`MeshTag` instances in the collection."""
         return next(self)

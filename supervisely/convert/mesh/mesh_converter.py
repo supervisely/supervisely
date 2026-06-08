@@ -5,7 +5,6 @@ from supervisely import Api, MeshAnnotation, batched, generate_free_name, is_dev
 from supervisely.api.mesh.mesh_api import ALLOWED_MESH_EXTENSIONS
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class MeshConverter(BaseConverter):
@@ -97,7 +96,6 @@ class MeshConverter(BaseConverter):
         if self.upload_as_links and self.supports_links:
             upload_fn = api.mesh.upload_links
 
-        key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
@@ -120,7 +118,7 @@ class MeshConverter(BaseConverter):
 
             mesh_infos = upload_fn(dataset_id, item_names, item_paths)
             for mesh_info, ann in zip(mesh_infos, anns):
-                api.mesh.annotation.append(mesh_info.id, ann, key_id_map=key_id_map)
+                api.mesh.annotation.append(mesh_info.id, ann)
 
             if log_progress:
                 progress_cb(len(batch))

@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, rand_str
 from supervisely.api.mesh.mesh_annotation_api import MeshAnnotationAPI
-from supervisely.api.mesh.mesh_figure_api import MeshFigureApi
 from supervisely.api.mesh.mesh_object_api import MeshObjectApi
 from supervisely.api.mesh.mesh_tag_api import MeshTagApi
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi, _get_single_item
@@ -134,7 +133,6 @@ class MeshApi(RemoveableBulkModuleApi):
             api.mesh = self
         self.annotation = MeshAnnotationAPI(api)
         self.object = MeshObjectApi(api)
-        self.figure = MeshFigureApi(api)
         self.tag = MeshTagApi(api)
 
     @staticmethod
@@ -180,6 +178,12 @@ class MeshApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def default_fields() -> List[str]:
+        """
+        Default list of fields requested when listing or fetching mesh entities.
+
+        :returns: List of field names.
+        :rtype: List[str]
+        """
         return [
             ApiField.ID,
             ApiField.NAME,
@@ -204,6 +208,18 @@ class MeshApi(RemoveableBulkModuleApi):
         ]
 
     def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
+        """
+        Convert a raw JSON dict from the API into a :class:`MeshInfo` NamedTuple.
+
+        Fills in ``name`` from ``title`` (and vice versa) when one of them is missing.
+
+        :param info: Raw mesh info dict from the API.
+        :type info: dict
+        :param skip_missing: If ``True``, missing fields are tolerated.
+        :type skip_missing: bool, optional
+        :returns: Parsed mesh info, or ``None`` if *info* is ``None``.
+        :rtype: :class:`~supervisely.api.mesh.mesh_api.MeshInfo`
+        """
         if info is None:
             return None
         info = dict(info)
@@ -216,6 +232,11 @@ class MeshApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def _validate_project_and_dataset_id(project_id: Optional[int], dataset_id: Optional[int]) -> None:
+        """
+        Ensure that exactly one of *project_id* or *dataset_id* is provided.
+
+        :raises ValueError: If neither or both arguments are provided.
+        """
         if project_id is None and dataset_id is None:
             raise ValueError("Either project_id or dataset_id must be provided.")
         if project_id is not None and dataset_id is not None:
@@ -223,6 +244,11 @@ class MeshApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def _validate_mesh_name(name: str) -> None:
+        """
+        Validate that *name* has a supported mesh extension (``.ply``, ``.stl``, ``.obj``).
+
+        :raises ValueError: If the extension is not allowed.
+        """
         ext = get_file_ext(name).lower()
         if ext not in ALLOWED_MESH_EXTENSIONS:
             allowed = ", ".join(sorted(ALLOWED_MESH_EXTENSIONS))
@@ -230,6 +256,18 @@ class MeshApi(RemoveableBulkModuleApi):
 
     @staticmethod
     def _reserve_unique_path(path: str, reserved_paths: set) -> str:
+        """
+        Return a path not already present in *reserved_paths*, adding a numeric suffix if needed.
+
+        The chosen path is added to *reserved_paths* in place.
+
+        :param path: Desired path.
+        :type path: str
+        :param reserved_paths: Set of already-reserved paths (mutated in place).
+        :type reserved_paths: set
+        :returns: A unique path.
+        :rtype: str
+        """
         candidate = path
         suffix = 0
         parsed_path = PurePosixPath(path)
@@ -240,9 +278,11 @@ class MeshApi(RemoveableBulkModuleApi):
         return candidate
 
     def _remove_batch_api_method_name(self):
+        """Return the API method name used for batch removal of mesh entities."""
         return "entities.bulk.remove"
 
     def _remove_batch_field_name(self):
+        """Return the request field name carrying the list of IDs for batch removal."""
         return ApiField.IDS
 
     def get_list(
@@ -511,6 +551,65 @@ class MeshApi(RemoveableBulkModuleApi):
             parent_ids=parent_ids,
         )
 
+    def upload_ids(
+        self,
+        dataset_id: int,
+        names: List[str],
+        ids: List[int],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        descriptions: Optional[List[str]] = None,
+        parent_ids: Optional[List[int]] = None,
+    ) -> List[MeshInfo]:
+        """
+        Upload meshes from given source IDs to a dataset (server-side copy).
+
+        Mirrors :meth:`~supervisely.api.image_api.ImageApi.upload_ids`: each source
+        mesh is re-registered in the destination dataset by its ID; the binary is
+        not downloaded or re-uploaded.
+
+        :param dataset_id: Destination dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: Destination mesh names with extension. Must match *ids* length.
+        :type names: List[str]
+        :param ids: Source mesh IDs in Supervisely.
+        :type ids: List[int]
+        :param metas: Per-mesh metadata dictionaries. Defaults to empty dicts.
+        :type metas: List[dict], optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: tqdm or callable, optional
+        :param descriptions: Per-mesh human-readable descriptions.
+        :type descriptions: List[str], optional
+        :param parent_ids: Per-mesh parent entity IDs.
+        :type parent_ids: List[int], optional
+        :returns: List of :class:`MeshInfo` objects in the same order as *ids*.
+        :rtype: List[:class:`~supervisely.api.mesh.mesh_api.MeshInfo`]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+
+                src_infos = api.mesh.get_list(src_dataset_id)
+                names = [info.name for info in src_infos]
+                ids = [info.id for info in src_infos]
+                new_infos = api.mesh.upload_ids(dst_dataset_id, names, ids)
+        """
+        if metas is None:
+            metas = [{}] * len(names)
+        return self._upload_bulk_add(
+            lambda item: (ApiField.ENTITY_ID, item),
+            dataset_id,
+            names,
+            ids,
+            metas=metas,
+            progress_cb=progress_cb,
+            descriptions=descriptions,
+            parent_ids=parent_ids,
+        )
+
     def _upload_by_team_file_ids(
         self,
         dataset_id: int,
@@ -521,6 +620,26 @@ class MeshApi(RemoveableBulkModuleApi):
         descriptions: Optional[List[str]] = None,
         parent_ids: Optional[List[int]] = None,
     ) -> List[MeshInfo]:
+        """
+        Register meshes in a dataset from previously uploaded Team Files IDs.
+
+        :param dataset_id: Destination dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: Destination mesh names with extension. Must match *team_file_ids* length.
+        :type names: List[str]
+        :param team_file_ids: Team Files IDs of the mesh files.
+        :type team_file_ids: List[int]
+        :param metas: Per-mesh metadata dictionaries. Defaults to empty dicts.
+        :type metas: List[dict], optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: Callable, optional
+        :param descriptions: Per-mesh human-readable descriptions.
+        :type descriptions: List[str], optional
+        :param parent_ids: Per-mesh parent entity IDs.
+        :type parent_ids: List[int], optional
+        :returns: List of :class:`MeshInfo` objects in the same order as *names*.
+        :rtype: List[:class:`~supervisely.api.mesh.mesh_api.MeshInfo`]
+        """
         return self._upload_bulk_add(
             lambda item: (ApiField.TEAM_FILE_ID, item),
             dataset_id,
@@ -698,6 +817,32 @@ class MeshApi(RemoveableBulkModuleApi):
         descriptions: Optional[List[str]] = None,
         parent_ids: Optional[List[int]] = None,
     ) -> List[MeshInfo]:
+        """
+        Register meshes in a dataset in batches via the ``entities.bulk.add`` method.
+
+        *func_item_to_kv* maps each item in *items* to the ``(field, value)`` pair that
+        identifies the source (e.g. a link, an entity ID, or a Team Files ID).
+
+        :param func_item_to_kv: Callable mapping an item to its ``(ApiField, value)`` pair.
+        :type func_item_to_kv: Callable
+        :param dataset_id: Destination dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: Destination mesh names with extension. Must match *items* length.
+        :type names: List[str]
+        :param items: Source items resolved by *func_item_to_kv*.
+        :type items: list
+        :param metas: Per-mesh metadata dictionaries. Defaults to empty dicts.
+        :type metas: List[dict], optional
+        :param progress_cb: Progress callback invoked with the batch size.
+        :type progress_cb: Callable, optional
+        :param descriptions: Per-mesh human-readable descriptions.
+        :type descriptions: List[str], optional
+        :param parent_ids: Per-mesh parent entity IDs.
+        :type parent_ids: List[int], optional
+        :raises RuntimeError: If the input lists have mismatched lengths.
+        :returns: List of :class:`MeshInfo` objects in the same order as *names*.
+        :rtype: List[:class:`~supervisely.api.mesh.mesh_api.MeshInfo`]
+        """
         if len(names) == 0:
             return []
         if len(names) != len(items):
