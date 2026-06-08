@@ -66,7 +66,7 @@ class MeshTagApi(TagApi):
         }
         if value is not None:
             request_body[ApiField.TAGS][0][ApiField.VALUE] = value
-        response = self._api.post("tags.entities.bulk.add", request_body)
+        response = self._api.post(self._method_bulk_add, request_body)
         return response.json()[0][ApiField.ID]
 
     def append_to_entity(
@@ -95,7 +95,7 @@ class MeshTagApi(TagApi):
             tag_json[ApiField.ENTITY_ID] = entity_id
 
         response = self._api.post(
-            "tags.entities.bulk.add",
+            self._method_bulk_add,
             {
                 ApiField.PROJECT_ID: project_id,
                 ApiField.TAGS: [self._clean_entity_tag_json(tag_json) for tag_json in tags_json],
