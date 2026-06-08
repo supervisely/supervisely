@@ -513,6 +513,17 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
     async def status():
         # /status bypasses the queue so it never blocks behind long-running
         # ADD_SAMPLES_VIDEO or PREDICT_BATCH work.
+        #
+        # Exception: in "continue" mode, status requests received after the
+        # START signal must wait until the checkpoint is fully restored,
+        # otherwise the UI sees iter=0 / empty dataset while the trainer is
+        # mid-restore. Requests received before START still pass through.
+        if (
+            lt.checkpoint_mode == "continue"
+            and lt._start_received.is_set()
+            and not lt._continue_checkpoint_loaded.is_set()
+        ):
+            await asyncio.to_thread(lt._continue_checkpoint_loaded.wait)
         return lt.status()
 
     return app
