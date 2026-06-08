@@ -34,6 +34,22 @@ class MeshObjectApi(FigureApi):
         class_id: int,
         custom_data: Optional[dict] = None,
     ) -> int:
+        """
+        Create a single mesh object and return its newly assigned ID.
+
+        :param mesh_id: ID of the mesh entity the object belongs to.
+        :type mesh_id: int
+        :param geometry_json: Object geometry in JSON format.
+        :type geometry_json: dict
+        :param geometry_type: Geometry type identifier.
+        :type geometry_type: str
+        :param class_id: ID of the object class.
+        :type class_id: int
+        :param custom_data: Arbitrary custom data attached to the object.
+        :type custom_data: dict, optional
+        :returns: ID of the created mesh object.
+        :rtype: int
+        """
         object_json = {
             ApiField.ENTITY_ID: mesh_id,
             ApiField.GEOMETRY_TYPE: geometry_type,

@@ -22,6 +22,27 @@ class MeshTag(PointcloudTag):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ) -> "MeshTag":
+        """Return a copy of the tag with the given fields overridden.
+
+        Any argument left as ``None`` keeps the current value of the tag.
+
+        :param meta: New tag meta.
+        :type meta: Optional[:class:`~supervisely.annotation.tag_meta.TagMeta`]
+        :param value: New tag value.
+        :type value: Optional[Union[str, int, float]]
+        :param key: New unique identifier.
+        :type key: Optional[uuid.UUID]
+        :param sly_id: New tag ID in Supervisely.
+        :type sly_id: Optional[int]
+        :param labeler_login: New labeler login.
+        :type labeler_login: Optional[str]
+        :param updated_at: New update timestamp.
+        :type updated_at: Optional[str]
+        :param created_at: New creation timestamp.
+        :type created_at: Optional[str]
+        :returns: New mesh tag with the overridden fields.
+        :rtype: :class:`~supervisely.mesh_annotation.mesh_tag.MeshTag`
+        """
         return MeshTag(
             meta=take_with_default(meta, self.meta),
             value=take_with_default(value, self.value),

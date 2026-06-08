@@ -145,7 +145,27 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         return annotations
 
     def append(self, mesh_id: int, ann: Union[MeshAnnotation, Dict]) -> None:
-        """Append a full mesh annotation to the mesh entity."""
+        """
+        Append a full mesh annotation to the mesh entity.
+
+        :param mesh_id: Mesh ID in Supervisely.
+        :type mesh_id: int
+        :param ann: Mesh annotation object or its JSON representation.
+        :type ann: :class:`~supervisely.mesh_annotation.mesh_annotation.MeshAnnotation` or dict
+        :returns: None
+        :rtype: None
+        :raises TypeError: If *ann* is neither a :class:`MeshAnnotation` nor a dict.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+
+                ann_json = api.mesh.annotation.download(mesh_id)
+                api.mesh.annotation.append(mesh_id, ann_json)
+        """
         info = self._api.mesh.get_info_by_id(mesh_id)
         ann_obj = self._coerce_annotation(ann, info.project_id)
         self._upload_annotation(mesh_id, info.project_id, ann_obj)
@@ -154,9 +174,19 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         self,
         mesh_id: int,
         ann_json: Dict,
-        dataset_id: Optional[int] = None,  # kept for backward compatibility
     ) -> None:
-        """Upload one mesh annotation JSON."""
+        """
+        Upload one mesh annotation JSON to the mesh entity.
+
+        Thin wrapper around :meth:`append`.
+
+        :param mesh_id: Mesh ID in Supervisely.
+        :type mesh_id: int
+        :param ann_json: Mesh annotation JSON.
+        :type ann_json: dict
+        :returns: None
+        :rtype: None
+        """
         self.append(mesh_id, ann_json)
 
     def upload_paths(
@@ -165,7 +195,22 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         ann_paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
-        """Upload mesh annotations from local JSON files."""
+        """
+        Upload mesh annotations from local JSON files.
+
+        Each annotation is loaded from its file and appended to the matching mesh via
+        :meth:`append`.
+
+        :param mesh_ids: Mesh IDs in Supervisely. Must match *ann_paths* length.
+        :type mesh_ids: List[int]
+        :param ann_paths: Local paths to mesh annotation JSON files.
+        :type ann_paths: List[str]
+        :param progress_cb: Progress callback.
+        :type progress_cb: tqdm or callable, optional
+        :returns: None
+        :rtype: None
+        :raises ValueError: If *mesh_ids* and *ann_paths* have different lengths.
+        """
         if len(mesh_ids) != len(ann_paths):
             raise ValueError(
                 f"mesh_ids and ann_paths must have the same length: "
@@ -181,6 +226,12 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         ann: Union[MeshAnnotation, Dict],
         project_id: int,
     ) -> MeshAnnotation:
+        """
+        Coerce a mesh annotation given as a dict or object into a :class:`MeshAnnotation`.
+
+        :raises TypeError: If *ann* is neither a :class:`MeshAnnotation` nor a dict.
+        :rtype: :class:`~supervisely.mesh_annotation.mesh_annotation.MeshAnnotation`
+        """
         if isinstance(ann, MeshAnnotation):
             return ann
         if isinstance(ann, dict):
@@ -195,6 +246,12 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
         project_id: int,
         ann: MeshAnnotation,
     ) -> None:
+        """
+        Create mesh objects, append entity-level tags, and upload object index geometry.
+
+        Object index geometry (for :class:`~supervisely.geometry.mesh.Mesh` labels) is sent
+        as a separate blob and matched to its object by order.
+        """
         name_to_class_id = self._api.object_class.get_name_to_id_map(project_id)
 
         objects_json = []
@@ -240,6 +297,12 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
     @staticmethod
     def _prepare_annotation_json(ann_json: Dict) -> Dict:
+        """
+        Normalize a mesh annotation JSON, ensuring a ``labels`` key is present.
+
+        :raises RuntimeError: If the JSON uses the legacy ``objects``/``figures`` schema.
+        :rtype: dict
+        """
         prepared_ann = dict(ann_json)
         if OBJECTS in prepared_ann or FIGURES in prepared_ann:
             raise RuntimeError(
@@ -251,6 +314,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
     @staticmethod
     def _extract_mesh_indices(geometry) -> Optional[List[int]]:
+        """Return the index list from a geometry dict, or ``None`` if not present."""
         if not isinstance(geometry, dict):
             return None
         for field_name in MESH_INDEX_FIELDS:
@@ -261,6 +325,7 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
     @staticmethod
     def _convert_tag_rows_to_json(tag_rows: Optional[List[Dict]], tag_id_to_name: Dict[int, str]):
+        """Convert raw API tag rows into annotation tag JSON, resolving tag IDs to names."""
         result = []
         for tag_row in tag_rows or []:
             if not isinstance(tag_row, dict):

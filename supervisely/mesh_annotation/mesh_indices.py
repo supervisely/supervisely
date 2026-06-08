@@ -51,18 +51,46 @@ def decode_mesh_indices_np(data: bytes) -> List[int]:
 
 
 def encode_mesh_indices(indices: Iterable[int]) -> bytes:
+    """Encode mesh indices as little-endian uint32 bytes.
+
+    :param indices: Sequence of non-negative integer mesh indices.
+    :type indices: Iterable[int]
+    :returns: Little-endian uint32 byte representation of the indices.
+    :rtype: bytes
+    """
     return encode_mesh_indices_np(indices)
 
 
 def decode_mesh_indices(data: bytes) -> List[int]:
+    """Decode little-endian uint32 mesh index bytes into a list of integers.
+
+    :param data: Little-endian uint32 encoded mesh indices.
+    :type data: bytes
+    :returns: Decoded mesh indices.
+    :rtype: List[int]
+    """
     return decode_mesh_indices_np(data)
 
 
 def encode_mesh_indices_base64(indices: Iterable[int]) -> str:
+    """Encode mesh indices as a base64 string of little-endian uint32 bytes.
+
+    :param indices: Sequence of non-negative integer mesh indices.
+    :type indices: Iterable[int]
+    :returns: Base64-encoded mesh indices.
+    :rtype: str
+    """
     return base64.b64encode(encode_mesh_indices(indices)).decode("ascii")
 
 
 def decode_mesh_indices_base64(data: str) -> List[int]:
+    """Decode a base64 string of little-endian uint32 bytes into a list of integers.
+
+    :param data: Base64-encoded mesh indices.
+    :type data: str
+    :returns: Decoded mesh indices.
+    :rtype: List[int]
+    """
     return decode_mesh_indices(base64.b64decode(data.encode("ascii")))
 
 
@@ -81,6 +109,11 @@ def decode_mesh_indices_in_json(data: Any) -> Any:
 
 
 def _convert_mesh_indices(data: Any, encode: bool) -> Any:
+    """Recursively encode/decode mesh index fields in a nested JSON structure.
+
+    When ``encode`` is True, integer-sequence values under known mesh index fields are
+    converted to base64 strings; when False, base64 strings are decoded back to integer lists.
+    """
     if isinstance(data, dict):
         for key, value in list(data.items()):
             if key in MESH_INDEX_FIELDS:
@@ -100,6 +133,7 @@ def _convert_mesh_indices(data: Any, encode: bool) -> Any:
 
 
 def _is_int_sequence(value: Any) -> bool:
+    """Return True if ``value`` is a list/tuple/ndarray of integers (not a str/bytes)."""
     if isinstance(value, (str, bytes, bytearray)):
         return False
     if isinstance(value, np.ndarray):
