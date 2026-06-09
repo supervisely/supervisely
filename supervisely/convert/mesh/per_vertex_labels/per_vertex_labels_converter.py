@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from supervisely import ProjectMeta, logger
+from supervisely._utils import generate_free_name, is_development
+from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableMeshConverters
 from supervisely.convert.mesh.mesh_converter import MeshConverter
 from supervisely.geometry.any_geometry import AnyGeometry
@@ -14,6 +16,9 @@ from supervisely.io.fs import get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project_type import ProjectType
 
+# Keys used in _project_structure (mirrors SLYMeshConverter / SLYImageConverter).
+_DATASET_ITEMS = "items"
+_NESTED_DATASETS = "datasets"
 
 ANN_DIR_NAME = "ann"
 GEOMETRIES_DIR_NAME = "geometries"
@@ -34,6 +39,9 @@ class PerVertexLabelsMeshConverter(MeshConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._supports_links = False
+        # Populated when the input contains more than one dataset directory.
+        # Structure: { ds_name: { "items": [Item, ...], "datasets": { child: {...} } } }
+        self._project_structure = None
 
     def __str__(self) -> str:
         return AvailableMeshConverters.PER_VERTEX_LABELS
@@ -76,8 +84,11 @@ class PerVertexLabelsMeshConverter(MeshConverter):
             if len(mesh_paths) == 0:
                 return False
 
+            project = {}
             items = []
             labeled_items = 0
+            ds_names_seen = set()
+
             for mesh_path in mesh_paths:
                 labels = _read_ascii_ply_labels(mesh_path, color_to_class)
                 if not labels.has_rgb:
@@ -85,18 +96,98 @@ class PerVertexLabelsMeshConverter(MeshConverter):
                 ann_json = self._labels_to_annotation(labels)
                 if labels.labeled_vertices > 0:
                     labeled_items += 1
-                items.append(self.Item(item_path=mesh_path, ann_data=ann_json))
+                item = self.Item(item_path=mesh_path, ann_data=ann_json)
+                items.append(item)
+
+                # Determine dataset from the item's directory relative to project_dir.
+                # e.g. project_dir/parent/child1/box.ply → "parent/child1"
+                rel_dir = os.path.relpath(os.path.dirname(mesh_path), project_dir)
+                if rel_dir == ".":
+                    rel_dir = "ds0"  # items directly in project_dir → default dataset name
+                ds_name_posix = Path(rel_dir).as_posix()
+                ds_names_seen.add(ds_name_posix)
+
+                parts = ds_name_posix.split("/")
+                curr_ds = project.setdefault(
+                    parts[0], {_DATASET_ITEMS: [], _NESTED_DATASETS: {}}
+                )
+                for part in parts[1:]:
+                    curr_ds = curr_ds[_NESTED_DATASETS].setdefault(
+                        part, {_DATASET_ITEMS: [], _NESTED_DATASETS: {}}
+                    )
+                curr_ds[_DATASET_ITEMS].append(item)
 
             if labeled_items == 0:
                 return False
 
             self._items = items
+            if len(ds_names_seen) > 1:
+                self._project_structure = project
             return True
         except Exception as e:
             logger.info(f"Failed to read Per-Vertex Labels mesh project: {repr(e)}")
             self._items = []
             self._meta = None
             return False
+
+    def upload_dataset(
+        self,
+        api: Api,
+        dataset_id: int,
+        batch_size: int = 10,
+        log_progress=True,
+    ) -> None:
+        if self._project_structure:
+            self.upload_project(api, dataset_id, batch_size, log_progress)
+        else:
+            super().upload_dataset(api, dataset_id, batch_size, log_progress)
+
+    def upload_project(
+        self, api: Api, dataset_id: int, batch_size: int = 10, log_progress=True
+    ) -> None:
+        """Upload a multi-dataset per-vertex-labels project preserving the directory hierarchy."""
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_id = dataset_info.project_id
+        existing_datasets = {
+            ds.name for ds in api.dataset.get_list(project_id, recursive=True)
+        }
+
+        if log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading meshes...")
+        else:
+            progress, progress_cb = None, None
+
+        def _upload_project(
+            project_structure: Dict,
+            project_id: int,
+            dataset_id: int,
+            parent_id: Optional[int] = None,
+            first_dataset: bool = False,
+        ):
+            for ds_name, value in project_structure.items():
+                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
+                if first_dataset:
+                    first_dataset = False
+                    api.dataset.update(dataset_id, ds_name)
+                else:
+                    dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
+
+                items = value.get(_DATASET_ITEMS, [])
+                nested = value.get(_NESTED_DATASETS, {})
+                logger.info(
+                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested)}"
+                )
+                if items:
+                    super(PerVertexLabelsMeshConverter, self).upload_dataset(
+                        api, dataset_id, batch_size, entities=items, progress_cb=progress_cb
+                    )
+                if nested:
+                    _upload_project(nested, project_id, dataset_id, dataset_id)
+
+        _upload_project(self._project_structure, project_id, dataset_id, first_dataset=True)
+
+        if is_development() and progress is not None:
+            progress.close()
 
     def to_supervisely(
         self,

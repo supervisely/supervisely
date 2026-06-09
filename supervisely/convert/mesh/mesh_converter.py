@@ -79,24 +79,32 @@ class MeshConverter(BaseConverter):
         dataset_id: int,
         batch_size: int = 10,
         log_progress=True,
+        entities: Optional[List[Item]] = None,
+        progress_cb=None,
     ) -> None:
-        """Upload converted mesh data and mesh annotation JSONs to Supervisely."""
+        """Upload converted mesh data and mesh annotation JSONs to Supervisely.
+
+        :param entities: Items to upload; defaults to all items collected by the converter.
+            Pass a subset when uploading one dataset at a time (e.g. from
+            :meth:`SLYMeshConverter.upload_project`).
+        :param progress_cb: External progress callback.  When provided, the method
+            does **not** create its own progress bar.
+        """
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_mesh_infos = api.mesh.get_list(dataset_id)
         existing_mesh_names = set(mesh.name for mesh in existing_mesh_infos)
 
-        if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading meshes...")
-        else:
-            progress_cb = None
+        _own_progress = None
+        if progress_cb is None and log_progress:
+            _own_progress, progress_cb = self.get_progress(self.items_count, "Uploading meshes...")
 
         upload_fn = api.mesh.upload_paths
         if self.upload_as_links and self.supports_links:
             upload_fn = api.mesh.upload_links
 
-        for batch in batched(self._items, batch_size=batch_size):
+        for batch in batched(entities or self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
             anns = []
@@ -120,11 +128,11 @@ class MeshConverter(BaseConverter):
             for mesh_info, ann in zip(mesh_infos, anns):
                 api.mesh.annotation.append(mesh_info.id, ann)
 
-            if log_progress:
+            if progress_cb is not None:
                 progress_cb(len(batch))
 
-        if log_progress and is_development():
-            progress.close()
+        if _own_progress is not None and is_development():
+            _own_progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def _collect_items_if_format_not_detected(self) -> Tuple[List[Item], bool, Set[str]]:
