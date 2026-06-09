@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from tqdm import tqdm
 
-from supervisely._utils import batched, rand_str
+from supervisely._utils import batched, generate_free_name, rand_str
 from supervisely.api.mesh.mesh_annotation_api import MeshAnnotationAPI
 from supervisely.api.mesh.mesh_object_api import MeshObjectApi
 from supervisely.api.mesh.mesh_tag_api import MeshTagApi
@@ -889,3 +889,83 @@ class MeshApi(RemoveableBulkModuleApi):
 
         name_to_result = {mesh_info.name: mesh_info for mesh_info in results}
         return [name_to_result.get(name, results[idx]) for idx, name in enumerate(names)]
+
+    def copy_batch(
+        self,
+        dst_dataset_id: int,
+        ids: List[int],
+        change_name_if_conflict: Optional[bool] = False,
+        with_annotations: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[MeshInfo]:
+        """
+        Copy meshes with given IDs to a dataset.
+
+        :param dst_dataset_id: Destination Dataset ID in Supervisely.
+        :type dst_dataset_id: int
+        :param ids: Mesh IDs to copy.
+        :type ids: List[int]
+        :param change_name_if_conflict: Add a suffix when a mesh with the same name already exists
+            in the destination dataset. When False and a name collision is detected, raises ValueError.
+        :type change_name_if_conflict: bool, optional
+        :param with_annotations: Copy mesh annotations to the destination dataset.
+        :type with_annotations: bool, optional
+        :param progress_cb: Progress callback invoked once per copied mesh.
+        :type progress_cb: tqdm or callable, optional
+        :raises TypeError: If *ids* is not a list.
+        :raises ValueError: If meshes from more than one source dataset are given, or if name
+            conflicts exist and *change_name_if_conflict* is False.
+        :returns: List of new :class:`MeshInfo` objects.
+        :rtype: List[:class:`~supervisely.api.mesh.mesh_api.MeshInfo`]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+
+                mesh_infos = api.mesh.get_list(src_dataset_id)
+                mesh_ids = [info.id for info in mesh_infos]
+                new_infos = api.mesh.copy_batch(dst_dataset_id, mesh_ids, with_annotations=True)
+        """
+        if type(ids) is not list:
+            raise TypeError(
+                "ids parameter has type {!r}, but has to be of type {!r}".format(type(ids), list)
+            )
+
+        if len(ids) == 0:
+            return []
+
+        ids_info = [self.get_info_by_id(mesh_id) for mesh_id in ids]
+        if len(set(info.dataset_id for info in ids_info)) > 1:
+            raise ValueError("Mesh ids have to be from the same dataset")
+
+        existing_meshes = self.get_list(dst_dataset_id)
+        existing_names = {mesh.name for mesh in existing_meshes}
+
+        if change_name_if_conflict:
+            new_names = [
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
+                for info in ids_info
+            ]
+        else:
+            new_names = [info.name for info in ids_info]
+            names_intersection = existing_names.intersection(set(new_names))
+            if len(names_intersection) != 0:
+                raise ValueError(
+                    "Meshes with the same names already exist in destination dataset. "
+                    'Please, use argument "change_name_if_conflict=True" to automatically resolve '
+                    "names intersection"
+                )
+
+        new_meshes = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb=progress_cb)
+        new_ids = [mesh.id for mesh in new_meshes]
+
+        if with_annotations:
+            src_project_id = self._api.dataset.get_info_by_id(ids_info[0].dataset_id).project_id
+            dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
+            self._api.project.merge_metas(src_project_id, dst_project_id)
+            self._api.mesh.annotation.copy_batch(ids, new_ids)
+
+        return new_meshes

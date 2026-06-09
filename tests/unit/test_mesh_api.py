@@ -164,6 +164,7 @@ class FakeProjectApi:
     def __init__(self):
         self.updated_meta = None
         self.meta = ProjectMeta(project_type=ProjectType.MESHES)
+        self.merge_metas_calls = []
 
     def get_meta(self, project_id, with_settings=False):
         return self.meta.to_json()
@@ -175,6 +176,9 @@ class FakeProjectApi:
             return meta
         self.meta = ProjectMeta.from_json(meta)
         return self.meta
+
+    def merge_metas(self, src_project_id, dst_project_id):
+        self.merge_metas_calls.append((src_project_id, dst_project_id))
 
 
 class FakeObjectClassApi:
@@ -456,6 +460,82 @@ class TestMeshApi(unittest.TestCase):
         self.assertNotIn(ApiField.LINK, first_entity)
         self.assertNotIn(ApiField.HASH, first_entity)
 
+    def test_copy_batch_copies_meshes_server_side(self):
+        fake = FakeApi()
+        fake.mesh_infos = {
+            101: mesh_json(mesh_id=101, name="a.obj", datasetId=4),
+            102: mesh_json(mesh_id=102, name="b.stl", datasetId=4),
+        }
+        fake.entity_response = []
+        api = MeshApi(fake)
+
+        results = api.copy_batch(dst_dataset_id=5, ids=[101, 102])
+
+        bulk_add_calls = [c for c in fake.calls if c[0] == "entities.bulk.add"]
+        self.assertEqual(len(bulk_add_calls), 1)
+        entities = bulk_add_calls[0][1][ApiField.ENTITIES]
+        self.assertEqual(len(entities), 2)
+        self.assertCountEqual(
+            [e[ApiField.ENTITY_ID] for e in entities], [101, 102]
+        )
+        self.assertEqual(len(results), 2)
+        methods = [m for m, _, _ in fake.calls]
+        self.assertNotIn("annotation-objects.bulk.add", methods)
+
+    def test_copy_batch_empty_ids_returns_empty_list(self):
+        api = MeshApi(FakeApi())
+        self.assertEqual(api.copy_batch(dst_dataset_id=5, ids=[]), [])
+
+    def test_copy_batch_raises_when_ids_not_list(self):
+        api = MeshApi(FakeApi())
+        with self.assertRaises(TypeError):
+            api.copy_batch(dst_dataset_id=5, ids=(101, 102))
+
+    def test_copy_batch_raises_when_meshes_from_different_datasets(self):
+        fake = FakeApi()
+        fake.mesh_infos = {
+            101: mesh_json(mesh_id=101, datasetId=4),
+            102: mesh_json(mesh_id=102, datasetId=7),
+        }
+        api = MeshApi(fake)
+        with self.assertRaises(ValueError):
+            api.copy_batch(dst_dataset_id=5, ids=[101, 102])
+
+    def test_copy_batch_raises_on_name_conflict_without_flag(self):
+        fake = FakeApi()
+        fake.mesh_infos = {101: mesh_json(mesh_id=101, name="a.obj", datasetId=4)}
+        fake.entity_response = [mesh_json(mesh_id=99, name="a.obj")]
+        api = MeshApi(fake)
+        with self.assertRaises(ValueError):
+            api.copy_batch(dst_dataset_id=5, ids=[101])
+
+    def test_copy_batch_resolves_name_conflict_when_flag_set(self):
+        fake = FakeApi()
+        fake.mesh_infos = {101: mesh_json(mesh_id=101, name="a.obj", datasetId=4)}
+        fake.entity_response = [mesh_json(mesh_id=99, name="a.obj")]
+        api = MeshApi(fake)
+
+        api.copy_batch(dst_dataset_id=5, ids=[101], change_name_if_conflict=True)
+
+        bulk_add_calls = [c for c in fake.calls if c[0] == "entities.bulk.add"]
+        entity_name = bulk_add_calls[0][1][ApiField.ENTITIES][0][ApiField.NAME]
+        self.assertNotEqual(entity_name, "a.obj")
+
+    def test_copy_batch_with_annotations_calls_merge_and_annotation_copy(self):
+        fake = FakeApi()
+        fake.mesh_infos = {101: mesh_json(mesh_id=101, name="a.obj", datasetId=4)}
+        fake.entity_response = []
+        api = MeshApi(fake)
+
+        annotation_copy_calls = []
+        api.annotation.copy_batch = lambda src, dst, **kw: annotation_copy_calls.append((src, dst))
+
+        api.copy_batch(dst_dataset_id=5, ids=[101], with_annotations=True)
+
+        self.assertEqual(len(fake.project.merge_metas_calls), 1)
+        # FakeApi returns mesh_id=1 for the first bulk-added entity
+        self.assertEqual(annotation_copy_calls, [([101], [1])])
+
     def test_no_hash_upload_surface_and_extension_validation(self):
         api = MeshApi(FakeApi())
         self.assertFalse(hasattr(api, "upload_hash"))
@@ -697,16 +777,14 @@ class TestMeshConverter(unittest.TestCase):
 
             method_names = [method for method, _, _ in fake.calls]
             self.assertIn("entities.bulk.add", method_names)
-            self.assertIn("annotation-objects.bulk.add", method_names)
             self.assertIn("figures.bulk.add", method_names)
             self.assertIn("figures.bulk.upload.geometry", method_names)
+            self.assertNotIn("annotation-objects.bulk.add", method_names)
             self.assertNotIn("entities.annotations.bulk.add", method_names)
-            object_call = [call for call in fake.calls if call[0] == "annotation-objects.bulk.add"][-1]
-            self.assertEqual(object_call[1][ApiField.ANNOTATION_OBJECTS][0][ApiField.ENTITY_ID], 1)
             figure_call = [call for call in fake.calls if call[0] == "figures.bulk.add"][-1]
             stored_figure = figure_call[1][ApiField.FIGURES][0]
+            self.assertEqual(stored_figure[ApiField.ENTITY_ID], 1)
             self.assertEqual(stored_figure[ApiField.GEOMETRY_TYPE], "mesh")
-            self.assertEqual(stored_figure[ApiField.OBJECT_ID], 300)
             self.assertNotIn(ApiField.GEOMETRY, stored_figure)
             geometry_call = [call for call in fake.calls if call[0] == "figures.bulk.upload.geometry"][-1]
             self.assertIn(encode_mesh_indices(indices), geometry_call[1].to_string())
@@ -782,13 +860,13 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(ann_json["labels"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
         self.assertEqual(len(ann_json["labels"]), 1)
         method_names = [method for method, _, _ in fake.calls]
-        self.assertIn("annotation-objects.list", method_names)
         self.assertIn("figures.list", method_names)
+        self.assertNotIn("annotation-objects.list", method_names)
         self.assertNotIn("entities.annotations.bulk.info", method_names)
-        object_call = [call for call in fake.calls if call[0] == "annotation-objects.list"][-1]
-        self.assertEqual(
-            object_call[1][ApiField.FILTER],
-            [{ApiField.FIELD: ApiField.ENTITY_ID, ApiField.OPERATOR: "in", ApiField.VALUE: [123]}],
+        figure_list_call = [call for call in fake.calls if call[0] == "figures.list"][0]
+        self.assertIn(
+            {ApiField.FIELD: ApiField.ENTITY_ID, ApiField.OPERATOR: "in", ApiField.VALUE: [123]},
+            figure_list_call[1][ApiField.FILTER],
         )
 
     def test_mesh_entity_tags_download_bulk_from_entity_list(self):
@@ -859,24 +937,23 @@ class TestMeshAnnotation(unittest.TestCase):
             ],
         }
 
-        api.annotation.upload_json(123, ann_json, dataset_id=4)
+        api.annotation.upload_json(123, ann_json)
 
         method_names = [method for method, _, _ in fake.calls]
-        self.assertIn("annotation-objects.bulk.add", method_names)
         self.assertIn("figures.bulk.add", method_names)
         self.assertIn("figures.bulk.upload.geometry", method_names)
+        self.assertNotIn("annotation-objects.bulk.add", method_names)
         self.assertNotIn("entities.annotations.bulk.add", method_names)
         figure_call = [call for call in fake.calls if call[0] == "figures.bulk.add"][-1]
         stored_figure = figure_call[1][ApiField.FIGURES][0]
         self.assertEqual(stored_figure[ApiField.GEOMETRY_TYPE], "mesh")
-        self.assertEqual(stored_figure[ApiField.OBJECT_ID], 300)
+        self.assertEqual(stored_figure[ApiField.ENTITY_ID], 123)
         self.assertNotIn(ApiField.GEOMETRY, stored_figure)
         geometry_call = [call for call in fake.calls if call[0] == "figures.bulk.upload.geometry"][-1]
         self.assertIn(encode_mesh_indices([0, 1, 2, 42, 65535]), geometry_call[1].to_string())
 
     def test_download_hydrates_external_mesh_indices_geometry(self):
         fake = FakeApi()
-        fake.object_response = [object_json(entity_id=123)]
         fake.figure_response = [
             figure_json(
                 figure_id=987,
@@ -884,86 +961,12 @@ class TestMeshAnnotation(unittest.TestCase):
             )
         ]
         api = MeshApi(fake)
-        api.figure.download_indices_batch = lambda ids: [[0, 1, 2, 42, 65535]]
+        api.object.download_indices_batch = lambda ids: [[0, 1, 2, 42, 65535]]
 
         ann_json = api.annotation.download_bulk(4, [123])[0]
 
         self.assertEqual(ann_json["labels"][0]["geometry"]["indices"], [0, 1, 2, 42, 65535])
 
-    def test_download_orphan_objects_is_strict_by_default(self):
-        fake = FakeApi()
-        fake.object_response = [
-            object_json(object_id=300, entity_id=123),
-            object_json(object_id=301, entity_id=123),
-        ]
-        fake.figure_response = [figure_json(object_id=300)]
-        api = MeshApi(fake)
-
-        with self.assertRaises(RuntimeError):
-            api.annotation.download_bulk(4, [123])
-
-    def test_download_orphan_objects_can_be_skipped(self):
-        fake = FakeApi()
-        fake.object_response = [
-            object_json(object_id=300, entity_id=123),
-            object_json(object_id=301, entity_id=123),
-        ]
-        fake.figure_response = [figure_json(object_id=300)]
-        api = MeshApi(fake)
-
-        with patch.object(mesh_annotation_api_module.logger, "warning") as warning:
-            ann_json = api.annotation.download_bulk(4, [123], skip_orphan_objects=True)[0]
-
-        warning.assert_called_once()
-        self.assertEqual(len(ann_json["labels"]), 1)
-
-    def test_upload_paths_requires_one_project_and_dataset(self):
-        fake = FakeApi()
-        fake.mesh_infos = {
-            123: mesh_json(mesh_id=123, datasetId=4, projectId=3),
-            124: mesh_json(mesh_id=124, datasetId=5, projectId=3),
-        }
-        api = MeshApi(fake)
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            ann_paths = []
-            for idx in range(2):
-                ann_path = os.path.join(temp_dir, f"ann_{idx}.json")
-                dump_json_file({"labels": []}, ann_path)
-                ann_paths.append(ann_path)
-
-            with patch.object(mesh_annotation_api_module.logger, "warning") as warning:
-                with self.assertRaises(RuntimeError):
-                    api.annotation.upload_paths([123, 124], ann_paths)
-
-            warning.assert_called_once()
-            self.assertIn("Dataset to mesh ids", warning.call_args.args[0])
-        self.assertNotIn("annotation-objects.bulk.add", [method for method, _, _ in fake.calls])
-
-    def test_upload_json_updates_key_id_map_for_existing_label_id(self):
-        fake = FakeApi()
-        fake.project.meta = ProjectMeta(
-            obj_classes=[ObjClass("car", Mesh)], project_type=ProjectType.MESHES
-        )
-        api = MeshApi(fake)
-        key_id_map = KeyIdMap()
-        label_key = uuid.UUID("cccccccccccccccccccccccccccccccc")
-        ann_json = {
-            "labels": [
-                {
-                    "id": 555,
-                    "key": label_key.hex,
-                    "classTitle": "car",
-                    "tags": [],
-                    "geometryType": "mesh",
-                    "geometry": {"indices": [0, 1, 2]},
-                }
-            ],
-        }
-
-        api.annotation.upload_json(123, ann_json, dataset_id=4, key_id_map=key_id_map)
-
-        self.assertEqual(key_id_map.get_figure_id(label_key), 700)
 
     def test_append_writes_annotation_rows(self):
         fake = FakeApi()
@@ -978,15 +981,15 @@ class TestMeshAnnotation(unittest.TestCase):
         api.annotation.append(123, ann)
 
         methods = [method for method, _, _ in fake.calls]
-        self.assertIn("annotation-objects.bulk.add", methods)
-        self.assertNotIn("entities.annotations.bulk.add", methods)
         self.assertIn("figures.bulk.add", methods)
+        self.assertNotIn("annotation-objects.bulk.add", methods)
+        self.assertNotIn("entities.annotations.bulk.add", methods)
 
     def test_mesh_label_upload_indices_uses_raw_geometry_storage(self):
         fake = FakeApi()
         api = MeshApi(fake)
 
-        api.figure.upload_indices_batch([987], [[0, 1, 2, 42, 65535]])
+        api.object.upload_indices_batch([987], [[0, 1, 2, 42, 65535]])
 
         method, data, _ = fake.calls[-1]
         self.assertEqual(method, "figures.bulk.upload.geometry")
@@ -994,13 +997,13 @@ class TestMeshAnnotation(unittest.TestCase):
 
     def test_download_indices_batch_reports_item_progress(self):
         api = MeshApi(FakeApi())
-        api.figure._download_geometries_generator = lambda ids: [
+        api.object._download_geometries_generator = lambda ids: [
             (11, SimpleNamespace(content=encode_mesh_indices([1, 2, 3]))),
             (12, SimpleNamespace(content=encode_mesh_indices([4, 5, 6]))),
         ]
         progress = []
 
-        api.figure.download_indices_batch([11, 12], progress_cb=progress.append)
+        api.object.download_indices_batch([11, 12], progress_cb=progress.append)
 
         self.assertEqual(progress, [1, 1])
 
@@ -1011,8 +1014,7 @@ class TestMeshAnnotation(unittest.TestCase):
 
         tag_meta = TagMeta("weather", TagValueType.ANY_STRING)
         tag = MeshTag(tag_meta, value="clear")
-        key_id_map = KeyIdMap()
-        ids = tag_api.append_to_entity(101, 202, MeshTagCollection([tag]), key_id_map)
+        ids = tag_api.append_to_entity(101, 202, MeshTagCollection([tag]))
 
         self.assertEqual(ids, [900])
         method, data, _ = fake.calls[-1]
@@ -1021,6 +1023,31 @@ class TestMeshAnnotation(unittest.TestCase):
         self.assertEqual(data[ApiField.TAGS][0][ApiField.ENTITY_ID], 101)
         self.assertEqual(data[ApiField.TAGS][0][ApiField.TAG_ID], 55)
         self.assertNotIn(ApiField.HASH, data[ApiField.TAGS][0])
+
+    def test_annotation_copy_batch_uploads_annotations_to_destination_mesh(self):
+        # MeshObjectApi inherits FigureApi, so objects are created via figures.bulk.add.
+        fake = FakeApi()
+        fake.project.meta = ProjectMeta(
+            obj_classes=[ObjClass("car", Mesh)], project_type=ProjectType.MESHES
+        )
+        fake.figure_response = [figure_json(figure_id=700, mesh_id=101, object_id=300)]
+        fake.entity_response = []
+        fake.tag_response = []
+        api = MeshApi(fake)
+
+        api.annotation.copy_batch([101], [201])
+
+        methods = [method for method, _, _ in fake.calls]
+        self.assertIn("figures.bulk.add", methods)
+        figure_add_call = [c for c in fake.calls if c[0] == "figures.bulk.add"][-1]
+        figures = figure_add_call[1][ApiField.FIGURES]
+        self.assertEqual(len(figures), 1)
+        self.assertEqual(figures[0][ApiField.ENTITY_ID], 201)
+
+    def test_annotation_copy_batch_raises_on_length_mismatch(self):
+        api = MeshApi(FakeApi())
+        with self.assertRaises(RuntimeError):
+            api.annotation.copy_batch([101, 102], [201])
 
     def test_add_entity_tag_uses_generic_bulk_endpoint(self):
         fake = FakeApi()

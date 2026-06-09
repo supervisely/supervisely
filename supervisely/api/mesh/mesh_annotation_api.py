@@ -249,6 +249,63 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
             if progress_cb is not None:
                 update_progress(progress_cb, 1)
 
+    def copy_batch(
+        self,
+        src_mesh_ids: List[int],
+        dst_mesh_ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Copy annotations from source meshes to destination meshes.
+
+        Downloads annotations from each source mesh and uploads them to the
+        corresponding destination mesh. Source and destination meshes must belong
+        to projects with compatible meta (call :meth:`api.project.merge_metas` first).
+
+        :param src_mesh_ids: Source mesh IDs.
+        :type src_mesh_ids: List[int]
+        :param dst_mesh_ids: Destination mesh IDs. Must match *src_mesh_ids* in length.
+        :type dst_mesh_ids: List[int]
+        :param progress_cb: Progress callback invoked once per annotation copied.
+        :type progress_cb: tqdm or callable, optional
+        :raises RuntimeError: If *src_mesh_ids* and *dst_mesh_ids* have different lengths.
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+
+                api.project.merge_metas(src_project_id, dst_project_id)
+                api.mesh.annotation.copy_batch(src_mesh_ids, dst_mesh_ids)
+        """
+        if len(src_mesh_ids) != len(dst_mesh_ids):
+            raise RuntimeError(
+                'Can not match "src_mesh_ids" and "dst_mesh_ids" lists, '
+                "len(src_mesh_ids) != len(dst_mesh_ids)"
+            )
+        if len(src_mesh_ids) == 0:
+            return
+
+        src_dataset_id = self._api.mesh.get_info_by_id(src_mesh_ids[0]).dataset_id
+        dst_dataset_id = self._api.mesh.get_info_by_id(dst_mesh_ids[0]).dataset_id
+        dst_dataset_info = self._api.dataset.get_info_by_id(dst_dataset_id)
+        dst_project_meta = ProjectMeta.from_json(
+            self._api.project.get_meta(dst_dataset_info.project_id)
+        )
+
+        for src_ids_batch, dst_ids_batch in zip(batched(src_mesh_ids), batched(dst_mesh_ids)):
+            ann_jsons = self.download_bulk(src_dataset_id, src_ids_batch)
+            for dst_id, ann_json in zip(dst_ids_batch, ann_jsons):
+                prepared = self._prepare_annotation_json(ann_json)
+                ann = MeshAnnotation.from_json(prepared, dst_project_meta)
+                self._upload_annotation(dst_id, dst_dataset_info.project_id, ann)
+                if progress_cb is not None:
+                    progress_cb(1)
+
     def _coerce_annotation(
         self,
         ann: Union[MeshAnnotation, Dict],
@@ -317,6 +374,25 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
 
         # Create objects; IDs come back ordered like objects_json.
         object_ids = self._api.mesh.object.append_bulk(mesh_id, objects_json)
+
+        # Label-level (figure) tags — must be added via a separate bulk call
+        # because figures.bulk.add ignores the inline "tags" field.
+        tag_name_to_id = {tag.name: tag.id for tag in self._api.mesh.tag.get_list(project_id)}
+        figure_tags = []
+        for figure_id, label in zip(object_ids, ann.labels):
+            for tag in label.tags:
+                tag_id = tag_name_to_id.get(tag.meta.name)
+                if tag_id is None:
+                    continue
+                figure_tag = {ApiField.FIGURE_ID: figure_id, ApiField.TAG_ID: tag_id}
+                if tag.value is not None:
+                    figure_tag[ApiField.VALUE] = tag.value
+                figure_tags.append(figure_tag)
+        if figure_tags:
+            self._api.post(
+                "figures.tags.bulk.add",
+                {ApiField.PROJECT_ID: project_id, ApiField.TAGS: figure_tags},
+            )
 
         # Upload object index geometry blobs to the matching objects (by order).
         if len(mesh_positions) != 0:
