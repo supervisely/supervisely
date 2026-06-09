@@ -11,6 +11,7 @@ from supervisely.nn import TaskType
 from datetime import datetime
 import signal
 import sys
+import threading
 import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
@@ -70,7 +71,7 @@ class LiveTraining:
             sly.app.development.supervisely_vpn_network(action="up")
             debug_task = sly.app.development.create_debug_task(self.team_id, port="8000", project_id=self.project_id)
             self.task_id = debug_task['id']
-        self._api_thread = start_api_server(self.app, self.request_queue)
+        self._api_thread = start_api_server(self.app, self.request_queue, self)
         self.phase = Phase.READY_TO_START
         self.iter = 0
         self._loss = None
@@ -95,6 +96,15 @@ class LiveTraining:
         self.evaluator = self.init_evaluator()
         self._upload_interval = 7200
         self._last_upload_time = None
+
+        # /status normally bypasses the request queue and returns immediately.
+        # In "continue" mode that would let the UI poll status during the
+        # (possibly slow) checkpoint restore and observe inconsistent state.
+        # _start_received marks the moment START was processed; until
+        # _continue_checkpoint_loaded is set, /status held after START will
+        # block. Status requests received before START always pass through.
+        self._start_received = threading.Event()
+        self._continue_checkpoint_loaded = threading.Event()
 
         self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
         self._last_activity_time = None
@@ -156,11 +166,18 @@ class LiveTraining:
         self.train(checkpoint_path=None)
 
     def _run_continue(self):
-        checkpoint_path, state = self._load_checkpoint()
-        self.load_state(state)
-        image_ids = state.get('image_ids', [])
-        if image_ids:
-            self._restore_dataset(image_ids)
+        try:
+            checkpoint_path, state = self._load_checkpoint()
+            self.load_state(state)
+            image_ids = state.get("image_ids", [])
+            if image_ids:
+                self._restore_dataset(image_ids)
+        finally:
+            # Release any /status requests blocked behind the checkpoint
+            # restore even if loading failed — the outer try/except in
+            # run() handles the exception, and a hung /status is worse
+            # than a status reporting partial state.
+            self._continue_checkpoint_loaded.set()
         self._process_requests_while_initializing()
         self.train(checkpoint_path=checkpoint_path)
 
@@ -187,6 +204,10 @@ class LiveTraining:
             self.dataset.update_class_map(self.class_map.class2idx)
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
+        # Flip _start_received before resolving the START future so any
+        # /status the client sends after seeing the START response is
+        # guaranteed to observe the flag set.
+        self._start_received.set()
         request.future.set_result(status)
 
     def _wait_until_samples_added(
