@@ -107,3 +107,36 @@ class MeshObjectApi(FigureApi):
                 )
             encoder = MultipartEncoder(fields=fields)
             self._api.post("figures.bulk.upload.geometry", encoder)
+
+    def clone_to_entity(
+        self,
+        figure_ids: List[int],
+        dst_entity_id: int,
+        override_fields: Optional[Dict] = None,
+        batch_size: int = 100,
+    ) -> None:
+        """Clone figures to a destination mesh entity server-side via ``figures.clone``.
+
+        No binary data is transferred — the server duplicates the figure records and
+        their associated geometry blobs directly.
+
+        :param figure_ids: IDs of the source figures to clone.
+        :type figure_ids: List[int]
+        :param dst_entity_id: ID of the destination mesh entity.
+        :type dst_entity_id: int
+        :param override_fields: Optional fields to override on the cloned figures
+            (e.g. ``{"meta": {...}}``).
+        :type override_fields: dict, optional
+        :param batch_size: Number of figures per request. Defaults to 100.
+        :type batch_size: int
+        :returns: None
+        :rtype: None
+        """
+        for batch in batched(figure_ids, batch_size=batch_size):
+            body = {
+                ApiField.ENTITY_ID: dst_entity_id,
+                ApiField.IDS: list(batch),
+            }
+            if override_fields is not None:
+                body["overrideFields"] = override_fields
+            self._api.post("figures.clone", body)

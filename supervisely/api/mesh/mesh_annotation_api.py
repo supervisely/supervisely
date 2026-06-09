@@ -47,6 +47,86 @@ class MeshAnnotationAPI(EntityAnnotationAPI):
     associated with their labels by order.
     """
 
+    def copy_batch(
+        self,
+        src_dataset_id: int,
+        src_mesh_ids: List[int],
+        dst_mesh_ids: List[int],
+        dst_project_id: Optional[int] = None,
+        override_fields: Optional[Dict] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """Copy mesh annotations server-side using ``figures.clone``.
+
+        Figures (objects with their geometry blobs) are cloned directly on the
+        server — no binary data is downloaded or re-uploaded.  Entity-level tags
+        are downloaded and appended to the destination meshes separately.
+
+        :param src_dataset_id: Dataset ID that contains the source meshes.
+        :type src_dataset_id: int
+        :param src_mesh_ids: Source mesh entity IDs.  Must match *dst_mesh_ids* length.
+        :type src_mesh_ids: List[int]
+        :param dst_mesh_ids: Destination mesh entity IDs.
+        :type dst_mesh_ids: List[int]
+        :param dst_project_id: Project ID of the destination meshes.  Resolved
+            automatically from the first destination mesh when not provided.
+        :type dst_project_id: int, optional
+        :param override_fields: Optional fields to override on every cloned figure
+            (e.g. ``{"meta": {...}}``).  Forwarded to ``figures.clone`` as-is.
+        :type override_fields: dict, optional
+        :param progress_cb: Called once per processed mesh pair.
+        :type progress_cb: tqdm or callable, optional
+        :returns: None
+        :rtype: None
+        :raises ValueError: If *src_mesh_ids* and *dst_mesh_ids* have different lengths.
+        """
+        if len(src_mesh_ids) != len(dst_mesh_ids):
+            raise ValueError(
+                "src_mesh_ids and dst_mesh_ids must have the same length: "
+                f"{len(src_mesh_ids)} != {len(dst_mesh_ids)}."
+            )
+        if not src_mesh_ids:
+            return
+
+        # Collect figure IDs per source mesh (skip geometry — IDs are enough).
+        objects_by_mesh_id = self._api.mesh.object.download(
+            src_dataset_id, src_mesh_ids, skip_geometry=True
+        )
+
+        # Collect entity-level tags per source mesh.
+        src_project_id = self._api.dataset.get_info_by_id(src_dataset_id).project_id
+        tag_id_to_name = {
+            tag.id: tag.name for tag in self._api.mesh.tag.get_list(src_project_id)
+        }
+        entity_tags_by_mesh_id = self._download_entity_tags(
+            src_dataset_id, src_mesh_ids, tag_id_to_name
+        )
+
+        # Resolve destination project ID once.
+        if dst_project_id is None:
+            dst_project_id = self._api.mesh.get_info_by_id(dst_mesh_ids[0]).project_id
+
+        for src_id, dst_id in zip(src_mesh_ids, dst_mesh_ids):
+            # Clone figures server-side.
+            figure_ids = [obj.id for obj in objects_by_mesh_id.get(src_id, [])]
+            if figure_ids:
+                self._api.mesh.object.clone_to_entity(
+                    figure_ids, dst_id, override_fields=override_fields
+                )
+
+            # Append entity-level tags.
+            tag_jsons = entity_tags_by_mesh_id.get(src_id, [])
+            if tag_jsons:
+                project_meta = ProjectMeta.from_json(
+                    self._api.project.get_meta(dst_project_id)
+                )
+                from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
+                tags = MeshTagCollection.from_json(tag_jsons, project_meta.tag_metas)
+                self._api.mesh.tag.append_to_entity(dst_id, dst_project_id, tags)
+
+            if progress_cb is not None:
+                update_progress(progress_cb, 1)
+
     def download(
         self,
         mesh_id: int,
