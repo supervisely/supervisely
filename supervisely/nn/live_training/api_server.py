@@ -3,21 +3,27 @@ import uvicorn
 import threading
 import asyncio
 
+from typing import TYPE_CHECKING
+
 from .request_queue import RequestQueue, RequestType
 from .utils import TrainingStoppedException
 import supervisely as sly
 from supervisely import logger
 
+if TYPE_CHECKING:
+    from .live_training import LiveTraining
+
 
 def start_api_server(
     app: sly.Application,
     request_queue: RequestQueue,
+    lt: "LiveTraining" = None,
     host: str = "0.0.0.0",
     port: int = 8000
 ) -> threading.Thread:
     """Start FastAPI server in a daemon thread."""
     server = app.get_server()
-    create_api(server, request_queue)
+    create_api(server, request_queue, lt)
 
     config = uvicorn.Config(app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
@@ -30,8 +36,8 @@ def start_api_server(
     return thread
 
 
-def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
-    
+def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = None) -> FastAPI:
+
     @app.post("/start")
     async def start(response: Response):
         """Start the live training process."""
@@ -75,6 +81,17 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
     @app.post("/status")
     async def status(response: Response):
         """Check the status of the training process."""
+        # In "continue" mode, status requests received after the START signal
+        # must wait until the checkpoint is fully restored, otherwise the UI
+        # polls status mid-restore (phase still ready_to_start) and re-shows
+        # the "Start Live Training" button. Requests before START pass through.
+        if (
+            lt is not None
+            and lt.checkpoint_mode == "continue"
+            and lt._start_received.is_set()
+            and not lt._continue_checkpoint_loaded.is_set()
+        ):
+            await asyncio.to_thread(lt._continue_checkpoint_loaded.wait)
         future = request_queue.put(RequestType.STATUS)
         result = await _wait_for_result(future, response)
         return result
