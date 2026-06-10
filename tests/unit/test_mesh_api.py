@@ -716,6 +716,15 @@ class TestMeshConverter(unittest.TestCase):
     def test_per_vertex_labels_converter_strips_label_data_from_meshes(self):
         with tempfile.TemporaryDirectory() as project_dir:
             self._write_per_vertex_labels_project(project_dir)
+            # Fully labeled mesh: every vertex carries label paint.
+            self._write_ascii_ply(
+                os.path.join(project_dir, "Dental", "full.ply"),
+                [
+                    (10, 20, 30, 101, 500),
+                    (40, 50, 60, 102, -1),
+                    (10, 20, 30, 101, 500),
+                ],
+            )
             converter = PerVertexLabelsMeshConverter(project_dir)
             self.assertTrue(converter.validate_format())
 
@@ -727,15 +736,30 @@ class TestMeshConverter(unittest.TestCase):
 
             converter._strip_label_data_from_meshes()
 
+            # Mixed mesh (3 labeled + 1 unlabeled vertex): class_id/object_id are
+            # dropped, color properties stay; label paint is reset to white while
+            # the unlabeled vertex keeps its original color.
             mesh_path = os.path.join(project_dir, "Dental", "labeled.ply")
             with open(mesh_path, "r", encoding="ascii") as f:
                 content = f.read()
-            for prop in ("red", "green", "blue", "class_id", "object_id"):
-                self.assertNotIn(f"property uchar {prop}", content)
-                self.assertNotIn(f"property int {prop}", content)
-            header, body = content.split("end_header\n", 1)
+            self.assertNotIn("class_id", content)
+            self.assertNotIn("object_id", content)
+            self.assertIn("property uchar red", content)
+            _, body = content.split("end_header\n", 1)
             vertex_rows = body.splitlines()[:4]
             for row in vertex_rows:
+                values = row.split()
+                self.assertEqual(len(values), 6)  # x y z r g b
+                self.assertEqual(values[3:], ["255", "255", "255"])
+
+            # Fully labeled mesh: color properties are dropped entirely.
+            full_path = os.path.join(project_dir, "Dental", "full.ply")
+            with open(full_path, "r", encoding="ascii") as f:
+                full_content = f.read()
+            for prop in ("red", "class_id", "object_id"):
+                self.assertNotIn(prop, full_content)
+            _, full_body = full_content.split("end_header\n", 1)
+            for row in full_body.splitlines()[:3]:
                 self.assertEqual(len(row.split()), 3)  # only x y z remain
 
             ann_after = converter.to_supervisely(
@@ -746,10 +770,12 @@ class TestMeshConverter(unittest.TestCase):
                 [l["geometry"] for l in ann_before["labels"]],
             )
 
-            # Stripping an already-clean file is a no-op.
+            # Stripping already-clean files is a no-op.
             converter._strip_label_data_from_meshes()
             with open(mesh_path, "r", encoding="ascii") as f:
                 self.assertEqual(f.read(), content)
+            with open(full_path, "r", encoding="ascii") as f:
+                self.assertEqual(f.read(), full_content)
 
     def test_per_vertex_labels_converter_rejects_sly_geometry_sidecars(self):
         with tempfile.TemporaryDirectory() as project_dir:

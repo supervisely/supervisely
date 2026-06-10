@@ -25,21 +25,9 @@ GEOMETRIES_DIR_NAME = "geometries"
 PLY_EXT = ".ply"
 UNLABELED_ID = -1
 
-# Vertex properties that carry label data baked in by the per-vertex export.
-# They are stripped from the mesh file before upload: the annotation is created
-# from them, and the uploaded mesh should be clean geometry (like the original).
-_LABEL_VERTEX_PROPERTIES = {
-    "red",
-    "green",
-    "blue",
-    "alpha",
-    "diffuse_red",
-    "diffuse_green",
-    "diffuse_blue",
-    "diffuse_alpha",
-    "class_id",
-    "object_id",
-}
+# Neutral color written over label paint when the mesh keeps its color properties
+# (some vertices carry original, non-label colors that must be preserved).
+_NEUTRAL_COLOR = "255"
 
 
 @dataclass
@@ -226,14 +214,21 @@ class PerVertexLabelsMeshConverter(MeshConverter):
         return ann_json
 
     def _strip_label_data_from_meshes(self) -> None:
-        """Remove baked-in label vertex properties (colors, class/object ids) from PLY files.
+        """Remove baked-in label data from PLY files before upload.
 
-        The annotation is already built from these values in :meth:`validate_format`;
-        the uploaded mesh should be clean geometry, like the originally exported one.
+        The annotation is already built from these values in :meth:`validate_format`.
+        ``class_id``/``object_id`` vertex properties are pure annotation metadata and
+        are always removed. Label paint is removed only from vertices that produced
+        annotation labels; original (non-label) vertex colors are preserved. When
+        every vertex carries label paint, the color properties are dropped entirely.
         """
+        try:
+            color_to_class = self._build_color_to_class(self._meta)
+        except Exception:
+            color_to_class = {}
         for item in self._items:
             try:
-                _strip_vertex_properties(item.path, _LABEL_VERTEX_PROPERTIES)
+                _clean_label_data_from_ply(item.path, color_to_class)
             except Exception as e:
                 logger.warning(
                     f"Failed to strip label data from mesh {item.name!r}: {repr(e)}. "
@@ -320,12 +315,14 @@ class PerVertexLabelsMeshConverter(MeshConverter):
         }
 
 
-def _strip_vertex_properties(mesh_path: str, property_names) -> None:
-    """Rewrite an ASCII PLY file in place, dropping the given vertex properties.
+def _clean_label_data_from_ply(mesh_path: str, color_to_class: Dict) -> None:
+    """Rewrite an ASCII PLY file in place, removing baked-in label data.
 
-    Header property lines and the matching columns of every vertex row are removed.
-    Faces and other elements are left untouched. No-op if none of the properties
-    are present.
+    ``class_id``/``object_id`` vertex properties are always dropped. Vertices whose
+    color matches a class color (the same rule the import uses to build labels) get
+    their color reset to neutral white; other vertices keep their original colors.
+    If every vertex carries label paint, the color (and alpha) properties are
+    dropped entirely instead. Faces and other elements are left untouched.
     """
     with open(mesh_path, "r", encoding="ascii") as file:
         lines = file.readlines()
@@ -333,47 +330,77 @@ def _strip_vertex_properties(mesh_path: str, property_names) -> None:
     header_end = None
     current_element = None
     vertex_count = 0
-    vertex_prop_index = -1
-    drop_columns = set()
-    header_lines = []
+    vertex_properties = []
+    property_line_indexes = {}  # vertex property index -> line index in `lines`
 
     for line_index, line in enumerate(lines):
         stripped = line.strip()
         if stripped == "end_header":
             header_end = line_index
-            header_lines.append(line)
             break
-
         parts = stripped.split()
         if len(parts) == 3 and parts[0] == "element":
             current_element = parts[1]
             if current_element == "vertex":
                 vertex_count = int(parts[2])
-        elif (
-            len(parts) == 3
-            and parts[0] == "property"
-            and current_element == "vertex"
-        ):
-            vertex_prop_index += 1
-            if parts[2] in property_names:
-                drop_columns.add(vertex_prop_index)
-                continue
-        header_lines.append(line)
+        elif len(parts) == 3 and parts[0] == "property" and current_element == "vertex":
+            property_line_indexes[len(vertex_properties)] = line_index
+            vertex_properties.append(parts[2])
 
     if header_end is None:
         raise ValueError("PLY header is missing end_header.")
-    if len(drop_columns) == 0:
+
+    drop_columns = set()
+    for name in ("class_id", "object_id"):
+        index = _property_index(vertex_properties, name)
+        if index is not None:
+            drop_columns.add(index)
+
+    body_start = header_end + 1
+    vertex_lines = lines[body_start : body_start + vertex_count]
+    rest_lines = lines[body_start + vertex_count :]
+
+    color_indexes = _get_color_property_indexes(vertex_properties)
+    labeled_rows = set()
+    if color_indexes is not None:
+        for row_index, row in enumerate(vertex_lines):
+            values = row.split()
+            color = tuple(_parse_color_channel(values[index]) for index in color_indexes)
+            if color in color_to_class:
+                labeled_rows.add(row_index)
+
+        if vertex_count > 0 and len(labeled_rows) == vertex_count:
+            # Every vertex carries label paint — no original colors survive,
+            # drop the color properties entirely.
+            drop_columns.update(color_indexes)
+            for name in ("alpha", "diffuse_alpha"):
+                index = _property_index(vertex_properties, name)
+                if index is not None:
+                    drop_columns.add(index)
+            labeled_rows = set()
+
+    if len(drop_columns) == 0 and len(labeled_rows) == 0:
         return
 
-    body = lines[header_end + 1 :]
-    vertex_lines = body[:vertex_count]
-    rest_lines = body[vertex_count:]
-
     new_vertex_lines = []
-    for row in vertex_lines:
+    for row_index, row in enumerate(vertex_lines):
         values = row.split()
+        if row_index in labeled_rows:
+            for index in color_indexes:
+                values[index] = _NEUTRAL_COLOR
         kept = [value for column, value in enumerate(values) if column not in drop_columns]
         new_vertex_lines.append(" ".join(kept) + "\n")
+
+    dropped_line_indexes = {
+        property_line_indexes[column]
+        for column in drop_columns
+        if column in property_line_indexes
+    }
+    header_lines = [
+        line
+        for line_index, line in enumerate(lines[: header_end + 1])
+        if line_index not in dropped_line_indexes
+    ]
 
     with open(mesh_path, "w", encoding="ascii") as file:
         file.writelines(header_lines)
