@@ -713,6 +713,44 @@ class TestMeshConverter(unittest.TestCase):
                 {"tooth_1", "gum_1"},
             )
 
+    def test_per_vertex_labels_converter_strips_label_data_from_meshes(self):
+        with tempfile.TemporaryDirectory() as project_dir:
+            self._write_per_vertex_labels_project(project_dir)
+            converter = PerVertexLabelsMeshConverter(project_dir)
+            self.assertTrue(converter.validate_format())
+
+            # Annotations are built during validate_format; stripping must not affect them.
+            items_by_name = {item.name: item for item in converter.get_items()}
+            ann_before = converter.to_supervisely(
+                items_by_name["labeled.ply"], converter.get_meta()
+            )
+
+            converter._strip_label_data_from_meshes()
+
+            mesh_path = os.path.join(project_dir, "Dental", "labeled.ply")
+            with open(mesh_path, "r", encoding="ascii") as f:
+                content = f.read()
+            for prop in ("red", "green", "blue", "class_id", "object_id"):
+                self.assertNotIn(f"property uchar {prop}", content)
+                self.assertNotIn(f"property int {prop}", content)
+            header, body = content.split("end_header\n", 1)
+            vertex_rows = body.splitlines()[:4]
+            for row in vertex_rows:
+                self.assertEqual(len(row.split()), 3)  # only x y z remain
+
+            ann_after = converter.to_supervisely(
+                items_by_name["labeled.ply"], converter.get_meta()
+            )
+            self.assertEqual(
+                [l["geometry"] for l in ann_after["labels"]],
+                [l["geometry"] for l in ann_before["labels"]],
+            )
+
+            # Stripping an already-clean file is a no-op.
+            converter._strip_label_data_from_meshes()
+            with open(mesh_path, "r", encoding="ascii") as f:
+                self.assertEqual(f.read(), content)
+
     def test_per_vertex_labels_converter_rejects_sly_geometry_sidecars(self):
         with tempfile.TemporaryDirectory() as project_dir:
             self._write_per_vertex_labels_project(project_dir)

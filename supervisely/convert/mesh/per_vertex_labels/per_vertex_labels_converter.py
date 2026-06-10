@@ -25,6 +25,22 @@ GEOMETRIES_DIR_NAME = "geometries"
 PLY_EXT = ".ply"
 UNLABELED_ID = -1
 
+# Vertex properties that carry label data baked in by the per-vertex export.
+# They are stripped from the mesh file before upload: the annotation is created
+# from them, and the uploaded mesh should be clean geometry (like the original).
+_LABEL_VERTEX_PROPERTIES = {
+    "red",
+    "green",
+    "blue",
+    "alpha",
+    "diffuse_red",
+    "diffuse_green",
+    "diffuse_blue",
+    "diffuse_alpha",
+    "class_id",
+    "object_id",
+}
+
 
 @dataclass
 class PLYLabels:
@@ -138,6 +154,7 @@ class PerVertexLabelsMeshConverter(MeshConverter):
         batch_size: int = 10,
         log_progress=True,
     ) -> None:
+        self._strip_label_data_from_meshes()
         if self._project_structure:
             self.upload_project(api, dataset_id, batch_size, log_progress)
         else:
@@ -207,6 +224,21 @@ class PerVertexLabelsMeshConverter(MeshConverter):
             if class_title is not None:
                 label["classTitle"] = renamed_classes.get(class_title, class_title)
         return ann_json
+
+    def _strip_label_data_from_meshes(self) -> None:
+        """Remove baked-in label vertex properties (colors, class/object ids) from PLY files.
+
+        The annotation is already built from these values in :meth:`validate_format`;
+        the uploaded mesh should be clean geometry, like the originally exported one.
+        """
+        for item in self._items:
+            try:
+                _strip_vertex_properties(item.path, _LABEL_VERTEX_PROPERTIES)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to strip label data from mesh {item.name!r}: {repr(e)}. "
+                    "The mesh will be uploaded with baked-in label colors."
+                )
 
     @staticmethod
     def _find_project_dir(input_data: str) -> Optional[str]:
@@ -286,6 +318,67 @@ class PerVertexLabelsMeshConverter(MeshConverter):
             "tags": [],
             "labels": labels_json,
         }
+
+
+def _strip_vertex_properties(mesh_path: str, property_names) -> None:
+    """Rewrite an ASCII PLY file in place, dropping the given vertex properties.
+
+    Header property lines and the matching columns of every vertex row are removed.
+    Faces and other elements are left untouched. No-op if none of the properties
+    are present.
+    """
+    with open(mesh_path, "r", encoding="ascii") as file:
+        lines = file.readlines()
+
+    header_end = None
+    current_element = None
+    vertex_count = 0
+    vertex_prop_index = -1
+    drop_columns = set()
+    header_lines = []
+
+    for line_index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "end_header":
+            header_end = line_index
+            header_lines.append(line)
+            break
+
+        parts = stripped.split()
+        if len(parts) == 3 and parts[0] == "element":
+            current_element = parts[1]
+            if current_element == "vertex":
+                vertex_count = int(parts[2])
+        elif (
+            len(parts) == 3
+            and parts[0] == "property"
+            and current_element == "vertex"
+        ):
+            vertex_prop_index += 1
+            if parts[2] in property_names:
+                drop_columns.add(vertex_prop_index)
+                continue
+        header_lines.append(line)
+
+    if header_end is None:
+        raise ValueError("PLY header is missing end_header.")
+    if len(drop_columns) == 0:
+        return
+
+    body = lines[header_end + 1 :]
+    vertex_lines = body[:vertex_count]
+    rest_lines = body[vertex_count:]
+
+    new_vertex_lines = []
+    for row in vertex_lines:
+        values = row.split()
+        kept = [value for column, value in enumerate(values) if column not in drop_columns]
+        new_vertex_lines.append(" ".join(kept) + "\n")
+
+    with open(mesh_path, "w", encoding="ascii") as file:
+        file.writelines(header_lines)
+        file.writelines(new_vertex_lines)
+        file.writelines(rest_lines)
 
 
 def _read_ascii_ply_labels(
