@@ -298,7 +298,8 @@ class FastTable(Widget):
         self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        StateJson().send_changes()
+        # Send DataJson BEFORE StateJson so the frontend never renders with new
+        # page/sort state but stale row data.
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
@@ -393,6 +394,7 @@ class FastTable(Widget):
         """
         self._fix_columns = self._validate_fix_columns_value(value)
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
+        DataJson().send_changes()
 
     @property
     def project_meta(self) -> Dict[str, Any]:
@@ -412,6 +414,7 @@ class FastTable(Widget):
         """
         self._project_meta = self._unpack_project_meta(meta)
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
+        DataJson().send_changes()
 
     @property
     def page_size(self) -> int:
@@ -420,7 +423,19 @@ class FastTable(Widget):
     @page_size.setter
     def page_size(self, size: int):
         self._page_size = size
+        self._active_page = 1
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["pageSize"] = self._page_size
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        StateJson()[self.widget_id]["page"] = self._active_page
+        DataJson().send_changes()
+        StateJson().send_changes()
 
     def set_sort(
         self, func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]
@@ -521,23 +536,26 @@ class FastTable(Widget):
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10)
-
-        # Apply sorting before preparing working data
-        self._sorted_data = self._sort_table_data(self._source_data)
-        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
-        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
-        self._rows_total = len(self._parsed_source_data["data"]) 
+        # Reset transient state: stale filter/search from previous data must not leak
+        self._filter_value = None
+        self._search_str = ""
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
-        DataJson()[self.widget_id]["total"] = len(self._source_data)
+        DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson()[self.widget_id]["pageSize"] = self._page_size
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
         StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
         StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
         StateJson()[self.widget_id]["page"] = self._active_page
+        StateJson()[self.widget_id]["search"] = self._search_str
         StateJson()[self.widget_id]["selectedRows"] = []
         StateJson()[self.widget_id]["selectedCell"] = None
         self._maybe_update_selected_row()
@@ -552,17 +570,22 @@ class FastTable(Widget):
         :type data: pd.DataFrame
         """
         self._source_data = self._prepare_input_data(data)
-        self._sorted_data = self._sort_table_data(self._source_data)
-        self._sliced_data = self._slice_table_data(self._sorted_data)
-        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
-        self._rows_total = len(self._parsed_source_data["data"])
+        # Reset transient state: stale filter/search from previous data must not leak
+        self._filter_value = None
+        self._search_str = ""
+        self._active_page = 1
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
-        DataJson()[self.widget_id]["total"] = len(self._source_data)
-        DataJson().send_changes()
-        self._active_page = 1
+        DataJson()[self.widget_id]["total"] = self._rows_total
         StateJson()[self.widget_id]["page"] = self._active_page
+        StateJson()[self.widget_id]["search"] = self._search_str
+        DataJson().send_changes()
         StateJson().send_changes()
         self.clear_selection()
 
@@ -810,8 +833,9 @@ class FastTable(Widget):
         )
 
         if len(self._parsed_source_data["data"]) != 0:
-            popped_row = self._source_data.loc[index].values
-            self._source_data = self._source_data.drop(index)
+            actual_label = self._source_data.index[index]
+            popped_row = self._source_data.iloc[index].values
+            self._source_data = self._source_data.drop(actual_label).reset_index(drop=True)
             (
                 self._parsed_source_data,
                 self._sliced_data,
@@ -820,6 +844,7 @@ class FastTable(Widget):
             self._rows_total = len(self._parsed_source_data["data"])
             DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
             DataJson()[self.widget_id]["total"] = self._rows_total
+            DataJson().send_changes()
             self._maybe_update_selected_row()
             return popped_row
 
@@ -830,7 +855,7 @@ class FastTable(Widget):
         self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
         self._parsed_active_data = {"data": [], "columns": []}
         self._rows_total = 0
-        DataJson()[self.widget_id]["data"] = {}
+        DataJson()[self.widget_id]["data"] = []
         DataJson()[self.widget_id]["total"] = 0
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -858,7 +883,11 @@ class FastTable(Widget):
         @server.post(row_clicked_route_path)
         def _click():
             try:
-                clicked_row = self.get_selected_row()
+                # Use get_clicked_row() — it reads the specific row that was clicked
+                # (stored in StateJson["clickedRow"] by the template's @row-click handler).
+                # get_selected_row() would raise ValueError when is_selectable=True and
+                # multiple rows are simultaneously selected.
+                clicked_row = self.get_clicked_row()
                 if clicked_row is None:
                     return
                 func(clicked_row)
@@ -1060,6 +1089,7 @@ class FastTable(Widget):
         # Update DataJson with sorted and paginated data
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
         self._maybe_update_selected_row()
         StateJson().send_changes()
 
@@ -1149,14 +1179,17 @@ class FastTable(Widget):
             source_data.columns = self._multi_idx_columns
         elif isinstance(data, (list, type(None))):
             self._multi_idx_columns = self._create_multi_idx_columns()
-            source_data = self._sort_table_data(
-                pd.DataFrame(data=data, columns=self._multi_idx_columns)
-            )
+            source_data = pd.DataFrame(data=data, columns=self._multi_idx_columns)
         return source_data
 
     def _prepare_working_data(self):
         parsed_source_data = self._unpack_pandas_table_data(input_data=self._source_data)
-        sliced_data = self._slice_table_data(self._source_data, self._active_page)
+        # Run the full filter → search → sort pipeline so that callers (insert_row,
+        # add_rows, pop_row, __init__) always produce a correctly sorted active page.
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
+        sliced_data = self._slice_table_data(self._sorted_data, self._active_page)
         parsed_active_data = self._unpack_pandas_table_data(sliced_data)
         return parsed_source_data, sliced_data, parsed_active_data
 
@@ -1392,7 +1425,14 @@ class FastTable(Widget):
             {"idx": idx, "row": selected_row.get("items", selected_row.get("row", None))}
         ]
         StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
-        page = idx // self._page_size + 1
+        # Find the row's position in the current sorted/filtered view so the
+        # correct page is navigated to even when a filter or sort is active.
+        try:
+            view_position = self._sorted_data.index.tolist().index(idx)
+        except (ValueError, AttributeError):
+            # Row is currently filtered/searched out — fall back to source position
+            view_position = idx
+        page = view_position // self._page_size + 1
         if self._active_page != page:
             self._active_page = page
             StateJson()[self.widget_id]["page"] = self._active_page
