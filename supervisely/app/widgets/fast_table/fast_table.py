@@ -250,11 +250,6 @@ class FastTable(Widget):
         self._validate_input_data(data)
         self._source_data = self._prepare_input_data(data)
 
-        # Initialize filtered and searched data for proper initialization
-        self._filtered_data = self._filter(self._filter_value)
-        self._searched_data = self._search(self._search_str)
-        self._sorted_data = self._sort_table_data(self._searched_data)
-
         # prepare parsed_source_data, sliced_data, parsed_active_data
         (
             self._parsed_source_data,
@@ -774,7 +769,7 @@ class FastTable(Widget):
             self._sliced_data,
             self._parsed_active_data,
         ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
@@ -792,7 +787,7 @@ class FastTable(Widget):
             self._sliced_data,
             self._parsed_active_data,
         ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
@@ -821,7 +816,7 @@ class FastTable(Widget):
                 self._sliced_data,
                 self._parsed_active_data,
             ) = self._prepare_working_data()
-            self._rows_total = len(self._parsed_source_data["data"])
+            self._rows_total = len(self._searched_data)
             DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
             DataJson()[self.widget_id]["total"] = self._rows_total
             DataJson().send_changes()
@@ -1162,7 +1157,12 @@ class FastTable(Widget):
 
     def _prepare_working_data(self):
         parsed_source_data = self._unpack_pandas_table_data(input_data=self._source_data)
-        sliced_data = self._slice_table_data(self._source_data, self._active_page)
+        # re-run the full pipeline so the active page respects current
+        # filter/search/sort instead of slicing raw source data
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
+        sliced_data = self._slice_table_data(self._sorted_data, self._active_page)
         parsed_active_data = self._unpack_pandas_table_data(sliced_data)
         return parsed_source_data, sliced_data, parsed_active_data
 

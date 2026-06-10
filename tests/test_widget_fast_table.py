@@ -446,6 +446,20 @@ class TestFastTableDataFormats:
         assert table._rows_total == 2
         assert popped.tolist() == [5, 6]
 
+    def test_pop_row_repeated(self):
+        """pop_row must reset the dataframe index: dropping by label without
+        reset left a hole, so a second pop_row(0) raised KeyError."""
+        data = [[1, 2], [3, 4], [5, 6]]
+        table = FastTable(data=data, columns=["a", "b"])
+
+        first = table.pop_row(0)
+        second = table.pop_row(0)
+
+        assert first.tolist() == [1, 2]
+        assert second.tolist() == [3, 4]
+        assert table._rows_total == 1
+        assert table._source_data.index.tolist() == [0]
+
     def test_mixed_data_types_in_columns(self):
         """Test table with mixed data types (strings and numbers)."""
         data = [
@@ -936,6 +950,39 @@ class TestFastTableSorting:
         # Should be sorted on initialization
         sorted_df = table._sorted_data
         assert sorted_df.iloc[:, 0].tolist() == [1, 2, 5, 8]
+
+    def test_sort_on_init_with_dataframe(self):
+        """Active page must be sorted when sort params are passed to the
+        constructor with a DataFrame input. _prepare_working_data() used to
+        slice raw _source_data, so the page showed unsorted rows while the
+        sort arrow pointed at the column."""
+        df = pd.DataFrame([[5, "e"], [2, "b"], [8, "h"], [1, "a"]], columns=["num", "letter"])
+        table = FastTable(data=df, sort_column_idx=0, sort_order="desc", page_size=2)
+
+        active_rows = [r["items"][0] for r in table.get_json_data()["data"]]
+        assert active_rows == [8, 5]
+
+    def test_add_rows_keeps_sort(self):
+        """Row mutations must not revert the active page to unsorted order."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+        table.sort(column_idx=0, order="desc")
+
+        table.add_rows([[9, "z"]])
+
+        active_rows = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active_rows == [9, 8, 5, 2, 1]
+
+    def test_pop_row_keeps_sort(self):
+        """Removing a row must keep the active page sorted."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+        table.sort(column_idx=0, order="desc")
+
+        table.pop_row(0)
+
+        active_rows = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active_rows == [8, 2, 1]
 
     def test_sort_none_column_idx(self):
         """Test that passing None parameters without reset preserves current sorting."""
