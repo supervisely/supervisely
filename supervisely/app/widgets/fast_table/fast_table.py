@@ -393,6 +393,7 @@ class FastTable(Widget):
         """
         self._fix_columns = self._validate_fix_columns_value(value)
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
+        DataJson().send_changes()
 
     @property
     def project_meta(self) -> Dict[str, Any]:
@@ -412,6 +413,7 @@ class FastTable(Widget):
         """
         self._project_meta = self._unpack_project_meta(meta)
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
+        DataJson().send_changes()
 
     @property
     def page_size(self) -> int:
@@ -421,6 +423,7 @@ class FastTable(Widget):
     def page_size(self, size: int):
         self._page_size = size
         DataJson()[self.widget_id]["pageSize"] = self._page_size
+        DataJson().send_changes()
 
     def set_sort(
         self, func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]
@@ -820,6 +823,7 @@ class FastTable(Widget):
             self._rows_total = len(self._parsed_source_data["data"])
             DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
             DataJson()[self.widget_id]["total"] = self._rows_total
+            DataJson().send_changes()
             self._maybe_update_selected_row()
             return popped_row
 
@@ -830,7 +834,7 @@ class FastTable(Widget):
         self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
         self._parsed_active_data = {"data": [], "columns": []}
         self._rows_total = 0
-        DataJson()[self.widget_id]["data"] = {}
+        DataJson()[self.widget_id]["data"] = []
         DataJson()[self.widget_id]["total"] = 0
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -1060,6 +1064,7 @@ class FastTable(Widget):
         # Update DataJson with sorted and paginated data
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
         self._maybe_update_selected_row()
         StateJson().send_changes()
 
