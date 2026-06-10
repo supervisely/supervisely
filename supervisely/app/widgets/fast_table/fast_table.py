@@ -813,8 +813,9 @@ class FastTable(Widget):
         )
 
         if len(self._parsed_source_data["data"]) != 0:
-            popped_row = self._source_data.loc[index].values
-            self._source_data = self._source_data.drop(index)
+            actual_label = self._source_data.index[index]
+            popped_row = self._source_data.iloc[index].values
+            self._source_data = self._source_data.drop(actual_label).reset_index(drop=True)
             (
                 self._parsed_source_data,
                 self._sliced_data,
