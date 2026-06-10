@@ -121,7 +121,8 @@ class PerVertexLabelsMeshConverter(MeshConverter):
                 return False
 
             self._items = items
-            if len(ds_names_seen) > 1:
+            has_nested = len(ds_names_seen) > 1 or any("/" in ds for ds in ds_names_seen)
+            if has_nested:
                 self._project_structure = project
             return True
         except Exception as e:
