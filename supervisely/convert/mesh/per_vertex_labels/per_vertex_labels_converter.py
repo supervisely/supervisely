@@ -214,9 +214,9 @@ class PerVertexLabelsMeshConverter(MeshConverter):
             return input_data
 
         candidates = []
-        for entry in os.scandir(input_data):
-            if entry.is_dir() and os.path.isfile(os.path.join(entry.path, "meta.json")):
-                candidates.append(entry.path)
+        for root, _, files in os.walk(input_data):
+            if "meta.json" in files:
+                candidates.append(root)
         if len(candidates) == 1:
             return candidates[0]
         return None
