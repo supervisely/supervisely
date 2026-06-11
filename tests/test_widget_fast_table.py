@@ -1394,10 +1394,9 @@ class TestFastTableLeftoverBugs:
         assert table._search_str == ""
         assert StateJson()[table.widget_id]["search"] == ""
 
-    def test_read_pandas_applies_filter_immediately(self):
-        """Programmatic filter must act on the new data right away, not on the
-        next user interaction (search is user input and is reset; filter is a
-        persistent app-level setting, like sort)."""
+    def test_read_pandas_resets_filter_by_default(self):
+        """Default reset_filters=True clears both the search query and the
+        programmatic filter value — new data arrives unfiltered."""
         from supervisely.app import DataJson
 
         table = FastTable(data=[[10], [20], [30], [40], [50]], columns=["v"])
@@ -1407,22 +1406,66 @@ class TestFastTableLeftoverBugs:
 
         table.read_pandas(pd.DataFrame([[1], [2], [30], [40]], columns=["v"]))
 
-        # filter is kept and already applied: 30 and 40 pass, 1 and 2 do not
-        assert table._rows_total == 2
-        assert DataJson()[table.widget_id]["total"] == 2
-        active = [r["items"][0] for r in table._parsed_active_data["data"]]
-        assert active == [30, 40]
+        assert table._filter_value is None
+        assert table._rows_total == 4
+        assert DataJson()[table.widget_id]["total"] == 4
         # no surprise on the next interaction
         table._refresh()
-        assert table._rows_total == 2
+        assert table._rows_total == 4
 
-    def test_read_json_applies_filter_immediately(self):
+    def test_read_pandas_keeps_filters_when_asked(self):
+        """reset_filters=False keeps search and filter and applies both to the
+        new data immediately, not on the next user interaction."""
+        from supervisely.app import DataJson
+        from supervisely.app.content import StateJson
+
+        table = FastTable(
+            data=[["fruit_10", 10], ["fruit_20", 20], ["car_30", 30], ["fruit_40", 40]],
+            columns=["name", "v"],
+        )
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[1]] > v])
+        table.filter(15)
+        table.search("fruit")
+
+        table.read_pandas(
+            pd.DataFrame(
+                [["fruit_1", 1], ["fruit_30", 30], ["car_40", 40]], columns=["name", "v"]
+            ),
+            reset_filters=False,
+        )
+
+        # search is kept in the box and applied; filter is kept and applied
+        assert table._search_str == "fruit"
+        assert StateJson()[table.widget_id]["search"] == "fruit"
+        assert table._filter_value == 15
+        active = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active == ["fruit_30"]  # fruit_1 fails filter, car_40 fails search
+        assert table._rows_total == 1
+        assert DataJson()[table.widget_id]["total"] == 1
+        # no surprise on the next interaction
+        table._refresh()
+        assert table._rows_total == 1
+
+    def test_read_json_resets_filter_by_default(self):
         table = FastTable(data=[[10], [20], [30]], columns=["v"])
         table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
         table.filter(25)
 
         table.read_json({"data": [[1], [50]], "columns": ["v"], "options": {}})
 
+        assert table._filter_value is None
+        assert table._rows_total == 2
+
+    def test_read_json_keeps_filters_when_asked(self):
+        table = FastTable(data=[[10], [20], [30]], columns=["v"])
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
+        table.filter(25)
+
+        table.read_json(
+            {"data": [[1], [50]], "columns": ["v"], "options": {}}, reset_filters=False
+        )
+
+        assert table._filter_value == 25
         assert table._rows_total == 1
         active = [r["items"][0] for r in table._parsed_active_data["data"]]
         assert active == [50]

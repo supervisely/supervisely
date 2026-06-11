@@ -449,7 +449,13 @@ class FastTable(Widget):
             filter_function = self._default_filter_function
         self._filter_function = filter_function
 
-    def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
+    def read_json(
+        self,
+        data: Dict,
+        meta: Dict = None,
+        custom_columns: Optional[List[Union[str, tuple]]] = None,
+        reset_filters: bool = True,
+    ) -> None:
         """Replace table data with options and project meta in the widget
 
         More about options in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable#read_json>`_
@@ -477,6 +483,10 @@ class FastTable(Widget):
         :type meta: dict
         :param custom_columns: List of column names. Can include widgets as tuples (column_name, widget)
         :type custom_columns: List[Union[str, tuple]], optional
+        :param reset_filters: If True (default), resets the search query and the
+            programmatic filter value. If False, both are kept and applied to
+            the new data immediately.
+        :type reset_filters: bool
 
         Example of data dict:
         .. code-block:: python
@@ -500,6 +510,7 @@ class FastTable(Widget):
                 },
             }
         """
+
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
         self._read_custom_columns(custom_columns)
         if not self._columns_first_idx:
@@ -520,9 +531,10 @@ class FastTable(Widget):
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10)
 
-        # reset search so the old query is not silently applied to the new data
-        self._search_str = ""
-        StateJson()[self.widget_id]["search"] = self._search_str
+        if reset_filters:
+            self._filter_value = None
+            self._search_str = ""
+            StateJson()[self.widget_id]["search"] = self._search_str
 
         self._filtered_data = self._filter(self._filter_value)
         self._searched_data = self._search(self._search_str)
@@ -548,16 +560,22 @@ class FastTable(Widget):
         DataJson().send_changes()
         StateJson().send_changes()
 
-    def read_pandas(self, data: pd.DataFrame) -> None:
+    def read_pandas(self, data: pd.DataFrame, reset_filters: bool = True) -> None:
         """Replace table data (rows and columns) in the widget.
 
         :param data: Table data
         :type data: pd.DataFrame
+        :param reset_filters: If True (default), resets the search query and the
+            programmatic filter value. If False, both are kept and applied to
+            the new data immediately.
+        :type reset_filters: bool
         """
+
         self._source_data = self._prepare_input_data(data)
-        # reset search so the old query is not silently applied to the new data
-        self._search_str = ""
-        StateJson()[self.widget_id]["search"] = self._search_str
+        if reset_filters:
+            self._filter_value = None
+            self._search_str = ""
+            StateJson()[self.widget_id]["search"] = self._search_str
         self._active_page = 1
         StateJson()[self.widget_id]["page"] = self._active_page
         self._filtered_data = self._filter(self._filter_value)
