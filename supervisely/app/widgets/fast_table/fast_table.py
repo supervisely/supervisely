@@ -520,17 +520,22 @@ class FastTable(Widget):
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10)
 
-        # Apply sorting before preparing working data
-        self._sorted_data = self._sort_table_data(self._source_data)
+        # reset search so the old query is not silently applied to the new data
+        self._search_str = ""
+        StateJson()[self.widget_id]["search"] = self._search_str
+
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
-        self._rows_total = len(self._parsed_source_data["data"]) 
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
-        DataJson()[self.widget_id]["total"] = len(self._source_data)
+        DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson()[self.widget_id]["pageSize"] = self._page_size
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
         StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
@@ -538,9 +543,6 @@ class FastTable(Widget):
         StateJson()[self.widget_id]["page"] = self._active_page
         StateJson()[self.widget_id]["selectedRows"] = []
         StateJson()[self.widget_id]["selectedCell"] = None
-        # reset search so the old query is not silently applied to the new data
-        self._search_str = ""
-        StateJson()[self.widget_id]["search"] = self._search_str
         self._maybe_update_selected_row()
         self._validate_sort_attrs()
         DataJson().send_changes()
@@ -556,17 +558,19 @@ class FastTable(Widget):
         # reset search so the old query is not silently applied to the new data
         self._search_str = ""
         StateJson()[self.widget_id]["search"] = self._search_str
-        self._sorted_data = self._sort_table_data(self._source_data)
+        self._active_page = 1
+        StateJson()[self.widget_id]["page"] = self._active_page
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
-        self._rows_total = len(self._parsed_source_data["data"])
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
-        DataJson()[self.widget_id]["total"] = len(self._source_data)
+        DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
-        self._active_page = 1
-        StateJson()[self.widget_id]["page"] = self._active_page
         StateJson().send_changes()
         self.clear_selection()
 

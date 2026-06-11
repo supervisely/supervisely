@@ -1394,6 +1394,39 @@ class TestFastTableLeftoverBugs:
         assert table._search_str == ""
         assert StateJson()[table.widget_id]["search"] == ""
 
+    def test_read_pandas_applies_filter_immediately(self):
+        """Programmatic filter must act on the new data right away, not on the
+        next user interaction (search is user input and is reset; filter is a
+        persistent app-level setting, like sort)."""
+        from supervisely.app import DataJson
+
+        table = FastTable(data=[[10], [20], [30], [40], [50]], columns=["v"])
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
+        table.filter(25)
+        assert table._rows_total == 3
+
+        table.read_pandas(pd.DataFrame([[1], [2], [30], [40]], columns=["v"]))
+
+        # filter is kept and already applied: 30 and 40 pass, 1 and 2 do not
+        assert table._rows_total == 2
+        assert DataJson()[table.widget_id]["total"] == 2
+        active = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active == [30, 40]
+        # no surprise on the next interaction
+        table._refresh()
+        assert table._rows_total == 2
+
+    def test_read_json_applies_filter_immediately(self):
+        table = FastTable(data=[[10], [20], [30]], columns=["v"])
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
+        table.filter(25)
+
+        table.read_json({"data": [[1], [50]], "columns": ["v"], "options": {}})
+
+        assert table._rows_total == 1
+        active = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active == [50]
+
     def test_select_row_navigates_to_sorted_page(self):
         """select_row must compute the page from the row position in the sorted view."""
         table = FastTable(
