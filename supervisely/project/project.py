@@ -39,7 +39,12 @@ from supervisely._utils import (
     removesuffix,
     snake_to_human,
 )
-from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
+from supervisely.annotation.annotation import (
+    ANN_EXT,
+    Annotation,
+    AnnotationJsonFields,
+    TagCollection,
+)
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.api.api import Api, ApiContext, ApiField
@@ -6191,6 +6196,18 @@ async def _download_project_async(
             logger.info(f"There was an error while creating README: {e}")
 
 
+def _set_ann_json_size(ann_json: dict, height: Optional[int], width: Optional[int]) -> None:
+    """Patch image size directly in the raw annotation JSON received from the server.
+
+    Re-serializing through ``Annotation.from_json(...).to_json()`` would drop
+    server-only fields which the SDK does not know about (e.g. ``objectId``).
+    """
+    ann_json[AnnotationJsonFields.IMG_SIZE] = {
+        AnnotationJsonFields.IMG_SIZE_HEIGHT: height,
+        AnnotationJsonFields.IMG_SIZE_WIDTH: width,
+    }
+
+
 async def _download_project_item_async(
     api: sly.Api,
     img_info: sly.ImageInfo,
@@ -6224,7 +6241,7 @@ async def _download_project_item_async(
             raise
         if None in tmp_ann.img_size:
             tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-            ann_json = tmp_ann.to_json()
+            _set_ann_json_size(ann_json, img_info.height, img_info.width)
     else:
         tags = TagCollection.from_api_response(
             img_info.tags,
@@ -6267,7 +6284,7 @@ async def _download_project_item_async(
             # Update annotation with correct dimensions if needed
             if None in tmp_ann.img_size:
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                ann_json = tmp_ann.to_json()
+                _set_ann_json_size(ann_json, img_info.height, img_info.width)
 
             # os.rename is atomic and will overwrite the destination if it exists
             os.rename(temp_path, final_path)
@@ -6293,7 +6310,7 @@ async def _download_project_item_async(
             # Update annotation with correct dimensions if needed
             if None in tmp_ann.img_size:
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                ann_json = tmp_ann.to_json()
+                _set_ann_json_size(ann_json, img_info.height, img_info.width)
 
             # Clean up existing item first, then save new one
             dataset_fs.delete_item(img_info.name)
@@ -6351,16 +6368,17 @@ async def _download_project_items_batch_async(
         )
         id_to_annotation = {}
         for img_info, ann_info in zip(img_infos, ann_infos):
+            ann_json = ann_info.annotation
             try:
-                tmp_ann = Annotation.from_json(ann_info.annotation, meta)
-                if None in tmp_ann.img_size:
-                    tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                id_to_annotation[img_info.id] = tmp_ann.to_json()
+                tmp_ann = Annotation.from_json(ann_json, meta)
             except Exception:
                 logger.error(
                     f"Error while deserializing annotation for image with ID: {img_info.id}"
                 )
                 raise
+            if None in tmp_ann.img_size:
+                _set_ann_json_size(ann_json, img_info.height, img_info.width)
+            id_to_annotation[img_info.id] = ann_json
     else:
         id_to_annotation = {}
         for img_info in img_infos:
@@ -6390,8 +6408,7 @@ async def _download_project_items_batch_async(
                     try:
                         tmp_ann = Annotation.from_json(ann_json, meta)
                         if None in tmp_ann.img_size:
-                            tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                        ann_json = tmp_ann.to_json()
+                            _set_ann_json_size(ann_json, img_info.height, img_info.width)
                     except Exception:
                         pass
             else:
