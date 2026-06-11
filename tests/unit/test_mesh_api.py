@@ -713,6 +713,71 @@ class TestMeshConverter(unittest.TestCase):
                 {"tooth_1", "gum_1"},
             )
 
+    def test_per_vertex_labels_converter_marker_disambiguates_white_class(self):
+        with tempfile.TemporaryDirectory() as project_dir:
+            os.makedirs(os.path.join(project_dir, "ds"), exist_ok=True)
+            meta = ProjectMeta(
+                obj_classes=[
+                    ObjClass("white_cls", Mesh, color=[255, 255, 255], sly_id=201),
+                    ObjClass("tooth", Mesh, color=[10, 20, 30], sly_id=202),
+                ],
+                project_type=ProjectType.MESHES.value,
+            )
+            dump_json_file(meta.to_json(), os.path.join(project_dir, "meta.json"))
+            self._write_ascii_ply(
+                os.path.join(project_dir, "ds", "mesh.ply"),
+                [
+                    (255, 255, 255, -1, -1),  # background: white, marker -1
+                    (255, 255, 255, 201, 7),  # annotated with the white class
+                    (10, 20, 30, 202, -1),    # annotated, no instance
+                ],
+            )
+
+            converter = PerVertexLabelsMeshConverter(project_dir)
+            self.assertTrue(converter.validate_format())
+
+            item = converter.get_items()[0]
+            ann = converter.to_supervisely(item, converter.get_meta())
+            labels_by_class = {
+                label["classTitle"]: label["geometry"]["indices"]
+                for label in ann["labels"]
+            }
+            self.assertEqual(labels_by_class["white_cls"], [1])  # vertex 0 excluded
+            self.assertEqual(labels_by_class["tooth"], [2])
+
+    def test_per_vertex_labels_converter_rejects_file_without_id_columns(self):
+        # class_id and object_id vertex properties are mandatory parts of the format.
+        with tempfile.TemporaryDirectory() as project_dir:
+            os.makedirs(os.path.join(project_dir, "ds"), exist_ok=True)
+            meta = ProjectMeta(
+                obj_classes=[ObjClass("tooth", Mesh, color=[10, 20, 30], sly_id=301)],
+                project_type=ProjectType.MESHES.value,
+            )
+            dump_json_file(meta.to_json(), os.path.join(project_dir, "meta.json"))
+            lines = [
+                "ply",
+                "format ascii 1.0",
+                "element vertex 3",
+                "property float x",
+                "property float y",
+                "property float z",
+                "property uchar red",
+                "property uchar green",
+                "property uchar blue",
+                "element face 1",
+                "property list uchar int vertex_indices",
+                "end_header",
+                "0 0 0 10 20 30",
+                "1 0 0 255 255 255",
+                "2 0 0 10 20 30",
+                "3 0 1 2",
+            ]
+            with open(os.path.join(project_dir, "ds", "mesh.ply"), "w", encoding="ascii") as f:
+                f.write("\n".join(lines) + "\n")
+
+            converter = PerVertexLabelsMeshConverter(project_dir)
+            self.assertFalse(converter.validate_format())
+
     def test_per_vertex_labels_converter_strips_label_data_from_meshes(self):
         with tempfile.TemporaryDirectory() as project_dir:
             self._write_per_vertex_labels_project(project_dir)

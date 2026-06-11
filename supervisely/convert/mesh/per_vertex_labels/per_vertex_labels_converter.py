@@ -361,13 +361,17 @@ def _clean_label_data_from_ply(mesh_path: str, color_to_class: Dict) -> None:
     rest_lines = lines[body_start + vertex_count :]
 
     color_indexes = _get_color_property_indexes(vertex_properties)
+    marker_index = _property_index(vertex_properties, "class_id")
     labeled_rows = set()
     if color_indexes is not None:
         for row_index, row in enumerate(vertex_lines):
             values = row.split()
             color = tuple(_parse_color_channel(values[index]) for index in color_indexes)
-            if color in color_to_class:
-                labeled_rows.add(row_index)
+            if color not in color_to_class:
+                continue
+            if marker_index is not None and int(float(values[marker_index])) == UNLABELED_ID:
+                continue
+            labeled_rows.add(row_index)
 
         if vertex_count > 0 and len(labeled_rows) == vertex_count:
             # Every vertex carries label paint — no original colors survive,
@@ -423,7 +427,13 @@ def _read_ascii_ply_labels(
         if color_indexes is None:
             return PLYLabels(groups={}, has_rgb=False, labeled_vertices=0)
 
+        # class_id and object_id are mandatory parts of the per-vertex format:
+        # class_id marks annotated vertices, object_id carries instance grouping.
+        class_id_index = _property_index(vertex_properties, "class_id")
         object_id_index = _property_index(vertex_properties, "object_id")
+        if class_id_index is None or object_id_index is None:
+            return PLYLabels(groups={}, has_rgb=False, labeled_vertices=0)
+
         groups = {}
         labeled_vertices = 0
 
@@ -440,11 +450,15 @@ def _read_ascii_ply_labels(
             if class_name is None:
                 continue
 
+            # class_id == -1 explicitly marks the vertex as not annotated. This lets
+            # background vertices coexist with a class of the same color (e.g. white).
+            if int(float(values[class_id_index])) == UNLABELED_ID:
+                continue
+
             object_id = None
-            if object_id_index is not None:
-                parsed_object_id = int(float(values[object_id_index]))
-                if parsed_object_id != UNLABELED_ID:
-                    object_id = parsed_object_id
+            parsed_object_id = int(float(values[object_id_index]))
+            if parsed_object_id != UNLABELED_ID:
+                object_id = parsed_object_id
 
             groups.setdefault((class_name, object_id), []).append(vertex_index)
             labeled_vertices += 1
