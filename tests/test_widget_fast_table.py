@@ -1356,5 +1356,80 @@ class TestFastTableSorting:
         assert isinstance(sorted_df.iloc[0, 0], float)
 
 
+class TestFastTableLeftoverBugs:
+
+    def test_page_size_setter_reslices_data(self):
+        """page_size setter must re-slice the active page, not only send the new size."""
+        from supervisely.app import DataJson
+
+        table = FastTable(data=[[i, f"r{i}"] for i in range(1, 11)], columns=["id", "name"], page_size=10)
+
+        table.page_size = 5
+
+        assert len(DataJson()[table.widget_id]["data"]) == 5
+        assert DataJson()[table.widget_id]["total"] == 10
+
+    def test_read_pandas_resets_search(self):
+        """Old search must not be silently applied to the new data."""
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=[["fruit apple", 1], ["fruit pear", 2], ["car", 3]], columns=["name", "v"])
+        table.search("fruit")
+
+        table.read_pandas(pd.DataFrame([["x", 10], ["y", 20], ["z", 30]], columns=["name", "v"]))
+
+        assert table._search_str == ""
+        assert StateJson()[table.widget_id]["search"] == ""
+        table._refresh()
+        assert table._rows_total == 3
+
+    def test_read_json_resets_search(self):
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=[["fruit", 1], ["car", 2]], columns=["name", "v"])
+        table.search("fruit")
+
+        table.read_json({"data": [["x", 10], ["y", 20]], "columns": ["name", "v"], "options": {}})
+
+        assert table._search_str == ""
+        assert StateJson()[table.widget_id]["search"] == ""
+
+    def test_select_row_navigates_to_sorted_page(self):
+        """select_row must compute the page from the row position in the sorted view."""
+        table = FastTable(
+            data=[[i, f"r{i}"] for i in range(1, 10)], columns=["id", "name"],
+            page_size=3, is_selectable=True,
+        )
+        table.sort(column_idx=0, order="desc")
+
+        table.select_row(0)  # id=1 -> sorted position 8 -> page 3
+
+        assert table._active_page == 3
+        page_ids = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert 1 in page_ids
+
+    def test_row_click_with_multiselect(self):
+        """row_click handler must use get_clicked_row(): with 2+ rows checked
+        get_selected_row() raised ValueError -> HTTP 500."""
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=[[i, f"r{i}"] for i in range(1, 5)], columns=["id", "name"], is_selectable=True)
+        received = []
+
+        @table.row_click
+        def _handler(row):
+            received.append((row.row_index, row.row))
+
+        table.select_rows([0, 1])
+        server = table._sly_app.get_server()
+        route = table.get_route_path(FastTable.Routes.ROW_CLICKED)
+        endpoint = next(r.endpoint for r in server.routes if getattr(r, "path", None) == route)
+        StateJson()[table.widget_id]["clickedRow"] = {"idx": 2, "row": [3, "r3"]}
+
+        endpoint()  # must not raise
+
+        assert received == [(2, [3, "r3"])]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

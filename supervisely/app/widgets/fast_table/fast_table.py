@@ -418,7 +418,7 @@ class FastTable(Widget):
     def page_size(self, size: int):
         self._page_size = size
         DataJson()[self.widget_id]["pageSize"] = self._page_size
-        DataJson().send_changes()
+        self._refresh()  # re-slice the active page for the new size
 
     def set_sort(
         self, func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]
@@ -538,6 +538,9 @@ class FastTable(Widget):
         StateJson()[self.widget_id]["page"] = self._active_page
         StateJson()[self.widget_id]["selectedRows"] = []
         StateJson()[self.widget_id]["selectedCell"] = None
+        # reset search so the old query is not silently applied to the new data
+        self._search_str = ""
+        StateJson()[self.widget_id]["search"] = self._search_str
         self._maybe_update_selected_row()
         self._validate_sort_attrs()
         DataJson().send_changes()
@@ -550,6 +553,9 @@ class FastTable(Widget):
         :type data: pd.DataFrame
         """
         self._source_data = self._prepare_input_data(data)
+        # reset search so the old query is not silently applied to the new data
+        self._search_str = ""
+        StateJson()[self.widget_id]["search"] = self._search_str
         self._sorted_data = self._sort_table_data(self._source_data)
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
@@ -858,7 +864,7 @@ class FastTable(Widget):
         @server.post(row_clicked_route_path)
         def _click():
             try:
-                clicked_row = self.get_selected_row()
+                clicked_row = self.get_clicked_row()
                 if clicked_row is None:
                     return
                 func(clicked_row)
@@ -1398,7 +1404,12 @@ class FastTable(Widget):
             {"idx": idx, "row": selected_row.get("items", selected_row.get("row", None))}
         ]
         StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
-        page = idx // self._page_size + 1
+        try:
+            # navigate to the page where the row is located in the current (sorted/filtered) view
+            position = self._sorted_data.index.get_loc(idx)
+        except (KeyError, AttributeError):
+            position = idx
+        page = position // self._page_size + 1
         if self._active_page != page:
             self._active_page = page
             StateJson()[self.widget_id]["page"] = self._active_page
