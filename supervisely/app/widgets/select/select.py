@@ -155,6 +155,7 @@ class Select(ConditionalWidget):
         self._filterable = filterable
         self._placeholder = placeholder
         self._changes_handled = False
+        self._value_changed_callback = None
         self._size = size
         self._multiple = multiple
         self._with_link = False
@@ -175,6 +176,16 @@ class Select(ConditionalWidget):
             self._links = {items[i].value: link for i, link in enumerate(items_links)}
 
         super().__init__(items=items, widget_id=widget_id, file_path=__file__)
+
+        # Always register the route: the frontend posts on every change, so the
+        # backend StateJson stays in sync and selection survives page reload.
+        route_path = self.get_route_path(Select.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+
+        @server.post(route_path)
+        def _value_changed():
+            if self._value_changed_callback is not None:
+                self._value_changed_callback(self.get_value())
 
     def _get_first_value(self) -> Select.Item:
         if self._items is not None and len(self._items) > 0:
@@ -231,16 +242,9 @@ class Select(ConditionalWidget):
         return labels
 
     def value_changed(self, func):
-        route_path = self.get_route_path(Select.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
         self._changes_handled = True
-
-        @server.post(route_path)
-        def _click():
-            res = self.get_value()
-            func(res)
-
-        return _click
+        self._value_changed_callback = func
+        return func
 
     def get_items(self) -> List[Select.Item]:
         res = []

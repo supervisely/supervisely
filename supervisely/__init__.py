@@ -101,6 +101,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.geometry.mesh import Mesh
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
@@ -152,6 +153,7 @@ from supervisely.api.team_api import TeamInfo
 from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.app_api import WorkflowSettings, WorkflowMeta
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
+from supervisely.api.mesh.mesh_api import MeshInfo
 
 from supervisely.cli import _handle_creds_error_to_console
 
@@ -232,6 +234,26 @@ from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
 from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
     PointcloudTagCollection,
 )
+from supervisely.mesh_annotation.mesh_annotation import MeshAnnotation
+from supervisely.mesh_annotation.mesh_indices import (
+    decode_mesh_indices,
+    decode_mesh_indices_base64,
+    decode_mesh_indices_in_json,
+    decode_mesh_indices_np,
+    encode_mesh_indices,
+    encode_mesh_indices_base64,
+    encode_mesh_indices_in_json,
+    encode_mesh_indices_np,
+)
+from supervisely.mesh_annotation.mesh_label import MeshLabel
+from supervisely.mesh_annotation.mesh_tag import MeshTag
+from supervisely.mesh_annotation.mesh_tag_collection import MeshTagCollection
+from supervisely.project.mesh_project import (
+    MeshDataset,
+    MeshProject,
+    download_mesh_project,
+    upload_mesh_project,
+)
 from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,
@@ -283,7 +305,11 @@ from supervisely.project.volume_project import (
 )
 
 from supervisely.convert.converter import ImportManager
-from supervisely.convert.base_converter import AvailableImageConverters, BaseConverter
+from supervisely.convert.base_converter import (
+    AvailableImageConverters,
+    AvailableMeshConverters,
+    BaseConverter,
+)
 
 from supervisely.geometry.bitmap import SkeletonizeMethod
 

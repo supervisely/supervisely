@@ -5,13 +5,14 @@ from supervisely.collection.str_enum import StrEnum
 
 class ProjectType(StrEnum):
     """
-    Enumerates supported Supervisely project types (images, videos, volumes, point clouds, episodes).
+    Enumerates supported Supervisely project types.
     """
     IMAGES = "images"
     VIDEOS = "videos"
     VOLUMES = "volumes"
     POINT_CLOUDS = "point_clouds"
     POINT_CLOUD_EPISODES = "point_cloud_episodes"
+    MESHES = "meshes"
 
 
 # Constants for multispectral and multiview projects.

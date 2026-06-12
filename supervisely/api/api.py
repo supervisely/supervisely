@@ -49,6 +49,7 @@ import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.mesh.mesh_api as mesh_api
 import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
@@ -378,6 +379,7 @@ class Api:
         self.report = report_api.ReportApi(self)
         self.pointcloud = pointcloud_api.PointcloudApi(self)
         self.pointcloud_episode = pointcloud_episode_api.PointcloudEpisodeApi(self)
+        self.mesh = mesh_api.MeshApi(self)
         self.app = app_api.AppApi(self)
         self.file = file_api.FileApi(self)
         self.storage = storage_api.StorageApi(self)

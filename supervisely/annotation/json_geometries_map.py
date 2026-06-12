@@ -8,6 +8,7 @@ from supervisely.geometry.cuboid_2d import Cuboid2d
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.geometry.mesh import Mesh
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
@@ -37,6 +38,7 @@ _INPUT_GEOMETRIES = [
     Cuboid2d,
     Polyline3D,
     OrientedBBox,
+    Mesh,
 ]
 _JSON_SHAPE_TO_GEOMETRY_TYPE = {
     geometry.geometry_name(): geometry for geometry in _INPUT_GEOMETRIES
