@@ -590,6 +590,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             items_api = self._api.image
         elif project_info.type == str(ProjectType.VIDEOS):
             items_api = self._api.video
+        elif project_info.type == str(ProjectType.MESHES):
+            items_api = self._api.mesh
         else:
             raise RuntimeError(f"Unsupported project type: {project_info.type}")
 
