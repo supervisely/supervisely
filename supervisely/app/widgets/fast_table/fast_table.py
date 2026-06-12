@@ -250,11 +250,6 @@ class FastTable(Widget):
         self._validate_input_data(data)
         self._source_data = self._prepare_input_data(data)
 
-        # Initialize filtered and searched data for proper initialization
-        self._filtered_data = self._filter(self._filter_value)
-        self._searched_data = self._search(self._search_str)
-        self._sorted_data = self._sort_table_data(self._searched_data)
-
         # prepare parsed_source_data, sliced_data, parsed_active_data
         (
             self._parsed_source_data,
@@ -393,6 +388,7 @@ class FastTable(Widget):
         """
         self._fix_columns = self._validate_fix_columns_value(value)
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
+        DataJson().send_changes()
 
     @property
     def project_meta(self) -> Dict[str, Any]:
@@ -412,6 +408,7 @@ class FastTable(Widget):
         """
         self._project_meta = self._unpack_project_meta(meta)
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
+        DataJson().send_changes()
 
     @property
     def page_size(self) -> int:
@@ -421,6 +418,7 @@ class FastTable(Widget):
     def page_size(self, size: int):
         self._page_size = size
         DataJson()[self.widget_id]["pageSize"] = self._page_size
+        self._refresh()  # re-slice the active page for the new size
 
     def set_sort(
         self, func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]
@@ -451,7 +449,13 @@ class FastTable(Widget):
             filter_function = self._default_filter_function
         self._filter_function = filter_function
 
-    def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
+    def read_json(
+        self,
+        data: Dict,
+        meta: Dict = None,
+        custom_columns: Optional[List[Union[str, tuple]]] = None,
+        reset_filters: bool = True,
+    ) -> None:
         """Replace table data with options and project meta in the widget
 
         More about options in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable#read_json>`_
@@ -479,6 +483,10 @@ class FastTable(Widget):
         :type meta: dict
         :param custom_columns: List of column names. Can include widgets as tuples (column_name, widget)
         :type custom_columns: List[Union[str, tuple]], optional
+        :param reset_filters: If True (default), resets the search query and the
+            programmatic filter value. If False, both are kept and applied to
+            the new data immediately.
+        :type reset_filters: bool
 
         Example of data dict:
         .. code-block:: python
@@ -502,6 +510,7 @@ class FastTable(Widget):
                 },
             }
         """
+
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
         self._read_custom_columns(custom_columns)
         if not self._columns_first_idx:
@@ -522,17 +531,23 @@ class FastTable(Widget):
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10)
 
-        # Apply sorting before preparing working data
-        self._sorted_data = self._sort_table_data(self._source_data)
+        if reset_filters:
+            self._filter_value = None
+            self._search_str = ""
+            StateJson()[self.widget_id]["search"] = self._search_str
+
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
-        self._rows_total = len(self._parsed_source_data["data"]) 
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
-        DataJson()[self.widget_id]["total"] = len(self._source_data)
+        DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson()[self.widget_id]["pageSize"] = self._page_size
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
         StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
@@ -545,24 +560,35 @@ class FastTable(Widget):
         DataJson().send_changes()
         StateJson().send_changes()
 
-    def read_pandas(self, data: pd.DataFrame) -> None:
+    def read_pandas(self, data: pd.DataFrame, reset_filters: bool = True) -> None:
         """Replace table data (rows and columns) in the widget.
 
         :param data: Table data
         :type data: pd.DataFrame
+        :param reset_filters: If True (default), resets the search query and the
+            programmatic filter value. If False, both are kept and applied to
+            the new data immediately.
+        :type reset_filters: bool
         """
+
         self._source_data = self._prepare_input_data(data)
-        self._sorted_data = self._sort_table_data(self._source_data)
+        if reset_filters:
+            self._filter_value = None
+            self._search_str = ""
+            StateJson()[self.widget_id]["search"] = self._search_str
+        self._active_page = 1
+        StateJson()[self.widget_id]["page"] = self._active_page
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
-        self._rows_total = len(self._parsed_source_data["data"])
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
-        DataJson()[self.widget_id]["total"] = len(self._source_data)
+        DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
-        self._active_page = 1
-        StateJson()[self.widget_id]["page"] = self._active_page
         StateJson().send_changes()
         self.clear_selection()
 
@@ -771,7 +797,7 @@ class FastTable(Widget):
             self._sliced_data,
             self._parsed_active_data,
         ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
@@ -789,7 +815,7 @@ class FastTable(Widget):
             self._sliced_data,
             self._parsed_active_data,
         ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+        self._rows_total = len(self._searched_data)
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
@@ -810,16 +836,18 @@ class FastTable(Widget):
         )
 
         if len(self._parsed_source_data["data"]) != 0:
-            popped_row = self._source_data.loc[index].values
-            self._source_data = self._source_data.drop(index)
+            actual_label = self._source_data.index[index]
+            popped_row = self._source_data.iloc[index].values
+            self._source_data = self._source_data.drop(actual_label).reset_index(drop=True)
             (
                 self._parsed_source_data,
                 self._sliced_data,
                 self._parsed_active_data,
             ) = self._prepare_working_data()
-            self._rows_total = len(self._parsed_source_data["data"])
+            self._rows_total = len(self._searched_data)
             DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
             DataJson()[self.widget_id]["total"] = self._rows_total
+            DataJson().send_changes()
             self._maybe_update_selected_row()
             return popped_row
 
@@ -830,7 +858,7 @@ class FastTable(Widget):
         self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
         self._parsed_active_data = {"data": [], "columns": []}
         self._rows_total = 0
-        DataJson()[self.widget_id]["data"] = {}
+        DataJson()[self.widget_id]["data"] = []
         DataJson()[self.widget_id]["total"] = 0
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -858,7 +886,7 @@ class FastTable(Widget):
         @server.post(row_clicked_route_path)
         def _click():
             try:
-                clicked_row = self.get_selected_row()
+                clicked_row = self.get_clicked_row()
                 if clicked_row is None:
                     return
                 func(clicked_row)
@@ -1060,6 +1088,7 @@ class FastTable(Widget):
         # Update DataJson with sorted and paginated data
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
         self._maybe_update_selected_row()
         StateJson().send_changes()
 
@@ -1156,7 +1185,12 @@ class FastTable(Widget):
 
     def _prepare_working_data(self):
         parsed_source_data = self._unpack_pandas_table_data(input_data=self._source_data)
-        sliced_data = self._slice_table_data(self._source_data, self._active_page)
+        # re-run the full pipeline so the active page respects current
+        # filter/search/sort instead of slicing raw source data
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
+        sliced_data = self._slice_table_data(self._sorted_data, self._active_page)
         parsed_active_data = self._unpack_pandas_table_data(sliced_data)
         return parsed_source_data, sliced_data, parsed_active_data
 
@@ -1392,7 +1426,12 @@ class FastTable(Widget):
             {"idx": idx, "row": selected_row.get("items", selected_row.get("row", None))}
         ]
         StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
-        page = idx // self._page_size + 1
+        try:
+            # navigate to the page where the row is located in the current (sorted/filtered) view
+            position = self._sorted_data.index.get_loc(idx)
+        except (KeyError, AttributeError):
+            position = idx
+        page = position // self._page_size + 1
         if self._active_page != page:
             self._active_page = page
             StateJson()[self.widget_id]["page"] = self._active_page
