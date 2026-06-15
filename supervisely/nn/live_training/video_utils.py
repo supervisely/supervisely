@@ -96,20 +96,31 @@ def filter_objects_by_confidence(
     ]
 
 
-def create_video_object(api: sly.Api, video_info, obj_class: sly.ObjClass) -> int:
-    """Create a single new ``VideoObject`` of the given class on the video and
-    return its server-side id.
+def create_video_objects(
+    api: sly.Api, video_info, obj_classes: List[sly.ObjClass]
+) -> List[int]:
+    """Create new ``VideoObject``s for ``obj_classes`` on the video in a single
+    bulk request and return their server-side ids, in the same order.
     """
-    vid_obj = sly.VideoObject(obj_class)
+    if not obj_classes:
+        return []
+    vid_objs = [sly.VideoObject(obj_class) for obj_class in obj_classes]
     obj_ids = api.video.object._append_bulk(
         tag_api=VideoObjectTagApi(api),
         entity_id=video_info.id,
         project_id=video_info.project_id,
         dataset_id=video_info.dataset_id,
-        objects=sly.VideoObjectCollection([vid_obj]),
+        objects=sly.VideoObjectCollection(vid_objs),
         key_id_map=sly.KeyIdMap(),
     )
-    return obj_ids[0]
+    return obj_ids
+
+
+def create_video_object(api: sly.Api, video_info, obj_class: sly.ObjClass) -> int:
+    """Create a single new ``VideoObject`` of the given class on the video and
+    return its server-side id.
+    """
+    return create_video_objects(api, video_info, [obj_class])[0]
 
 
 def label_to_video_figure_json(label: sly.Label, object_id: int, frame_index: int) -> dict:

@@ -24,7 +24,7 @@ from supervisely.api.module_api import ApiField
 from .request_queue import RequestType
 from .utils import TrainingStoppedException
 from .video_utils import (
-    create_video_object,
+    create_video_objects,
     filter_objects_by_confidence,
     get_uniform_frame_indices,
     label_to_video_figure_json,
@@ -110,26 +110,10 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             )
         else:
             raw_widget_value = lt.tracking_frames_widget.get_value()
-            widget_id = lt.tracking_frames_widget.widget_id
-            try:
-                from supervisely.app import StateJson
-
-                sj = StateJson()
-                widget_in_state = widget_id in sj
-                widget_state_entry = sj.get(widget_id) if widget_in_state else None
-                sj_keys = list(sj.keys())
-            except Exception as e:
-                widget_in_state = f"err:{e}"
-                widget_state_entry = None
-                sj_keys = []
             n_frames = max(1, int(raw_widget_value))
-            logger.info(
+            logger.debug(
                 f"[predict-video] video_id={video_id} frame_index={frame_index} "
-                f"widget_id={widget_id} get_value()={raw_widget_value!r} "
-                f"_value={lt.tracking_frames_widget._value!r} "
-                f"widget_in_state={widget_in_state} "
-                f"widget_state_entry={widget_state_entry!r} "
-                f"state_keys={sj_keys} -> n_frames={n_frames} (from widget)"
+                f"n_frames={n_frames} (from widget value {raw_widget_value!r})"
             )
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
@@ -155,9 +139,14 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         if not labels_0:
             return {"created_figure_ids": []}
 
+        # Downloaded once (lazily) and shared between object-id resolution and
+        # the background tracker; ``annotation.download`` always pulls the whole
+        # video annotation, so we avoid doing it 2-3x per request.
+        video_ann_json = None
         if n_frames == 1 and object_id is not None:
             object_ids_0 = [object_id] * len(labels_0)
         else:
+            video_ann_json = sly_api.video.annotation.download(video_id)
             # Inherit object_ids from frame K-1's labels (same class, IoU > 0.5)
             # so re-predicting on consecutive frames doesn't keep creating new
             # VideoObjects for what's effectively the same tracked instance.
@@ -170,6 +159,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                 labels=labels_0,
                 video_info=video_info,
                 project_meta=lt.project_meta,
+                video_ann_json=video_ann_json,
             )
             kept = [(label, oid) for label, oid in zip(labels_0, resolved_ids) if oid is not None]
             if not kept:
@@ -215,6 +205,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                         toolbox_session_id=toolbox_session_id,
                         track_id=track_id,
                         cancel_event=cancel_event,
+                        video_ann_json=video_ann_json,
                     )
                 except Exception as e:
                     logger.warning(
@@ -267,26 +258,25 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         state = request.state.state
         video_id = state["video_id"]
         frame_index = state["frame_index"]
-        frame_np = sly_api.video.frame.download_np(video_id, frame_index)
-        video_ann_json = sly_api.video.annotation.download(video_id)
-        future = lt.request_queue.put(
-            RequestType.ADD_SAMPLE_VIDEO,
-            {
-                "video_id": video_id,
-                "frame_index": frame_index,
-                "frame_np": frame_np,
-                "video_ann_json": video_ann_json,
-            },
-        )
-        result = await _wait_for_result(future, response)
 
-        # Fire-and-forget auto-track of the next frame. Only used while the
-        # model isn't ready to predict — once it is, the labeling UI calls
-        # /predict-video for the next frame itself (which does its own
-        # previous-frame IoU inheritance). Running both paths would upload
-        # two figures to N+1 (one from each).
         context = (request.state.context if hasattr(request.state, "context") else {}) or {}
         toolbox_session_id = state.get("toolbox_session_id") or context.get("toolbox_session_id")
+
+        # Download the video annotation once and share it between auto-track
+        # (latency-critical) and the training ingest. ``download`` always pulls
+        # the entire annotation, so doing it twice is wasteful.
+        video_ann_json = await asyncio.to_thread(sly_api.video.annotation.download, video_id)
+
+        # Kick off auto-track of the next frame FIRST so the MCITrack request
+        # starts immediately, in parallel with the training ingest below.
+        # Previously this was spawned only after the ingest future resolved,
+        # which is gated behind a training iteration — tracked figures didn't
+        # land on N+1 until then.
+        #
+        # Only used while the model isn't ready to predict — once it is, the
+        # labeling UI calls /predict-video for the next frame itself (which does
+        # its own previous-frame IoU inheritance). Running both paths would
+        # upload two figures to N+1 (one from each).
         logger.info(
             f"[add-sample-video] video={video_id} frame={frame_index} "
             f"ready_to_predict={lt.ready_to_predict} "
@@ -304,7 +294,13 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
             def _auto_track():
                 try:
-                    lt.auto_track_next_frame(video_id, frame_index, sly_api, toolbox_session_id)
+                    lt.auto_track_next_frame(
+                        video_id,
+                        frame_index,
+                        sly_api,
+                        toolbox_session_id,
+                        video_ann_json=video_ann_json,
+                    )
                 except Exception as e:
                     logger.warning(
                         f"auto-track of frame {frame_index + 1} " f"(video {video_id}) failed: {e}"
@@ -312,7 +308,27 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
             threading.Thread(target=_auto_track, daemon=True, name="AutoTrackNextFrame").start()
 
-        return result
+        # Ingest the labeled frame into the training dataset off the response
+        # path: the frame only needs to land in the dataset eventually, and
+        # blocking here would stall the (already-running) auto-track too.
+        def _enqueue():
+            try:
+                frame_np = sly_api.video.frame.download_np(video_id, frame_index)
+                lt.request_queue.put(
+                    RequestType.ADD_SAMPLE_VIDEO,
+                    {
+                        "video_id": video_id,
+                        "frame_index": frame_index,
+                        "frame_np": frame_np,
+                        "video_ann_json": video_ann_json,
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"failed to enqueue add-sample-video for video {video_id}: {e}")
+
+        threading.Thread(target=_enqueue, daemon=True, name="AddSampleVideo").start()
+
+        return lt.status()
 
     @app.post("/add-samples-video")
     async def add_samples_video(request: Request, response: Response):
@@ -554,6 +570,7 @@ def _resolve_object_ids_for_predictions(
     labels: list,
     video_info,
     project_meta: sly.ProjectMeta,
+    video_ann_json: Optional[dict] = None,
 ) -> list:
     """For each label in ``labels``, return either:
 
@@ -575,9 +592,10 @@ def _resolve_object_ids_for_predictions(
             f"[predict-video] frame {frame_index}: no previous frame, "
             f"creating fresh VideoObjects for all {len(labels)} predictions"
         )
-        return [create_video_object(api, video_info, label.obj_class) for label in labels]
+        return create_video_objects(api, video_info, [label.obj_class for label in labels])
 
-    video_ann_json = api.video.annotation.download(video_id)
+    if video_ann_json is None:
+        video_ann_json = api.video.annotation.download(video_id)
 
     # obj_id -> class_name (built from the video's full objects list so
     # objects whose only figure is on prev frame are still resolvable).
@@ -620,11 +638,17 @@ def _resolve_object_ids_for_predictions(
         f"{len(prev_sources)} figures"
     )
 
-    out_object_ids = []
+    # Pass 1: classify each label as drop (None), inherit (existing obj_id), or
+    # new (needs a fresh VideoObject). New objects are created in a single bulk
+    # call afterwards instead of one network round-trip per prediction.
+    out_object_ids = [None] * len(labels)
+    new_slots = []  # output indices that need a freshly-created object
+    new_classes = []  # parallel obj_classes for the bulk create
     used_prev = set()
-    for label in labels:
+    for i, label in enumerate(labels):
         if not isinstance(label.geometry, sly.Rectangle):
-            out_object_ids.append(create_video_object(api, video_info, label.obj_class))
+            new_slots.append(i)
+            new_classes.append(label.obj_class)
             continue
         pred_class = label.obj_class.name
 
@@ -644,7 +668,7 @@ def _resolve_object_ids_for_predictions(
                 skip = True
                 break
         if skip:
-            out_object_ids.append(None)
+            out_object_ids[i] = None
             continue
 
         # 2. Inherit object_id from frame K-1 by same-class IoU > 0.5.
@@ -658,19 +682,26 @@ def _resolve_object_ids_for_predictions(
             if iou > best_iou:
                 best_idx, best_obj_id, best_iou = idx, obj_id, iou
         if best_obj_id is None:
-            new_id = create_video_object(api, video_info, label.obj_class)
-            out_object_ids.append(new_id)
+            new_slots.append(i)
+            new_classes.append(label.obj_class)
             logger.info(
                 f"[predict-video] pred {pred_class} unmatched "
-                f"(best_iou={best_iou:.3f}); new object_id={new_id}"
+                f"(best_iou={best_iou:.3f}); will create new object"
             )
         else:
             used_prev.add(best_idx)
-            out_object_ids.append(best_obj_id)
+            out_object_ids[i] = best_obj_id
             logger.info(
                 f"[predict-video] pred {pred_class} matched prev "
                 f"object_id={best_obj_id} at IoU={best_iou:.3f}"
             )
+
+    # Pass 2: bulk-create all new objects in one request and scatter the ids
+    # back into their slots.
+    if new_slots:
+        new_ids = create_video_objects(api, video_info, new_classes)
+        for slot, new_id in zip(new_slots, new_ids):
+            out_object_ids[slot] = new_id
     return out_object_ids
 
 
@@ -688,6 +719,7 @@ def _continue_predict_video_tracking(
     toolbox_session_id: Optional[str],
     track_id: Optional[int],
     cancel_event: threading.Event,
+    video_ann_json: Optional[dict] = None,
 ):
     from supervisely.nn.tracker import BotSortTracker
 
@@ -727,7 +759,8 @@ def _continue_predict_video_tracking(
     # we can replace overlapping ones with the model's predictions (otherwise
     # we'd leave duplicate figures behind, like the user just hit on frame 10).
     frame_indices_set = set(frame_indices)
-    video_ann_json = api.video.annotation.download(video_id)
+    if video_ann_json is None:
+        video_ann_json = api.video.annotation.download(video_id)
     class_by_obj_id = {
         obj["id"]: lt.project_meta.get_obj_class_by_id(obj["classId"]).name
         for obj in video_ann_json.get("objects", [])
@@ -784,6 +817,14 @@ def _continue_predict_video_tracking(
 
         figures_json = []
         figure_ids_to_remove = []
+
+        # Pass A: run the tracker on each frame (must stay ordered) and collect
+        # track_ids that don't yet have a VideoObject, so they can be created in
+        # a single bulk request instead of one round-trip per new track.
+        per_frame = []  # (frame_idx, matches, existing_here)
+        new_track_ids = []  # first-seen order
+        new_classes = []
+        pending_track_ids = set()
         for frame_idx, frame, objects_json in zip(
             batch_indices, frame_nps, batch_result["objects_batch"]
         ):
@@ -797,17 +838,26 @@ def _continue_predict_video_tracking(
                 f"[predict-video tracker] frame {frame_idx}: "
                 f"{len(labels)} preds -> {len(matches)} matches"
             )
+            for match in matches:
+                t_id = match["track_id"]
+                if t_id not in track_id_to_obj_id and t_id not in pending_track_ids:
+                    pending_track_ids.add(t_id)
+                    new_track_ids.append(t_id)
+                    new_classes.append(match["label"].obj_class)
+            per_frame.append((frame_idx, matches, existing_by_frame.get(frame_idx, [])))
 
-            existing_here = existing_by_frame.get(frame_idx, [])
+        if new_track_ids:
+            new_ids = create_video_objects(api, video_info, new_classes)
+            for t_id, new_id in zip(new_track_ids, new_ids):
+                track_id_to_obj_id[t_id] = new_id
+
+        # Pass B: build the figure diff now that every match has an object_id.
+        for frame_idx, matches, existing_here in per_frame:
             used_existing = set()
-
             for match in matches:
                 tracker_track_id = match["track_id"]
                 label = match["label"]
-                obj_id = track_id_to_obj_id.get(tracker_track_id)
-                if obj_id is None:
-                    obj_id = create_video_object(api, video_info, label.obj_class)
-                    track_id_to_obj_id[tracker_track_id] = obj_id
+                obj_id = track_id_to_obj_id[tracker_track_id]
 
                 pred_class = label.obj_class.name
                 best_ex_i, best_iou = -1, 0.5

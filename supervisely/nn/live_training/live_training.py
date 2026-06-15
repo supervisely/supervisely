@@ -870,6 +870,7 @@ class LiveTraining:
         frame_index: int,
         api: sly.Api,
         toolbox_session_id: Optional[str] = None,
+        video_ann_json: Optional[dict] = None,
     ) -> None:
         """Propagate the labels on ``frame_index`` to ``frame_index + 1``
         with MCITrack and reconcile against existing figures there.
@@ -897,9 +898,12 @@ class LiveTraining:
             logger.info("[auto-track] MCITrack not available, skipping")
             return
 
-        # 1. Re-download the video annotation so we see the figure the user
+        # 1. Use the caller-provided annotation when available (the
+        # /add-sample-video endpoint downloads it once and shares it with the
+        # training ingest); otherwise re-download so we see the figure the user
         # just committed on frame N (and any concurrent edits on N+1).
-        video_ann_json = api.video.annotation.download(video_id)
+        if video_ann_json is None:
+            video_ann_json = api.video.annotation.download(video_id)
         next_frame_index = frame_index + 1
         if next_frame_index >= video_ann_json["framesCount"]:
             logger.info(
