@@ -144,16 +144,24 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         # the background tracker; ``annotation.download`` always pulls the whole
         # video annotation, so we avoid doing it 2-3x per request.
         video_ann_json = None
+        # ``labels_0`` / ``object_ids_0`` seed the forward tracker (when N>1);
+        # ``upload_labels`` / ``upload_object_ids`` are what we actually upload
+        # to the start frame. They differ only when some predictions already
+        # have a figure on the start frame: those must not be re-uploaded there,
+        # but must still seed the tracker so the instance is carried forward.
         if n_frames == 1 and object_id is not None:
             object_ids_0 = [object_id] * len(labels_0)
+            upload_labels = labels_0
+            upload_object_ids = object_ids_0
         else:
             video_ann_json = sly_api.video.annotation.download(video_id)
             # Inherit object_ids from frame K-1's labels (same class, IoU > 0.5)
             # so re-predicting on consecutive frames doesn't keep creating new
             # VideoObjects for what's effectively the same tracked instance.
-            # Also drops predictions that already have a matching figure on
-            # frame K (avoids the auto-track-then-predict-video duplicate).
-            resolved_ids = _resolve_object_ids_for_predictions(
+            # Predictions that already have a matching figure on frame K are
+            # flagged as duplicates (is_dup) — kept for tracking, excluded from
+            # the start-frame upload.
+            resolved = _resolve_object_ids_for_predictions(
                 sly_api,
                 video_id=video_id,
                 frame_index=frame_index,
@@ -162,21 +170,43 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                 project_meta=lt.project_meta,
                 video_ann_json=video_ann_json,
             )
-            kept = [(label, oid) for label, oid in zip(labels_0, resolved_ids) if oid is not None]
-            if not kept:
+            seed = [
+                (label, oid)
+                for label, (oid, _) in zip(labels_0, resolved)
+                if oid is not None
+            ]
+            upload = [
+                (label, oid)
+                for label, (oid, is_dup) in zip(labels_0, resolved)
+                if oid is not None and not is_dup
+            ]
+            if not seed:
                 logger.info(
-                    f"[predict-video] frame {frame_index}: all predictions "
-                    f"duplicate existing figures, nothing to upload"
+                    f"[predict-video] frame {frame_index}: no usable "
+                    f"predictions, nothing to track or upload"
                 )
                 return {"created_figure_ids": []}
-            labels_0 = [label for label, _ in kept]
-            object_ids_0 = [oid for _, oid in kept]
+            labels_0 = [label for label, _ in seed]
+            object_ids_0 = [oid for _, oid in seed]
+            upload_labels = [label for label, _ in upload]
+            upload_object_ids = [oid for _, oid in upload]
+            if not upload_labels:
+                logger.info(
+                    f"[predict-video] frame {frame_index}: all predictions "
+                    f"duplicate existing figures on the start frame; nothing "
+                    f"to upload there, but tracking {len(seed)} forward"
+                )
 
-        figures_0_json = [
-            _label_to_video_figure_json_with_track(label, obj_id, frame_index, track_id)
-            for label, obj_id in zip(labels_0, object_ids_0)
-        ]
-        figure_ids_0 = upload_video_figures(sly_api, video_id, figures_0_json, toolbox_session_id)
+        if upload_labels:
+            figures_0_json = [
+                _label_to_video_figure_json_with_track(label, obj_id, frame_index, track_id)
+                for label, obj_id in zip(upload_labels, upload_object_ids)
+            ]
+            figure_ids_0 = upload_video_figures(
+                sly_api, video_id, figures_0_json, toolbox_session_id
+            )
+        else:
+            figure_ids_0 = []
 
         if n_frames > 1:
             logger.info(
@@ -602,17 +632,21 @@ def _resolve_object_ids_for_predictions(
     project_meta: sly.ProjectMeta,
     video_ann_json: Optional[dict] = None,
 ) -> list:
-    """For each label in ``labels``, return either:
+    """For each label in ``labels``, return a ``(object_id, is_duplicate)`` tuple:
 
-    * ``None``  — drop this prediction (a same-class Rectangle figure with
-      IoU > 0.5 already exists on ``frame_index``; we'd otherwise upload a
-      duplicate that breaks ``_filter_annotation_video`` later).
-    * ``int``   — object_id to use for the upload. Inherited from frame
-      ``frame_index - 1``'s same-class Rectangle figures (IoU > 0.5) so
-      object ids stay consistent across consecutive frames; or freshly
-      created via ``create_video_object`` if no inheritance match.
+    * ``is_duplicate=True`` — a same-class Rectangle figure with IoU > 0.5
+      already exists on ``frame_index``; ``object_id`` is that existing
+      figure's object id. The caller must NOT re-upload a figure for it on
+      ``frame_index`` (it would break ``_filter_annotation_video`` later), but
+      may still use the pair to seed a forward tracker so the already-labeled
+      instance is carried into the following frames.
+    * ``is_duplicate=False`` — ``object_id`` to use for a fresh upload on
+      ``frame_index``. Inherited from frame ``frame_index - 1``'s same-class
+      Rectangle figures (IoU > 0.5) so object ids stay consistent across
+      consecutive frames; or freshly created via ``create_video_objects`` if
+      no inheritance match.
 
-    Falls back to ``create_video_object`` for every label when there's no
+    Falls back to ``create_video_objects`` for every label when there's no
     previous frame.
     """
     from supervisely.metric.matching import get_geometries_iou
@@ -622,7 +656,8 @@ def _resolve_object_ids_for_predictions(
             f"[predict-video] frame {frame_index}: no previous frame, "
             f"creating fresh VideoObjects for all {len(labels)} predictions"
         )
-        return create_video_objects(api, video_info, [label.obj_class for label in labels])
+        fresh_ids = create_video_objects(api, video_info, [label.obj_class for label in labels])
+        return [(oid, False) for oid in fresh_ids]
 
     if video_ann_json is None:
         video_ann_json = api.video.annotation.download(video_id)
@@ -696,9 +731,13 @@ def _resolve_object_ids_for_predictions(
                     f"{frame_index} at IoU={iou:.3f}"
                 )
                 skip = True
+                skip_obj_id = ex_obj_id
                 break
         if skip:
-            out_object_ids[i] = None
+            # Keep the existing figure's object_id so the caller can seed the
+            # forward tracker with this instance, but flag it so the start
+            # frame isn't given a duplicate figure.
+            out_object_ids[i] = (skip_obj_id, True)
             continue
 
         # 2. Inherit object_id from frame K-1 by same-class IoU > 0.5.
@@ -720,7 +759,7 @@ def _resolve_object_ids_for_predictions(
             )
         else:
             used_prev.add(best_idx)
-            out_object_ids[i] = best_obj_id
+            out_object_ids[i] = (best_obj_id, False)
             logger.info(
                 f"[predict-video] pred {pred_class} matched prev "
                 f"object_id={best_obj_id} at IoU={best_iou:.3f}"
@@ -731,7 +770,7 @@ def _resolve_object_ids_for_predictions(
     if new_slots:
         new_ids = create_video_objects(api, video_info, new_classes)
         for slot, new_id in zip(new_slots, new_ids):
-            out_object_ids[slot] = new_id
+            out_object_ids[slot] = (new_id, False)
     return out_object_ids
 
 
