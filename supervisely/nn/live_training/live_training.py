@@ -188,6 +188,13 @@ class LiveTraining:
         self.mcitrack_module_id = 475
         self.mcitrack_task_id: Optional[int] = None
         self._mcitrack_ready = threading.Event()
+        # Set once the MCITrack boot attempt finishes, on success OR failure.
+        # /status blocks on this so the UI doesn't report the trainer ready to
+        # start before MCITrack can serve /track-api requests (otherwise a slow
+        # MCITrack boot — e.g. a cold docker pull — silently disables auto-track
+        # for the first labeled frames). Pre-set when MCITrack isn't expected
+        # (image projects / pretraining) so /status never blocks there.
+        self._mcitrack_boot_done = threading.Event()
         try:
             self.project_type = self.api.project.get_info_by_id(self.project_id).type
         except Exception as e:
@@ -220,11 +227,15 @@ class LiveTraining:
                 target=self._start_mcitrack_app, daemon=True, name="MCITrackBoot"
             ).start()
         elif self.is_pretraining:
+            # No MCITrack here, so /status must not wait for it.
+            self._mcitrack_boot_done.set()
             logger.info(
                 "Pretraining mode: skipping MCITrack auto-start "
                 "(only used for live-training auto-track)"
             )
         else:
+            # No MCITrack here, so /status must not wait for it.
+            self._mcitrack_boot_done.set()
             logger.info(
                 f"Project type is {self.project_type!r}, skipping MCITrack auto-start "
                 f"(only used for video projects)"
@@ -907,6 +918,10 @@ class LiveTraining:
                 f"Failed to start MCITrack (auto-track on add-sample-video "
                 f"will be disabled): {e}"
             )
+        finally:
+            # Unblock /status whether MCITrack came up or not — a failed boot
+            # must not hang the UI forever (auto-track just stays disabled).
+            self._mcitrack_boot_done.set()
 
     def auto_track_next_frame(
         self,

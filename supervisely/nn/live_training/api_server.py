@@ -580,6 +580,14 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             and not lt._continue_checkpoint_loaded.is_set()
         ):
             await asyncio.to_thread(lt._continue_checkpoint_loaded.wait)
+        # Hold the readiness signal until MCITrack can serve /track-api requests
+        # (video + live-training only). On a cold machine MCITrack may take a
+        # while to pull its docker image; reporting "ready to start" before then
+        # means the first labeled frames wouldn't be auto-tracked. The event is
+        # pre-set when MCITrack isn't expected, and set on boot failure too, so
+        # this never blocks indefinitely.
+        if not lt._mcitrack_boot_done.is_set():
+            await asyncio.to_thread(lt._mcitrack_boot_done.wait)
         return lt.status()
 
     return app
