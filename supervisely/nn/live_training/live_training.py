@@ -79,7 +79,7 @@ class LiveTraining:
         self.team_id = sly.env.team_id()
         self.task_id = sly.env.task_id(raise_not_found=False)
         self.tracking_frames_widget = InputNumber(
-            value=1, min=1, max=300, step=1, controls=True
+            value=1, min=1, max=10000, step=1, controls=True
         )
         _layout_card = Card(
             title="Number of frames to track",
@@ -125,6 +125,16 @@ class LiveTraining:
         self.selected_experiment_task_id = (
             int(selected_task_id_env) if selected_task_id_env else None
         )
+
+        # Training mode (modal.html): "live training" (default) or "pretraining".
+        # Pretraining loads the whole labeled project up front, trains until the
+        # loss plateau (or a safety iteration cap), then uploads and stops.
+        self.mode = os.getenv("modal.state.mode", "live training")
+        self.is_pretraining = self.mode.strip().lower() == "pretraining"
+        # Safety backstop so a non-plateauing pretraining run still terminates.
+        self.pretraining_max_iters = int(os.getenv("PRETRAINING_MAX_ITERS", "10000"))
+        if self.is_pretraining:
+            self.checkpoint_mode = "scratch"  # pretraining always trains from scratch
 
         self.training_start_time = None
         self._upload_in_progress = False
@@ -249,7 +259,23 @@ class LiveTraining:
 
         try:
             self.phase = Phase.READY_TO_START
-            self._wait_for_start()
+            if self.is_pretraining:
+                # Auto-start: don't wait for the GUI Start button. Replicate the
+                # essential bits of _wait_for_start() (meta refresh + the
+                # _start_received flag), then load the whole labeled project so
+                # _wait_for_initial_samples() returns immediately.
+                self.project_meta = self._fetch_project_meta(self.project_id)
+                self.class_map = self._init_class_map(self.project_meta)
+                self._start_received.set()
+                self._load_all_project_samples()
+                if self.dataset.num_labeled_samples == 0:
+                    self._stop_and_upload(
+                        "pretraining: no labeled samples found in project"
+                    )
+            else:
+                self._wait_for_start()
+            # checkpoint_mode is forced to "scratch" for pretraining, so the
+            # dispatch below always lands in _run_from_scratch in that mode.
             if self.checkpoint_mode == "continue":
                 self._run_continue()
             elif self.checkpoint_mode == "finetune":
@@ -775,9 +801,7 @@ class LiveTraining:
                         f"EMA={result['ema_value']:.3f}"
                     )
             except Exception as e:
-                logger.warning(
-                    f"[bootstrap-eval] failed for sample {sample_id}: {e}"
-                )
+                logger.warning(f"[bootstrap-eval] failed for sample {sample_id}: {e}")
 
     def _predict_and_store_for_evaluator(self, image_id, image_np):
         """Run a single-image prediction and stash it on the evaluator so
@@ -1124,6 +1148,10 @@ class LiveTraining:
     def after_train_step(self, loss: float):
         self.iter += 1
         self._loss = loss
+        if self.is_pretraining and self.iter >= self.pretraining_max_iters:
+            self._stop_and_upload(
+                f"reached max iterations ({self.pretraining_max_iters}) without plateau"
+            )
         if (
             self.iter >= self.initial_iters
             and not self._initial_eval_done
@@ -1146,6 +1174,9 @@ class LiveTraining:
         if self.loss_plateau_detector is not None:
             is_plateau = self.loss_plateau_detector.step(loss, self.iter)
             if is_plateau:
+                if self.is_pretraining:
+                    # No more data is coming in pretraining — plateau means done.
+                    self._stop_and_upload("loss plateau reached (pretraining)")
                 self._is_paused = True
                 self._wait_until_samples_added(
                     samples_needed=1,
@@ -1289,6 +1320,92 @@ class LiveTraining:
 
             logger.info(f"Restored {restored_count} video frames")
 
+    def _load_all_project_samples(self):
+        """Pretraining: load every already-labeled image / video frame of the
+        input project into the training dataset up front (so training can start
+        without waiting for interactive labeling)."""
+        datasets = self.api.dataset.get_list(self.project_id, recursive=True)
+        if self.project_type == str(ProjectType.VIDEOS):
+            self._load_all_video_frames(datasets)
+        else:
+            self._load_all_images(datasets)
+        logger.info(
+            f"[pretraining] loaded {self.dataset.num_labeled_samples} labeled samples"
+        )
+
+    def _load_all_images(self, datasets: list):
+        total = 0
+        for ds in datasets:
+            infos = self.api.image.get_list(ds.id, only_labelled=True)
+            if not infos:
+                continue
+            name_by_id = {info.id: info.name for info in infos}
+            ids = [info.id for info in infos]
+            for batch_ids in sly.batched(ids):
+                ann_infos = self.api.annotation.download_batch(ds.id, batch_ids)
+                ann_by_id = {a.image_id: a.annotation for a in ann_infos}
+                image_nps = self.api.image.download_nps(ds.id, batch_ids)
+                for img_id, image_np in zip(batch_ids, image_nps):
+                    ann_json = ann_by_id.get(img_id)
+                    if ann_json is None:
+                        continue
+                    ann_json = self._filter_annotation(ann_json)
+                    ann = sly.Annotation.from_json(ann_json, self.project_meta)
+                    self.dataset.add_or_update(
+                        image_id=img_id,
+                        image_np=image_np,
+                        annotation=ann,
+                        image_name=name_by_id[img_id],
+                    )
+                    if ann.labels:
+                        self._sly_annotations_cache[img_id] = ann
+                    total += 1
+                    if total % 10 == 0:
+                        logger.info(f"[pretraining] loaded {total} images")
+        logger.info(f"[pretraining] loaded {total} images total")
+
+    def _load_all_video_frames(self, datasets: list):
+        total = 0
+        for ds in datasets:
+            for video in self.api.video.get_list(ds.id):
+                video_ann_json = self.api.video.annotation.download(video.id)
+                frames_count = video_ann_json["framesCount"]
+                frame_h = video_ann_json["size"]["height"]
+                frame_w = video_ann_json["size"]["width"]
+                for frame in video_ann_json.get("frames", []):
+                    if not frame.get("figures"):
+                        continue
+                    frame_idx = frame["index"]
+                    frame_id = f"{video.id}_{frame_idx}"
+                    if self.frame_cache is not None:
+                        # Training data — pin it so it survives until stop.
+                        frame_np = self.frame_cache.get_frame(
+                            video.id, frame_idx, self.api, pin=True
+                        )
+                    else:
+                        frame_np = self.api.video.frame.download_np(video.id, frame_idx)
+
+                    video_objects_json, frame_ann_json = self._filter_annotation_video(
+                        video_ann_json, frame_idx
+                    )
+                    if frame_ann_json is None:
+                        continue
+                    key_id_map = sly.KeyIdMap()
+                    video_obj_col = sly.VideoObjectCollection.from_json(
+                        video_objects_json, self.project_meta, key_id_map
+                    )
+                    frame_ann = sly.Frame.from_json(
+                        frame_ann_json, video_obj_col, frames_count, key_id_map
+                    )
+                    img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+                    self.dataset.add_or_update_video(frame_id, frame_np, img_ann)
+                    if img_ann.labels:
+                        self._sly_annotations_cache[frame_id] = img_ann
+                    total += 1
+                    if total % 10 == 0:
+                        logger.info(f"[pretraining] loaded {total} video frames")
+        logger.info(f"[pretraining] loaded {total} video frames total")
+
     def prepare_artifacts(self) -> dict:
         """
         Prepare all artifacts for upload (framework-specific).
@@ -1354,6 +1471,27 @@ class LiveTraining:
             self._upload_artifacts()
         except Exception as e:
             logger.warning(f"Failed to save checkpoint: {e}")
+
+    def _stop_and_upload(self, reason: str):
+        """Terminate training, upload artifacts to Team Files, and exit.
+
+        Used by pretraining mode (loss plateau / max-iter cap). Mirrors the
+        SIGINT/SIGTERM handler sequence and ends with ``os._exit(0)`` because a
+        plain ``sys.exit`` raised from inside the runner loop can be swallowed.
+        """
+        logger.info(f"[pretraining] stopping: {reason}")
+        self._process_requests_while_finishing(reason)
+        try:
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+        finally:
+            # Free the GPU before the (slow) artifact upload.
+            self._release_gpu()
+        try:
+            self._upload_artifacts()
+        except Exception as e:
+            logger.warning(f"artifact upload failed during pretraining stop: {e}")
+        os._exit(0)
 
     def save_checkpoint(self, checkpoint_path: str):
         pass
