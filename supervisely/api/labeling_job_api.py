@@ -813,8 +813,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param ids: Labeling Job IDs in Supervisely.
         :type ids: List[int]
-        :param max_workers: Maximum number of concurrent requests. Defaults to the global API
-                            semaphore size (see :func:`~supervisely.api.api.Api.get_default_semaphore`).
+        :param max_workers: Maximum number of concurrent requests. Defaults to the configured global
+                            API semaphore size (see :func:`~supervisely.api.api.Api.get_default_semaphore_size`).
         :type max_workers: int, optional
         :returns: List of LabelingJobInfo objects in the same order as the input IDs.
         :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
@@ -822,7 +822,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if not ids:
             return []
         if max_workers is None:
-            max_workers = self._api.get_default_semaphore()._value
+            max_workers = self._api.get_default_semaphore_size()
         max_workers = max(1, min(max_workers, len(ids)))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             return list(executor.map(self.get_info_by_id, ids))
