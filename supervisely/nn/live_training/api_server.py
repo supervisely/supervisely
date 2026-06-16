@@ -28,7 +28,6 @@ from .video_utils import (
     filter_objects_by_confidence,
     get_uniform_frame_indices,
     label_to_video_figure_json,
-    load_uniform_video_frames,
     refresh_meta,
     remove_video_figures,
     upload_video_figures,
@@ -117,7 +116,9 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
             )
 
         video_info = _resolve_video_info(lt, sly_api, video_id)
-        frame_0_np = sly_api.video.frame.download_np(video_id, frame_index)
+        if lt.frame_cache is not None:
+            lt.frame_cache.ensure_window(video_id, frame_index, sly_api)
+        frame_0_np = _get_video_frame(lt, sly_api, video_id, frame_index)
         frame_id = f"{video_id}_{frame_index}"
 
         future = lt.request_queue.put(
@@ -226,7 +227,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         state = request.state.state
         video_id = state["video_id"]
         frame_indices = state["frame_indices"]
-        frame_nps = sly_api.video.frame.download_nps(video_id, frame_indices)
+        frame_nps = _get_video_frames(lt, sly_api, video_id, frame_indices)
         frame_ids = [f"{video_id}_{frame_index}" for frame_index in frame_indices]
         future = lt.request_queue.put(
             RequestType.PREDICT_BATCH,
@@ -261,6 +262,13 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
         context = (request.state.context if hasattr(request.state, "context") else {}) or {}
         toolbox_session_id = state.get("toolbox_session_id") or context.get("toolbox_session_id")
+
+        # First add-sample-video for this video kicks off background frame
+        # prefetch; later requests keep the sliding window moving (no-op in
+        # FULL mode). Both run on background threads.
+        if lt.frame_cache is not None:
+            lt.frame_cache.start_prefetch(video_id, sly_api, current_index=frame_index)
+            lt.frame_cache.ensure_window(video_id, frame_index, sly_api)
 
         # Download the video annotation once and share it between auto-track
         # (latency-critical) and the training ingest. ``download`` always pulls
@@ -313,7 +321,8 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         # blocking here would stall the (already-running) auto-track too.
         def _enqueue():
             try:
-                frame_np = sly_api.video.frame.download_np(video_id, frame_index)
+                # Training-dataset frame — pin it so it survives until stop.
+                frame_np = _get_video_frame(lt, sly_api, video_id, frame_index, pin=True)
                 lt.request_queue.put(
                     RequestType.ADD_SAMPLE_VIDEO,
                     {
@@ -360,7 +369,8 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
         def _enqueue():
             try:
-                frame_nps = sly_api.video.frame.download_nps(video_id, frame_indices)
+                # Training-dataset frames — pin them so they survive until stop.
+                frame_nps = _get_video_frames(lt, sly_api, video_id, frame_indices, pin=True)
                 video_ann_json = sly_api.video.annotation.download(video_id)
                 lt.request_queue.put(
                     RequestType.ADD_SAMPLES_VIDEO,
@@ -445,7 +455,7 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
         def _sample_and_prune():
             try:
-                frames = load_uniform_video_frames(video_id, sly_api, uniform_indices)
+                frames = _get_video_frames(lt, sly_api, video_id, uniform_indices)
                 if cancel_event.is_set():
                     return
                 future = lt.request_queue.put(RequestType.KEY_FRAMES, {"images": frames})
@@ -549,6 +559,26 @@ def _resolve_video_info(lt: "LiveTraining", api: sly.Api, video_id: int):
     if lt.video_info is None or lt.video_info.id != video_id:
         lt.video_info = api.video.get_info_by_id(video_id)
     return lt.video_info
+
+
+def _get_video_frame(
+    lt: "LiveTraining", api: sly.Api, video_id: int, frame_index: int, pin: bool = False
+) -> np.ndarray:
+    """Fetch one video frame through the frame cache when available, falling
+    back to a direct download."""
+    if lt.frame_cache is not None:
+        return lt.frame_cache.get_frame(video_id, frame_index, api, pin=pin)
+    return api.video.frame.download_np(video_id, frame_index)
+
+
+def _get_video_frames(
+    lt: "LiveTraining", api: sly.Api, video_id: int, frame_indices: list, pin: bool = False
+) -> list:
+    """Fetch a batch of video frames through the frame cache when available,
+    falling back to a direct batch download."""
+    if lt.frame_cache is not None:
+        return lt.frame_cache.get_frames(video_id, frame_indices, api, pin=pin)
+    return api.video.frame.download_nps(video_id, frame_indices)
 
 
 def _label_to_video_figure_json_with_track(
@@ -803,7 +833,7 @@ def _continue_predict_video_tracking(
             logger.info("[predict-video tracker] cancelled before batch")
             return
         batch_indices = list(batch_indices)
-        frame_nps = api.video.frame.download_nps(video_id, batch_indices)
+        frame_nps = _get_video_frames(lt, api, video_id, batch_indices)
         frame_ids = [f"{video_id}_{idx}" for idx in batch_indices]
 
         future = lt.request_queue.put(
@@ -910,7 +940,7 @@ def _run_inference_video(
 
     for batch_indices in sly.batched(frame_indices, batch_size=batch_size):
         batch_indices = list(batch_indices)
-        frame_nps = api.video.frame.download_nps(video_info.id, batch_indices)
+        frame_nps = _get_video_frames(lt, api, video_info.id, batch_indices)
         frame_ids = [f"{video_info.id}_{idx}" for idx in batch_indices]
         future = lt.request_queue.put(
             RequestType.PREDICT_BATCH,

@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import numpy as np
 from .api_server import start_api_server
+from .frame_cache import VideoFrameCache
 from .request_queue import RequestQueue, RequestType, Request
 from .incremental_dataset import IncrementalDataset
 from .helpers import ClassMap
@@ -162,6 +163,11 @@ class LiveTraining:
         self._keyframe_thread: Optional[threading.Thread] = None
         self._keyframe_cancel = threading.Event()
 
+        # Disk-backed video frame cache (video projects only). Created below
+        # once the project type is known, before the API server starts so
+        # endpoints can safely reference it.
+        self.frame_cache: Optional[VideoFrameCache] = None
+
         # MCITrack auto-start: looked up or launched lazily in a background
         # thread so __init__ doesn't block. None until the thread succeeds;
         # auto_track_next_frame silently no-ops while it's None.
@@ -184,6 +190,15 @@ class LiveTraining:
         # literal next frame is no longer useful — gate the /add-sample-video
         # auto-track on this event being clear.
         self._keyframes_uploaded = threading.Event()
+
+        if self.project_type == str(ProjectType.VIDEOS):
+            self.frame_cache = VideoFrameCache()
+            # Backstop for the sys.exit / normal-exit paths (the SIGINT/SIGTERM
+            # handler frees it via _release_gpu before os._exit, which bypasses
+            # atexit). cleanup() is idempotent.
+            import atexit
+
+            atexit.register(self.frame_cache.cleanup)
 
         # Start the API server last so that every attribute touched by status()
         # (phase, iter, dataset, evaluator, ...) is already initialized before
@@ -1236,7 +1251,13 @@ class LiveTraining:
             restored_count = 0
             for frame_id in image_ids:
                 video_id, frame_idx = list(map(int, frame_id.split("_")))
-                frame_np = self.api.video.frame.download_np(video_id, frame_idx)
+                if self.frame_cache is not None:
+                    # Restored frames are training data — pin them.
+                    frame_np = self.frame_cache.get_frame(
+                        video_id, frame_idx, self.api, pin=True
+                    )
+                else:
+                    frame_np = self.api.video.frame.download_np(video_id, frame_idx)
 
                 if restored_count == 0:
                     video_ann_json = self.api.video.annotation.download(video_id)
@@ -1372,6 +1393,9 @@ class LiveTraining:
             if getattr(self, "_predict_video_tracker", None) is not None:
                 del self._predict_video_tracker
                 self._predict_video_tracker = None
+            if getattr(self, "frame_cache", None) is not None:
+                self.frame_cache.cleanup()
+                self.frame_cache = None
             try:
                 import torch
 
