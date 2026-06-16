@@ -413,6 +413,7 @@ class Api:
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
         self._semaphore = None
+        self._semaphore_size = None  # configured size of the global semaphore
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
@@ -1693,7 +1694,7 @@ class Api:
         Set async httpx client with HTTP/2 if it is not set yet.
         """
         if self.async_httpx_client is None:
-            semaphore_size = self.get_default_semaphore()._value
+            semaphore_size = self.get_default_semaphore_size()
             limits = httpx.Limits(
                 max_connections=semaphore_size + 2,
                 max_keepalive_connections=semaphore_size,
@@ -1706,7 +1707,7 @@ class Api:
         Set sync httpx client with HTTP/2 if it is not set yet.
         """
         if self.httpx_client is None:
-            semaphore_size = self.get_default_semaphore()._value
+            semaphore_size = self.get_default_semaphore_size()
             limits = httpx.Limits(
                 max_connections=semaphore_size + 2,
                 max_keepalive_connections=semaphore_size,
@@ -1818,9 +1819,9 @@ class Api:
         """
         semaphore_size = sly_env.semaphore_size()
         if semaphore_size is not None:
-            self._semaphore = asyncio.Semaphore(semaphore_size)
+            size = semaphore_size
             logger.debug(
-                f"Setting global API semaphore size to {semaphore_size} from environment variable"
+                f"Setting global API semaphore size to {size} from environment variable"
             )
         else:
             if not self._skip_https_redirect_check:
@@ -1833,7 +1834,8 @@ class Api:
             else:
                 size = 5
                 logger.debug(f"Setting global API semaphore size to {size} for HTTP")
-            self._semaphore = asyncio.Semaphore(size)
+        self._semaphore = asyncio.Semaphore(size)
+        self._semaphore_size = size
 
     def set_semaphore_size(self, size: int = None):
         """
@@ -1846,8 +1848,24 @@ class Api:
         """
         if size is not None:
             self._semaphore = asyncio.Semaphore(size)
+            self._semaphore_size = size
         else:
             self._initialize_semaphore()
+
+    def get_default_semaphore_size(self) -> int:
+        """
+        Get the configured size of the global API semaphore (the number of permits it was
+        created with), as opposed to ``get_default_semaphore()._value`` which reflects the
+        currently available permits and may be lower while requests are in-flight.
+
+        Initializes the semaphore if it has not been created yet.
+
+        :returns: Configured semaphore size.
+        :rtype: int
+        """
+        if self._semaphore is None:
+            self._initialize_semaphore()
+        return self._semaphore_size
 
     @property
     def semaphore(self) -> asyncio.Semaphore:
