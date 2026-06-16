@@ -4,7 +4,9 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -29,6 +31,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.image_api import ImageInfo
+from supervisely._utils import is_event_loop_running, run_coroutine
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -574,6 +577,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         exclude_statuses: Optional[
             List[Literal["pending", "in_progress", "on_review", "completed"]]
         ] = None,
+        with_entities: bool = False,
     ) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
@@ -598,6 +602,13 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type queue_ids: Union[List, int], optional
         :param exclude_statuses: Exclude Labeling Jobs with given statuses.
         :type exclude_statuses: List[Literal["pending", "in_progress", "on_review", "completed"]], optional
+        :param with_entities: If True, the ``entities`` field of each LabelingJobInfo will be populated.
+                              The ``jobs.list`` method does not return entities, so for each job an additional
+                              ``jobs.info`` request is made. These requests run concurrently, limited by the
+                              global API semaphore (see :func:`~supervisely.api.api.Api.get_default_semaphore`).
+                              When enabled, the list request itself only fetches job IDs to avoid downloading
+                              the full info twice.
+        :type with_entities: bool, optional
         :returns: List of LabelingJobInfo objects with information about Labeling Jobs.
         :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
 
@@ -737,10 +748,74 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             )
         if exclude_statuses is not None:
             filters.append({"field": ApiField.STATUS, "operator": "!in", "value": exclude_statuses})
-        return self.get_list_all_pages(
-            "jobs.list",
-            {ApiField.TEAM_ID: team_id, "showDisabled": show_disabled, ApiField.FILTER: filters},
+
+        data = {
+            ApiField.TEAM_ID: team_id,
+            "showDisabled": show_disabled,
+            ApiField.FILTER: filters,
+        }
+
+        if not with_entities:
+            return self.get_list_all_pages("jobs.list", data)
+
+        # `jobs.list` does not return entities, so we only fetch job IDs here
+        # (to avoid downloading the full info twice) and then enrich each job
+        # with a `jobs.info` request via :func:`get_info_by_ids`.
+        data[ApiField.FIELDS] = [ApiField.ID]
+        job_ids = self.get_list_all_pages(
+            "jobs.list", data, convert_json_info_cb=lambda info: info[ApiField.ID]
         )
+        return self.get_info_by_ids(job_ids)
+
+    async def _get_info_by_ids_async(
+        self, ids: List[int], semaphore: Optional[asyncio.Semaphore] = None
+    ) -> List[LabelingJobInfo]:
+        """
+        Concurrently fetch full LabelingJobInfo for the given job IDs via the ``jobs.info`` method,
+        using asynchronous HTTP/2 requests limited by the global API semaphore. The order of the
+        input IDs is preserved in the returned list.
+
+        :param ids: Labeling Job IDs in Supervisely.
+        :type ids: List[int]
+        :param semaphore: Semaphore for limiting the number of simultaneous requests.
+                          Defaults to the global API semaphore.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :returns: List of LabelingJobInfo objects in the same order as the input IDs.
+        :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def _fetch(job_id: int) -> LabelingJobInfo:
+            async with semaphore:
+                response = await self._api.post_async("jobs.info", {ApiField.ID: job_id})
+            return self._convert_json_info(response.json())
+
+        return await asyncio.gather(*[_fetch(job_id) for job_id in ids])
+
+    def _get_info_by_ids_threaded(
+        self, ids: List[int], max_workers: Optional[int] = None
+    ) -> List[LabelingJobInfo]:
+        """
+        Concurrently fetch full LabelingJobInfo for the given job IDs via the ``jobs.info`` method
+        using a thread pool of blocking :func:`get_info_by_id` calls. The order of the input IDs is
+        preserved in the returned list.
+
+        :param ids: Labeling Job IDs in Supervisely.
+        :type ids: List[int]
+        :param max_workers: Maximum number of concurrent requests. Defaults to the global API
+                            semaphore size (see :func:`~supervisely.api.api.Api.get_default_semaphore`).
+        :type max_workers: int, optional
+        :returns: List of LabelingJobInfo objects in the same order as the input IDs.
+        :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
+        """
+        if not ids:
+            return []
+        if max_workers is None:
+            max_workers = self._api.get_default_semaphore()._value
+        max_workers = max(1, min(max_workers, len(ids)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            return list(executor.map(self.get_info_by_id, ids))
 
     def stop(self, id: int) -> None:
         """
@@ -856,6 +931,80 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 # ]
         """
         return self._get_info_by_id(id, "jobs.info")
+
+    def get_info_by_ids(self, ids: List[int]) -> List[LabelingJobInfo]:
+        """
+        Get information about multiple Labeling Jobs by their IDs in a single call.
+
+        This is a fast, drop-in alternative to calling :func:`get_info_by_id` in a loop:
+        the ``jobs.info`` requests are issued concurrently while preserving the order of the
+        input IDs in the returned list. 
+
+        The method is safe to call from any context (sync scripts, app handlers, or inside a
+        running asyncio loop). It uses a layered strategy that always degrades on infrastructure
+        (event loop / asyncio / thread pool) failures instead of raising. Genuine API errors are not masked.
+
+            1. Asynchronous requests over HTTP/2, limited by the global API semaphore. 
+               Skipped when an event loop is already running in the current thread, 
+               and abandoned on any event-loop/asyncio failure.
+            2. A thread pool of blocking :func:`get_info_by_id` calls. 
+               Abandoned only on thread-pool infrastructure errors.
+            3. Plain sequential :func:`get_info_by_id` calls.
+
+        :param ids: Labeling Job IDs in Supervisely.
+        :type ids: List[int]
+        :returns: List of LabelingJobInfo objects in the same order as the input IDs.
+        :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                job_infos = api.labeling_job.get_info_by_ids([2, 3, 5])
+                print([job.id for job in job_infos])
+                # Output: [2, 3, 5]
+        """
+        if not ids:
+            return []
+
+        # 1. Fast path: async + HTTP/2 over the global API semaphore.
+        # `run_coroutine` would deadlock if a loop is already running in this
+        # thread (a deadlock cannot be caught), so skip the async path entirely
+        # in that case. Any event-loop/asyncio failure falls back to threads.
+        if not is_event_loop_running():
+            try:
+                return run_coroutine(self._get_info_by_ids_async(ids))
+            except Exception as e:
+                logger.debug(
+                    f"Async fetch of labeling job info failed ({e!r}), "
+                    "falling back to threaded fetch."
+                )
+
+        # 2. Reliable path: thread pool of blocking `get_info_by_id` calls.
+        # Same transport as the sequential fallback, so only thread-pool
+        # infrastructure errors (not API errors) warrant degrading further.
+        try:
+            return self._get_info_by_ids_threaded(ids)
+        except RuntimeError as e:
+            logger.debug(
+                f"Threaded fetch of labeling job info failed ({e!r}), "
+                "falling back to sequential fetch."
+            )
+
+        # 3. Last resort: plain sequential requests, free of any concurrency machinery.
+        return [self.get_info_by_id(job_id) for job_id in ids]
 
     def archive(self, id: int) -> None:
         """
