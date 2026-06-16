@@ -23,6 +23,7 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
+import httpx
 import requests
 
 from supervisely.annotation.annotation import Annotation
@@ -760,12 +761,13 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         # `jobs.list` does not return entities, so we only fetch job IDs here
         # (to avoid downloading the full info twice) and then enrich each job
-        # with a `jobs.info` request via :func:`get_info_by_ids`.
+        # with a `jobs.info` request via :func:`get_info_by_ids`. Jobs removed
+        # between listing and enrichment yield None and are dropped from the result.
         data[ApiField.FIELDS] = [ApiField.ID]
         job_ids = self.get_list_all_pages(
             "jobs.list", data, convert_json_info_cb=lambda info: info[ApiField.ID]
         )
-        return self.get_info_by_ids(job_ids)
+        return [info for info in self.get_info_by_ids(job_ids) if info is not None]
 
     async def _get_info_by_ids_async(
         self, ids: List[int], semaphore: Optional[asyncio.Semaphore] = None
@@ -786,9 +788,17 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        async def _fetch(job_id: int) -> LabelingJobInfo:
+        async def _fetch(job_id: int) -> Optional[LabelingJobInfo]:
             async with semaphore:
-                response = await self._api.post_async("jobs.info", {ApiField.ID: job_id})
+                try:
+                    response = await self._api.post_async("jobs.info", {ApiField.ID: job_id})
+                except httpx.HTTPStatusError as e:
+                    # Mirror the sync `_get_response_by_id` behaviour: a job that was
+                    # removed/archived (or is not accessible) between listing and this
+                    # call returns 404 -> None instead of failing the whole batch.
+                    if e.response is not None and e.response.status_code == 404:
+                        return None
+                    raise
             return self._convert_json_info(response.json())
 
         return await asyncio.gather(*[_fetch(job_id) for job_id in ids])
@@ -932,13 +942,16 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """
         return self._get_info_by_id(id, "jobs.info")
 
-    def get_info_by_ids(self, ids: List[int]) -> List[LabelingJobInfo]:
+    def get_info_by_ids(self, ids: List[int]) -> List[Optional[LabelingJobInfo]]:
         """
         Get information about multiple Labeling Jobs by their IDs in a single call.
 
         This is a fast, drop-in alternative to calling :func:`get_info_by_id` in a loop:
         the ``jobs.info`` requests are issued concurrently while preserving the order of the
-        input IDs in the returned list. 
+        input IDs in the returned list. Consistently with :func:`get_info_by_id`, an ID that is
+        not accessible (the job was removed/archived or you lack permissions) yields ``None`` at
+        its position instead of raising, so a job deleted between listing and this call does not
+        break the whole batch.
 
         The method is safe to call from any context (sync scripts, app handlers, or inside a
         running asyncio loop). It uses a layered strategy that always degrades on infrastructure
@@ -953,8 +966,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param ids: Labeling Job IDs in Supervisely.
         :type ids: List[int]
-        :returns: List of LabelingJobInfo objects in the same order as the input IDs.
-        :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
+        :returns: List in the same order as the input IDs; an element is ``None`` if the
+                  corresponding job is not accessible.
+        :rtype: List[Optional[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]]
 
         :Usage Example:
 
