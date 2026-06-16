@@ -215,10 +215,15 @@ class LiveTraining:
         # the server can serve a /status call from another thread.
         self._api_thread = start_api_server(self)
 
-        if self.project_type == str(ProjectType.VIDEOS):
+        if self.project_type == str(ProjectType.VIDEOS) and not self.is_pretraining:
             threading.Thread(
                 target=self._start_mcitrack_app, daemon=True, name="MCITrackBoot"
             ).start()
+        elif self.is_pretraining:
+            logger.info(
+                "Pretraining mode: skipping MCITrack auto-start "
+                "(only used for live-training auto-track)"
+            )
         else:
             logger.info(
                 f"Project type is {self.project_type!r}, skipping MCITrack auto-start "
