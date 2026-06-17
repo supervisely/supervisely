@@ -150,6 +150,15 @@ class LiveTraining:
         self._sly_annotations_cache: dict = {}
         self._initial_eval_done = False
 
+        # Frame/image ids accepted by the fire-and-forget add-sample(s)-video
+        # endpoints but not yet drained from the request queue into the dataset.
+        # status() counts these so the "frames to label" readout reflects the
+        # frame the user just submitted (otherwise it lags one frame behind,
+        # because the dataset is only mutated when the queue is processed on the
+        # training thread). Dedup-safe: an id already in the dataset is never
+        # added, and each id is discarded once its sample lands in the dataset.
+        self._pending_sample_ids: set = set()
+
         # /status normally bypasses the request queue and returns immediately.
         # In "continue" mode that would let the UI poll status during the
         # (possibly slow) checkpoint restore and observe inconsistent state.
@@ -251,7 +260,8 @@ class LiveTraining:
     def status(self):
         return {
             "phase": self.phase,
-            "samples_count": len(self.dataset) if self.dataset is not None else 0,
+            "samples_count": (len(self.dataset) if self.dataset is not None else 0)
+            + len(self._pending_sample_ids),
             "waiting_samples": self.initial_samples,
             "task_type": self.task_type,
             "iteration": self.iter,
@@ -681,6 +691,8 @@ class LiveTraining:
             frame_np=frame_np,
             annotation=img_ann,
         )
+        # Now counted by the dataset itself — stop counting it as pending.
+        self._pending_sample_ids.discard(frame_id)
         if img_ann.labels:
             self._sly_annotations_cache[frame_id] = img_ann
 
@@ -746,6 +758,8 @@ class LiveTraining:
                 frame_np=frame_np,
                 annotation=img_ann,
             )
+            # Now counted by the dataset itself — stop counting it as pending.
+            self._pending_sample_ids.discard(frame_id)
 
             if not img_ann.labels and self.phase == Phase.WAITING_FOR_SAMPLES:
                 logger.debug(

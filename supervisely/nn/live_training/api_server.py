@@ -346,6 +346,15 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
 
             threading.Thread(target=_auto_track, daemon=True, name="AutoTrackNextFrame").start()
 
+        # Count this frame as pending immediately so the status returned below
+        # reflects it — the actual dataset insert happens later on the training
+        # thread (fire-and-forget below), and without this the "frames to label"
+        # readout lags one frame behind. Skip ids already in the dataset so a
+        # re-added frame isn't double-counted.
+        frame_id = f"{video_id}_{frame_index}"
+        if lt.dataset is not None and frame_id not in lt.dataset.samples:
+            lt._pending_sample_ids.add(frame_id)
+
         # Ingest the labeled frame into the training dataset off the response
         # path: the frame only needs to land in the dataset eventually, and
         # blocking here would stall the (already-running) auto-track too.
@@ -363,6 +372,9 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                     },
                 )
             except Exception as e:
+                # The frame will never land in the dataset — undo the pending
+                # count so it doesn't inflate the readout forever.
+                lt._pending_sample_ids.discard(frame_id)
                 logger.warning(f"failed to enqueue add-sample-video for video {video_id}: {e}")
 
         threading.Thread(target=_enqueue, daemon=True, name="AddSampleVideo").start()
@@ -389,6 +401,15 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
         video_id = state["video_id"]
         frame_indices = state["frame_indices"]
 
+        # Count these frames as pending immediately so the returned status
+        # reflects them (the dataset insert happens later on the training
+        # thread). Skip ids already in the dataset to avoid double-counting.
+        frame_ids = [f"{video_id}_{frame_index}" for frame_index in frame_indices]
+        if lt.dataset is not None:
+            for frame_id in frame_ids:
+                if frame_id not in lt.dataset.samples:
+                    lt._pending_sample_ids.add(frame_id)
+
         status = lt.status()
         # Phase.WAITING_FOR_SAMPLES is the string literal "waiting_for_samples";
         # importing Phase here would close an import cycle with live_training.py.
@@ -412,6 +433,10 @@ def create_api(app: FastAPI, lt: "LiveTraining") -> FastAPI:
                     },
                 )
             except Exception as e:
+                # These frames will never land in the dataset — undo their
+                # pending count so the readout isn't inflated forever.
+                for frame_id in frame_ids:
+                    lt._pending_sample_ids.discard(frame_id)
                 logger.warning(f"failed to enqueue add-samples-video for video {video_id}: {e}")
 
         threading.Thread(target=_enqueue, daemon=True, name="AddSamplesVideo").start()
