@@ -580,6 +580,24 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
             return loop
 
 
+def is_event_loop_running() -> bool:
+    """
+    Check whether an asyncio event loop is currently running in the calling thread.
+
+    Unlike :func:`get_or_create_event_loop`, this function has no side effects: it never
+    creates a loop. It is useful to decide whether it is safe to block on a coroutine via
+    :func:`run_coroutine` (blocking on a loop that runs in the current thread would deadlock).
+
+    :returns: True if an event loop is running in the current thread, False otherwise.
+    :rtype: bool
+    """
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
 def run_coroutine(coroutine):
     """
     Runs an asynchronous coroutine in a synchronous context and waits for its result.
