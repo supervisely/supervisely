@@ -286,6 +286,7 @@ from packaging.version import Version
 
 fastapi_version = Version(version("fastapi"))
 starlette_version = Version(version("starlette"))
+python_multipart_version = Version(version("python-multipart"))
 pydantic_version = Version(version("pydantic"))
 
 def is_installed(package_name):
@@ -297,18 +298,21 @@ def is_installed(package_name):
 
 if sys.version_info >= (3, 10):
     assert fastapi_version == Version("0.136.3"), fastapi_version
-    assert starlette_version == Version("1.0.1"), starlette_version
+    assert starlette_version == Version("1.3.1"), starlette_version
+    assert python_multipart_version == Version("0.0.31"), python_multipart_version
     assert pydantic_version <= Version("2.12.3"), pydantic_version
     assert not is_installed("arel"), "arel depends on Starlette 0.x and must not install here"
 else:
     assert fastapi_version < Version("0.129.0"), fastapi_version
     assert starlette_version < Version("0.49.1"), starlette_version
+    assert python_multipart_version <= Version("0.0.20"), python_multipart_version
     assert is_installed("arel"), "arel should remain installed on the legacy Starlette 0.x path"
 
 print(json.dumps({
     "python": sys.version.split()[0],
     "fastapi": str(fastapi_version),
     "starlette": str(starlette_version),
+    "python-multipart": str(python_multipart_version),
     "pydantic": str(pydantic_version),
 }, sort_keys=True))
 """
