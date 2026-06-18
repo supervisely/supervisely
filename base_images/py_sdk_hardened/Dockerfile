@@ -50,7 +50,7 @@ RUN set -eu; \
         echo "ERROR: Unsupported sdk_install_source=$sdk_install_source. Use 'pypi' or 'local'." >&2; \
         exit 1; \
     fi; \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.27; \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.31; \
     rm -rf \
     /tmp/supervisely-src \
     /opt/venv/lib/python3.14/site-packages/wheel* \
