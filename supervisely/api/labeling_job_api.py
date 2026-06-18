@@ -1792,3 +1792,77 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             existing_custom_data.update(custom_data)
             custom_data = existing_custom_data
         self._api.post(method, {ApiField.ID: id, ApiField.CUSTOM_DATA: custom_data})
+
+    def set_assignees(
+        self,
+        id: int,
+        annotator_id: Optional[int] = None,
+        reviewer_id: Optional[int] = None,
+        check_membership: bool = True,
+        return_info: bool = True,
+    ) -> Optional[LabelingJobInfo]:
+        """
+        Change the annotator and/or reviewer assigned to a Labeling Job.
+
+        At least one of ``annotator_id`` or ``reviewer_id`` must be provided. 
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param annotator_id: User ID of the new annotator (labeler). If None, the current annotator is kept.
+        :type annotator_id: int, optional
+        :param reviewer_id: User ID of the new reviewer. If None, the current reviewer is kept.
+        :type reviewer_id: int, optional
+        :param check_membership: If True, verify that the given users are members of the job's team before assigning (extra requests).
+        :type check_membership: bool, optional
+        :param return_info: If True (default), fetch and return the updated LabelingJobInfo.
+                            Set to False to skip this extra ``jobs.info`` request and return None.
+        :type return_info: bool, optional
+        :raises ValueError: if neither ``annotator_id`` nor ``reviewer_id`` is provided.
+        :returns: Updated LabelingJobInfo object, or None if ``return_info`` is False.
+        :rtype: Optional[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Change only the annotator
+                api.labeling_job.set_assignees(9, annotator_id=111)
+
+                # Change only the reviewer
+                api.labeling_job.set_assignees(9, reviewer_id=222)
+
+                # Change both at once (single API request)
+                api.labeling_job.set_assignees(9, annotator_id=111, reviewer_id=222)
+        """
+        if annotator_id is None and reviewer_id is None:
+            raise ValueError("At least one of 'annotator_id' or 'reviewer_id' must be provided.")
+
+        if check_membership:
+            job_info = self.get_info_by_id(id)
+            ids_to_check = [
+                user_id for user_id in (annotator_id, reviewer_id) if user_id is not None
+            ]
+            self._check_membership(ids_to_check, job_info.team_id)
+
+        data = {ApiField.ID: id}
+        if annotator_id is not None:
+            data[ApiField.USER_ID] = annotator_id
+        if reviewer_id is not None:
+            data[ApiField.REVIEWER_ID] = reviewer_id
+
+        self._api.post("jobs.editInfo", data)
+        if return_info:
+            return self.get_info_by_id(id)
+        return None
