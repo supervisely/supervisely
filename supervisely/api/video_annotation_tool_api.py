@@ -24,6 +24,8 @@ class VideoAnnotationToolAction(StrEnum):
     ENTITIES_SET_INTITY = "entities/setEntity"
     """"""
     DIRECT_TRACKING_PROGRESS = "figures/setDirectTrackingProgress"
+    """"""
+    JOBS_CONFIRM_AND_PULL_NEXT = "jobs/confirmAndPullNext"
 
 
 class VideoAnnotationToolApi(ModuleApiBase):
@@ -186,6 +188,24 @@ class VideoAnnotationToolApi(ModuleApiBase):
             ApiField.MESSAGE: message,
         }
         return self._act(session_id, VideoAnnotationToolAction.DIRECT_TRACKING_PROGRESS, payload)
+
+    def confirm_and_pull_next(self, session_id: str, entity_id: int) -> Dict[str, Any]:
+        """Confirms the current entity in a labeling job/queue and pulls the next one.
+        Use when the native CONFIRM & PULL NEXT button is disabled and confirmation is
+        driven programmatically from a custom app after validation.
+
+        :param session_id: ID of the session in the Video Labeling Tool.
+        :type session_id: str
+        :param entity_id: Video id to confirm.
+        :type entity_id: int
+        :returns: Response from API server in JSON format.
+        :rtype: Dict[str, Any]
+        """
+        return self._act(
+            session_id,
+            VideoAnnotationToolAction.JOBS_CONFIRM_AND_PULL_NEXT,
+            {ApiField.ENTITY_ID: entity_id},
+        )
 
     def _act(self, session_id: int, action: VideoAnnotationToolAction, payload: dict):
         data = {
