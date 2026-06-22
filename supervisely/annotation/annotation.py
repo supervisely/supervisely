@@ -834,9 +834,12 @@ class Annotation:
         """
         Transform labels and change image size in current Annotation object and return the copy of the current
         Annotation object.
+
         :param label_transform_fn: function for transform labels
+        :type label_transform_fn: function
         :param new_size: new image size
-        :returns: Annotation object with new labels and image size
+        :type new_size: Tuple[int, int]
+        :returns: New instance of Annotation object with new labels and image size
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
 
