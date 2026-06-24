@@ -616,6 +616,38 @@ def apps_cache_dir():
     )
 
 
+def disable_offline_session() -> bool:
+    """Returns disable offline session flag from environment variable using following keys:
+        - DISABLE_OFFLINE_SESSION
+
+    :return: disable offline session flag
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="disable_offline_session",
+        keys=["DISABLE_OFFLINE_SESSION"],
+        postprocess_fn=flag_from_env,
+        default=False,
+        raise_not_found=False,
+    )
+
+
+def sly_cloud_server_address(raise_not_found: bool = True) -> str:
+    """Returns cloud server address from environment variable using following keys:
+        - SLY_CLOUD_SERVER_URL
+
+    :return: Supervisely cloud server address
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="sly_cloud_server_address",
+        keys=["SLY_CLOUD_SERVER_URL"],
+        postprocess_fn=lambda x: x,
+        default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
 def mininum_instance_version_for_sdk() -> str:
     """Returns minimum instance version required by the SDK from environment variable using following
         - MINIMUM_INSTANCE_VERSION_FOR_SDK
