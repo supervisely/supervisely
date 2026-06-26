@@ -4,7 +4,7 @@
 <head>
   <link id="favicon" rel="icon" type="image/x-icon" href="{{{__favicon__}}}" />
   <link type="text/css" rel="stylesheet"
-    href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css" />
+    href="https://cdn-public-cloudstore.supervisely.com/sly-app-bundle/{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css" />
   <style>
     #app-global-loading-icon {
       background: white;
@@ -92,9 +92,9 @@
   {% endif %}
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.0.4/dist/socket.io.js"></script>
   <script
-    src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
+    src="https://cdn-public-cloudstore.supervisely.com/sly-app-bundle/{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
   <script type="module"
-    src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"></script>
+    src="https://cdn-public-cloudstore.supervisely.com/sly-app-js/{{{js_frontend_version}}}/SlyApp.js"></script>
   <script>
     window.parent.postMessage('{ "showHeader": false }', "*");
   </script>
