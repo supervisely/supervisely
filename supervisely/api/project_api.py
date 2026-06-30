@@ -2151,7 +2151,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 proj_id = 28145
                 meta = sly.ProjectMeta.from_json(api.project.get_meta(proj_id))
-                class_id = meta.get_obj_class("lung").sly_id
+                class_id = meta.get_obj_class("dog").sly_id
                 api.project.remove_class(proj_id, class_id)
         """
         self._api.post(
@@ -2188,7 +2188,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 proj_id = 28145
                 meta = sly.ProjectMeta.from_json(api.project.get_meta(proj_id))
-                tag_id = meta.get_tag_meta("cancer").sly_id
+                tag_id = meta.get_tag_meta("cat").sly_id
                 api.project.remove_tag(proj_id, tag_id)
         """
         self._api.post(
