@@ -2122,6 +2122,80 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         meta = meta.add_obj_classes(classes)
         self.update_meta(id, meta)
 
+    def remove_class(self, project_id: int, class_id: int) -> None:
+        """
+        Remove a single class from the given Project by its server-side ID.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param class_id: Server-side ID of the class to remove (see :attr:`~supervisely.annotation.obj_class.ObjClass.sly_id`).
+        :type class_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                proj_id = 28145
+                meta = sly.ProjectMeta.from_json(api.project.get_meta(proj_id))
+                class_id = meta.get_obj_class("dog").sly_id
+                api.project.remove_class(proj_id, class_id)
+        """
+        self._api.post(
+            "projects.classes.remove",
+            {ApiField.ID: class_id, ApiField.PROJECT_ID: project_id},
+        )
+
+    def remove_tag(self, project_id: int, tag_id: int) -> None:
+        """
+        Remove a single tag (TagMeta) from the given Project by its server-side ID.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tag_id: Server-side ID of the tag to remove (see :attr:`~supervisely.annotation.tag_meta.TagMeta.sly_id`).
+        :type tag_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                proj_id = 28145
+                meta = sly.ProjectMeta.from_json(api.project.get_meta(proj_id))
+                tag_id = meta.get_tag_meta("cat").sly_id
+                api.project.remove_tag(proj_id, tag_id)
+        """
+        self._api.post(
+            "projects.tags.remove",
+            {ApiField.ID: tag_id, ApiField.PROJECT_ID: project_id},
+        )
+
     def _set_custom_grouping_settings(
         self,
         id: int,
