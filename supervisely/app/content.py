@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Union
 
 import jsonpatch
+import jsonpointer
 from fastapi import Request
 
 from supervisely._utils import is_production
@@ -116,7 +117,40 @@ class _PatchableJson(dict):
 
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
-        return patch
+        # `jsonpatch.from_diff` (its DiffBuilder, since jsonpatch 1.24) folds an
+        # add and a value-equal remove into a single `move` even across unrelated
+        # subtrees, and rewrites list-index ops while doing so. For payloads that
+        # replace several sibling lists at once and share many equal scalars
+        # (e.g. FastTable's `columns` / `columnsOptions` list-of-dicts / `data`
+        # rows), the resulting patch can fail to apply (JsonPatchConflict /
+        # "list index out of range") or silently produce the wrong document.
+        # Set iteration order of dict keys makes which case is hit depend on
+        # PYTHONHASHSEED, so it surfaces intermittently. Verify the patch
+        # reproduces the current state; if not, fall back to an explicit
+        # per-top-level-key replace, which is always self-consistent.
+        try:
+            check = copy.deepcopy(self._last)
+            patch.apply(check, in_place=True)
+            if check == dict(self):
+                return patch
+        except Exception:
+            pass
+        return self._build_safe_patch()
+
+    def _build_safe_patch(self):
+        current = dict(self)
+        ops = []
+        for key in self._last:
+            if key not in current:
+                path = jsonpointer.JsonPointer.from_parts([key]).path
+                ops.append({"op": "remove", "path": path})
+        for key, value in current.items():
+            path = jsonpointer.JsonPointer.from_parts([key]).path
+            if key not in self._last:
+                ops.append({"op": "add", "path": path, "value": copy.deepcopy(value)})
+            elif self._last[key] != value:
+                ops.append({"op": "replace", "path": path, "value": copy.deepcopy(value)})
+        return jsonpatch.JsonPatch(ops)
 
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
