@@ -732,6 +732,8 @@ class ApiField:
     TRACKED_FIGURES = "trackedFigures"
     """"""
     TEAM_FILE_ID = "teamFileId"
+    """"""
+    IS_FAVORITE = "isFavorite"
 
 
 def _get_single_item(items):
