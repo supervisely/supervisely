@@ -16,21 +16,22 @@ i.e. on `PYTHONHASHSEED`, so in production it surfaces intermittently. The same
 (quadratic-ish) on data with many repeated values — a realistic shape for
 tables with rounded percentages or repeated categories.
 
-`_get_patch` now diffs with `patchdiff` (which never emits `move` and diffs
-each list/dict independently, so it is immune to both failure modes and is an
-order of magnitude faster on data with repeated values), wraps the result as a
-`jsonpatch.JsonPatch`, and still verifies it reproduces the current state
-before trusting it — falling back to an explicit per-top-level-key replace
-(`_build_safe_patch`) otherwise. That guarantees one invariant regardless of
-what the diff step returns:
-
-    applying the returned patch to `_last` reproduces the current state exactly.
+`_get_patch` now diffs with `patchdiff`, which never emits `move` and diffs
+each list/dict independently and recursively — every operation's path is built
+by descending into the document, so (unlike jsonpatch's global value-indexed
+folding) it structurally cannot confuse one subtree for another. It also does
+not blow up on repeated values. Diffing can still raise for values whose
+equality does not return a plain bool (e.g. a raw numpy array with more than
+one element left in DataJson by app code) — `_get_patch` catches that and
+falls back to an explicit per-top-level-key replace (`_build_safe_patch`),
+which is always self-consistent by construction.
 """
 
 import copy
 import random
 
 import jsonpatch
+import numpy as np
 import pytest
 
 from supervisely.app.content import DataJson
@@ -85,31 +86,46 @@ def test_get_patch_roundtrips_on_schema_change(data_json):
     assert _roundtrip(d) == dict(d)
 
 
-def test_get_patch_roundtrips_when_diff_is_broken(monkeypatch, data_json):
-    """Deterministic guard (independent of PYTHONHASHSEED / diff backend): if
-    the diff step returns a patch that does not reproduce the current state,
-    `_get_patch` must fall back to a correct one instead of propagating it."""
+def test_get_patch_falls_back_on_diff_exception(monkeypatch, data_json):
+    """If the diff step raises (any reason — a future patchdiff regression, an
+    unsupported value type, etc.), `_get_patch` must not propagate the
+    exception: it must fall back to an explicit per-top-level-key replace."""
     d = data_json
     _set(d, {"tbl": {"columnsOptions": [{"tooltip": "a"}, {"type": "class"}], "total": 1}})
     d._last = copy.deepcopy(dict(d))
     _set(d, {"tbl": {"columnsOptions": [{"type": "class"}], "total": 2}})
 
-    # Force the diff step to return a deliberately broken patch: a remove of a
-    # key that does not exist after the preceding op — the real-world failure shape.
-    broken = jsonpatch.JsonPatch([
-        {"op": "remove", "path": "/tbl/columnsOptions/0"},
-        {"op": "remove", "path": "/tbl/columnsOptions/1/type"},  # index already shifted -> invalid
-    ])
-    monkeypatch.setattr(DataJson, "_diff_patch", lambda self: broken)
+    def _raise(self):
+        raise ValueError("simulated diff failure")
 
-    patch = d._get_patch()
+    monkeypatch.setattr(DataJson, "_diff_patch", _raise)
+
+    patch = d._get_patch()  # must not raise
     result = copy.deepcopy(d._last)
-    patch.apply(result, in_place=True)  # must not raise
-    assert result == dict(d)            # and must be correct
+    patch.apply(result, in_place=True)
+    assert result == dict(d)
 
 
-def test_get_patch_uses_diff_patch_when_valid(monkeypatch, data_json):
-    """When the diff step yields a valid patch, it is used as-is (no fallback)."""
+def test_get_patch_falls_back_on_numpy_array_values(data_json):
+    """Regression test for the concrete failure this generalizes: a raw numpy
+    array with more than one element makes `arr == arr` raise ValueError
+    ("truth value of an array is ambiguous") instead of returning a bool,
+    which both jsonpatch.from_diff and patchdiff.diff choke on. `_get_patch`
+    must still return a patch that correctly reproduces the new state."""
+    d = data_json
+    _set(d, {"w": {"arr": np.array([1, 2, 3]), "other": 1}})
+    d._last = copy.deepcopy(dict(d))
+    _set(d, {"w": {"arr": np.array([4, 5, 6]), "other": 2}})
+
+    patch = d._get_patch()  # must not raise
+    result = copy.deepcopy(d._last)
+    patch.apply(result, in_place=True)
+    assert result["w"]["other"] == 2
+    assert list(result["w"]["arr"]) == [4, 5, 6]
+
+
+def test_get_patch_uses_diff_patch_when_it_succeeds(monkeypatch, data_json):
+    """When the diff step doesn't raise, its result is used as-is (no fallback)."""
     d = data_json
     _set(d, {"tbl": {"total": 1}})
     d._last = copy.deepcopy(dict(d))

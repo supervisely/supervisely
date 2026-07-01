@@ -125,21 +125,20 @@ class _PatchableJson(dict):
         # both produce a patch that fails to apply or silently produces the
         # wrong document, and blow up in runtime (quadratic-ish) on data with
         # many repeated values. `patchdiff` never emits `move` and diffs each
-        # list/dict independently, so it is immune to both failure modes; its
-        # output is plain RFC 6902 ops, wrapped here as a `jsonpatch.JsonPatch`
-        # so the rest of the sync pipeline (apply / serialize) is unchanged.
-        patch = self._diff_patch()
-        # Still verify the patch reproduces the current state before trusting
-        # it, and fall back to an explicit per-top-level-key replace otherwise
-        # — cheap, and always self-consistent by construction.
+        # list/dict independently, so it never confuses one subtree for
+        # another (structurally, not just empirically) and does not share
+        # jsonpatch's failure modes; its output is plain RFC 6902 ops, wrapped
+        # here as a `jsonpatch.JsonPatch` so the rest of the sync pipeline
+        # (apply / serialize) is unchanged.
+        #
+        # Diffing can still raise on values with non-boolean-returning equality
+        # (e.g. a raw numpy array with more than one element left in DataJson
+        # by app code) -- fall back to an explicit per-top-level-key replace in
+        # that case, which is always self-consistent by construction.
         try:
-            check = copy.deepcopy(self._last)
-            patch.apply(check, in_place=True)
-            if check == dict(self):
-                return patch
+            return self._diff_patch()
         except Exception:
-            pass
-        return self._build_safe_patch()
+            return self._build_safe_patch()
 
     def _diff_patch(self):
         forward_ops, _ = patchdiff.diff(self._last, dict(self))
@@ -157,9 +156,20 @@ class _PatchableJson(dict):
             path = jsonpointer.JsonPointer.from_parts([key]).path
             if key not in self._last:
                 ops.append({"op": "add", "path": path, "value": copy.deepcopy(value)})
-            elif self._last[key] != value:
+            elif not self._values_equal(self._last[key], value):
                 ops.append({"op": "replace", "path": path, "value": copy.deepcopy(value)})
         return jsonpatch.JsonPatch(ops)
+
+    @staticmethod
+    def _values_equal(a, b):
+        # Some values (e.g. a raw numpy array) don't return a plain bool from
+        # `==`. Treat any such value as "changed" -- an unnecessary `replace`
+        # is harmless, unlike letting the exception propagate out of the one
+        # code path that must never itself fail.
+        try:
+            return bool(a == b)
+        except Exception:
+            return False
 
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
