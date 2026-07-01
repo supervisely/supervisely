@@ -14,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Union
 
 import jsonpatch
+import jsonpointer
+import patchdiff
 from fastapi import Request
 
 from supervisely._utils import is_production
@@ -115,8 +117,40 @@ class _PatchableJson(dict):
         return {self._field: json.loads(patch.to_string())}
 
     def _get_patch(self):
-        patch = jsonpatch.JsonPatch.from_diff(self._last, self)
-        return patch
+        """Diffs via patchdiff (no cross-subtree `move`, unlike jsonpatch.from_diff).
+        Falls back to a per-key replace if diffing raises (e.g. non-bool-comparable values)."""
+        try:
+            return self._diff_patch()
+        except Exception:
+            return self._build_safe_patch()
+
+    def _diff_patch(self):
+        forward_ops, _ = patchdiff.diff(self._last, dict(self))
+        ops = patchdiff.serialize.to_str_paths(forward_ops)
+        return jsonpatch.JsonPatch(ops)
+
+    def _build_safe_patch(self):
+        current = dict(self)
+        ops = []
+        for key in self._last:
+            if key not in current:
+                path = jsonpointer.JsonPointer.from_parts([key]).path
+                ops.append({"op": "remove", "path": path})
+        for key, value in current.items():
+            path = jsonpointer.JsonPointer.from_parts([key]).path
+            if key not in self._last:
+                ops.append({"op": "add", "path": path, "value": copy.deepcopy(value)})
+            elif not self._values_equal(self._last[key], value):
+                ops.append({"op": "replace", "path": path, "value": copy.deepcopy(value)})
+        return jsonpatch.JsonPatch(ops)
+
+    @staticmethod
+    def _values_equal(a, b):
+        """Safe `==`: treats non-bool-comparable values (e.g. numpy arrays) as unequal."""
+        try:
+            return bool(a == b)
+        except Exception:
+            return False
 
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
