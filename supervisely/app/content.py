@@ -117,24 +117,8 @@ class _PatchableJson(dict):
         return {self._field: json.loads(patch.to_string())}
 
     def _get_patch(self):
-        # `jsonpatch.JsonPatch.from_diff` folds an add and a value-equal remove
-        # into a single `move` even across unrelated subtrees, and rewrites
-        # list-index ops while doing so. For payloads that replace several
-        # sibling lists at once and share many equal scalars (e.g. FastTable's
-        # `columns` / `columnsOptions` list-of-dicts / `data` rows), this can
-        # both produce a patch that fails to apply or silently produces the
-        # wrong document, and blow up in runtime (quadratic-ish) on data with
-        # many repeated values. `patchdiff` never emits `move` and diffs each
-        # list/dict independently, so it never confuses one subtree for
-        # another (structurally, not just empirically) and does not share
-        # jsonpatch's failure modes; its output is plain RFC 6902 ops, wrapped
-        # here as a `jsonpatch.JsonPatch` so the rest of the sync pipeline
-        # (apply / serialize) is unchanged.
-        #
-        # Diffing can still raise on values with non-boolean-returning equality
-        # (e.g. a raw numpy array with more than one element left in DataJson
-        # by app code) -- fall back to an explicit per-top-level-key replace in
-        # that case, which is always self-consistent by construction.
+        """Diffs via patchdiff (no cross-subtree `move`, unlike jsonpatch.from_diff).
+        Falls back to a per-key replace if diffing raises (e.g. non-bool-comparable values)."""
         try:
             return self._diff_patch()
         except Exception:
