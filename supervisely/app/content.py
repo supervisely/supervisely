@@ -14,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Union
 
 import jsonpatch
+import jsonpointer
+import patchdiff
 from fastapi import Request
 
 from supervisely._utils import is_production
@@ -115,8 +117,49 @@ class _PatchableJson(dict):
         return {self._field: json.loads(patch.to_string())}
 
     def _get_patch(self):
-        patch = jsonpatch.JsonPatch.from_diff(self._last, self)
-        return patch
+        # `jsonpatch.JsonPatch.from_diff` folds an add and a value-equal remove
+        # into a single `move` even across unrelated subtrees, and rewrites
+        # list-index ops while doing so. For payloads that replace several
+        # sibling lists at once and share many equal scalars (e.g. FastTable's
+        # `columns` / `columnsOptions` list-of-dicts / `data` rows), this can
+        # both produce a patch that fails to apply or silently produces the
+        # wrong document, and blow up in runtime (quadratic-ish) on data with
+        # many repeated values. `patchdiff` never emits `move` and diffs each
+        # list/dict independently, so it is immune to both failure modes; its
+        # output is plain RFC 6902 ops, wrapped here as a `jsonpatch.JsonPatch`
+        # so the rest of the sync pipeline (apply / serialize) is unchanged.
+        patch = self._diff_patch()
+        # Still verify the patch reproduces the current state before trusting
+        # it, and fall back to an explicit per-top-level-key replace otherwise
+        # — cheap, and always self-consistent by construction.
+        try:
+            check = copy.deepcopy(self._last)
+            patch.apply(check, in_place=True)
+            if check == dict(self):
+                return patch
+        except Exception:
+            pass
+        return self._build_safe_patch()
+
+    def _diff_patch(self):
+        forward_ops, _ = patchdiff.diff(self._last, dict(self))
+        ops = patchdiff.serialize.to_str_paths(forward_ops)
+        return jsonpatch.JsonPatch(ops)
+
+    def _build_safe_patch(self):
+        current = dict(self)
+        ops = []
+        for key in self._last:
+            if key not in current:
+                path = jsonpointer.JsonPointer.from_parts([key]).path
+                ops.append({"op": "remove", "path": path})
+        for key, value in current.items():
+            path = jsonpointer.JsonPointer.from_parts([key]).path
+            if key not in self._last:
+                ops.append({"op": "add", "path": path, "value": copy.deepcopy(value)})
+            elif self._last[key] != value:
+                ops.append({"op": "replace", "path": path, "value": copy.deepcopy(value)})
+        return jsonpatch.JsonPatch(ops)
 
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
