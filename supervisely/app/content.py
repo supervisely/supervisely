@@ -146,10 +146,7 @@ class _PatchableJson(dict):
 
     @staticmethod
     def _values_equal(a, b):
-        # Some values (e.g. a raw numpy array) don't return a plain bool from
-        # `==`. Treat any such value as "changed" -- an unnecessary `replace`
-        # is harmless, unlike letting the exception propagate out of the one
-        # code path that must never itself fail.
+        """Safe `==`: treats non-bool-comparable values (e.g. numpy arrays) as unequal."""
         try:
             return bool(a == b)
         except Exception:
