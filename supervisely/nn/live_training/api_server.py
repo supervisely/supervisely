@@ -65,7 +65,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
         """Add a new training sample."""
         sly_api = _api_from_request(request)
         state = request.state.state
-        image_infos = _resolve_multiview_image_infos(sly_api, state['image_id'], lt)
+        image_infos = _get_training_sample_image_infos(sly_api, state['image_id'], lt)
         result = None
         for image_info in image_infos:
             img_np = sly_api.image.download_np(image_info.id)
@@ -108,7 +108,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
     return app
 
 
-def _resolve_multiview_image_infos(
+def _get_training_sample_image_infos(
     api: sly.Api,
     image_id: int,
     lt: "LiveTraining" = None,
