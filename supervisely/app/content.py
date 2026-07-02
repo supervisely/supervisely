@@ -120,11 +120,12 @@ class _PatchableJson(dict):
         return patch
 
     async def _on_applied_locked(self, patch):
-        """Post-apply hook. Runs with `self._lock` already held -- do the
-        work directly, never acquire `self._lock` again here."""
+        """Subclass hook for post-apply side effects. Called while the lock is
+        already held - acquiring it again here will deadlock."""
 
     async def _sync_and_apply(self):
-        """Atomically diff, apply, and update `_last` under one lock."""
+        """Compute the diff and apply it while holding the lock, so no other
+        call can interleave between the two steps."""
         async with async_lock(self._lock):
             patch = self._get_patch()
             patch.apply(self._last, in_place=True)
