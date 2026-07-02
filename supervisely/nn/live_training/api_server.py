@@ -80,7 +80,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
                 }
             )
             result = await _wait_for_result(future, response)
-            if response.status_code >= 400:
+            if response.status_code is not None and response.status_code >= 400:
                 return result
 
         if isinstance(result, dict):
