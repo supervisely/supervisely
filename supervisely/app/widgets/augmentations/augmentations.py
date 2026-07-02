@@ -282,8 +282,10 @@ class AugmentationsWithTabs(Widget):
 
         @self._button_template_update.click
         def update_template():
-            custom_template_path = self._template_path_input.get_value()
-            if self._globals.api.file.exists(team_id=self._globals.team.id, remote_path=custom_template_path.strip()):
+            custom_template_path = (self._template_path_input.get_value() or "").strip()
+            if custom_template_path == "":
+                raise ValueError("Path to JSON configuration in Team Files is empty.")
+            if self._globals.api.file.exists(team_id=self._globals.team.id, remote_path=custom_template_path):
                 self.load_existing_pipeline(custom_template_path)
                 self._augs2._editor.show()
                 self._augs2._button_preview.show()
