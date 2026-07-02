@@ -111,28 +111,33 @@ class _PatchableJson(dict):
 
     def get_changes(self, patch=None):
         if patch is None:
-            patch = self._get_patch()
+            with self._lock:
+                patch = self._get_patch()
         return {self._field: json.loads(patch.to_string())}
 
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
         return patch
 
-    async def _apply_patch(self, patch):
+    async def _on_applied_locked(self, patch):
+        """Post-apply hook. Runs with `self._lock` already held -- do the
+        work directly, never acquire `self._lock` again here."""
+
+    async def _sync_and_apply(self):
+        """Atomically diff, apply, and update `_last` under one lock."""
         async with async_lock(self._lock):
+            patch = self._get_patch()
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
+            await self._on_applied_locked(patch)
+            return patch
 
     async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
-        patch = self._get_patch()
+        patch = await self._sync_and_apply()
         if user_id is not None:
             async with multi_user.async_session_context(user_id):
-                await self._apply_patch(patch)
-                await self._ws.broadcast(
-                    self.get_changes(patch), user_id=user_id
-                )
+                await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
         else:
-            await self._apply_patch(patch)
             await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
 
     async def send_changes_async(self):
@@ -155,17 +160,15 @@ class _PatchableJson(dict):
 class StateJson(_PatchableJson, metaclass=Singleton):
     """Singleton state store synchronized between backend and frontend via JSON patches."""
 
-    _global_lock: threading.Lock = None
-
     def __init__(self, *args, **kwargs):
-        if StateJson._global_lock is None:
-            StateJson._global_lock = threading.Lock()
         super().__init__(Field.STATE, *args, **kwargs)
 
-    async def _apply_patch(self, patch):
-        await super()._apply_patch(patch)
-        # @TODO: _replace_global to patching for optimization
-        await StateJson._replace_global(dict(self))
+    async def _on_applied_locked(self, patch):
+        # @TODO: this to patching for optimization
+        d = dict(self)
+        self.update(copy.deepcopy(d))
+        self._last = copy.deepcopy(d)
+        ContentOrigin().update(state=copy.deepcopy(d))
 
     @classmethod
     async def from_request(cls, request: Request, local: bool = True) -> StateJson:
@@ -183,9 +186,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
 
     @classmethod
     async def _replace_global(cls, d: dict):
-        # pylint: disable=not-async-context-manager
-        async with async_lock(cls._global_lock):
-            global_state = cls()
+        global_state = cls()
+        async with async_lock(global_state._lock):
             # !!! May cause problems with some apps !!!
             # global_state.clear()
             global_state.update(copy.deepcopy(d))
@@ -199,11 +201,8 @@ class DataJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
 
-    async def _apply_patch(self, patch):
-        async with async_lock(self._lock):
-            patch.apply(self._last, in_place=True)
-            self._last = copy.deepcopy(self._last)
-            ContentOrigin().update(data_patch=copy.deepcopy(patch))
+    async def _on_applied_locked(self, patch):
+        ContentOrigin().update(data_patch=copy.deepcopy(patch))
 
 
 class ContentOrigin(metaclass=Singleton):
