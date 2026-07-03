@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import copy
 import enum
+import functools
 import json
 import os
 import queue
@@ -16,9 +17,9 @@ from typing import Optional, Union
 import jsonpatch
 from fastapi import Request
 
+import supervisely.app.fastapi.multi_user as multi_user
 from supervisely._utils import is_production
 from supervisely.api.api import Api
-import supervisely.app.fastapi.multi_user as multi_user
 from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.singleton import Singleton
@@ -32,7 +33,9 @@ _pool = ThreadPoolExecutor()
 @contextlib.asynccontextmanager
 async def async_lock(lock: threading.Lock):
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(_pool, lock.acquire)
+    # poll with timeout: avoids deadlock when nested locks compete for _pool slots
+    while not await loop.run_in_executor(_pool, functools.partial(lock.acquire, timeout=0.1)):
+        pass
     try:
         yield  # the lock is held
     finally:
@@ -114,26 +117,37 @@ class _PatchableJson(dict):
             patch = self._get_patch()
         return {self._field: json.loads(patch.to_string())}
 
+    # legacy; kept for external callers
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
         return patch
 
+    # legacy; kept for external callers
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
 
+    async def _apply_snapshot(self, snapshot: dict, patch: jsonpatch.JsonPatch):
+        # called under self._lock; must not re-acquire it
+        self._last = snapshot
+
+    async def _synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
+        # hold lock through snapshot→patch→broadcast: prevents stale-baseline races
+        # and ensures patches reach the frontend in order
+        async with async_lock(self._lock):
+            snapshot = copy.deepcopy(dict(self))
+            patch = jsonpatch.JsonPatch.from_diff(self._last, snapshot)
+            await self._apply_snapshot(snapshot, patch)
+            if patch.patch:
+                await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
+
     async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
-        patch = self._get_patch()
         if user_id is not None:
             async with multi_user.async_session_context(user_id):
-                await self._apply_patch(patch)
-                await self._ws.broadcast(
-                    self.get_changes(patch), user_id=user_id
-                )
+                await self._synchronize_changes(user_id)
         else:
-            await self._apply_patch(patch)
-            await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
+            await self._synchronize_changes()
 
     async def send_changes_async(self):
         user_id = None
@@ -162,10 +176,17 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             StateJson._global_lock = threading.Lock()
         super().__init__(Field.STATE, *args, **kwargs)
 
+    # legacy; kept for external callers
     async def _apply_patch(self, patch):
         await super()._apply_patch(patch)
         # @TODO: _replace_global to patching for optimization
         await StateJson._replace_global(dict(self))
+
+    async def _apply_snapshot(self, snapshot: dict, patch: jsonpatch.JsonPatch):
+        await super()._apply_snapshot(snapshot, patch)
+        # deepcopy(snapshot), not dict(self): avoids overwriting concurrent mutations;
+        # _replace_global is still used by the from_request path
+        ContentOrigin().update(state=copy.deepcopy(snapshot))
 
     @classmethod
     async def from_request(cls, request: Request, local: bool = True) -> StateJson:
@@ -199,11 +220,16 @@ class DataJson(_PatchableJson, metaclass=Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
 
+    # legacy; kept for external callers
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
             ContentOrigin().update(data_patch=copy.deepcopy(patch))
+
+    async def _apply_snapshot(self, snapshot: dict, patch: jsonpatch.JsonPatch):
+        await super()._apply_snapshot(snapshot, patch)
+        ContentOrigin().update(data_patch=copy.deepcopy(patch))
 
 
 class ContentOrigin(metaclass=Singleton):
