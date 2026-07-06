@@ -202,6 +202,14 @@ class LiveTraining:
         self.class_map = self._init_class_map(self.project_meta)
         if self.dataset is not None:
             self.dataset.update_class_map(self.class_map.class2idx)
+        try:
+            self._validate_class_map()
+        except ValueError as e:
+            # Deliver the error as the direct response to the START request,
+            # then re-raise so the session fails loud instead of training
+            # a model with num_classes=0.
+            request.future.set_exception(e)
+            raise
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
         # Flip _start_received before resolving the START future so any
@@ -379,17 +387,46 @@ class LiveTraining:
 
         return ClassMap(obj_classes)
 
+    def _validate_class_map(self):
+        if len(self.class_map) > 0:
+            return
+        if self.filter_classes_by_task and self.task_type is not None:
+            allowed_geometries = self._task2geometries[self.task_type]
+            geometry_names = [geom.geometry_name() for geom in allowed_geometries]
+            raise ValueError(
+                f"The project has no classes suitable for {self.task_type}. "
+                f"Live training requires at least one class with geometry type "
+                f"{', '.join(geometry_names)} (or 'Any Shape' geometry). "
+                f"Please add a suitable class to the project and restart the live training session."
+            )
+        raise ValueError(
+            "The project has no classes. Please add at least one class to the project "
+            "and restart the live training session."
+        )
+
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
         # Important: Must be filtered before sly.Annotation.from_json due to static project meta
         allowed_geometries = self._task2geometries[self.task_type]
         allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
         filtered_objects = []
+        dropped_objects = []
         for obj in ann_json['objects']:
             sly_id = obj['classId']
             if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
                 filtered_objects.append(obj)
+            else:
+                dropped_objects.append(obj)
         ann_json['objects'] = filtered_objects
+        if dropped_objects:
+            dropped_info = {
+                f"{obj.get('classTitle', obj.get('classId'))} ({obj['geometryType']})"
+                for obj in dropped_objects
+            }
+            logger.warning(
+                f"Skipped {len(dropped_objects)} object(s) not matching class_map/allowed geometries: "
+                f"{sorted(dropped_info)}. Allowed geometries: {allowed_geometries}"
+            )
         return ann_json
 
     def after_train_step(self, loss: float):
@@ -435,8 +472,9 @@ class LiveTraining:
             work_dir=self.work_dir
         )
 
-        self.class_map = class_map  
-        self._process_pending_requests() 
+        self.class_map = class_map
+        self._validate_class_map()
+        self._process_pending_requests()
         return checkpoint_path, state
 
     def state(self):
