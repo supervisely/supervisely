@@ -30,10 +30,11 @@
 
 ## PR Preparation
 
-- [ ] Create clean branches and commits from the user GitHub account only, with no AI/coauthor metadata.
-- [ ] Prepare PR for SDK.
-- [ ] Prepare PR for Docs.
-- [ ] Prepare PR for Developer Portal.
-- [ ] Prepare PR for Main Import / Auto Import.
-- [ ] Prepare PR for Export to Supervisely Format.
-- [ ] Write final report with completed work, verification results, known issues, and manual follow-up steps.
+- [x] Create clean branches and commits from the user GitHub account only, with no AI/coauthor metadata.
+- [x] Push SDK branch and prepare PR URL.
+- [x] Push Docs branch and prepare PR URL.
+- [x] Push Developer Portal branch and prepare PR URL.
+- [x] Push Main Import / Auto Import branch and prepare PR URL.
+- [x] Push Export to Supervisely Format branch and prepare PR URL.
+- [ ] Open the five PRs in GitHub UI. GitHub CLI is not installed in this environment, so the branches and PR URLs are ready for manual opening.
+- [x] Write final report with completed work, verification results, known issues, and manual follow-up steps.
