@@ -391,6 +391,18 @@ class Geometry(JsonSerializable):
             )
         return res
 
+    @staticmethod
+    def _is_multipolygon_parts_json(parts):
+        return (
+            isinstance(parts, list)
+            and all(isinstance(part, dict) for part in parts)
+            and all(isinstance(part.get(EXTERIOR), list) for part in parts)
+            and all(
+                part.get(INTERIOR) is None or isinstance(part.get(INTERIOR), list)
+                for part in parts
+            )
+        )
+
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
         """
@@ -428,7 +440,7 @@ class Geometry(JsonSerializable):
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
 
-        if data.get(PARTS) is not None:
+        if data.get(PARTS) is not None and cls._is_multipolygon_parts_json(data[PARTS]):
             parts = data[PARTS]
             for part in parts:
                 exterior = part[EXTERIOR]
@@ -502,7 +514,7 @@ class Geometry(JsonSerializable):
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
 
-        if data.get(PARTS) is not None:
+        if data.get(PARTS) is not None and cls._is_multipolygon_parts_json(data[PARTS]):
             parts = data[PARTS]
             for part in parts:
                 exterior = part[EXTERIOR]

@@ -94,7 +94,12 @@ class Multipolygon(Geometry):
         if isinstance(part, Polygon):
             return part.clone()
         if isinstance(part, dict):
-            return Polygon(part[EXTERIOR], part.get(INTERIOR, []))
+            exterior = row_col_list_to_points(part[EXTERIOR], flip_row_col_order=True)
+            interior = [
+                row_col_list_to_points(i, flip_row_col_order=True)
+                for i in part.get(INTERIOR, [])
+            ]
+            return Polygon(exterior, interior)
         if isinstance(part, tuple) and len(part) == 2:
             exterior, interior = part
             return Polygon(exterior, interior)

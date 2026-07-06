@@ -36,6 +36,22 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(data["parts"][0]["exterior"], [[10, 10], [40, 10], [40, 40], [10, 40]])
         self.assertEqual(data["parts"][0]["interior"], [[[20, 20], [30, 20], [30, 30], [20, 30]]])
 
+    def test_constructor_accepts_json_ordered_dict_parts(self):
+        data = {
+            "parts": [
+                {
+                    "exterior": [[10, 20], [40, 20], [40, 50], [10, 50]],
+                    "interior": [[[20, 30], [30, 30], [30, 40], [20, 40]]],
+                }
+            ]
+        }
+
+        geometry = sly.Multipolygon(data["parts"])
+
+        self.assertEqual(geometry.to_json(), data)
+        self.assertEqual(geometry.parts[0].exterior[0].row, 20)
+        self.assertEqual(geometry.parts[0].exterior[0].col, 10)
+
     def test_from_json_live_api_shape(self):
         data = {
             "id": 123,
@@ -232,6 +248,18 @@ class TestMultipolygon(unittest.TestCase):
 
         self.assertEqual(pixel["parts"][0]["exterior"], [[10, 10], [20, 10], [20, 20]])
         self.assertEqual(subpixel["parts"][0]["exterior"], [[10.5, 10.5], [20.5, 10.5], [20.5, 20.5]])
+
+    def test_pixel_subpixel_json_helpers_ignore_non_multipolygon_parts(self):
+        payloads = [
+            {"geometryType": "future", "parts": "not-a-list"},
+            {"geometryType": "future", "parts": [1, 2, 3]},
+            {"geometryType": "future", "parts": [{"custom": [[1, 2]]}]},
+            {"geometryType": "future", "parts": [{"exterior": "not-a-list"}]},
+        ]
+
+        for data in payloads:
+            self.assertEqual(Geometry._to_pixel_coordinate_system_json(data, [100, 100]), data)
+            self.assertEqual(Geometry._to_subpixel_coordinate_system_json(data), data)
 
 
 if __name__ == "__main__":
