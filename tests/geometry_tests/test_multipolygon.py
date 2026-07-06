@@ -62,6 +62,33 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(geometry.parts[0].exterior[0].row, 10)
         self.assertEqual(geometry.parts[0].exterior[0].col, 10)
 
+    def test_from_json_validates_part_structure(self):
+        with self.assertRaisesRegex(TypeError, 'Each "parts" element must be a dict'):
+            sly.Multipolygon.from_json({"parts": [1]})
+
+        with self.assertRaisesRegex(TypeError, '"parts\\[0\\]\\.exterior" field must be a list'):
+            sly.Multipolygon.from_json({"parts": [{"exterior": "bad"}]})
+
+        with self.assertRaisesRegex(ValueError, '"parts\\[0\\]\\.exterior" field must contain'):
+            sly.Multipolygon.from_json({"parts": [{"exterior": [[1, 1], [2, 2]]}]})
+
+        with self.assertRaisesRegex(TypeError, '"interior" field in "parts" element 0'):
+            sly.Multipolygon.from_json(
+                {"parts": [{"exterior": [[0, 0], [10, 0], [10, 10]], "interior": "bad"}]}
+            )
+
+        with self.assertRaisesRegex(TypeError, '"parts\\[0\\]\\.interior\\[0\\]" point'):
+            sly.Multipolygon.from_json(
+                {
+                    "parts": [
+                        {
+                            "exterior": [[0, 0], [10, 0], [10, 10]],
+                            "interior": [[[1, 1], ["bad"], [2, 2]]],
+                        }
+                    ]
+                }
+            )
+
     def test_obj_class_and_annotation_roundtrip(self):
         obj_class = sly.ObjClass("multi", sly.Multipolygon, color=[255, 0, 0])
         meta = sly.ProjectMeta(obj_classes=ObjClassCollection([obj_class]))
@@ -142,6 +169,21 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(len(alpha_labels), 1)
         self.assertEqual(type(alpha_labels[0].geometry), sly.Multipolygon)
         self.assertEqual(len(alpha_labels[0].geometry.parts), 2)
+
+    def test_convert_polygon_like_geometries_to_multipolygon(self):
+        multipolygon_class = sly.ObjClass("multi", sly.Multipolygon)
+        cases = [
+            (sly.Rectangle(10, 10, 40, 50), sly.ObjClass("rectangle", sly.Rectangle)),
+            (sly.Polyline([[10, 10], [20, 30], [40, 10]]), sly.ObjClass("line", sly.Polyline)),
+            (sly.OrientedBBox(10, 20, 60, 90, angle=0.25), sly.ObjClass("obb", sly.OrientedBBox)),
+        ]
+
+        for geometry, source_class in cases:
+            converted = sly.Label(geometry, source_class).convert(multipolygon_class)
+
+            self.assertEqual(len(converted), 1)
+            self.assertEqual(type(converted[0].geometry), sly.Multipolygon)
+            self.assertEqual(len(converted[0].geometry.parts), 1)
 
     def test_unknown_geometry_deserializes_as_any_geometry(self):
         meta_json = {

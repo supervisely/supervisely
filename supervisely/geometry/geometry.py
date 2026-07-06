@@ -344,7 +344,12 @@ class Geometry(JsonSerializable):
             return [self]
 
         allowed_transforms = self.allowed_transforms()
-        if new_geometry not in allowed_transforms:
+
+        from supervisely.geometry.multipolygon import Multipolygon
+        from supervisely.geometry.polygon import Polygon
+
+        polygon_like_to_multipolygon = new_geometry == Multipolygon and Polygon in allowed_transforms
+        if new_geometry not in allowed_transforms and not polygon_like_to_multipolygon:
             raise NotImplementedError(
                 "from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name())
             )
@@ -356,8 +361,6 @@ class Geometry(JsonSerializable):
             geometry_to_bitmap,
             geometry_to_polygon,
         )
-        from supervisely.geometry.multipolygon import Multipolygon
-        from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.oriented_bbox import OrientedBBox
 

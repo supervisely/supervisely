@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from numbers import Real
 from typing import Dict, List, Optional, Tuple, Union
 
 from supervisely.geometry.constants import (
@@ -102,6 +103,22 @@ class Multipolygon(Geometry):
             'or tuples with "(exterior, interior)"'
         )
 
+    @staticmethod
+    def _validate_points_json(points, field_name: str, min_count: int) -> None:
+        if not isinstance(points, list):
+            raise TypeError(f'"{field_name}" field must be a list of points.')
+        if len(points) < min_count:
+            raise ValueError(f'"{field_name}" field must contain at least {min_count} points.')
+        for point_idx, point in enumerate(points):
+            if (
+                not isinstance(point, (list, tuple))
+                or len(point) != 2
+                or not all(isinstance(coord, Real) for coord in point)
+            ):
+                raise TypeError(
+                    f'"{field_name}" point at index {point_idx} must be a pair of numbers.'
+                )
+
     @property
     def parts(self) -> List[Polygon]:
         """
@@ -165,9 +182,22 @@ class Multipolygon(Geometry):
         class_id = data.get(CLASS_ID, None)
 
         parts = []
-        for part in data[PARTS]:
+        for part_idx, part in enumerate(data[PARTS]):
+            if not isinstance(part, dict):
+                raise TypeError(f'Each "{PARTS}" element must be a dict.')
             if EXTERIOR not in part:
                 raise KeyError(f'Each "{PARTS}" element must contain "{EXTERIOR}" field.')
+            if INTERIOR in part and not isinstance(part[INTERIOR], list):
+                raise TypeError(
+                    f'"{INTERIOR}" field in "{PARTS}" element {part_idx} must be a list.'
+                )
+            cls._validate_points_json(part[EXTERIOR], f"{PARTS}[{part_idx}].{EXTERIOR}", 3)
+            for contour_idx, contour in enumerate(part.get(INTERIOR, [])):
+                cls._validate_points_json(
+                    contour,
+                    f"{PARTS}[{part_idx}].{INTERIOR}[{contour_idx}]",
+                    3,
+                )
             exterior = row_col_list_to_points(part[EXTERIOR], flip_row_col_order=True)
             interior = [
                 row_col_list_to_points(i, flip_row_col_order=True)
