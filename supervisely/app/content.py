@@ -15,7 +15,15 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Union
 
 import jsonpatch
+import jsonpointer
 from fastapi import Request
+
+try:  # requires python >= 3.9
+    import patchdiff
+    from patchdiff.serialize import to_str_paths
+except ImportError:
+    patchdiff = None
+    to_str_paths = None
 
 import supervisely.app.fastapi.multi_user as multi_user
 from supervisely._utils import is_production
@@ -94,6 +102,47 @@ def get_synced_data_dir():
     return dir
 
 
+def _diff(src: dict, dst: dict) -> jsonpatch.JsonPatch:
+    """Minimal RFC 6902 diff of `src` -> `dst`.
+
+    patchdiff never emits 'move' ops (jsonpatch's move-folding corrupts
+    patches across subtrees). Without patchdiff (python 3.8) jsonpatch's
+    from_diff is used and its result is verified; a broken patch raises.
+    """
+    if patchdiff is not None:
+        ops, _ = patchdiff.diff(src, dst)
+        return jsonpatch.JsonPatch(to_str_paths(ops))
+    patch = jsonpatch.JsonPatch.from_diff(src, dst)
+    if patch.apply(src) != dst:
+        raise ValueError("jsonpatch.from_diff produced an invalid patch")
+    return patch
+
+
+def _fallback_patch(src: dict, dst: dict) -> jsonpatch.JsonPatch:
+    """Valid but non-minimal diff: replace/add/remove of changed top-level keys."""
+    ops = []
+    for key in src:
+        if key not in dst:
+            path = jsonpointer.JsonPointer.from_parts([key]).path
+            ops.append({"op": "remove", "path": path})
+    for key, value in dst.items():
+        path = jsonpointer.JsonPointer.from_parts([key]).path
+        if key not in src:
+            ops.append({"op": "add", "path": path, "value": copy.deepcopy(value)})
+        elif src[key] != value:
+            ops.append({"op": "replace", "path": path, "value": copy.deepcopy(value)})
+    return jsonpatch.JsonPatch(ops)
+
+
+def _safe_diff(src: dict, dst: dict) -> jsonpatch.JsonPatch:
+    """RFC 6902 diff of `src` -> `dst`: if the minimal diff fails, falls back
+    to an explicit replace of changed top-level keys."""
+    try:
+        return _diff(src, dst)
+    except Exception:
+        return _fallback_patch(src, dst)
+
+
 class _PatchableJson(dict):
     """Base dict that can compute JSON patches and broadcast changes via websockets."""
 
@@ -137,7 +186,7 @@ class _PatchableJson(dict):
         # and ensures patches reach the frontend in order
         async with async_lock(self._lock):
             snapshot = copy.deepcopy(dict(self))
-            patch = jsonpatch.JsonPatch.from_diff(self._last, snapshot)
+            patch = _safe_diff(self._last, snapshot)
             await self._apply_snapshot(snapshot, patch)
             if patch.patch:
                 await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
@@ -287,7 +336,7 @@ class ContentOrigin(metaclass=Singleton):
                         if patch is None:
                             continue
                         patch.apply(data, in_place=True)
-                    merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
+                    merged_patch = _safe_diff(self._last_sent_data, data)
                     self._send(data_patch=merged_patch, state=last_state)
                     self._last_sent_data = copy.deepcopy(data)
                     failed_patch = None
