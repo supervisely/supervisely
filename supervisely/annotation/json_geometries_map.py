@@ -19,6 +19,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.polyline_3d import Polyline3D
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.sly_logger import logger
 
 _INPUT_GEOMETRIES = [
     Bitmap,
@@ -52,8 +53,10 @@ def GET_GEOMETRY_FROM_STR(figure_shape: str):
     The function create geometry class object from given string
     """
     if figure_shape not in _JSON_SHAPE_TO_GEOMETRY_TYPE.keys():
-        raise KeyError(
-            f"Unknown shape: '{figure_shape}'. Supported shapes: {list(_JSON_SHAPE_TO_GEOMETRY_TYPE.keys())}"
+        logger.warning(
+            f"Unknown shape: '{figure_shape}'. Deserializing it as AnyGeometry. "
+            f"Supported shapes: {list(_JSON_SHAPE_TO_GEOMETRY_TYPE.keys())}"
         )
+        return AnyGeometry
     geometry = _JSON_SHAPE_TO_GEOMETRY_TYPE[figure_shape]
     return geometry

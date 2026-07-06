@@ -111,6 +111,62 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(len(converted), 2)
         self.assertTrue(all(type(label.geometry) is sly.Polygon for label in converted))
 
+    def test_convert_masks_to_multipolygon(self):
+        bitmap_class = sly.ObjClass("bitmap", sly.Bitmap)
+        alpha_mask_class = sly.ObjClass("alpha", sly.AlphaMask)
+        multipolygon_class = sly.ObjClass("multi", sly.Multipolygon)
+        mask = np.zeros((100, 100), dtype=np.bool_)
+        mask[10:40, 10:40] = True
+        mask[60:85, 60:85] = True
+
+        bitmap_labels = sly.Label(sly.Bitmap(mask), bitmap_class).convert(multipolygon_class)
+        alpha_labels = sly.Label(sly.AlphaMask(mask.astype(np.uint8) * 255), alpha_mask_class).convert(
+            multipolygon_class
+        )
+
+        self.assertEqual(len(bitmap_labels), 1)
+        self.assertEqual(type(bitmap_labels[0].geometry), sly.Multipolygon)
+        self.assertEqual(len(bitmap_labels[0].geometry.parts), 2)
+        self.assertEqual(len(alpha_labels), 1)
+        self.assertEqual(type(alpha_labels[0].geometry), sly.Multipolygon)
+        self.assertEqual(len(alpha_labels[0].geometry.parts), 2)
+
+    def test_unknown_geometry_deserializes_as_any_geometry(self):
+        meta_json = {
+            "classes": [
+                {
+                    "id": 1,
+                    "title": "future_shape",
+                    "shape": "future_geometry",
+                    "color": "#FF0000",
+                    "geometry_config": {},
+                }
+            ],
+            "tags": [],
+        }
+        ann_json = {
+            "size": {"height": 100, "width": 100},
+            "description": "",
+            "tags": [],
+            "objects": [
+                {
+                    "id": 10,
+                    "classId": 1,
+                    "classTitle": "future_shape",
+                    "geometryType": "future_geometry",
+                    "futurePayload": {"value": 123},
+                    "tags": [],
+                }
+            ],
+        }
+
+        meta = sly.ProjectMeta.from_json(meta_json)
+        ann = sly.Annotation.from_json(ann_json, meta)
+
+        self.assertEqual(meta.get_obj_class("future_shape").geometry_type, sly.AnyGeometry)
+        self.assertEqual(type(ann.labels[0].geometry), sly.AnyGeometry)
+        self.assertEqual(ann.labels[0].geometry.raw_geometry_type, "future_geometry")
+
     def test_pixel_subpixel_json_helpers_support_parts(self):
         data = {
             "geometryType": "multipolygon",

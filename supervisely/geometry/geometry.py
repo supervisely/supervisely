@@ -370,8 +370,12 @@ class Geometry(JsonSerializable):
             res = [self.to_bbox()]
         elif new_geometry == Polygon:
             res = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
-        elif new_geometry == Multipolygon and type(self) == Polygon:
-            res = [Multipolygon([self])]
+        elif new_geometry == Multipolygon:
+            if type(self) == Polygon:
+                polygons = [self]
+            else:
+                polygons = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
+            res = [Multipolygon(polygons)] if len(polygons) > 0 else []
         elif new_geometry == OrientedBBox:
             bbox = self.to_bbox()
             res = [OrientedBBox.from_bbox(bbox)]
