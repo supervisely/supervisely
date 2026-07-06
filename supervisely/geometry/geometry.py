@@ -21,6 +21,7 @@ from supervisely.geometry.constants import (
     LOC,
     NODES,
     ORIGIN,
+    PARTS,
     POINTS,
     UPDATED_AT,
 )
@@ -355,6 +356,7 @@ class Geometry(JsonSerializable):
             geometry_to_bitmap,
             geometry_to_polygon,
         )
+        from supervisely.geometry.multipolygon import Multipolygon
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.oriented_bbox import OrientedBBox
@@ -368,6 +370,8 @@ class Geometry(JsonSerializable):
             res = [self.to_bbox()]
         elif new_geometry == Polygon:
             res = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
+        elif new_geometry == Multipolygon and type(self) == Polygon:
+            res = [Multipolygon([self])]
         elif new_geometry == OrientedBBox:
             bbox = self.to_bbox()
             res = [OrientedBBox.from_bbox(bbox)]
@@ -416,6 +420,22 @@ class Geometry(JsonSerializable):
                     point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
+
+        if data.get(PARTS) is not None:
+            parts = data[PARTS]
+            for part in parts:
+                exterior = part[EXTERIOR]
+                interior = part.get(INTERIOR, [])
+                for point in exterior:
+                    point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                    point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+                for coords in interior:
+                    for point in coords:
+                        point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                        point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+                part[EXTERIOR] = exterior
+                part[INTERIOR] = interior
+            data[PARTS] = parts
 
         # Bitmap and AlphaMask
         if data.get(BITMAP) is not None:
@@ -474,6 +494,22 @@ class Geometry(JsonSerializable):
                     point[1] = point[1] + 0.5
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
+
+        if data.get(PARTS) is not None:
+            parts = data[PARTS]
+            for part in parts:
+                exterior = part[EXTERIOR]
+                interior = part.get(INTERIOR, [])
+                for point in exterior:
+                    point[0] = point[0] + 0.5
+                    point[1] = point[1] + 0.5
+                for coords in interior:
+                    for point in coords:
+                        point[0] = point[0] + 0.5
+                        point[1] = point[1] + 0.5
+                part[EXTERIOR] = exterior
+                part[INTERIOR] = interior
+            data[PARTS] = parts
 
         # Bitmap and AlphaMask
         if data.get(BITMAP) is not None:
