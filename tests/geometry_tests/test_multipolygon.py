@@ -93,6 +93,18 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(geometry.to_bbox().to_json()["points"]["exterior"], [[10, 10], [80, 80]])
         self.assertEqual(geometry.translate(5, 7).to_bbox().to_json()["points"]["exterior"], [[17, 15], [87, 85]])
         self.assertEqual(geometry.scale(2).to_bbox().to_json()["points"]["exterior"], [[20, 20], [160, 160]])
+        self.assertEqual(
+            geometry.resize((100, 100), (200, 200)).to_bbox().to_json()["points"]["exterior"],
+            [[20, 20], [160, 160]],
+        )
+        self.assertEqual(
+            geometry.fliplr((100, 100)).to_bbox().to_json()["points"]["exterior"],
+            [[20, 10], [90, 80]],
+        )
+        self.assertEqual(
+            geometry.flipud((100, 100)).to_bbox().to_json()["points"]["exterior"],
+            [[10, 20], [80, 90]],
+        )
 
     def test_crop(self):
         cropped = _multipolygon().crop(sly.Rectangle(0, 0, 50, 50))

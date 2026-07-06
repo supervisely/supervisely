@@ -186,7 +186,7 @@ class Multipolygon(Geometry):
 
     def _transform(self, transform_fn):
         result = deepcopy(self)
-        result._parts = [part._transform(transform_fn) for part in self._parts]
+        result._parts = [transform_fn(part) for part in self._parts]
         return result
 
     def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Multipolygon:
