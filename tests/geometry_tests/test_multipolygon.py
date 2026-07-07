@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+import uuid
 
 import numpy as np
 
@@ -156,6 +157,26 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(type(cropped[0]), sly.Multipolygon)
         self.assertEqual(len(cropped[0].parts), 1)
 
+    def test_crop_preserves_metadata(self):
+        geometry = sly.Multipolygon.from_json(
+            {
+                "id": 123,
+                "classId": 456,
+                "labelerLogin": "user",
+                "createdAt": "2026-07-06T10:59:38.246Z",
+                "updatedAt": "2026-07-06T11:00:14.971Z",
+                "parts": _multipolygon().to_json()["parts"],
+            }
+        )
+
+        cropped = geometry.crop(sly.Rectangle(0, 0, 50, 50))[0]
+
+        self.assertEqual(cropped.sly_id, 123)
+        self.assertEqual(cropped.class_id, 456)
+        self.assertEqual(cropped.labeler_login, "user")
+        self.assertEqual(cropped.created_at, "2026-07-06T10:59:38.246Z")
+        self.assertEqual(cropped.updated_at, "2026-07-06T11:00:14.971Z")
+
     def test_convert_to_polygons(self):
         obj_class = sly.ObjClass("multi", sly.Multipolygon)
         polygon_class = sly.ObjClass("multi_polygon", sly.Polygon)
@@ -236,6 +257,64 @@ class TestMultipolygon(unittest.TestCase):
         self.assertEqual(meta.get_obj_class("future_shape").geometry_type, sly.AnyGeometry)
         self.assertEqual(type(ann.labels[0].geometry), sly.AnyGeometry)
         self.assertEqual(ann.labels[0].geometry.raw_geometry_type, "future_geometry")
+        self.assertEqual(meta.to_json()["classes"][0]["shape"], "future_geometry")
+        self.assertEqual(ann.to_json()["objects"][0]["geometryType"], "future_geometry")
+        self.assertEqual(ann.to_json()["objects"][0]["shape"], "future_geometry")
+        self.assertEqual(ann.to_json()["objects"][0]["futurePayload"], {"value": 123})
+
+    def test_unknown_geometry_video_volume_mesh_roundtrip_preserves_type(self):
+        obj_class = sly.ObjClass("future_shape", sly.AnyGeometry)
+        payload = {"futurePayload": {"value": 123}}
+
+        video_object = sly.VideoObject(obj_class, key=uuid.uuid4())
+        video_figure = sly.VideoFigure.from_json(
+            {
+                "key": uuid.uuid4().hex,
+                "objectKey": video_object.key().hex,
+                "geometryType": "future_video_geometry",
+                "geometry": payload,
+            },
+            sly.VideoObjectCollection([video_object]),
+            frame_index=7,
+        )
+        video_json = video_figure.to_json()
+        self.assertEqual(video_figure.geometry.raw_geometry_type, "future_video_geometry")
+        self.assertEqual(video_json["geometryType"], "future_video_geometry")
+        self.assertEqual(video_json["geometry"], payload)
+
+        volume_object = sly.VolumeObject(obj_class, key=uuid.uuid4())
+        volume_figure = sly.VolumeFigure.from_json(
+            {
+                "key": uuid.uuid4().hex,
+                "objectKey": volume_object.key().hex,
+                "geometryType": "future_volume_geometry",
+                "geometry": payload,
+            },
+            sly.VolumeObjectCollection([volume_object]),
+            plane_name="axial",
+            slice_index=5,
+        )
+        volume_json = volume_figure.to_json()
+        self.assertEqual(volume_figure.geometry.raw_geometry_type, "future_volume_geometry")
+        self.assertEqual(volume_json["geometryType"], "future_volume_geometry")
+        self.assertEqual(volume_json["geometry"], payload)
+
+        mesh_meta = sly.ProjectMeta(obj_classes=ObjClassCollection([obj_class]))
+        mesh_label = sly.MeshLabel.from_json(
+            {
+                "key": uuid.uuid4().hex,
+                "classTitle": "future_shape",
+                "description": "",
+                "tags": [],
+                "geometryType": "future_mesh_geometry",
+                "geometry": payload,
+            },
+            mesh_meta,
+        )
+        mesh_json = mesh_label.to_json()
+        self.assertEqual(mesh_label.geometry.raw_geometry_type, "future_mesh_geometry")
+        self.assertEqual(mesh_json["geometryType"], "future_mesh_geometry")
+        self.assertEqual(mesh_json["geometry"], payload)
 
     def test_pixel_subpixel_json_helpers_support_parts(self):
         data = {

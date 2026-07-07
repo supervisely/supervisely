@@ -254,7 +254,18 @@ class Multipolygon(Geometry):
         cropped_parts = []
         for part in self._parts:
             cropped_parts.extend(part.crop(rect))
-        return [Multipolygon(cropped_parts)] if len(cropped_parts) > 0 else []
+        if len(cropped_parts) == 0:
+            return []
+        return [
+            Multipolygon(
+                cropped_parts,
+                sly_id=self.sly_id,
+                class_id=self.class_id,
+                labeler_login=self.labeler_login,
+                updated_at=self.updated_at,
+                created_at=self.created_at,
+            )
+        ]
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         for part in self._parts:
