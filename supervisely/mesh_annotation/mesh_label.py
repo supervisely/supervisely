@@ -215,12 +215,17 @@ class MeshLabel:
         geometry_json.pop(GEOMETRY_TYPE, None)
         geometry_json.pop(GEOMETRY_SHAPE, None)
 
+        geometry_type = (
+            self.geometry.raw_geometry_type
+            if isinstance(self.geometry, AnyGeometry)
+            else self.geometry.geometry_name()
+        )
         data_json = {
             KEY: self.key().hex,
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
             TAGS: self.tags.to_json(),
-            ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
+            ApiField.GEOMETRY_TYPE: geometry_type,
             ApiField.GEOMETRY: geometry_json,
             ApiField.NN_CREATED: self._nn_created,
             ApiField.NN_UPDATED: self._nn_updated,
@@ -272,7 +277,10 @@ class MeshLabel:
             geometry_cls = GET_GEOMETRY_FROM_STR(geometry_type)
         else:
             geometry_cls = obj_class.geometry_type
-        geometry = geometry_cls.from_json(geometry_json)
+        if geometry_cls == AnyGeometry:
+            geometry = AnyGeometry(geometry_json, geometry_type=geometry_type)
+        else:
+            geometry = geometry_cls.from_json(geometry_json)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
         label_id = data.get(LabelJsonFields.ID)

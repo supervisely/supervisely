@@ -50,6 +50,7 @@ class ObjClass(KeyObject, JsonSerializable):
         sly_id: Optional[int] = None,
         hotkey: Optional[str] = None,
         description: Optional[str] = None,
+        geometry_type_name: Optional[str] = None,
     ):
         """
         :param name: Class name (e.g. 'car', 'person').
@@ -79,6 +80,12 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         self._name = name
         self._geometry_type = geometry_type
+        if geometry_type == AnyGeometry:
+            self._geometry_type_name = take_with_default(
+                geometry_type_name, AnyGeometry.geometry_name()
+            )
+        else:
+            self._geometry_type_name = geometry_type.geometry_name()
         self._color = random_rgb() if color is None else deepcopy(color)
         _validate_color(self._color)
         if geometry_type == GraphNodes and geometry_config is None:
@@ -252,7 +259,7 @@ class ObjClass(KeyObject, JsonSerializable):
         res = {
             ObjClassJsonFields.NAME: self.name,
             ObjClassJsonFields.DESCRIPTION: self.description,
-            ObjClassJsonFields.GEOMETRY_TYPE: self.geometry_type.geometry_name(),
+            ObjClassJsonFields.GEOMETRY_TYPE: self._geometry_type_name,
             ObjClassJsonFields.COLOR: rgb2hex(self.color),
             ObjClassJsonFields.GEOMETRY_CONFIG: self.geometry_type.config_to_json(
                 self._geometry_config
@@ -324,6 +331,9 @@ class ObjClass(KeyObject, JsonSerializable):
             sly_id=sly_id,
             hotkey=hotkey,
             description=description,
+            geometry_type_name=data[ObjClassJsonFields.GEOMETRY_TYPE]
+            if geometry_type == AnyGeometry
+            else None,
         )
 
     def __eq__(self, other: ObjClass) -> bool:
@@ -466,18 +476,22 @@ class ObjClass(KeyObject, JsonSerializable):
                 #  Let's clone our ObjClass without new fields
                 clone_lemon_3 = class_lemon.clone()
         """
+        new_geometry_type = take_with_default(geometry_type, self.geometry_type)
         return ObjClass(
             name=take_with_default(name, self.name),
-            geometry_type=take_with_default(geometry_type, self.geometry_type),
+            geometry_type=new_geometry_type,
             color=take_with_default(color, self.color),
             geometry_config=take_with_default(geometry_config, self.geometry_config),
             sly_id=take_with_default(sly_id, self.sly_id),
             hotkey=take_with_default(hotkey, self.hotkey),
             description=take_with_default(description, self.description),
+            geometry_type_name=self._geometry_type_name
+            if new_geometry_type == AnyGeometry and self.geometry_type == AnyGeometry
+            else None,
         )
 
     def __hash__(self):
-        return hash((self.name, self.geometry_type.geometry_name()))
+        return hash((self.name, self._geometry_type_name))
 
     def _set_id(self, id: int):
         self._sly_id = id
