@@ -23,6 +23,7 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.multipolygon import Multipolygon
 from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
@@ -2227,7 +2228,7 @@ class Annotation:
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
             # if mapping[lbl.obj_class] is not None:
-            if isinstance(lbl.geometry, (Bitmap, Polygon)):
+            if isinstance(lbl.geometry, (Bitmap, Polygon, Multipolygon)):
                 lbl.draw(common_img, color=idx)
 
         # (unique, counts) = np.unique(common_img, return_counts=True)
@@ -2698,9 +2699,9 @@ class Annotation:
         other_labels = []
         _polygons_to_bitmaps_classes = {}
         for lbl in self.labels:
-            if type(lbl.geometry) in [Bitmap, Polygon]:
+            if type(lbl.geometry) in [Bitmap, Polygon, Multipolygon]:
                 to_render_labels.append(lbl)
-                if type(lbl.geometry) is Polygon:
+                if type(lbl.geometry) in [Polygon, Multipolygon]:
                     new_class = _polygons_to_bitmaps_classes.get(lbl.obj_class.name, None)
                     if new_class is None:
                         new_class = lbl.obj_class.clone(geometry_type=Bitmap)

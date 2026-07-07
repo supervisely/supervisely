@@ -11,6 +11,7 @@ from supervisely.geometry.cuboid import Cuboid
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.multipolygon import Multipolygon
 from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_3d import Point3d
@@ -23,6 +24,7 @@ type_to_shape_text = {
     AnyGeometry: "any shape",
     Rectangle: "rectangle",
     Polygon: "polygon",
+    Multipolygon: "multipolygon",
     Bitmap: "bitmap (mask)",
     AlphaMask: "alpha mask",
     Polyline: "polyline",
