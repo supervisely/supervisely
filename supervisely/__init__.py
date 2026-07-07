@@ -98,6 +98,7 @@ from supervisely.geometry.cuboid import Cuboid
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.multipolygon import Multipolygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.mask_3d import Mask3D

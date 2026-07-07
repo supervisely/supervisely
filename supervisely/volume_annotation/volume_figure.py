@@ -554,7 +554,10 @@ class VolumeFigure(VideoFigure):
             geometry_json = data
         else:
             geometry_json = data[ApiField.GEOMETRY]
-        geometry = shape.from_json(geometry_json)
+        if shape == AnyGeometry:
+            geometry = AnyGeometry(geometry_json, geometry_type=shape_str)
+        else:
+            geometry = shape.from_json(geometry_json)
         geometry.sly_id = data.get(ID, None)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
