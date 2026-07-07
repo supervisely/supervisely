@@ -3761,7 +3761,11 @@ class Project:
 
             for batch in batched(ds_image_infos, batch_size):
                 image_ids = [image_info.id for image_info in batch]
-                ds_figures = api.image.figure.download(dataset_info.id, image_ids)
+                # integer_coords=False keeps exact subpixel coordinates so that
+                # upload_bin can restore figures without a half-pixel shift
+                ds_figures = api.image.figure.download(
+                    dataset_info.id, image_ids, integer_coords=False
+                )
                 alpha_ids = [
                     figure.id
                     for figures in ds_figures.values()
