@@ -529,7 +529,7 @@ class FastTable(Widget):
         if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
-        self._page_size = init_options.pop("pageSize", 10)
+        self._page_size = init_options.pop("pageSize", self._page_size)
 
         if reset_filters:
             self._filter_value = None
