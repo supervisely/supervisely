@@ -21,6 +21,7 @@ from supervisely.geometry.constants import (
     LOC,
     NODES,
     ORIGIN,
+    PARTS,
     POINTS,
     UPDATED_AT,
 )
@@ -343,7 +344,12 @@ class Geometry(JsonSerializable):
             return [self]
 
         allowed_transforms = self.allowed_transforms()
-        if new_geometry not in allowed_transforms:
+
+        from supervisely.geometry.multipolygon import Multipolygon
+        from supervisely.geometry.polygon import Polygon
+
+        polygon_like_to_multipolygon = new_geometry == Multipolygon and Polygon in allowed_transforms
+        if new_geometry not in allowed_transforms and not polygon_like_to_multipolygon:
             raise NotImplementedError(
                 "from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name())
             )
@@ -355,7 +361,6 @@ class Geometry(JsonSerializable):
             geometry_to_bitmap,
             geometry_to_polygon,
         )
-        from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.oriented_bbox import OrientedBBox
 
@@ -368,6 +373,12 @@ class Geometry(JsonSerializable):
             res = [self.to_bbox()]
         elif new_geometry == Polygon:
             res = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
+        elif new_geometry == Multipolygon:
+            if type(self) == Polygon:
+                polygons = [self]
+            else:
+                polygons = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
+            res = [Multipolygon(polygons)] if len(polygons) > 0 else []
         elif new_geometry == OrientedBBox:
             bbox = self.to_bbox()
             res = [OrientedBBox.from_bbox(bbox)]
@@ -379,6 +390,18 @@ class Geometry(JsonSerializable):
                 )
             )
         return res
+
+    @staticmethod
+    def _is_multipolygon_parts_json(parts):
+        return (
+            isinstance(parts, list)
+            and all(isinstance(part, dict) for part in parts)
+            and all(isinstance(part.get(EXTERIOR), list) for part in parts)
+            and all(
+                part.get(INTERIOR) is None or isinstance(part.get(INTERIOR), list)
+                for part in parts
+            )
+        )
 
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
@@ -416,6 +439,22 @@ class Geometry(JsonSerializable):
                     point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
+
+        if data.get(PARTS) is not None and cls._is_multipolygon_parts_json(data[PARTS]):
+            parts = data[PARTS]
+            for part in parts:
+                exterior = part[EXTERIOR]
+                interior = part.get(INTERIOR, [])
+                for point in exterior:
+                    point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                    point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+                for coords in interior:
+                    for point in coords:
+                        point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                        point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+                part[EXTERIOR] = exterior
+                part[INTERIOR] = interior
+            data[PARTS] = parts
 
         # Bitmap and AlphaMask
         if data.get(BITMAP) is not None:
@@ -474,6 +513,22 @@ class Geometry(JsonSerializable):
                     point[1] = point[1] + 0.5
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
+
+        if data.get(PARTS) is not None and cls._is_multipolygon_parts_json(data[PARTS]):
+            parts = data[PARTS]
+            for part in parts:
+                exterior = part[EXTERIOR]
+                interior = part.get(INTERIOR, [])
+                for point in exterior:
+                    point[0] = point[0] + 0.5
+                    point[1] = point[1] + 0.5
+                for coords in interior:
+                    for point in coords:
+                        point[0] = point[0] + 0.5
+                        point[1] = point[1] + 0.5
+                part[EXTERIOR] = exterior
+                part[INTERIOR] = interior
+            data[PARTS] = parts
 
         # Bitmap and AlphaMask
         if data.get(BITMAP) is not None:

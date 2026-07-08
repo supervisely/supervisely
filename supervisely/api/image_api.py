@@ -78,6 +78,7 @@ from supervisely.io.env import (
 from supervisely.io.fs import (
     OFFSETS_PKL_BATCH_SIZE,
     OFFSETS_PKL_SUFFIX,
+    BaseRestrictedUnpickler,
     clean_dir,
     ensure_base_path,
     get_file_ext,
@@ -97,6 +98,33 @@ from supervisely.project.project_type import (
 from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
+
+
+class _BlobOffsetUnpickler(BaseRestrictedUnpickler):
+    """Restricted unpickler for ``*_offsets.pkl`` files.
+
+    Inherits the allowlist mechanism from :class:`~supervisely.io.fs.BaseRestrictedUnpickler`.
+    Only :class:`BlobImageInfo` and safe Python primitives are permitted;
+    everything else raises :exc:`pickle.UnpicklingError` (CWE-502 mitigation).
+    """
+
+    _ALLOWED: Dict[str, set] = {
+        "supervisely.api.image_api": {"BlobImageInfo"},
+        "builtins": {
+            "list",
+            "str",
+            "int",
+            "float",
+            "bool",
+            "bytes",
+            "bytearray",
+            "dict",
+            "tuple",
+            "NoneType",
+        },
+    }
+
+
 API_DEFAULT_PER_PAGE = 500
 
 
@@ -199,8 +227,8 @@ class BlobImageInfo:
             with open(file_path, "rb") as f:
                 while True:
                     try:
-                        # Load one pickle object at a time
-                        data = pickle.load(f)
+                        # Load one pickle object at a time using restricted unpickler
+                        data = _BlobOffsetUnpickler(f).load()
 
                         if isinstance(data, list):
                             # More efficient way to process lists
@@ -877,6 +905,7 @@ class ImageApi(RemoveableBulkModuleApi):
             "tagged_by_annotator",
             "issues_count",
             "job",
+            "entities_collection",
         ]
         if not all([filter["type"] in allowed_filter_types for filter in filters]):
             raise ValueError(f"'type' field must be one of: {allowed_filter_types}")

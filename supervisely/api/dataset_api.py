@@ -590,6 +590,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             items_api = self._api.image
         elif project_info.type == str(ProjectType.VIDEOS):
             items_api = self._api.video
+        elif project_info.type == str(ProjectType.MESHES):
+            items_api = self._api.mesh
         else:
             raise RuntimeError(f"Unsupported project type: {project_info.type}")
 
@@ -811,6 +813,41 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         self._api.post(
             "datasets.move", {ApiField.SRC_ID: dataset_id, ApiField.DEST_ID: destination_dataset_id}
+        )
+
+    def set_favorite(self, id: int, is_favorite: bool = True) -> None:
+        """Mark or unmark a Dataset as favorite (pinned).
+
+        :param id: Dataset ID in Supervisely.
+        :type id: int
+        :param is_favorite: Whether to mark the dataset as favorite. Pass ``False`` to unmark.
+        :type is_favorite: bool, optional
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                id = 123
+                api.dataset.set_favorite(id, True)   # mark as favorite
+                api.dataset.set_favorite(id, False)  # unmark
+        """
+        self._api.post(
+            "datasets.favorite-change",
+            {ApiField.ID: id, ApiField.IS_FAVORITE: is_favorite},
         )
 
     def _convert_json_info(self, info: dict, skip_missing=True):

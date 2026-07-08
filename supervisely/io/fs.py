@@ -7,6 +7,7 @@ import errno
 import hashlib
 import mimetypes
 import os
+import pickle
 import re
 import shutil
 import subprocess
@@ -20,6 +21,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -32,6 +34,8 @@ from tqdm import tqdm
 from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from supervisely.api.image_api import BlobImageInfo
 
 from supervisely.io.fs_cache import FileCache
@@ -41,6 +45,44 @@ from supervisely.task.progress import Progress
 JUNK_FILES = [".DS_Store", "__MACOSX", "._.DS_Store", "Thumbs.db", "desktop.ini"]
 OFFSETS_PKL_SUFFIX = "_offsets.pkl"  # suffix for pickle file with image offsets
 OFFSETS_PKL_BATCH_SIZE = 10000  # 10k images per batch when loading from pickle
+
+
+class BaseRestrictedUnpickler(pickle.Unpickler):
+    """Base unpickler that enforces an allowlist of modules and classes.
+
+    Any class not covered by the allowlist raises :exc:`pickle.UnpicklingError`
+    instead of being imported and instantiated.
+
+    Subclasses should configure the allowlist via two class-level attributes:
+
+    * ``_ALLOWED`` — exact ``{module: {class_name, ...}}`` whitelist.
+      Takes priority over ``_ALLOWED_MODULE_PREFIXES``.
+    * ``_ALLOWED_MODULE_PREFIXES`` — tuple of module-name prefixes.
+      Every class whose module starts with one of these prefixes is allowed.
+
+    Both attributes can be combined: exact entries in ``_ALLOWED`` are checked
+    first; if no match is found the prefix list is tried next.
+    """
+
+    _ALLOWED: Dict[str, Set[str]] = {}
+    _ALLOWED_MODULE_PREFIXES: Tuple[str, ...] = ()
+
+    def find_class(self, module: str, name: str):
+        # 1. Exact module+class whitelist (highest priority, e.g. tight sinks)
+        allowed_names = self._ALLOWED.get(module)
+        if allowed_names is not None and name in allowed_names:
+            return super().find_class(module, name)
+
+        # 2. Module-prefix whitelist (broader allow, e.g. all supervisely.*)
+        if self._ALLOWED_MODULE_PREFIXES and any(
+            module == prefix or module.startswith(prefix + ".")
+            for prefix in self._ALLOWED_MODULE_PREFIXES
+        ):
+            return super().find_class(module, name)
+
+        raise pickle.UnpicklingError(
+            f"Blocked unsafe class during deserialization: {module}.{name}"
+        )
 
 
 def get_file_name(path: str) -> str:
@@ -1940,3 +1982,41 @@ def save_blob_offsets_pkl(
 
     BlobImageInfo.dump_to_pickle(offsets_batch_generator, output_path)
     return output_path
+
+
+def encode_uint32_le(values: Union[List[int], "np.ndarray"]) -> bytes:
+    """
+    Encode a sequence of non-negative integers as little-endian uint32 bytes.
+
+    :param values: Sequence of integers in range [0, 2**32 - 1].
+    :type values: Union[List[int], np.ndarray]
+    :returns: Little-endian uint32 byte buffer (4 bytes per value), empty bytes for empty input.
+    :rtype: bytes
+    """
+    import numpy as np
+
+    arr = values if isinstance(values, np.ndarray) else np.asarray(list(values))
+    if arr.size == 0:
+        return b""
+    if not np.issubdtype(arr.dtype, np.integer):
+        raise ValueError("Values to encode must be integers.")
+    if np.any(arr < 0):
+        raise ValueError("Values to encode must be non-negative.")
+    if np.any(arr > np.iinfo(np.uint32).max):
+        raise ValueError("Values to encode must fit into uint32.")
+    return arr.astype("<u4", copy=False).tobytes()
+
+
+def decode_uint32_le(data: bytes) -> List[int]:
+    """
+    Decode little-endian uint32 bytes into a list of integers.
+
+    :param data: Little-endian uint32 byte buffer (trailing bytes that do not form a full uint32 are ignored).
+    :type data: bytes
+    :returns: List of decoded integers.
+    :rtype: List[int]
+    """
+    import numpy as np
+
+    aligned_len = len(data) - (len(data) % 4)
+    return np.frombuffer(data[:aligned_len], dtype="<u4").tolist()

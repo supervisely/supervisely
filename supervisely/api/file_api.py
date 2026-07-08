@@ -1689,11 +1689,17 @@ class FileApi(ModuleApiBase):
                 raise ValueError(f"File is not JSON: {remote_path}")
             content = None
             if file_info.sizeb <= max_readable_size or not download:
-                response = requests.get(file_info.full_storage_url)
-                if response.status_code != 200:
+                self._api._set_client()
+                response = self._api.httpx_client.get(
+                    file_info.full_storage_url, headers=self._api.headers
+                )
+                if response.status_code != httpx.codes.OK:
                     download = True
                 else:
-                    content = response.json()
+                    try:
+                        content = response.json()
+                    except ValueError:
+                        download = True
             if file_info.sizeb > max_readable_size or download:
                 temp_path = os.path.join(tempfile.mkdtemp(), "temp.json")
                 self._download(team_id, remote_path, temp_path)

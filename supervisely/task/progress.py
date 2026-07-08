@@ -365,6 +365,14 @@ def report_dtl_verification_finished(output: str) -> None:
     )
 
 
+def update_progress(progress_cb, value: int) -> None:
+    """Update either a tqdm-like progress object or a simple callback."""
+    if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
+        progress_cb.update(value)
+    else:
+        progress_cb(value)
+
+
 def _report_metrics(m_type, epoch, metrics):
     logger.info(
         "metrics",

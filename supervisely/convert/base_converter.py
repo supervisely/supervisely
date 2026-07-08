@@ -63,6 +63,7 @@ class AvailablePointcloudConverters:
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
+    PCD_SEMANTIC_LABELS = "pcd_semantic_labels"
     BAG = "rosbag"
     LYFT = "lyft"
     NUSCENES = "nuscenes"
@@ -77,6 +78,13 @@ class AvailablePointcloudEpisodesConverters:
     LYFT = "lyft"
     KITTI360 = "kitti360"
     SEMANTIC_KITTI = "semantic_kitti"
+
+
+class AvailableMeshConverters:
+    """Names of supported mesh dataset converters."""
+
+    SLY = "supervisely"
+    PER_VERTEX_LABELS = "per_vertex_labels"
 
 
 class AvailableVolumeConverters:

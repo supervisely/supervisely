@@ -209,6 +209,7 @@ def save_state_json(state: dict, checkpoint_path: str):
     :rtype: None
     """
     state_path = checkpoint_path.replace('.pth', '_state.json')
+    os.makedirs(os.path.dirname(state_path), exist_ok=True)
 
     with open(state_path, 'w') as f:
         json.dump(state, f, indent=2)

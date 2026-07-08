@@ -62,3 +62,4 @@ dockle_logs
 sbom_logs
 image.tar
 test_results
+*.tar

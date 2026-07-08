@@ -260,9 +260,11 @@ class ConfusionMatrix(Widget):
         matrix_data = np.vstack([matrix_data, totals_by_columns])
 
         self._parsed_data_with_totals.update(
-            self.get_unpacked_data(
-                input_data={"columns": self._parsed_data["classes"], "data": matrix_data.tolist()},
-                validate_sizes=False,
+            copy.deepcopy(
+                self.get_unpacked_data(
+                    input_data={"columns": self._parsed_data["classes"], "data": matrix_data.tolist()},
+                    validate_sizes=False,
+                )
             )
         )
 

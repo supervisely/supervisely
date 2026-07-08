@@ -17,7 +17,7 @@ class SetupTests(unittest.TestCase):
     - System Python and its packages are NEVER modified
     - All virtual environments are created in /tmp with unique names
     - Virtual environments are automatically cleaned up after tests
-    - Package installation uses -e (editable) mode for local development
+    - Package installation uses -e (editable) mode by default, with optional wheel mode
     """
 
     # List of all extras_require options from setup.py
@@ -40,6 +40,7 @@ class SetupTests(unittest.TestCase):
 
     # Filtered versions for testing (set by command line arguments)
     TEST_VERSIONS = None
+    INSTALL_MODE = "editable"
 
     # Results storage
     test_results = {
@@ -230,6 +231,106 @@ class SetupTests(unittest.TestCase):
             return "0.0.0+test"
 
     @classmethod
+    def _build_wheel(cls):
+        """Build a local wheel once so install tests can exercise package metadata markers."""
+        cls.dist_dir = tempfile.mkdtemp(prefix="test_dist_supervisely_")
+        build_cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            "--no-deps",
+            "--wheel-dir",
+            cls.dist_dir,
+            cls.project_root,
+        ]
+        env = os.environ.copy()
+        env["RELEASE_VERSION"] = cls.release_version
+
+        print(f"\nBuilding wheel for install tests: {' '.join(build_cmd)}\n")
+        result = subprocess.run(build_cmd, stdout=sys.stdout, stderr=sys.stderr, text=True, env=env)
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to build wheel for install tests: {result.returncode}")
+
+        wheels = [
+            os.path.join(cls.dist_dir, name)
+            for name in os.listdir(cls.dist_dir)
+            if name.startswith("supervisely-") and name.endswith(".whl")
+        ]
+        if len(wheels) != 1:
+            raise RuntimeError(f"Expected exactly one supervisely wheel in {cls.dist_dir}, got {wheels}")
+        cls.wheel_path = wheels[0]
+        print(f"Wheel built for install tests: {cls.wheel_path}\n")
+
+    @classmethod
+    def _install_target(cls, extra_name=None):
+        """Return pip install target for editable or built-wheel install modes."""
+        if cls.INSTALL_MODE == "wheel":
+            target = cls.wheel_path
+            if extra_name:
+                target = f"{target}[{extra_name}]"
+            return [target]
+
+        target = cls.project_root
+        if extra_name:
+            target = f"{target}[{extra_name}]"
+        return ["-e", target]
+
+    @staticmethod
+    def _dependency_marker_check_script():
+        return """
+import json
+import sys
+from importlib.metadata import PackageNotFoundError, version
+from packaging.version import Version
+
+fastapi_version = Version(version("fastapi"))
+starlette_version = Version(version("starlette"))
+python_multipart_version = Version(version("python-multipart"))
+pydantic_version = Version(version("pydantic"))
+
+def is_installed(package_name):
+    try:
+        version(package_name)
+        return True
+    except PackageNotFoundError:
+        return False
+
+if sys.version_info >= (3, 10):
+    assert fastapi_version == Version("0.136.3"), fastapi_version
+    assert starlette_version == Version("1.3.1"), starlette_version
+    assert python_multipart_version == Version("0.0.31"), python_multipart_version
+    assert pydantic_version <= Version("2.12.3"), pydantic_version
+    assert not is_installed("arel"), "arel depends on Starlette 0.x and must not install here"
+else:
+    assert fastapi_version < Version("0.129.0"), fastapi_version
+    assert starlette_version < Version("0.49.1"), starlette_version
+    assert python_multipart_version <= Version("0.0.20"), python_multipart_version
+    assert is_installed("arel"), "arel should remain installed on the legacy Starlette 0.x path"
+
+print(json.dumps({
+    "python": sys.version.split()[0],
+    "fastapi": str(fastapi_version),
+    "starlette": str(starlette_version),
+    "python-multipart": str(python_multipart_version),
+    "pydantic": str(pydantic_version),
+}, sort_keys=True))
+"""
+
+    def _assert_dependency_markers(self, python_executable, python_version):
+        marker_result = subprocess.run(
+            [python_executable, "-c", self._dependency_marker_check_script()],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            text=True,
+        )
+        self.assertEqual(
+            marker_result.returncode,
+            0,
+            msg=f"Dependency marker validation failed for Python {python_version}",
+        )
+
+    @classmethod
     def setUpClass(cls):
         """Create test virtual environments for all Python versions using pyenv."""
         cls.test_results["start_time"] = datetime.now().isoformat()
@@ -241,6 +342,10 @@ class SetupTests(unittest.TestCase):
         # Get project version to avoid GitHub API calls
         cls.release_version = cls._get_project_version()
         print(f"\nUsing version: {cls.release_version}\n")
+        print(f"Install mode: {cls.INSTALL_MODE}\n")
+
+        if cls.INSTALL_MODE == "wheel":
+            cls._build_wheel()
 
         # Determine which versions to test
         versions_to_test = cls.TEST_VERSIONS if cls.TEST_VERSIONS else cls.PYTHON_VERSIONS
@@ -425,6 +530,10 @@ class SetupTests(unittest.TestCase):
             else:
                 print(f"  WARNING: venv already removed: {venv_dir}")
 
+        if getattr(cls, "dist_dir", None) is not None and os.path.exists(cls.dist_dir):
+            print(f"Removing built wheel directory: {cls.dist_dir}")
+            shutil.rmtree(cls.dist_dir)
+
         # Save test results
         cls._save_results()
 
@@ -490,8 +599,8 @@ class SetupTests(unittest.TestCase):
             install_cmd = [
                 test_pip,
                 "install",
-                "-e",
-                f"{self.project_root}[{extra_name}]",
+                "--no-cache-dir",
+                *self._install_target(extra_name),
             ]
 
             print(f"Running: {' '.join(install_cmd)}\n")
@@ -530,6 +639,8 @@ class SetupTests(unittest.TestCase):
                 0,
                 msg=f"Failed to import supervisely with [{extra_name}] (Python {python_version})",
             )
+
+            self._assert_dependency_markers(test_python, python_version)
 
             # List all installed packages and their versions
             print(f"\n{'='*80}")
@@ -620,8 +731,7 @@ class SetupTests(unittest.TestCase):
                         test_pip,
                         "install",
                         "--no-cache-dir",
-                        "-e",
-                        self.project_root,
+                        *self._install_target(),
                     ]
 
                     print(f"Running: {' '.join(install_cmd)}\n")
@@ -674,6 +784,8 @@ class SetupTests(unittest.TestCase):
                         0,
                         msg=f"Failed to import supervisely package for Python {version}",
                     )
+
+                    self._assert_dependency_markers(test_python, version)
 
                     # List all installed packages and their versions
                     print(f"\n{'='*80}")
@@ -819,6 +931,9 @@ Examples:
   
   # Run with verbose output
   python3 tests/test_setup.py --python-versions 3.11 -v
+
+  # Run app install tests from a built wheel instead of editable source
+  python3 tests/test_setup.py --install-mode wheel --python-versions 3.10 3.14 SetupTests.test_03_apps
         """,
     )
     parser.add_argument(
@@ -827,11 +942,20 @@ Examples:
         metavar="VERSION",
         help="Python versions to test (e.g., 3.8 3.9 3.10 3.11 3.12 3.13 3.14)",
     )
+    parser.add_argument(
+        "--install-mode",
+        choices=["editable", "wheel"],
+        default="editable",
+        help="Install from editable source or from a locally built wheel",
+    )
 
     # Parse known args to allow unittest args to pass through
     args, remaining = parser.parse_known_args()
 
     # Set the test versions if specified
+    SetupTests.INSTALL_MODE = args.install_mode
+    print(f"Install mode: {SetupTests.INSTALL_MODE}\n")
+
     if args.python_versions:
         # Separate Python versions from test names
         # Python versions are in format X.Y or X.YY

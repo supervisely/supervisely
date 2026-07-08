@@ -11,6 +11,7 @@ from supervisely.nn import TaskType
 from datetime import datetime
 import signal
 import sys
+import threading
 import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
@@ -70,7 +71,7 @@ class LiveTraining:
             sly.app.development.supervisely_vpn_network(action="up")
             debug_task = sly.app.development.create_debug_task(self.team_id, port="8000", project_id=self.project_id)
             self.task_id = debug_task['id']
-        self._api_thread = start_api_server(self.app, self.request_queue)
+        self._api_thread = start_api_server(self.app, self.request_queue, self)
         self.phase = Phase.READY_TO_START
         self.iter = 0
         self._loss = None
@@ -95,6 +96,15 @@ class LiveTraining:
         self.evaluator = self.init_evaluator()
         self._upload_interval = 7200
         self._last_upload_time = None
+
+        # /status normally bypasses the request queue and returns immediately.
+        # In "continue" mode that would let the UI poll status during the
+        # (possibly slow) checkpoint restore and observe inconsistent state.
+        # _start_received marks the moment START was processed; until
+        # _continue_checkpoint_loaded is set, /status held after START will
+        # block. Status requests received before START always pass through.
+        self._start_received = threading.Event()
+        self._continue_checkpoint_loaded = threading.Event()
 
         self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
         self._last_activity_time = None
@@ -156,11 +166,18 @@ class LiveTraining:
         self.train(checkpoint_path=None)
 
     def _run_continue(self):
-        checkpoint_path, state = self._load_checkpoint()
-        self.load_state(state)
-        image_ids = state.get('image_ids', [])
-        if image_ids:
-            self._restore_dataset(image_ids)
+        try:
+            checkpoint_path, state = self._load_checkpoint()
+            self.load_state(state)
+            image_ids = state.get("image_ids", [])
+            if image_ids:
+                self._restore_dataset(image_ids)
+        finally:
+            # Release any /status requests blocked behind the checkpoint
+            # restore even if loading failed — the outer try/except in
+            # run() handles the exception, and a hung /status is worse
+            # than a status reporting partial state.
+            self._continue_checkpoint_loaded.set()
         self._process_requests_while_initializing()
         self.train(checkpoint_path=checkpoint_path)
 
@@ -180,9 +197,25 @@ class LiveTraining:
             else:
                 request.future.set_exception(Exception(f"Unexpected request {request.type} while waiting for START"))
             request = self.request_queue.get()
-        # When START is received
+        # When START is received — refresh meta in case classes were added after app launch
+        self.project_meta = self._fetch_project_meta(self.project_id)
+        self.class_map = self._init_class_map(self.project_meta)
+        if self.dataset is not None:
+            self.dataset.update_class_map(self.class_map.class2idx)
+        try:
+            self._validate_class_map()
+        except ValueError as e:
+            # Deliver the error as the direct response to the START request,
+            # then re-raise so the session fails loud instead of training
+            # a model with num_classes=0.
+            request.future.set_exception(e)
+            raise
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
+        # Flip _start_received before resolving the START future so any
+        # /status the client sends after seeing the START response is
+        # guaranteed to observe the flag set.
+        self._start_received.set()
         request.future.set_result(status)
 
     def _wait_until_samples_added(
@@ -354,17 +387,46 @@ class LiveTraining:
 
         return ClassMap(obj_classes)
 
+    def _validate_class_map(self):
+        if len(self.class_map) > 0:
+            return
+        if self.filter_classes_by_task and self.task_type is not None:
+            allowed_geometries = self._task2geometries[self.task_type]
+            geometry_names = [geom.geometry_name() for geom in allowed_geometries]
+            raise ValueError(
+                f"The project has no classes suitable for {self.task_type}. "
+                f"Live training requires at least one class with geometry type "
+                f"{', '.join(geometry_names)} (or 'Any Shape' geometry). "
+                f"Please add a suitable class to the project and restart the live training session."
+            )
+        raise ValueError(
+            "The project has no classes. Please add at least one class to the project "
+            "and restart the live training session."
+        )
+
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
         # Important: Must be filtered before sly.Annotation.from_json due to static project meta
         allowed_geometries = self._task2geometries[self.task_type]
         allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
         filtered_objects = []
+        dropped_objects = []
         for obj in ann_json['objects']:
             sly_id = obj['classId']
             if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
                 filtered_objects.append(obj)
+            else:
+                dropped_objects.append(obj)
         ann_json['objects'] = filtered_objects
+        if dropped_objects:
+            dropped_info = {
+                f"{obj.get('classTitle', obj.get('classId'))} ({obj['geometryType']})"
+                for obj in dropped_objects
+            }
+            logger.warning(
+                f"Skipped {len(dropped_objects)} object(s) not matching class_map/allowed geometries: "
+                f"{sorted(dropped_info)}. Allowed geometries: {allowed_geometries}"
+            )
         return ann_json
 
     def after_train_step(self, loss: float):
@@ -410,8 +472,9 @@ class LiveTraining:
             work_dir=self.work_dir
         )
 
-        self.class_map = class_map  
-        self._process_pending_requests() 
+        self.class_map = class_map
+        self._validate_class_map()
+        self._process_pending_requests()
         return checkpoint_path, state
 
     def state(self):
@@ -422,7 +485,8 @@ class LiveTraining:
             'clases': [cls.name for cls in self.class_map.obj_classes],
             'image_ids': self.dataset.get_image_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
-            'is_paused': self._is_paused
+            'is_paused': self._is_paused,
+            'evaluator': self.evaluator.state_dict() if self.evaluator else None,
         }
         return state
 
@@ -434,6 +498,9 @@ class LiveTraining:
         if state.get('is_paused', False):
             self._should_pause_after_continue = True
         dataset_size = state.get('dataset_size', 0)
+        evaluator_state = state.get('evaluator')
+        if self.evaluator and evaluator_state:
+            self.evaluator.load_state_dict(evaluator_state)
 
     def _restore_dataset(self, image_ids: list):
         if not image_ids:
@@ -525,10 +592,15 @@ class LiveTraining:
 
     def _save_and_upload(self):
         """Save checkpoint, state, and upload artifacts"""
+        if self.iter == 0:
+            return
         logger.info("Saving checkpoint and uploading artifacts...")
-        self.save_checkpoint(self.latest_checkpoint_path)
-        save_state_json(self.state(), self.latest_checkpoint_path)
-        self._upload_artifacts()
+        try:
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+            self._upload_artifacts()
+        except Exception as e:
+            logger.warning(f"Failed to save checkpoint: {e}")
 
     def save_checkpoint(self, checkpoint_path: str):
         pass

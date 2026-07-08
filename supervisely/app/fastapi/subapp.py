@@ -14,7 +14,6 @@ from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-import arel
 import jinja2
 import numpy as np
 import psutil
@@ -59,6 +58,11 @@ from supervisely.sly_logger import create_formatter, logger
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
+
+try:
+    import arel
+except ImportError:
+    arel = None
 
 import logging
 
@@ -1023,6 +1027,9 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
+        if arel is None:
+            logger.warning("UI hot-reload is disabled because arel is not installed")
+            return
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 
@@ -1030,9 +1037,9 @@ def enable_hot_reload_on_debug(app: FastAPI):
             paths=[arel.Path(path) for path in os.listdir() if path not in exclude]
         )
 
-        app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
-        app.add_event_handler("startup", hot_reload.startup)
-        app.add_event_handler("shutdown", hot_reload.shutdown)
+        _add_websocket_route(app, "/hot-reload", hot_reload, name="hot-reload")
+        _add_event_handler(app, "startup", hot_reload.startup)
+        _add_event_handler(app, "shutdown", hot_reload.shutdown)
         templates.env.globals["HOTRELOAD"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
         logger.debug("Debugger (gettrace) detected, UI hot-reload is enabled")
@@ -1075,6 +1082,51 @@ def handle_server_errors(app: FastAPI):
     @app.exception_handler(500)
     async def server_exception_handler(request, exc):
         return await process_server_error(request, exc)
+
+
+def _add_event_handler(app: FastAPI, event_type: str, func: Callable[[], Any]) -> None:
+    router = getattr(app, "router", None)
+    add_router_event_handler = getattr(router, "add_event_handler", None)
+    if callable(add_router_event_handler):
+        add_router_event_handler(event_type, func)
+        return
+
+    add_app_event_handler = getattr(app, "add_event_handler", None)
+    if callable(add_app_event_handler):
+        add_app_event_handler(event_type, func)
+        return
+
+    handler_lists = {"startup": "on_startup", "shutdown": "on_shutdown"}
+    handler_list_name = handler_lists.get(event_type)
+    handlers = getattr(router, handler_list_name, None) if handler_list_name else None
+    if hasattr(handlers, "append"):
+        handlers.append(func)
+        return
+
+    raise AttributeError(
+        f"Unable to register {event_type!r} event handler: neither the app nor its router "
+        "exposes a supported event registration API."
+    )
+
+
+def _add_websocket_route(
+    app: FastAPI, path: str, route: Callable[..., Any], name: Optional[str] = None
+) -> None:
+    router = getattr(app, "router", None)
+    add_router_websocket_route = getattr(router, "add_websocket_route", None)
+    if callable(add_router_websocket_route):
+        add_router_websocket_route(path, route, name=name)
+        return
+
+    add_app_websocket_route = getattr(app, "add_websocket_route", None)
+    if callable(add_app_websocket_route):
+        add_app_websocket_route(path, route, name=name)
+        return
+
+    raise AttributeError(
+        f"Unable to register websocket route {path!r}: neither the app nor its router "
+        "exposes a supported raw websocket route registration API."
+    )
 
 
 def _init(
@@ -1210,7 +1262,6 @@ def _init(
                 )
             return app.cached_template
 
-        @app.on_event("shutdown")
         def shutdown():
             from supervisely.app.content import ContentOrigin
 
@@ -1219,6 +1270,8 @@ def _init(
             resp = run_sync(client.get("/"))
             assert resp.status_code == 200
             logger.info("Application has been shut down successfully")
+
+        _add_event_handler(app, "shutdown", shutdown)
 
         if static_dir is not None:
             app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
@@ -1281,6 +1334,7 @@ class Application(metaclass=Singleton):
             Add your custom endpoints here to be able to manage logging of health check requests on info level with `hide_health_check_logs`.
         :type health_check_endpoints: List[str], optional
         """
+        self.hot_reload = None
         self._favicon = os.environ.get("icon", "https://cdn.supervisely.com/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -1370,19 +1424,23 @@ class Application(metaclass=Singleton):
 
         if not headless:
             if is_development() and hot_reload:
-                templates = Jinja2Templates()
-                self.hot_reload = arel.HotReload([])
-                self._fastapi.add_websocket_route(
-                    "/hot-reload", route=self.hot_reload, name="hot-reload"
-                )
-                self._fastapi.add_event_handler("startup", self.hot_reload.startup)
-                self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
+                if arel is None:
+                    logger.warning("Hot reload is disabled because arel is not installed.")
+                    hot_reload = False
+                else:
+                    templates = Jinja2Templates()
+                    self.hot_reload = arel.HotReload([])
+                    _add_websocket_route(
+                        self._fastapi, "/hot-reload", self.hot_reload, name="hot-reload"
+                    )
+                    _add_event_handler(self._fastapi, "startup", self.hot_reload.startup)
+                    _add_event_handler(self._fastapi, "shutdown", self.hot_reload.shutdown)
 
-                # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
-                templates.env.globals["HOTRELOAD"] = "1"
-                templates.env.globals["hot_reload"] = self.hot_reload
+                    # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
+                    templates.env.globals["HOTRELOAD"] = "1"
+                    templates.env.globals["hot_reload"] = self.hot_reload
 
-                logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+                    logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
             if is_production():
                 # to save offline session
@@ -1436,6 +1494,9 @@ class Application(metaclass=Singleton):
         return self._stop_event.is_set()
 
     def reload_page(self):
+        if self.hot_reload is None:
+            logger.warning("Hot reload is disabled; reload_page() is skipped.")
+            return
         run_sync(self.hot_reload.notify.notify())
 
     def get_static_dir(self):

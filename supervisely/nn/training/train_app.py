@@ -18,6 +18,7 @@ from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
+from supervisely.app.fastapi.subapp import _add_event_handler
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
@@ -2940,7 +2941,7 @@ class TrainApp:
 
             threading.Thread(target=self._wrapped_start_training, daemon=True).start()
 
-        self._server.add_event_handler("startup", auto_train)
+        _add_event_handler(self._server, "startup", auto_train)
 
     def _wrapped_start_training(self):
         """
