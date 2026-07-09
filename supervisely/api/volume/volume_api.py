@@ -255,6 +255,14 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         return "VolumeInfo"
 
+    def _remove_batch_api_method_name(self):
+        """Private method. Returns API method name used for batch removal of volumes."""
+        return "images.bulk.remove"
+
+    def _remove_batch_field_name(self):
+        """Private method. Returns constant string that represents API field name that contains the IDs of the volumes."""
+        return ApiField.IMAGE_IDS
+
     def _convert_json_info(self, info: dict, skip_missing=True):
         """Private method. Convert volume information from json to VolumeInfo."""
 
