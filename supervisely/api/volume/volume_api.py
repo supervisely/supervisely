@@ -11,6 +11,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger, volume
 from supervisely._utils import batched, generate_free_name
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
 from supervisely.api.volume.volume_figure_api import VolumeFigureApi
@@ -262,23 +263,29 @@ class VolumeApi(RemoveableBulkModuleApi):
 
     def get_list(
         self,
-        dataset_id: int,
+        dataset_id: Optional[int] = None,
         filters=None,
         sort: Literal["id", "name", "description", "createdAt", "updatedAt"] = "id",
         sort_order: Literal["asc", "desc"] = "asc",
+        project_id: Optional[int] = None,
+        entities_collection_id: Optional[int] = None,
     ) -> List[VolumeInfo]:
         """
-        Get list of information about all volumes for a given dataset ID.
+        Get list of information about all volumes for a given dataset or project ID.
 
-        :param dataset_id: Dataset ID in Supervisely.
-        :type dataset_id: int
+        :param dataset_id: Dataset ID in Supervisely. Exactly one of `dataset_id`/`project_id` must be provided.
+        :type dataset_id: int, optional
         :param filters: List of parameters to sort output Volumes. See: https://api.docs.supervisely.com/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
         :type sort: str
         :param sort_order: Order in which to sort the list. The default is "asc". Valid values are "asc" (ascending) and "desc" (descending).
         :type sort_order: str
-        :returns: List of information about volumes in given dataset.
+        :param project_id: Project ID in Supervisely. Exactly one of `dataset_id`/`project_id` must be provided.
+        :type project_id: int, optional
+        :param entities_collection_id: EntitiesCollection ID of `Default` type to which the volumes belong.
+        :type entities_collection_id: int, optional
+        :returns: List of information about volumes in given dataset or project.
         :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
         :Usage Example:
@@ -310,16 +317,34 @@ class VolumeApi(RemoveableBulkModuleApi):
                 print(filtered_volume_infos)
                 # Output: [VolumeInfo(id=19581135, ...)]
         """
+        self._validate_project_and_dataset_id(project_id, dataset_id)
+        data = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order,
+        }
+        if entities_collection_id is not None:
+            data[ApiField.FILTERS] = [
+                {
+                    ApiField.TYPE: CollectionTypeFilter.DEFAULT,
+                    ApiField.DATA: {
+                        ApiField.COLLECTION_ID: entities_collection_id,
+                        ApiField.INCLUDE: True,
+                    },
+                }
+            ]
+        return self.get_list_all_pages("volumes.list", data)
 
-        return self.get_list_all_pages(
-            "volumes.list",
-            {
-                ApiField.DATASET_ID: dataset_id,
-                ApiField.FILTER: filters or [],
-                ApiField.SORT: sort,
-                ApiField.SORT_ORDER: sort_order,
-            },
-        )
+    def _validate_project_and_dataset_id(
+        self, project_id: Optional[int], dataset_id: Optional[int]
+    ) -> None:
+        """Check that exactly one of `project_id`/`dataset_id` is provided."""
+        if project_id is None and dataset_id is None:
+            raise ValueError("One of 'project_id' or 'dataset_id' should be provided.")
+        if project_id is not None and dataset_id is not None:
+            raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
 
     def get_info_by_id(self, id: int):
         """

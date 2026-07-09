@@ -41,6 +41,7 @@ from supervisely._utils import (
     is_development,
     rand_str,
 )
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.video.video_annotation_api import VideoAnnotationAPI
 from supervisely.api.video.video_figure_api import VideoFigureApi
@@ -331,17 +332,19 @@ class VideoApi(RemoveableBulkModuleApi):
 
     def get_list(
         self,
-        dataset_id: int,
+        dataset_id: Optional[int] = None,
         filters: Optional[List[Dict[str, str]]] = None,
         raw_video_meta: Optional[bool] = False,
         fields: Optional[List[str]] = None,
         force_metadata_for_links: Optional[bool] = False,
+        project_id: Optional[int] = None,
+        entities_collection_id: Optional[int] = None,
     ) -> List[VideoInfo]:
         """
-        Get list of information about all videos for a given dataset ID.
+        Get list of information about all videos for a given dataset or project ID.
 
-        :param dataset_id: Dataset ID in Supervisely.
-        :type dataset_id: int
+        :param dataset_id: Dataset ID in Supervisely. Exactly one of `dataset_id`/`project_id` must be provided.
+        :type dataset_id: int, optional
         :param filters: List of parameters to sort output Videos. See: https://api.docs.supervisely.com/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
         :param raw_video_meta: Get normalized metadata from server if False.
@@ -350,7 +353,11 @@ class VideoApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: Optional[bool]
-        :returns: List of information about videos in given dataset.
+        :param project_id: Project ID in Supervisely. Exactly one of `dataset_id`/`project_id` must be provided.
+        :type project_id: int, optional
+        :param entities_collection_id: EntitiesCollection ID of `Default` type to which the videos belong.
+        :type entities_collection_id: int, optional
+        :returns: List of information about videos in given dataset or project.
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -378,7 +385,9 @@ class VideoApi(RemoveableBulkModuleApi):
                 print(filtered_video_infos)
                 # Output: [VideoInfo(id=19371139, ...)]
         """
+        self._validate_project_and_dataset_id(project_id, dataset_id)
         data = {
+            ApiField.PROJECT_ID: project_id,
             ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
             ApiField.RAW_VIDEO_META: raw_video_meta,
@@ -386,7 +395,26 @@ class VideoApi(RemoveableBulkModuleApi):
         }
         if fields is not None:
             data[ApiField.FIELDS] = fields
+        if entities_collection_id is not None:
+            data[ApiField.FILTERS] = [
+                {
+                    ApiField.TYPE: CollectionTypeFilter.DEFAULT,
+                    ApiField.DATA: {
+                        ApiField.COLLECTION_ID: entities_collection_id,
+                        ApiField.INCLUDE: True,
+                    },
+                }
+            ]
         return self.get_list_all_pages("videos.list", data)
+
+    def _validate_project_and_dataset_id(
+        self, project_id: Optional[int], dataset_id: Optional[int]
+    ) -> None:
+        """Check that exactly one of `project_id`/`dataset_id` is provided."""
+        if project_id is None and dataset_id is None:
+            raise ValueError("One of 'project_id' or 'dataset_id' should be provided.")
+        if project_id is not None and dataset_id is not None:
+            raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
 
     def get_list_generator(
         self,
