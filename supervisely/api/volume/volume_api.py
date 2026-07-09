@@ -327,12 +327,14 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         self._validate_project_and_dataset_id(project_id, dataset_id)
         data = {
-            ApiField.PROJECT_ID: project_id,
-            ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
         }
+        if project_id is not None:
+            data[ApiField.PROJECT_ID] = project_id
+        if dataset_id is not None:
+            data[ApiField.DATASET_ID] = dataset_id
         if entities_collection_id is not None:
             data[ApiField.FILTERS] = [
                 {

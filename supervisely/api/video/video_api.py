@@ -387,12 +387,14 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         self._validate_project_and_dataset_id(project_id, dataset_id)
         data = {
-            ApiField.PROJECT_ID: project_id,
-            ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
             ApiField.RAW_VIDEO_META: raw_video_meta,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
+        if project_id is not None:
+            data[ApiField.PROJECT_ID] = project_id
+        if dataset_id is not None:
+            data[ApiField.DATASET_ID] = dataset_id
         if fields is not None:
             data[ApiField.FIELDS] = fields
         if entities_collection_id is not None:
