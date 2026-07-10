@@ -116,7 +116,9 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         response = self._api.post(self._method_download, {ApiField.DATASET_ID: dataset_id})
         result = response.json()
         if len(result) == 0:
-            return PointcloudEpisodeAnnotation().to_json()
+            empty_ann = PointcloudEpisodeAnnotation().to_json()
+            empty_ann[ApiField.DATASET_ID] = dataset_id
+            return empty_ann
         ann_json = result[0]
         self._api.pointcloud_episode.figure.inject_geometries_into_annotations([ann_json])
         return ann_json
