@@ -8,7 +8,7 @@ import subprocess
 import time
 from datetime import datetime
 from os import getcwd, listdir, walk
-from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
+from os.path import basename, dirname, exists, expanduser, isdir, isfile, join, splitext
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -1487,11 +1487,13 @@ class TrainApp:
                         file_path = join(self.model_dir, file_name)
                         cached_path = join(self._model_cache_dir, file_name)
                         if exists(cached_path):
+                            self._ensure_extensionless_model_alias(file, file_name, cached_path)
                             self.model_files[file] = cached_path
                             logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
                             model_download_main_pbar.update(1)
                             continue
                         if exists(file_path):
+                            self._ensure_extensionless_model_alias(file, file_name, file_path)
                             self.model_files[file] = file_path
                             logger.debug(f"Model: '{file_name}' was found in model dir")
                             model_download_main_pbar.update(1)
@@ -1509,6 +1511,7 @@ class TrainApp:
                                 save_path=file_path,
                                 progress=model_download_secondary_pbar.update,
                             )
+                        self._ensure_extensionless_model_alias(file, file_name, file_path)
                         self.model_files[file] = file_path
                 else:
                     self.model_files[file] = file_url
@@ -1516,6 +1519,31 @@ class TrainApp:
 
         self.progress_bar_main.hide()
         self.progress_bar_secondary.hide()
+
+    def _ensure_extensionless_model_alias(
+        self, file_key: str, file_name: str, source_path: str
+    ) -> None:
+        """
+        Some apps construct the checkpoint path manually as:
+        join(train.model_dir, get_file_name(train.model_files["checkpoint"])).
+        For a checkpoint like yolo.pt this resolves to model_dir/yolo. Create a
+        model-dir alias for that path so those apps still find the downloaded file.
+        """
+        if file_key != "checkpoint":
+            return
+
+        alias_name, extension = splitext(file_name)
+        if not alias_name or not extension:
+            return
+
+        alias_path = join(self.model_dir, alias_name)
+        if exists(alias_path):
+            return
+
+        try:
+            os.symlink(source_path, alias_path)
+        except OSError:
+            shutil.copy2(source_path, alias_path)
 
     def _download_custom_model(self):
         """
