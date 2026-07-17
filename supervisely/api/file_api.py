@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import mimetypes
 import os
 import shutil
@@ -2221,8 +2222,7 @@ class FileApi(ModuleApiBase):
         src: str,
         dst: str,
         semaphore: Optional[asyncio.Semaphore] = None,
-        # chunk_size: int = 1024 * 1024, #TODO add with resumaple api
-        # check_hash: bool = True, #TODO add with resumaple api
+        check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
     ) -> None:
@@ -2237,6 +2237,9 @@ class FileApi(ModuleApiBase):
         :type dst: str
         :param semaphore: Semaphore for limiting the number of simultaneous uploads.
         :type semaphore: asyncio.Semaphore, optional
+        :param check_hash: If True, verifies hash (or size) of the uploaded file
+            against the local one.
+        :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -2269,38 +2272,81 @@ class FileApi(ModuleApiBase):
         """
         api_method = "file-storage.upload"
         headers = {"Content-Type": "application/octet-stream"}
-        # sha256 = await get_file_hash_async(src) #TODO add with resumaple api
         json_body = {
             ApiField.TEAM_ID: team_id,
             ApiField.PATH: dst,
-            # "sha256": sha256, #TODO add with resumaple api
         }
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
         logger.debug(f"Uploading with async to: {dst}. Semaphore: {semaphore}")
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
+                progress_reported = 0
 
                 async def file_chunk_generator():
+                    # rewind so a retry resends the file from the beginning;
+                    # progress is deduplicated to not count re-sent bytes twice
+                    nonlocal progress_reported
+                    await fd.seek(0)
+                    read_total = 0
                     while True:
                         chunk = await fd.read(8 * 1024 * 1024)
                         if not chunk:
                             break
-                        if progress_cb is not None and progress_cb_type == "size":
-                            progress_cb(len(chunk))
+                        read_total += len(chunk)
+                        if (
+                            progress_cb is not None
+                            and progress_cb_type == "size"
+                            and read_total > progress_reported
+                        ):
+                            progress_cb(read_total - progress_reported)
+                            progress_reported = read_total
                         yield chunk
 
+                response_body = bytearray()
                 async for chunk, _ in self._api.stream_async(
                     method=api_method,
                     method_type="POST",
-                    data=file_chunk_generator(),  # added as required, but not used inside
+                    data=None,
                     headers=headers,
-                    content=file_chunk_generator(),  # used instead of data inside stream_async
+                    content=file_chunk_generator,  # factory: recreated on every retry
                     params=json_body,
                 ):
-                    pass
-                if progress_cb is not None and progress_cb_type == "number":
-                    progress_cb(1)
+                    response_body.extend(chunk)
+            if check_hash:
+                await self._check_uploaded_file(src, dst, bytes(response_body))
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+
+    async def _check_uploaded_file(self, src: str, dst: str, response_body: bytes) -> None:
+        """Verify that the file uploaded to `dst` matches the local file `src`,
+        using hash (or size) from the upload response. Raises IOError on mismatch."""
+        try:
+            file_info = json.loads(response_body)
+            if isinstance(file_info, list):
+                file_info = file_info[0]
+        except (ValueError, IndexError):
+            logger.debug(f"Cannot parse upload response for '{dst}', skipping upload check")
+            return
+        remote_hash = file_info.get(ApiField.HASH)
+        if remote_hash is not None:
+            local_hash = await get_file_hash_async(src)
+            if remote_hash != local_hash:
+                raise IOError(
+                    f"Uploaded file hash does not match the local one "
+                    f"(local: '{src}', remote: '{dst}'): {remote_hash} != {local_hash}"
+                )
+            return
+        remote_size = file_info.get(ApiField.SIZE)
+        if remote_size is not None:
+            local_size = os.path.getsize(src)
+            if int(remote_size) != local_size:
+                raise IOError(
+                    f"Uploaded file size does not match the local one "
+                    f"(local: '{src}', remote: '{dst}'): {remote_size} != {local_size}"
+                )
+            return
+        logger.debug(f"Upload response for '{dst}' has no hash or size, skipping upload check")
 
     async def upload_bulk_async(
         self,
@@ -2308,8 +2354,7 @@ class FileApi(ModuleApiBase):
         src_paths: List[str],
         dst_paths: List[str],
         semaphore: Optional[asyncio.Semaphore] = None,
-        # chunk_size: int = 1024 * 1024, #TODO add with resumaple api
-        # check_hash: bool = True, #TODO add with resumaple api
+        check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
@@ -2325,6 +2370,9 @@ class FileApi(ModuleApiBase):
         :type dst_paths: List[str]
         :param semaphore: Semaphore for limiting the number of simultaneous uploads.
         :type semaphore: asyncio.Semaphore, optional
+        :param check_hash: If True, verifies hash (or size) of each uploaded file
+            against the local one.
+        :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -2376,8 +2424,7 @@ class FileApi(ModuleApiBase):
                         src=src,
                         dst=dst,
                         semaphore=semaphore,
-                        # chunk_size=chunk_size, #TODO add with resumaple api
-                        # check_hash=check_hash, #TODO add with resumaple api
+                        check_hash=check_hash,
                         progress_cb=progress_cb,
                         progress_cb_type=progress_cb_type,
                     )
