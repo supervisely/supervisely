@@ -121,6 +121,28 @@ def test_upload_retry_resends_full_body_without_range(api, tmp_path):
     assert "Range" not in fake.calls[1]["headers"]
 
 
+def test_upload_midstream_response_error_no_corruption(api, tmp_path):
+    src, data = _make_file(tmp_path)
+    upload_response = json.dumps({"hash": get_file_hash(src), "size": len(data)}).encode()
+    fake = _FakeAsyncClient(
+        behaviors=[
+            # response body starts arriving, then the socket dies mid-stream
+            {
+                "body": upload_response,
+                "partial_body": upload_response[:10],
+                "mid_stream_error": httpx.ReadError(""),
+            },
+            {"body": upload_response},
+        ]
+    )
+    api.async_httpx_client = fake
+
+    # consumer must receive only the clean full response, not partial+full concat
+    _run(api.file.upload_async(1, src, "/files/checkpoint.bin"))
+
+    assert len(fake.calls) == 2
+
+
 def test_upload_hash_mismatch_raises(api, tmp_path):
     src, data = _make_file(tmp_path)
     upload_response = json.dumps({"hash": "bogus", "size": len(data)}).encode()

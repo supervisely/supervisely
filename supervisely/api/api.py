@@ -1646,9 +1646,18 @@ class Api:
 
                     # received hash of the content to check integrity of the data stream
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    # Uploads (request has a body) can't resume the response via Range,
+                    # so a mid-stream response error would make the consumer accumulate
+                    # attempt-1 partial + attempt-2 full. Buffer the (small) upload
+                    # response and yield it once, only after a fully successful read.
+                    is_upload = content is not None
+                    response_buffer = bytearray() if is_upload else None
                     try:
                         async for chunk in resp.aiter_raw(chunk_size):
-                            yield chunk, hhash
+                            if is_upload:
+                                response_buffer.extend(chunk)
+                            else:
+                                yield chunk, hhash
                             total_streamed += len(chunk)
                     except Exception as e:
                         raise RetryableRequestException(repr(e))
@@ -1657,6 +1666,8 @@ class Api:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
+                    if is_upload:
+                        yield bytes(response_buffer), hhash
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
