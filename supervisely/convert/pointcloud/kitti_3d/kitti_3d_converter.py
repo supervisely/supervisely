@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from supervisely import PointcloudAnnotation, ProjectMeta, is_development, logger
+from supervisely import PointcloudAnnotation, ProjectMeta, generate_free_name, is_development, logger
 from supervisely.api.api import Api, ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.kitti_3d import kitti_3d_helper
@@ -118,6 +118,7 @@ class KITTI3DConverter(PointcloudConverter):
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+        existing_pointcloud_names = {pcd.name for pcd in api.pointcloud.get_list(dataset_id)}
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Converting pointclouds...")
@@ -132,7 +133,12 @@ class KITTI3DConverter(PointcloudConverter):
             kitti_3d_helper.convert_bin_to_pcd(item.path, pcd_path)
 
             # * Upload pointcloud
-            pcd_name = get_file_name_with_ext(pcd_path)
+            pcd_name = generate_free_name(
+                existing_pointcloud_names,
+                get_file_name_with_ext(pcd_path),
+                with_ext=True,
+                extend_used_names=True,
+            )
             info = api.pointcloud.upload_path(dataset_id, pcd_name, pcd_path, {})
             pcd_id = info.id
 

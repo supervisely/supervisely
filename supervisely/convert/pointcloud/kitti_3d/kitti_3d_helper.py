@@ -74,12 +74,21 @@ def _convert_label_to_geometry(label):
 
 
 def convert_label_to_annotation(label, meta, renamed_class_names: dict = None):
+    renamed_class_names = renamed_class_names or {}
     geometries = _convert_label_to_geometry(label)
     figures = []
     objs = []
     for l, geometry in zip(label, geometries):  # by object in point cloud
-        class_name = renamed_class_names.get(l.label_class, l.label_class)
-        pcobj = PointcloudObject(meta.get_obj_class(class_name))
+        class_name = l.label_class
+        if class_name is None:
+            logger.warning("Skipping KITTI 3D object without class name.")
+            continue
+        class_name = renamed_class_names.get(class_name, class_name)
+        obj_class = meta.get_obj_class(class_name)
+        if obj_class is None:
+            logger.warning(f"Skipping KITTI 3D object with unknown class: {class_name}")
+            continue
+        pcobj = PointcloudObject(obj_class)
         figures.append(PointcloudFigure(pcobj, geometry))
         objs.append(pcobj)
 
