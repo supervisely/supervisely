@@ -141,6 +141,16 @@ def test_upload_size_mismatch_raises(api, tmp_path):
         _run(api.file.upload_async(1, src, "/files/checkpoint.bin"))
 
 
+def test_upload_non_numeric_size_skips_check(api, tmp_path):
+    src, _ = _make_file(tmp_path)
+    upload_response = json.dumps({"size": "not-a-number"}).encode()
+    fake = _FakeAsyncClient(behaviors=[{"body": upload_response}])
+    api.async_httpx_client = fake
+
+    # must not raise ValueError on int() of a non-numeric size
+    _run(api.file.upload_async(1, src, "/files/checkpoint.bin"))
+
+
 def test_upload_progress_not_double_counted_on_retry(api, tmp_path):
     src, data = _make_file(tmp_path)
     upload_response = json.dumps({"hash": get_file_hash(src)}).encode()

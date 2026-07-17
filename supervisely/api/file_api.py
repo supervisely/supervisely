@@ -32,6 +32,7 @@ from supervisely.io.fs import (
     get_file_ext,
     get_file_hash,
     get_file_hash_async,
+    get_file_hash_chunked_async,
     get_file_name,
     get_file_name_with_ext,
     get_file_size,
@@ -2330,7 +2331,8 @@ class FileApi(ModuleApiBase):
             return
         remote_hash = file_info.get(ApiField.HASH)
         if remote_hash is not None:
-            local_hash = await get_file_hash_async(src)
+            # chunked to keep RAM bounded for multi-GB files (same sha256 digest)
+            local_hash = await get_file_hash_chunked_async(src)
             if remote_hash != local_hash:
                 raise IOError(
                     f"Uploaded file hash does not match the local one "
@@ -2339,8 +2341,13 @@ class FileApi(ModuleApiBase):
             return
         remote_size = file_info.get(ApiField.SIZE)
         if remote_size is not None:
+            try:
+                remote_size = int(remote_size)
+            except (ValueError, TypeError):
+                logger.debug(f"Upload response for '{dst}' has non-numeric size, skipping check")
+                return
             local_size = os.path.getsize(src)
-            if int(remote_size) != local_size:
+            if remote_size != local_size:
                 raise IOError(
                     f"Uploaded file size does not match the local one "
                     f"(local: '{src}', remote: '{dst}'): {remote_size} != {local_size}"
