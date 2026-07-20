@@ -24,7 +24,7 @@ COPY . /tmp/supervisely-src
 RUN set -eu; \
     python -m venv /opt/venv; \
     /opt/venv/bin/pip install --upgrade pip==26.1.2; \
-    /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.2.0 requests; \
+    /opt/venv/bin/pip install setuptools==83.0.0 wheel==0.46.2 pillow==12.3.0 requests; \
     if [ "$sdk_install_source" = "local" ]; then \
         echo "Installing Supervisely from checked-out branch as version ${tag_ref_name}..."; \
         RELEASE_VERSION="$tag_ref_name" /opt/venv/bin/pip install --no-cache-dir --no-build-isolation /tmp/supervisely-src; \
@@ -50,7 +50,7 @@ RUN set -eu; \
         echo "ERROR: Unsupported sdk_install_source=$sdk_install_source. Use 'pypi' or 'local'." >&2; \
         exit 1; \
     fi; \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.2.0 python-multipart==0.0.31; \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.3.0 python-multipart==0.0.31; \
     rm -rf \
     /tmp/supervisely-src \
     /opt/venv/lib/python3.14/site-packages/wheel* \
