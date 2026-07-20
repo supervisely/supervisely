@@ -81,7 +81,8 @@ INSTALL_REQUIRES = [
     "numpy>=1.19, <=2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "prettytable>=3.8.0, <4.0.0",
-    "pillow>=5.4.1, <=12.2.0",
+    "pillow>=12.3.0, <=12.3.0; python_version >= '3.10'",
+    "pillow>=5.4.1, <12.0.0; python_version < '3.10'",
     "python-json-logger>=0.1.11, <=3.0.1",
     "packaging>=20.0",
     "requests>=2.33.0, <=2.34.0; python_version >= '3.10'",
@@ -94,7 +95,8 @@ INSTALL_REQUIRES = [
     "python-dotenv==1.2.2; python_version >= '3.10'",
     "pynrrd>=0.4.2, <1.0.0",
     "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
-    "pydicom>=2.3.0, <3.0.0",
+    "pydicom>=3.0.2, <4.0.0; python_version >= '3.10'",
+    "pydicom>=2.3.0, <3.0.0; python_version < '3.10'",
     "stringcase>=1.2.0, <2.0.0",
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
@@ -135,7 +137,7 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
-    "setuptools>=80.10.1, <81.0.0; python_version >= '3.10'",
+    "setuptools>=83.0.0, <84.0.0; python_version >= '3.10'",
     "setuptools<76; python_version < '3.10'",
 ]
 
