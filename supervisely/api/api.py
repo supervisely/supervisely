@@ -1564,6 +1564,9 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
+        :param content: Request body passed via kwargs. May be bytes, an iterator,
+            or a zero-arg callable returning a fresh body iterator — a callable is
+            invoked on every attempt so retries resend the full body.
         :returns: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
@@ -1602,12 +1605,15 @@ class Api:
 
         for retry_idx in range(retries):
             total_streamed = 0
+            # content may be a zero-arg factory returning a fresh body iterator,
+            # so each retry sends the full body instead of an exhausted generator
+            request_content = content() if callable(content) else content
             try:
                 if method_type == "POST":
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        content=content,
+                        content=request_content,
                         json=json_body,
                         headers=headers,
                         timeout=timeout,
@@ -1617,7 +1623,7 @@ class Api:
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        content=content,
+                        content=request_content,
                         json=json_body,
                         headers=headers,
                         timeout=timeout,
@@ -1640,9 +1646,18 @@ class Api:
 
                     # received hash of the content to check integrity of the data stream
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    # Uploads (request has a body) can't resume the response via Range,
+                    # so a mid-stream response error would make the consumer accumulate
+                    # attempt-1 partial + attempt-2 full. Buffer the (small) upload
+                    # response and yield it once, only after a fully successful read.
+                    is_upload = content is not None
+                    response_buffer = bytearray() if is_upload else None
                     try:
                         async for chunk in resp.aiter_raw(chunk_size):
-                            yield chunk, hhash
+                            if is_upload:
+                                response_buffer.extend(chunk)
+                            else:
+                                yield chunk, hhash
                             total_streamed += len(chunk)
                     except Exception as e:
                         raise RetryableRequestException(repr(e))
@@ -1651,6 +1666,8 @@ class Api:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
+                    if is_upload:
+                        yield bytes(response_buffer), hhash
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
@@ -1664,11 +1681,15 @@ class Api:
                     )
 
                 client_recreated = await self._recreate_client_if_needed(e)
-                retry_range_start = total_streamed + (range_start or 0)
-                if total_streamed != 0:
-                    retry_range_start += 1
-                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
-                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                if content is None:
+                    # Range resume only makes sense for downloads; for uploads
+                    # (request has a body stream) total_streamed counts response
+                    # bytes and a Range header would be meaningless
+                    retry_range_start = total_streamed + (range_start or 0)
+                    if total_streamed != 0:
+                        retry_range_start += 1
+                    headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                    logger.debug(f"Setting Range header {headers['Range']} for retry")
                 await process_requests_exception_async(
                     self.logger,
                     e,
