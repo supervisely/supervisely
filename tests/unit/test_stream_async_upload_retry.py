@@ -150,7 +150,7 @@ def test_upload_hash_mismatch_raises(api, tmp_path):
     api.async_httpx_client = fake
 
     with pytest.raises(IOError, match="hash does not match"):
-        _run(api.file.upload_async(1, src, "/files/checkpoint.bin"))
+        _run(api.file.upload_async(1, src, "/files/checkpoint.bin", raise_check_error=True))
 
 
 def test_upload_size_mismatch_raises(api, tmp_path):
@@ -160,7 +160,17 @@ def test_upload_size_mismatch_raises(api, tmp_path):
     api.async_httpx_client = fake
 
     with pytest.raises(IOError, match="size does not match"):
-        _run(api.file.upload_async(1, src, "/files/checkpoint.bin"))
+        _run(api.file.upload_async(1, src, "/files/checkpoint.bin", raise_check_error=True))
+
+
+def test_upload_mismatch_default_does_not_raise(api, tmp_path):
+    # by default (raise_check_error=False) a failed check only logs a warning
+    src, data = _make_file(tmp_path)
+    upload_response = json.dumps({"hash": "bogus", "size": len(data)}).encode()
+    fake = _FakeAsyncClient(behaviors=[{"body": upload_response}])
+    api.async_httpx_client = fake
+
+    _run(api.file.upload_async(1, src, "/files/checkpoint.bin"))
 
 
 def test_upload_non_numeric_size_skips_check(api, tmp_path):

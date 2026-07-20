@@ -2224,6 +2224,7 @@ class FileApi(ModuleApiBase):
         dst: str,
         semaphore: Optional[asyncio.Semaphore] = None,
         check_hash: bool = True,
+        raise_check_error: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
     ) -> None:
@@ -2241,6 +2242,10 @@ class FileApi(ModuleApiBase):
         :param check_hash: If True, verifies hash (or size) of the uploaded file
             against the local one.
         :type check_hash: bool, optional
+        :param raise_check_error: Only applies when ``check_hash`` is True. If True,
+            a failed check raises IOError; otherwise (default) the mismatch is only
+            logged as a warning.
+        :type raise_check_error: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -2315,7 +2320,12 @@ class FileApi(ModuleApiBase):
                 ):
                     response_body.extend(chunk)
             if check_hash:
-                await self._check_uploaded_file(src, dst, bytes(response_body))
+                try:
+                    await self._check_uploaded_file(src, dst, bytes(response_body))
+                except IOError as e:
+                    if raise_check_error:
+                        raise
+                    logger.warning(str(e))
             if progress_cb is not None and progress_cb_type == "number":
                 progress_cb(1)
 
@@ -2362,6 +2372,7 @@ class FileApi(ModuleApiBase):
         dst_paths: List[str],
         semaphore: Optional[asyncio.Semaphore] = None,
         check_hash: bool = True,
+        raise_check_error: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
@@ -2380,6 +2391,10 @@ class FileApi(ModuleApiBase):
         :param check_hash: If True, verifies hash (or size) of each uploaded file
             against the local one.
         :type check_hash: bool, optional
+        :param raise_check_error: Only applies when ``check_hash`` is True. If True,
+            a failed check raises IOError; otherwise (default) the mismatch is only
+            logged as a warning.
+        :type raise_check_error: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -2432,6 +2447,7 @@ class FileApi(ModuleApiBase):
                         dst=dst,
                         semaphore=semaphore,
                         check_hash=check_hash,
+                        raise_check_error=raise_check_error,
                         progress_cb=progress_cb,
                         progress_cb_type=progress_cb_type,
                     )
