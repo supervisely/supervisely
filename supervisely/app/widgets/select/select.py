@@ -274,6 +274,8 @@ class Select(ConditionalWidget):
         StateJson().send_changes()
 
     def set_value(self, value):
+        if self._multiple and not isinstance(value, list):
+            value = [] if value in (None, "") else [value]
         StateJson()[self.widget_id]["value"] = value
         StateJson().send_changes()
 
