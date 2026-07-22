@@ -863,15 +863,20 @@ class InferenceImageCache:
 
             download_time = time.monotonic()
             if len(ids_to_load) > 0:
-                for id_or_hash, image in load_generator(ids_to_load):
-                    name = name_constructor(id_or_hash)
-                    self._add_to_cache(name, image)
+                try:
+                    for id_or_hash, image in load_generator(ids_to_load):
+                        name = name_constructor(id_or_hash)
+                        self._add_to_cache(name, image)
 
-                    if return_images:
-                        pos = pos_by_name[name]
-                        all_frames[pos] = image
-                        if progress_cb is not None:
-                            progress_cb()
+                        if return_images:
+                            pos = pos_by_name[name]
+                            all_frames[pos] = image
+                            if progress_cb is not None:
+                                progress_cb()
+                except Exception:
+                    for id_or_hash in ids_to_load:
+                        self._load_queue.delete(name_constructor(id_or_hash))
+                    raise
             download_time = time.monotonic() - download_time
 
             # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")

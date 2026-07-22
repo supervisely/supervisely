@@ -2909,14 +2909,41 @@ class Inference:
                         dataset_id,
                         images_infos,
                     ) in images_infos_batch_by_dataset.items():
-                        images_nps.extend(
-                            self.cache.download_images(
+                        image_ids = [info.id for info in images_infos]
+                        try:
+                            downloaded_images = self.cache.download_images(
                                 api,
                                 dataset_id,
-                                [info.id for info in images_infos],
+                                image_ids,
                                 return_images=True,
                             )
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to download speedtest image batch from dataset #{dataset_id}: {repr(e)}. "
+                                "Trying images one by one.",
+                                exc_info=True,
+                            )
+                            downloaded_images = []
+                            for image_info in images_infos:
+                                try:
+                                    image = self.cache.download_images(
+                                        api,
+                                        dataset_id,
+                                        [image_info.id],
+                                        return_images=True,
+                                    )
+                                except Exception as single_e:
+                                    logger.warning(
+                                        f"Skipping speedtest image #{image_info.id}: {repr(single_e)}",
+                                        exc_info=True,
+                                    )
+                                    continue
+                                downloaded_images.extend(image)
+                        images_nps.extend(
+                            image for image in downloaded_images if image is not None
                         )
+                if len(images_nps) == 0:
+                    raise RuntimeError("Speedtest could not load any images for inference.")
                 # Inference
                 anns, benchmark = self._inference_benchmark(
                     images_np=images_nps,

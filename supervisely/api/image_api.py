@@ -1369,7 +1369,13 @@ class ImageApi(RemoveableBulkModuleApi):
     ) -> Generator[Tuple[int, np.ndarray], None, None]:
         for img_id, img_part in self._download_batch(dataset_id, ids, progress_cb):
             img_bytes = img_part.content
-            yield img_id, sly_image.read_bytes(img_bytes, keep_alpha)
+            try:
+                img = sly_image.read_bytes(img_bytes, keep_alpha)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to decode image #{img_id} from dataset #{dataset_id}: {e}"
+                ) from e
+            yield img_id, img
 
     def check_existing_hashes(
         self, hashes: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None

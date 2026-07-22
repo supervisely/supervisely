@@ -299,6 +299,9 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
             im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\\...\xd9'
             im = sly.image.read_bytes(im_bytes)
     """
+    if len(image_bytes) == 0:
+        raise RuntimeError("Failed to decode image bytes: empty payload.")
+
     if image_bytes.startswith(b"NRRD"):
         file_like = io.BytesIO(image_bytes)
         header = nrrd.read_header(file_like)
@@ -308,6 +311,8 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
     if keep_alpha is True:
         img = cv2.imdecode(image_np_arr, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise RuntimeError("Failed to decode image bytes with OpenCV.")
         if len(img.shape) == 2:
             img = np.expand_dims(img, 2)
         cnt_channels = img.shape[2]
@@ -320,6 +325,8 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
         return img
     else:
         img = cv2.imdecode(image_np_arr, cv2.IMREAD_COLOR)  # cv2.imdecode returns BGR always
+        if img is None:
+            raise RuntimeError("Failed to decode image bytes with OpenCV.")
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
