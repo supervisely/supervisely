@@ -957,10 +957,21 @@ class FileApi(ModuleApiBase):
         if progress_cb is None:
             data = encoder
         else:
-            try:
-                data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
-            except AttributeError:
-                data = MultipartEncoderMonitor(encoder, progress_cb)
+            get_partial = getattr(progress_cb, "get_partial", None)
+            if callable(get_partial):
+                # sly.Progress / CustomTqdm: already monitor-aware
+                data = MultipartEncoderMonitor(encoder, get_partial())
+            else:
+                # delta-int callable (e.g. tqdm.update): monitor gives cumulative
+                # bytes_read, so feed it per-call increments
+                reported = 0
+
+                def _monitor_cb(monitor):
+                    nonlocal reported
+                    progress_cb(monitor.bytes_read - reported)
+                    reported = monitor.bytes_read
+
+                data = MultipartEncoderMonitor(encoder, _monitor_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
