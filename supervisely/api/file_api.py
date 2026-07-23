@@ -959,11 +959,14 @@ class FileApi(ModuleApiBase):
         else:
             get_partial = getattr(progress_cb, "get_partial", None)
             if callable(get_partial):
-                # sly.Progress / CustomTqdm: already monitor-aware
+                # tqdm_sly / CustomTqdm: monitor-aware (checked first; they subclass tqdm)
                 data = MultipartEncoderMonitor(encoder, get_partial())
             else:
-                # delta-int callable (e.g. tqdm.update): monitor gives cumulative
-                # bytes_read, so feed it per-call increments
+                if isinstance(progress_cb, tqdm):
+                    progress_cb = progress_cb.update  # bare tqdm isn't callable
+                elif not callable(progress_cb):
+                    raise TypeError("progress_cb must be callable, tqdm, or have get_partial()")
+                # delta-int callable: monitor gives cumulative bytes_read, feed increments
                 reported = 0
 
                 def _monitor_cb(monitor):
