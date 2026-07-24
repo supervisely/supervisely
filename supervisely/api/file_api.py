@@ -2589,6 +2589,9 @@ class FileApi(ModuleApiBase):
             if not remote_dir.startswith("/"):
                 remote_dir = "/" + remote_dir
 
+            # default so the sync fallback has a target even if the exception happens before
+            # the dir-exists resolution below (e.g. a network error while listing)
+            res_remote_dir = remote_dir
             if self.dir_exists(team_id, remote_dir):
                 if change_name_if_conflict is True:
                     res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
