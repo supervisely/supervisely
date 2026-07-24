@@ -193,6 +193,7 @@ class TrainApp:
         # that a previous upload was left unfinished.
         self._resume_marker_path = join(self.work_dir, self._resume_marker_file)
         self._is_resume_upload = sly_fs.file_exists(self._resume_marker_path)
+        self._resume_context = {}
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
         self.train_dataset_dir = join(self.project_dir, "train")
         self.val_dataset_dir = join(self.project_dir, "val")
@@ -710,13 +711,10 @@ class TrainApp:
 
     # ----------------------------------------- #
 
-    def _prepare(self, download_model: bool = True) -> None:
+    def _prepare(self) -> None:
         """
         Prepares the environment for training by setting up directories,
         downloading project and model data.
-
-        :param download_model: Download base model files. Skipped on resume-upload,
-            where the trained checkpoints are already on disk and no base model is needed.
         """
         logger.info("Preparing for training")
 
@@ -742,8 +740,7 @@ class TrainApp:
         self._create_collection_splits()
 
         # Step 7. Download Model files
-        if download_model:
-            self._download_model()
+        self._download_model()
 
     def _parse_device_ids(self, value) -> Optional[List[int]]:
         if value is None:
@@ -788,13 +785,17 @@ class TrainApp:
         model_meta = self.create_model_meta(experiment_info["task_type"])
 
         # Step 4. Preprocess artifacts (already done on the crashed run when resuming).
-        # Dump the manifest right before upload so a crash during upload leaves a resume point.
         if not resume:
             experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
-            self._dump_resume_manifest(experiment_info)
 
-        # Step 5. Postprocess splits
-        train_splits_data = self._postprocess_splits()
+        # Step 5. Postprocess splits. On resume reuse the persisted result (the on-disk project is
+        # already split and the original-project-bound split objects cannot be rebuilt cheaply);
+        # otherwise compute it and dump the resume context right before upload.
+        if resume:
+            train_splits_data = self._resume_context.get("train_splits_data", {})
+        else:
+            train_splits_data = self._postprocess_splits()
+            self._dump_resume_manifest(experiment_info, train_splits_data)
 
         # Step 6. Upload artifacts
         self._set_text_status("uploading")
@@ -894,19 +895,29 @@ class TrainApp:
         # Finished fully: drop the resume marker so a later relaunch is a normal run
         sly_fs.silent_remove(self._resume_marker_path)
 
-    def _dump_resume_manifest(self, experiment_info: dict) -> None:
-        """Persist experiment_info before upload so a run that crashes during upload can be
-        relaunched (same task_id) and resume the upload from the artifacts kept on the agent.
-        Best-effort: a failure here must not break an otherwise successful run, it only
-        disables resume for this run."""
+    def _dump_resume_manifest(self, experiment_info: dict, train_splits_data: dict) -> None:
+        """Persist the context needed to resume the upload before it runs, so a run that crashes
+        during upload can be relaunched (same task_id) and finish the upload from the artifacts kept
+        on the agent WITHOUT re-downloading the project or re-creating server collections. Holds only
+        what `_finalize` needs that isn't restored from app_state/GUI or read from the persisted disk.
+        Best-effort: a failure here must not break an otherwise successful run (only disables resume)."""
         try:
+            context = {
+                "experiment_info": experiment_info,
+                "train_splits_data": train_splits_data,
+                "train_size": len(self._train_split),
+                "val_size": len(self._val_split),
+                "training_duration": self._training_duration,
+                "train_collection_id": self._train_collection_id,
+                "val_collection_id": self._val_collection_id,
+            }
             sly_fs.mkdir(self.work_dir)
-            sly_json.dump_json_file(experiment_info, self._resume_marker_path)
+            sly_json.dump_json_file(context, self._resume_marker_path)
         except Exception as e:
             logger.warning(f"Failed to dump resume-upload manifest: {repr(e)}")
 
     def _load_resume_manifest(self) -> dict:
-        """Read the experiment_info dumped before the failed upload."""
+        """Read the resume context dumped before the failed upload."""
         return sly_json.load_json_file(self._resume_marker_path)
 
     def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
@@ -3134,7 +3145,17 @@ class TrainApp:
         try:
             self._set_text_status("preparing")
             self._set_ws_progress_status("preparing")
-            self._prepare(download_model=False)
+            # Reuse the artifacts kept on the agent: no project re-download, no re-split, no
+            # server-collection re-creation. Restore in-memory state from the persisted context and
+            # read the (already split) project from disk. project_info/base_checkpoint/classes are
+            # GUI/app_state properties restored on relaunch.
+            self._resume_context = self._load_resume_manifest()
+            self._train_split = [None] * self._resume_context.get("train_size", 0)
+            self._val_split = [None] * self._resume_context.get("val_size", 0)
+            self._training_duration = self._resume_context.get("training_duration")
+            self._train_collection_id = self._resume_context.get("train_collection_id")
+            self._val_collection_id = self._resume_context.get("val_collection_id")
+            self._read_project()
         except Exception as e:
             message = f"Error occurred during data preparation. {check_logs_text}"
             self._show_error(message, e)
@@ -3144,7 +3165,7 @@ class TrainApp:
         try:
             self._set_text_status("finalizing")
             self._set_ws_progress_status("finalizing")
-            experiment_info = self._load_resume_manifest()
+            experiment_info = self._resume_context["experiment_info"]
             self._finalize(experiment_info, resume=True)
             self.gui.training_process.start_button.loading = False
 
