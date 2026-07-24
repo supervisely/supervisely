@@ -2641,6 +2641,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path in fast mode.
@@ -2671,6 +2672,7 @@ class FileApi(ModuleApiBase):
             progress_size_cb=progress_cb,
             replace_if_conflict=replace_if_conflict,
             enable_fallback=enable_fallback,
+            skip_existing_by_hash=skip_existing_by_hash,
         )
         return run_coroutine(coroutine)
 
