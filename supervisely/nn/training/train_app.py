@@ -146,6 +146,7 @@ class TrainApp:
         self._train_val_split_file = "train_val_split.json"
         self._hyperparameters_file = "hyperparameters.yaml"
         self._model_meta_file = "model_meta.json"
+        self._resume_marker_file = "._upload_pending.json"
 
         self._sly_project_dir_name = "sly_project"
         self._model_dir_name = "model"
@@ -187,6 +188,11 @@ class TrainApp:
             self.work_dir = join(get_synced_data_dir(), self._default_work_dir_name)
         self.output_dir = join(self.work_dir, self._output_dir_name)
         self._output_checkpoints_dir = join(self.output_dir, self._output_checkpoints_dir_name)
+        # Resume-upload: a marker (kept outside output_dir so it is not uploaded) dumped before
+        # upload; it survives a crashed run on the agent and, on a same-task_id relaunch, signals
+        # that a previous upload was left unfinished.
+        self._resume_marker_path = join(self.work_dir, self._resume_marker_file)
+        self._is_resume_upload = sly_fs.file_exists(self._resume_marker_path)
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
         self.train_dataset_dir = join(self.project_dir, "train")
         self.val_dataset_dir = join(self.project_dir, "val")
@@ -666,6 +672,12 @@ class TrainApp:
         def decorator(func):
             self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
+            if self._is_resume_upload:
+                # A previous run crashed during upload; artifacts are still on the agent.
+                # Offer "Resume Upload" instead of restarting training.
+                self.gui.training_process.resume_button.click(self._wrapped_resume_upload)
+                self.gui.training_process.resume_button.show()
+                self.gui.training_process.start_button.hide()
             return func
 
         return decorator
@@ -698,10 +710,13 @@ class TrainApp:
 
     # ----------------------------------------- #
 
-    def _prepare(self) -> None:
+    def _prepare(self, download_model: bool = True) -> None:
         """
         Prepares the environment for training by setting up directories,
         downloading project and model data.
+
+        :param download_model: Download base model files. Skipped on resume-upload,
+            where the trained checkpoints are already on disk and no base model is needed.
         """
         logger.info("Preparing for training")
 
@@ -727,7 +742,8 @@ class TrainApp:
         self._create_collection_splits()
 
         # Step 7. Download Model files
-        self._download_model()
+        if download_model:
+            self._download_model()
 
     def _parse_device_ids(self, value) -> Optional[List[int]]:
         if value is None:
@@ -748,13 +764,16 @@ class TrainApp:
             return [int(p) for p in parts]
         return None
 
-    def _finalize(self, experiment_info: dict) -> None:
+    def _finalize(self, experiment_info: dict, resume: bool = False) -> None:
         """
         Finalizes the training process by validating outputs, uploading artifacts,
         and updating the UI.
 
         :param experiment_info: Information about the experiment results that should be returned in user's training function.
         :type experiment_info: dict
+        :param resume: Resume-upload mode. Artifacts were already preprocessed on the crashed run,
+            so preprocessing is skipped and the upload resumes into the same remote dir (skip-by-hash).
+        :type resume: bool
         """
         logger.info("Finalizing training")
         # Step 1. Validate experiment TaskType
@@ -768,15 +787,18 @@ class TrainApp:
         # Step 3. Create model meta according to model CV task type
         model_meta = self.create_model_meta(experiment_info["task_type"])
 
-        # Step 4. Preprocess artifacts
-        experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
+        # Step 4. Preprocess artifacts (already done on the crashed run when resuming).
+        # Dump the manifest right before upload so a crash during upload leaves a resume point.
+        if not resume:
+            experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
+            self._dump_resume_manifest(experiment_info)
 
         # Step 5. Postprocess splits
         train_splits_data = self._postprocess_splits()
 
         # Step 6. Upload artifacts
         self._set_text_status("uploading")
-        remote_dir, session_link_file_info = self._upload_artifacts()
+        remote_dir, session_link_file_info = self._upload_artifacts(resume=resume)
 
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
@@ -868,6 +890,24 @@ class TrainApp:
                 mb_eval_lnk_file_info,
                 mb_eval_report_id,
             )
+
+        # Finished fully: drop the resume marker so a later relaunch is a normal run
+        sly_fs.silent_remove(self._resume_marker_path)
+
+    def _dump_resume_manifest(self, experiment_info: dict) -> None:
+        """Persist experiment_info before upload so a run that crashes during upload can be
+        relaunched (same task_id) and resume the upload from the artifacts kept on the agent.
+        Best-effort: a failure here must not break an otherwise successful run, it only
+        disables resume for this run."""
+        try:
+            sly_fs.mkdir(self.work_dir)
+            sly_json.dump_json_file(experiment_info, self._resume_marker_path)
+        except Exception as e:
+            logger.warning(f"Failed to dump resume-upload manifest: {repr(e)}")
+
+    def _load_resume_manifest(self) -> dict:
+        """Read the experiment_info dumped before the failed upload."""
+        return sly_json.load_json_file(self._resume_marker_path)
 
     def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
         """
@@ -2261,13 +2301,18 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Upload artifacts
-    def _upload_artifacts(self) -> None:
+    def _upload_artifacts(self, resume: bool = False) -> None:
         """
         Uploads the training artifacts to Supervisely.
         Path is generated based on the project ID, task ID, and framework name.
 
         Path: /experiments/{project_id}_{project_name}/{task_id}_{framework_name}/
         Example path: /experiments/43192_Apples/68271_rt-detr/
+
+        :param resume: Resume-upload mode. Upload into the SAME remote dir, skipping files whose
+            remote hash/size already matches; fallback disabled so a repeated failure just crashes
+            (the artifacts are kept on the agent and the user can resume again).
+        :type resume: bool
         """
         task_id = self.task_id
 
@@ -2311,6 +2356,10 @@ class TrainApp:
                 local_dir=self.output_dir,
                 remote_dir=remote_artifacts_dir,
                 progress_cb=upload_artifacts_pbar.update,
+                change_name_if_conflict=not resume,
+                replace_if_conflict=resume,
+                skip_existing_by_hash=resume,
+                enable_fallback=not resume,
             )
             self.progress_bar_main.hide()
 
@@ -2999,6 +3048,53 @@ class TrainApp:
             self._set_text_status("finalizing")
             self._set_ws_progress_status("finalizing")
             self._finalize(experiment_info)
+            self.gui.training_process.start_button.loading = False
+
+            if is_production() and self.gui.training_logs.tensorboard_offline_button is not None:
+                self.gui.training_logs.tensorboard_button.hide()
+                self.gui.training_logs.tensorboard_offline_button.show()
+
+            time.sleep(1)
+        except Exception as e:
+            message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
+            self._show_error(message, e)
+            self._set_ws_progress_status("reset")
+            raise e
+        finally:
+            self.app.shutdown()
+
+    def _wrapped_resume_upload(self):
+        """
+        Resume-upload flow: re-run only preparation + finalize (upload) for a run that crashed
+        during upload, reusing the artifacts kept on the agent (same task_id). No training, no
+        working-dir wipe. On repeated failure it crashes again (artifacts stay for another resume).
+        """
+        check_logs_text = "Please check the logs for more details."
+        try:
+            self._set_train_widgets_state_on_start()
+            self._init_logger()
+        except Exception as e:
+            message = f"Error occurred during resume-upload initialization. {check_logs_text}"
+            self._show_error(message, e)
+            self._set_ws_progress_status("reset")
+            self.app.shutdown()
+            raise e
+
+        try:
+            self._set_text_status("preparing")
+            self._set_ws_progress_status("preparing")
+            self._prepare(download_model=False)
+        except Exception as e:
+            message = f"Error occurred during data preparation. {check_logs_text}"
+            self._show_error(message, e)
+            self._set_ws_progress_status("reset")
+            raise e
+
+        try:
+            self._set_text_status("finalizing")
+            self._set_ws_progress_status("finalizing")
+            experiment_info = self._load_resume_manifest()
+            self._finalize(experiment_info, resume=True)
             self.gui.training_process.start_button.loading = False
 
             if is_production() and self.gui.training_logs.tensorboard_offline_button is not None:

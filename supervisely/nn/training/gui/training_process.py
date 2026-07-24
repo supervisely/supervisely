@@ -79,11 +79,14 @@ class TrainingProcess:
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
+        # Shown only when a previous run crashed during upload (resume-upload mode)
+        self.resume_button = Button("Resume Upload")
+        self.resume_button.hide()
         button_container = Container(
-            [self.start_button, self.stop_button, Empty()],
+            [self.start_button, self.stop_button, self.resume_button, Empty()],
             "horizontal",
             overflow="wrap",
-            fractions=[1, 1, 10],
+            fractions=[1, 1, 1, 10],
             gap=1,
         )
 

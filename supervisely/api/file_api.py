@@ -12,7 +12,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import aiofiles
 import httpx
@@ -2379,6 +2379,43 @@ class FileApi(ModuleApiBase):
             return
         logger.debug(f"Upload response for '{dst}' has no hash or size, skipping upload check")
 
+    async def _filter_uploaded_by_hash(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+    ) -> Tuple[List[str], List[str]]:
+        """Drop (src, dst) pairs whose remote file already matches by hash (or size),
+        so a resumed upload only sends the missing/changed files. Skipped bytes are
+        still reported to progress_cb so a size-progress bar reaches 100%."""
+        remote_by_path = {}
+        for parent in {os.path.dirname(d) for d in dst_paths}:
+            try:
+                for info in self.list(team_id, parent, recursive=False, return_type="fileinfo"):
+                    remote_by_path[info.path] = info
+            except Exception:
+                pass  # dir missing on server -> nothing to skip there
+        keep_src, keep_dst = [], []
+        for src, dst in zip(src_paths, dst_paths):
+            info = remote_by_path.get(dst)
+            matched = False
+            if info is not None:
+                if info.hash is not None:
+                    matched = info.hash == await get_file_hash_chunked_async(src)
+                elif info.sizeb is not None:
+                    matched = info.sizeb == os.path.getsize(src)
+            if matched:
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(os.path.getsize(src))
+                elif progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
+                continue
+            keep_src.append(src)
+            keep_dst.append(dst)
+        return keep_src, keep_dst
+
     async def upload_bulk_async(
         self,
         team_id: int,
@@ -2390,6 +2427,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files asynchronously.
@@ -2452,6 +2490,10 @@ class FileApi(ModuleApiBase):
         try:
             if semaphore is None:
                 semaphore = self._api.get_default_semaphore()
+            if skip_existing_by_hash:
+                src_paths, dst_paths = await self._filter_uploaded_by_hash(
+                    team_id, src_paths, dst_paths, progress_cb, progress_cb_type
+                )
             tasks = []
             for src, dst in zip(src_paths, dst_paths):
                 task = asyncio.create_task(
@@ -2499,6 +2541,7 @@ class FileApi(ModuleApiBase):
         progress_size_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path.
@@ -2569,6 +2612,7 @@ class FileApi(ModuleApiBase):
                 src_paths=local_files,
                 dst_paths=remote_files,
                 progress_cb=progress_size_cb,
+                skip_existing_by_hash=skip_existing_by_hash,
             )
         except Exception as e:
             if enable_fallback:
