@@ -2342,8 +2342,11 @@ class TrainApp:
                 return await orig_upload_async(*args, **kwargs)
             raise RuntimeError("DEBUG: forced async upload failure")
 
-        def patched_post(*args, **kwargs):
-            raise RuntimeError("DEBUG: forced sync upload failure")
+        def patched_post(method, *args, **kwargs):
+            # only fail the actual upload endpoint, so listing/dir_exists keep working
+            if isinstance(method, str) and ("bulk.upload" in method or "file-storage.upload" in method):
+                raise RuntimeError("DEBUG: forced sync upload failure")
+            return orig_post(method, *args, **kwargs)
 
         self._api.file.upload_async = patched_upload_async
         if fail_sync or stop_after:
