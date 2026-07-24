@@ -2301,6 +2301,52 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Upload artifacts
+    def _maybe_inject_upload_failures(self):
+        """DEBUG (resume-upload testing): monkeypatch the upload layer to fail per the GUI
+        checkboxes, then return a callable that restores the originals. Returns None (no-op)
+        when no debug checkbox is set. Only used on the first (non-resume) upload.
+
+        Scenarios:
+          - fail async only  -> async layer raises, sync fallback still runs (tests the fallback)
+          - fail async+sync  -> both raise, upload aborts and the task stops
+          - stop after N      -> first N files upload for real, then it stops (tests resume skip-by-hash)
+        """
+        tp = self.gui.training_process
+        fail_async = getattr(tp, "debug_fail_async_checkbox", None) is not None and tp.debug_fail_async_checkbox.is_checked()
+        fail_sync = getattr(tp, "debug_fail_sync_checkbox", None) is not None and tp.debug_fail_sync_checkbox.is_checked()
+        stop_after = getattr(tp, "debug_stop_after_checkbox", None) is not None and tp.debug_stop_after_checkbox.is_checked()
+        if not (fail_async or fail_sync or stop_after):
+            return None
+
+        orig_upload_async = self._api.file.upload_async
+        orig_post = self._api.post
+        n_limit = int(tp.debug_stop_after_input.get_value()) if stop_after else None
+        counter = {"n": 0}
+
+        async def patched_upload_async(*args, **kwargs):
+            if stop_after:
+                if counter["n"] >= n_limit:
+                    raise RuntimeError(f"DEBUG: forced stop after {n_limit} uploaded checkpoints")
+                counter["n"] += 1
+                return await orig_upload_async(*args, **kwargs)
+            raise RuntimeError("DEBUG: forced async upload failure")
+
+        def patched_post(*args, **kwargs):
+            raise RuntimeError("DEBUG: forced sync upload failure")
+
+        self._api.file.upload_async = patched_upload_async
+        if fail_sync or stop_after:
+            self._api.post = patched_post
+
+        def restore():
+            self._api.file.upload_async = orig_upload_async
+            self._api.post = orig_post
+
+        logger.warning(
+            f"DEBUG upload injection active: fail_async={fail_async}, fail_sync={fail_sync}, stop_after={n_limit}"
+        )
+        return restore
+
     def _upload_artifacts(self, resume: bool = False) -> None:
         """
         Uploads the training artifacts to Supervisely.
@@ -2351,16 +2397,21 @@ class TrainApp:
             unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory_fast(
-                team_id=self.team_id,
-                local_dir=self.output_dir,
-                remote_dir=remote_artifacts_dir,
-                progress_cb=upload_artifacts_pbar.update,
-                change_name_if_conflict=not resume,
-                replace_if_conflict=resume,
-                skip_existing_by_hash=resume,
-                enable_fallback=not resume,
-            )
+            _restore_debug = None if resume else self._maybe_inject_upload_failures()
+            try:
+                remote_dir = self._api.file.upload_directory_fast(
+                    team_id=self.team_id,
+                    local_dir=self.output_dir,
+                    remote_dir=remote_artifacts_dir,
+                    progress_cb=upload_artifacts_pbar.update,
+                    change_name_if_conflict=not resume,
+                    replace_if_conflict=resume,
+                    skip_existing_by_hash=resume,
+                    enable_fallback=not resume,
+                )
+            finally:
+                if _restore_debug is not None:
+                    _restore_debug()
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
