@@ -76,28 +76,46 @@ class RetrierAlwaysYield(RetrierAbstract):
         return None
 
 
+def _is_retryable_conn_exc(exc):
+    """True for connection errors, timeouts (connect/read), and retryable HTTP statuses."""
+    if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+        return True
+    if isinstance(exc, requests.HTTPError):
+        response = getattr(exc, "response", None)
+        if response is not None:
+            # imported lazily to avoid a circular import at module load
+            from supervisely.io.network_exceptions import RETRY_STATUS_CODES
+
+            return response.status_code in RETRY_STATUS_CODES
+    return False
+
+
 class RetrierConnTO(RetrierAbstract):
-    """Retry only on connection/connect-timeout errors."""
+    """Retry on connection/timeout errors and retryable HTTP status codes."""
 
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
                 return cback(*args, timeout=self.timeout, **kwargs)
-            except (requests.ConnectionError, requests.ConnectTimeout):
+            except Exception as exc:
+                if not _is_retryable_conn_exc(exc):
+                    raise
                 if self._need_raise(att + 1):
                     raise
         return None
 
 
 class RetrierConnTOYield(RetrierAbstract):
-    """Retry only on connection/connect-timeout errors for streaming callbacks."""
+    """Retry on connection/timeout errors and retryable HTTP status codes for streaming callbacks."""
 
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
                 yield from cback(*args, timeout=self.timeout, **kwargs)
                 return
-            except (requests.ConnectionError, requests.ConnectTimeout):
+            except Exception as exc:
+                if not _is_retryable_conn_exc(exc):
+                    raise
                 if self._need_raise(att + 1):
                     raise
         return None
