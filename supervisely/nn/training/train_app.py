@@ -845,18 +845,26 @@ class TrainApp:
         )
 
     def _show_resume_banner(self, manifest: dict) -> None:
-        """Tells the user why the app reopened with the steps already filled in."""
-        text = (
+        """Tells the user why the app reopened with the steps already filled in, and what to
+        press. The banner sits on the first card, the call to action next to the button."""
+        banner = (
             "This session was restarted after the artifacts upload had failed. "
-            "The model is already trained, training will not be repeated. "
-            'Press "Resume Upload" to upload the remaining files and finish the experiment.'
+            "The model is already trained, training will not be repeated."
         )
         attempts = manifest.get("attempts", 0)
         if attempts:
-            text += f" Previous resume attempts: {attempts}."
+            banner += f" Previous resume attempts: {attempts}."
+        call_to_action = (
+            "The previous run of this task finished training but failed to upload its artifacts. "
+            "The checkpoints are still on the agent and the training settings below are restored "
+            'from that run. Press "Resume Upload" to upload the remaining files and create the '
+            "experiment — the model will not be trained again."
+        )
         try:
-            self.gui.input_selector.validator_text.set(text, "warning")
+            self.gui.input_selector.validator_text.set(banner, "warning")
             self.gui.input_selector.validator_text.show()
+            self.gui.training_process.resume_info_text.set(call_to_action, "info")
+            self.gui.training_process.resume_info_text.show()
             self.gui.stepper.set_active_step(
                 self.gui.steps.index(self.gui.training_process.card) + 1
             )
@@ -3461,6 +3469,7 @@ class TrainApp:
         self.gui.training_logs.card.unlock()
         self.gui.stepper.set_active_step(7)
         if self._is_resume_upload:
+            self.gui.training_process.resume_info_text.hide()
             self.gui.training_process.validator_text.set("Resuming the upload...", "info")
             self.gui.training_process.resume_button.loading = True
         else:

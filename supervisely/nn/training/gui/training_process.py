@@ -83,8 +83,12 @@ class TrainingProcess:
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
         # shown instead of Start when this task is relaunched after a failed artifacts upload
-        self.resume_button = Button("Resume Upload")
+        self.resume_button = Button(
+            "Resume Upload", button_type="success", icon="zmdi zmdi-cloud-upload"
+        )
         self.resume_button.hide()
+        self.resume_info_text = Text("")
+        self.resume_info_text.hide()
         button_container = Container(
             [self.start_button, self.resume_button, self.stop_button, Empty()],
             "horizontal",
@@ -125,6 +129,7 @@ class TrainingProcess:
             [
                 self.experiment_name_field,
                 self.debug_field,  # TODO REMOVE BEFORE MERGE
+                self.resume_info_text,
                 button_container,
                 self.validator_text,
             ]
