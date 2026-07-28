@@ -3357,7 +3357,16 @@ class TrainApp:
             self._train_collection_id = manifest.get("train_collection_id")
             self._val_collection_id = manifest.get("val_collection_id")
             self._restore_splits_items(manifest)
-            self._read_project()
+            # finalize itself never reads sly_project, but an app-side export converter may,
+            # so open it when it is there and do not let a damaged project block the recovery
+            try:
+                self._read_project()
+            except Exception:
+                logger.warning(
+                    "Could not read the local project on resume. The upload does not need it, "
+                    "continuing.",
+                    exc_info=True,
+                )
             resume_manifest.bump_attempt(self.work_dir)
         except Exception as e:
             message = f"Error occurred during upload resume initialization. {check_logs_text}"
