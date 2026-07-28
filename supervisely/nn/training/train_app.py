@@ -5,6 +5,7 @@ High-level wrapper for building Supervisely training applications.
 import os
 import shutil
 import subprocess
+import sys
 import time
 from collections import namedtuple
 from datetime import datetime
@@ -203,6 +204,7 @@ class TrainApp:
         # Resume upload: filled in below, once the GUI exists
         self._resume_ctx: Optional[Dict[str, Any]] = None
         self._is_resume_upload = False
+        self._exit_code = 0
         # -------------------------- #
 
         # Train Val Splits
@@ -237,6 +239,8 @@ class TrainApp:
 
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
+        # registered after Application(), so it runs after the framework shutdown handlers
+        _add_event_handler(self._server, "shutdown", self._exit_with_requested_code)
         self._train_func = None
         self._training_duration = None
 
@@ -775,6 +779,40 @@ class TrainApp:
         return None
 
     # Resume upload
+    def _request_non_zero_exit(self) -> None:
+        """
+        Ask the process to exit with a non-zero code, but only if a resume is actually possible.
+
+        The agent deletes the task data dir on the host as soon as the container exits with 0
+        (`agent/worker/task_app.py`, success-only cleanup at the end of `main_step`). A failure
+        raised inside a GUI button handler is answered with HTTP 500 and then a graceful uvicorn
+        shutdown, so without this the process still exits 0 and the artifacts a resume needs are
+        wiped.
+        """
+        if resume_manifest.load(self.work_dir, self.task_id) is None:
+            # nothing to resume from, keep the previous behaviour and let the dir be cleaned
+            return
+        self._exit_code = 1
+        logger.info(
+            "Artifacts are kept on the agent for a resume upload: "
+            "the task will finish with a non-zero exit code."
+        )
+
+    def _exit_with_requested_code(self) -> None:
+        """Shutdown hook: registered last, so state and logs are flushed by the framework
+        handlers before the process is terminated."""
+        if self._exit_code == 0:
+            return
+        logger.info(f"Exiting with code {self._exit_code}")
+        for handler in logger.handlers:
+            try:
+                handler.flush()
+            except Exception:
+                pass
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(self._exit_code)
+
     def _init_resume_upload(self) -> None:
         """
         Detects a relaunch of the same task that crashed while uploading artifacts and
@@ -3343,6 +3381,7 @@ class TrainApp:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            self._request_non_zero_exit()
             raise e
         finally:
             self.app.shutdown()
@@ -3389,6 +3428,7 @@ class TrainApp:
             message = f"Error occurred during uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            self._request_non_zero_exit()
             raise e
         finally:
             self.app.shutdown()
