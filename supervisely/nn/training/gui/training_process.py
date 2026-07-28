@@ -13,10 +13,12 @@ except ImportError:  # pragma: no cover
 from supervisely.app.widgets import (
     Button,
     Card,
+    Checkbox,
     Container,
     Empty,
     Field,
     Input,
+    InputNumber,
     SelectCudaDevice,
     Text,
 )
@@ -94,8 +96,38 @@ class TrainingProcess:
         self.validator_text = Text("")
         self.validator_text.hide()
 
+        # TODO REMOVE BEFORE MERGE: debug upload failure injection
+        self.debug_fail_async_checkbox = Checkbox(
+            "DEBUG: fail async upload (test sync fallback)"
+        )
+        self.debug_fail_sync_checkbox = Checkbox(
+            "DEBUG: fail async + sync upload (test task stop)"
+        )
+        self.debug_stop_after_checkbox = Checkbox(
+            "DEBUG: stop after N uploaded checkpoints (test resume skip-by-hash)"
+        )
+        self.debug_stop_after_input = InputNumber(value=1, min=1)
+        self.debug_field = Field(
+            title="Debug: upload failure injection",
+            description="Temporary testing controls. Must be removed before merge.",
+            content=Container(
+                [
+                    self.debug_fail_async_checkbox,
+                    self.debug_fail_sync_checkbox,
+                    self.debug_stop_after_checkbox,
+                    self.debug_stop_after_input,
+                ]
+            ),
+        )
+        # TODO REMOVE BEFORE MERGE: end
+
         self.display_widgets.extend(
-            [self.experiment_name_field, button_container, self.validator_text]
+            [
+                self.experiment_name_field,
+                self.debug_field,  # TODO REMOVE BEFORE MERGE
+                button_container,
+                self.validator_text,
+            ]
         )
 
         self.container = Container(self.display_widgets)

@@ -2517,6 +2517,57 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Upload artifacts
+    # TODO REMOVE BEFORE MERGE: debug upload failure injection
+    def _maybe_inject_upload_failures(self):
+        """
+        Monkeypatches the upload calls so an upload failure can be reproduced on demand.
+        Returns a callable restoring the original methods, or None if nothing is enabled.
+        """
+        tp = self.gui.training_process
+        fail_async = tp.debug_fail_async_checkbox.is_checked()
+        fail_sync = tp.debug_fail_sync_checkbox.is_checked()
+        stop_after = tp.debug_stop_after_checkbox.is_checked()
+        n_limit = int(tp.debug_stop_after_input.get_value()) if stop_after else 0
+        if not (fail_async or fail_sync or stop_after):
+            return None
+
+        original_upload_async = self._api.file.upload_async
+        original_post = self._api.post
+        uploaded = {"count": 0}
+
+        async def patched_upload_async(*args, **kwargs):
+            if stop_after:
+                if uploaded["count"] >= n_limit:
+                    raise RuntimeError("DEBUG: forced stop after N uploaded files")
+                uploaded["count"] += 1
+                return await original_upload_async(*args, **kwargs)
+            raise RuntimeError("DEBUG: forced async upload failure")
+
+        def patched_post(method, *args, **kwargs):
+            # only the upload endpoints: listing must keep working, skip-by-hash relies on it
+            if isinstance(method, str) and (
+                "bulk.upload" in method or "file-storage.upload" in method
+            ):
+                raise RuntimeError("DEBUG: forced sync upload failure")
+            return original_post(method, *args, **kwargs)
+
+        self._api.file.upload_async = patched_upload_async
+        if fail_sync or stop_after:
+            self._api.post = patched_post
+        logger.warning(
+            "DEBUG upload failure injection is active: "
+            f"fail_async={fail_async}, fail_sync={fail_sync}, "
+            f"stop_after={n_limit if stop_after else None}"
+        )
+
+        def restore():
+            self._api.file.upload_async = original_upload_async
+            self._api.post = original_post
+
+        return restore
+
+    # TODO REMOVE BEFORE MERGE: end
+
     def _upload_artifacts(self, resume: bool = False) -> None:
         """
         Uploads the training artifacts to Supervisely.
@@ -2569,18 +2620,23 @@ class TrainApp:
             unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory_fast(
-                team_id=self.team_id,
-                local_dir=self.output_dir,
-                remote_dir=remote_artifacts_dir,
-                progress_cb=upload_artifacts_pbar.update,
-                # on resume: same dir, skip what is already there, and never fall back to the
-                # sync path — it cannot skip by hash and would re-send everything
-                change_name_if_conflict=not resume,
-                replace_if_conflict=resume,
-                skip_existing_by_hash=resume,
-                enable_fallback=not resume,
-            )
+            restore_upload = self._maybe_inject_upload_failures()  # TODO REMOVE BEFORE MERGE
+            try:
+                remote_dir = self._api.file.upload_directory_fast(
+                    team_id=self.team_id,
+                    local_dir=self.output_dir,
+                    remote_dir=remote_artifacts_dir,
+                    progress_cb=upload_artifacts_pbar.update,
+                    # on resume: same dir, skip what is already there, and never fall back to the
+                    # sync path — it cannot skip by hash and would re-send everything
+                    change_name_if_conflict=not resume,
+                    replace_if_conflict=resume,
+                    skip_existing_by_hash=resume,
+                    enable_fallback=not resume,
+                )
+            finally:  # TODO REMOVE BEFORE MERGE
+                if restore_upload is not None:
+                    restore_upload()
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
