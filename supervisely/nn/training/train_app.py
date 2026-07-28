@@ -3372,6 +3372,8 @@ class TrainApp:
             message = f"Error occurred during upload resume initialization. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            # the artifacts are still on disk: keep them for another attempt
+            self._request_non_zero_exit()
             self.app.shutdown()
             raise e
 
