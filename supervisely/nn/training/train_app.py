@@ -692,10 +692,11 @@ class TrainApp:
             self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
             if self._is_resume_upload:
-                # the model is already trained: the only action left is finishing the upload
+                # the model is already trained: the only action left is finishing the upload.
+                # Start stays visible but disabled, so the button row keeps its layout.
                 self.gui.training_process.resume_button.click(self._wrapped_resume_upload)
                 self.gui.training_process.resume_button.show()
-                self.gui.training_process.start_button.hide()
+                self.gui.training_process.start_button.disable()
             return func
 
         return decorator
