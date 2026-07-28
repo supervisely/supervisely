@@ -12,7 +12,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import aiofiles
 import httpx
@@ -2343,6 +2343,64 @@ class FileApi(ModuleApiBase):
             if progress_cb is not None and progress_cb_type == "number":
                 progress_cb(1)
 
+    @staticmethod
+    def _report_progress(
+        progress_cb: Optional[Union[tqdm, Callable]],
+        value: int,
+    ) -> None:
+        """Report progress to either a tqdm-like object or a plain callable."""
+        if progress_cb is None:
+            return
+        if hasattr(progress_cb, "update"):
+            progress_cb.update(value)
+        else:
+            progress_cb(value)
+
+    def _remote_files_by_name(self, team_id: int, remote_dir: str) -> Dict[str, FileInfo]:
+        """Listing of `remote_dir` as {name: FileInfo}. Missing dir gives {}, API errors raise."""
+        if not self.dir_exists(team_id, remote_dir):
+            return {}
+        infos = self.list(team_id, remote_dir, recursive=False, return_type="fileinfo")
+        return {get_file_name_with_ext(info.path.rstrip("/")): info for info in infos}
+
+    async def _matches_remote_file(self, src: str, info: FileInfo) -> bool:
+        """True if the local file is already on the server: by hash, or by size as a fallback."""
+        if info.hash is not None:
+            return info.hash == await get_file_hash_chunked_async(src)
+        if info.sizeb is not None:
+            logger.debug(f"No hash for {info.path}, comparing by size")
+            return info.sizeb == get_file_size(src)
+        return False
+
+    async def _filter_uploaded_by_hash(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+    ) -> Tuple[List[str], List[str]]:
+        """Drop pairs whose destination already holds the same file. Skipped files are still
+        reported to `progress_cb` so the bar reaches 100%."""
+        listed: Dict[str, Dict[str, FileInfo]] = {}
+        filtered_src, filtered_dst = [], []
+        skipped = 0
+        for src, dst in zip(src_paths, dst_paths):
+            remote_dir = os.path.dirname(dst)
+            if remote_dir not in listed:
+                listed[remote_dir] = self._remote_files_by_name(team_id, remote_dir)
+            info = listed[remote_dir].get(get_file_name_with_ext(dst))
+            if info is not None and await self._matches_remote_file(src, info):
+                value = get_file_size(src) if progress_cb_type == "size" else 1
+                self._report_progress(progress_cb, value)
+                skipped += 1
+                continue
+            filtered_src.append(src)
+            filtered_dst.append(dst)
+        if skipped > 0:
+            logger.info(f"Skipping {skipped}/{len(src_paths)} already uploaded files")
+        return filtered_src, filtered_dst
+
     async def _check_uploaded_file(self, src: str, dst: str, response_body: bytes) -> None:
         """Verify that the file uploaded to `dst` matches the local file `src`,
         using hash (or size) from the upload response. Raises IOError on mismatch."""
@@ -2390,6 +2448,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files asynchronously.
@@ -2415,6 +2474,11 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files whose destination already holds an identical
+            file (compared by hash, or by size when the server reports no hash) are not uploaded
+            again. Useful to resume an interrupted upload. Not supported by the synchronous
+            fallback, so combine it with ``enable_fallback=False``.
+        :type skip_existing_by_hash: bool, optional
         :returns: None
         :rtype: None
 
@@ -2449,6 +2513,15 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
+        # outside the try: a listing error must not degrade into a full re-upload
+        if skip_existing_by_hash:
+            src_paths, dst_paths = await self._filter_uploaded_by_hash(
+                team_id=team_id,
+                src_paths=src_paths,
+                dst_paths=dst_paths,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
         try:
             if semaphore is None:
                 semaphore = self._api.get_default_semaphore()
@@ -2499,6 +2572,7 @@ class FileApi(ModuleApiBase):
         progress_size_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path.
@@ -2518,6 +2592,10 @@ class FileApi(ModuleApiBase):
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files already present at the destination with an
+            identical hash (or size, when the server reports no hash) are not uploaded again.
+            Not supported by the synchronous fallback.
+        :type skip_existing_by_hash: bool, optional
         :returns: Path to Directory in Team Files
         :rtype: str
 
@@ -2542,10 +2620,11 @@ class FileApi(ModuleApiBase):
 
                 api.file.upload_directory(8, local_path, path_to_dir)
         """
+        if not remote_dir.startswith("/"):
+            remote_dir = "/" + remote_dir
+        # bound before the first API call: the fallback below reads it
+        res_remote_dir = remote_dir
         try:
-            if not remote_dir.startswith("/"):
-                remote_dir = "/" + remote_dir
-
             if self.dir_exists(team_id, remote_dir):
                 if change_name_if_conflict is True:
                     res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
@@ -2569,6 +2648,8 @@ class FileApi(ModuleApiBase):
                 src_paths=local_files,
                 dst_paths=remote_files,
                 progress_cb=progress_size_cb,
+                enable_fallback=enable_fallback,
+                skip_existing_by_hash=skip_existing_by_hash,
             )
         except Exception as e:
             if enable_fallback:
@@ -2597,6 +2678,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path in fast mode.
@@ -2616,6 +2698,10 @@ class FileApi(ModuleApiBase):
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files already present at the destination with an
+            identical hash (or size, when the server reports no hash) are not uploaded again.
+            Not supported by the synchronous fallback.
+        :type skip_existing_by_hash: bool, optional
         :returns: Path to Directory in Team Files
         :rtype: str
         """
@@ -2627,6 +2713,7 @@ class FileApi(ModuleApiBase):
             progress_size_cb=progress_cb,
             replace_if_conflict=replace_if_conflict,
             enable_fallback=enable_fallback,
+            skip_existing_by_hash=skip_existing_by_hash,
         )
         return run_coroutine(coroutine)
 
@@ -2639,6 +2726,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files in fast mode.
@@ -2660,6 +2748,10 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files already present at the destination with an
+            identical hash (or size, when the server reports no hash) are not uploaded again.
+            Not supported by the synchronous fallback.
+        :type skip_existing_by_hash: bool, optional
         :returns: None
         :rtype: None
         """
@@ -2671,5 +2763,6 @@ class FileApi(ModuleApiBase):
             progress_cb=progress_cb,
             progress_cb_type=progress_cb_type,
             enable_fallback=enable_fallback,
+            skip_existing_by_hash=skip_existing_by_hash,
         )
         return run_coroutine(coroutine)
