@@ -968,13 +968,17 @@ class TrainApp:
         :type resume: bool
         """
         logger.info("Finalizing training")
-        # Step 1. Validate experiment TaskType
-        experiment_info = self._validate_experiment_task_type(experiment_info)
+        # Steps 1-2 are skipped on resume: the manifest holds the already validated and
+        # preprocessed experiment_info, where checkpoint paths are absolute — a shape the
+        # validator (which expects what the user's train function returned) would reject.
+        if not resume:
+            # Step 1. Validate experiment TaskType
+            experiment_info = self._validate_experiment_task_type(experiment_info)
 
-        # Step 2. Validate experiment_info
-        success, reason = self._validate_experiment_info(experiment_info)
-        if not success:
-            raise ValueError(f"{reason}. Failed to upload artifacts")
+            # Step 2. Validate experiment_info
+            success, reason = self._validate_experiment_info(experiment_info)
+            if not success:
+                raise ValueError(f"{reason}. Failed to upload artifacts")
 
         # Step 3. Create model meta according to model CV task type
         model_meta = self.create_model_meta(experiment_info["task_type"])
@@ -984,6 +988,10 @@ class TrainApp:
         # the checkpoints, doing it again would corrupt them.
         if not resume:
             experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
+        elif self.is_model_benchmark_enabled:
+            # preprocessing is what normally fills these, and the benchmark may still have to run
+            self._benchmark_params["model_files"] = dict(experiment_info.get("model_files") or {})
+            self._benchmark_params["model_files"]["checkpoint"] = experiment_info["best_checkpoint"]
 
         # Step 5. Postprocess splits
         if resume:
