@@ -256,15 +256,14 @@ class TrainApp:
         if self._tensorrt_supported:
             self._convert_tensorrt_func = None
 
-        # Benchmark parameters
-        if self.is_model_benchmark_enabled:
-            self._benchmark_params = {
-                "model_files": {},
-                "model_source": ModelSource.CUSTOM,
-                "model_info": {},
-                "device": None,
-                "runtime": RuntimeType.PYTORCH,
-            }
+        # Benchmark parameters: always created, the checkbox can be switched on after startup
+        self._benchmark_params = {
+            "model_files": {},
+            "model_source": ModelSource.CUSTOM,
+            "model_info": {},
+            "device": None,
+            "runtime": RuntimeType.PYTORCH,
+        }
         # -------------------------- #
 
         # Train endpoints
