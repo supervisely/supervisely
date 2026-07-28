@@ -13,12 +13,10 @@ except ImportError:  # pragma: no cover
 from supervisely.app.widgets import (
     Button,
     Card,
-    Checkbox,
     Container,
     Empty,
     Field,
     Input,
-    InputNumber,
     SelectCudaDevice,
     Text,
 )
@@ -43,6 +41,7 @@ class TrainingProcess:
         self.start_button = None
         self.stop_button = None
         self.resume_button = None
+        self.resume_info_text = None
         self.validator_text = None
         self.container = None
         self.card = None
@@ -82,7 +81,7 @@ class TrainingProcess:
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
-        # shown instead of Start when this task is relaunched after a failed artifacts upload
+        # shown when this task is relaunched after a failed artifacts upload; Start is disabled then
         self.resume_button = Button(
             "Resume Upload", button_type="success", icon="zmdi zmdi-cloud-upload"
         )
@@ -100,35 +99,9 @@ class TrainingProcess:
         self.validator_text = Text("")
         self.validator_text.hide()
 
-        # TODO REMOVE BEFORE MERGE: debug upload failure injection
-        self.debug_fail_async_checkbox = Checkbox(
-            "DEBUG: fail async upload (test sync fallback)"
-        )
-        self.debug_fail_sync_checkbox = Checkbox(
-            "DEBUG: fail async + sync upload (test task stop)"
-        )
-        self.debug_stop_after_checkbox = Checkbox(
-            "DEBUG: stop after N uploaded checkpoints (test resume skip-by-hash)"
-        )
-        self.debug_stop_after_input = InputNumber(value=1, min=1)
-        self.debug_field = Field(
-            title="Debug: upload failure injection",
-            description="Temporary testing controls. Must be removed before merge.",
-            content=Container(
-                [
-                    self.debug_fail_async_checkbox,
-                    self.debug_fail_sync_checkbox,
-                    self.debug_stop_after_checkbox,
-                    self.debug_stop_after_input,
-                ]
-            ),
-        )
-        # TODO REMOVE BEFORE MERGE: end
-
         self.display_widgets.extend(
             [
                 self.experiment_name_field,
-                self.debug_field,  # TODO REMOVE BEFORE MERGE
                 self.resume_info_text,
                 button_container,
                 self.validator_text,
