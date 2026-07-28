@@ -2357,20 +2357,18 @@ class FileApi(ModuleApiBase):
             progress_cb(value)
 
     def _remote_files_by_name(self, team_id: int, remote_dir: str) -> Dict[str, FileInfo]:
-        """Non-recursive listing of `remote_dir` as {file name: FileInfo}.
-        A missing directory yields an empty mapping; API errors are not suppressed."""
+        """Listing of `remote_dir` as {name: FileInfo}. Missing dir gives {}, API errors raise."""
         if not self.dir_exists(team_id, remote_dir):
             return {}
         infos = self.list(team_id, remote_dir, recursive=False, return_type="fileinfo")
         return {get_file_name_with_ext(info.path.rstrip("/")): info for info in infos}
 
     async def _matches_remote_file(self, src: str, info: FileInfo) -> bool:
-        """True if the local file is already on the server, compared by hash or, as a
-        fallback, by size."""
+        """True if the local file is already on the server: by hash, or by size as a fallback."""
         if info.hash is not None:
             return info.hash == await get_file_hash_chunked_async(src)
         if info.sizeb is not None:
-            logger.debug(f"Remote file {info.path} has no hash, comparing by size.")
+            logger.debug(f"No hash for {info.path}, comparing by size")
             return info.sizeb == get_file_size(src)
         return False
 
@@ -2382,8 +2380,8 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
     ) -> Tuple[List[str], List[str]]:
-        """Drop the pairs whose destination already holds an identical file.
-        Skipped files are still reported to `progress_cb` so the bar reaches 100%."""
+        """Drop pairs whose destination already holds the same file. Skipped files are still
+        reported to `progress_cb` so the bar reaches 100%."""
         listed: Dict[str, Dict[str, FileInfo]] = {}
         filtered_src, filtered_dst = [], []
         skipped = 0
@@ -2400,7 +2398,7 @@ class FileApi(ModuleApiBase):
             filtered_src.append(src)
             filtered_dst.append(dst)
         if skipped > 0:
-            logger.info(f"Skipping {skipped} of {len(src_paths)} files already uploaded.")
+            logger.info(f"Skipping {skipped}/{len(src_paths)} already uploaded files")
         return filtered_src, filtered_dst
 
     async def _check_uploaded_file(self, src: str, dst: str, response_body: bytes) -> None:
@@ -2515,8 +2513,7 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
-        # outside the try below on purpose: a failure to list the destination must not
-        # silently degrade into re-uploading everything
+        # outside the try: a listing error must not degrade into a full re-upload
         if skip_existing_by_hash:
             src_paths, dst_paths = await self._filter_uploaded_by_hash(
                 team_id=team_id,
@@ -2625,7 +2622,7 @@ class FileApi(ModuleApiBase):
         """
         if not remote_dir.startswith("/"):
             remote_dir = "/" + remote_dir
-        # bound before the first API call so the fallback below can always read it
+        # bound before the first API call: the fallback below reads it
         res_remote_dir = remote_dir
         try:
             if self.dir_exists(team_id, remote_dir):

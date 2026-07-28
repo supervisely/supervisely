@@ -1263,11 +1263,8 @@ def _init(
             return app.cached_template
 
         def drop_cached_template():
-            # The app may render "/" before it is fully wired: Application.__init__ requests it
-            # in a thread to save the offline session. Widgets bake their handlers into the HTML
-            # (see Button._get_on_click), so a template cached at that moment can miss the
-            # handlers registered afterwards. Startup means the module is fully imported, so
-            # drop that early render and let the next request build the final markup.
+            # Application.__init__ requests "/" in a thread, so the page can be cached before
+            # widget handlers are registered (they are baked into the HTML). Drop that render.
             app.cached_template = None
 
         _add_event_handler(app, "startup", drop_cached_template)

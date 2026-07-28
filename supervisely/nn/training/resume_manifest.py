@@ -1,15 +1,12 @@
 # coding: utf-8
 """On-disk manifest that lets a crashed training run finish its artifacts upload.
 
-The manifest is written to ``work_dir`` (never to ``output_dir``, so it is not uploaded)
-right before the artifacts upload starts. When the upload fails the app exits non-zero,
-the agent keeps the task data dir on the host, and a relaunch of the SAME task id mounts
-that dir again — the manifest is then found and the app offers to resume the upload
-instead of training from scratch.
+Written to ``work_dir`` (not ``output_dir``, so it is not uploaded) right before the upload
+starts. A failed upload exits non-zero, the agent keeps the task data dir on the host, and a
+relaunch of the same task finds the manifest and offers to resume instead of retraining.
 
-All functions are best-effort: a write failure only disables resume, it never breaks
-training. A manifest that cannot be read, has an unknown version, or belongs to another
-task is treated as absent.
+Every function is best-effort: a write failure only disables resume; an unreadable manifest,
+an unknown version or another task id is treated as absent.
 """
 
 import json
@@ -43,8 +40,7 @@ def save(work_dir: str, task_id: int, **fields: Any) -> bool:
 
 
 def load(work_dir: str, task_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
-    """Read the manifest, or None if it is absent, unreadable, of another version,
-    or belongs to another task."""
+    """Read the manifest, or None if absent, unreadable, of another version or another task."""
     manifest_path = path(work_dir)
     if not sly_fs.file_exists(manifest_path):
         return None
@@ -52,23 +48,19 @@ def load(work_dir: str, task_id: Optional[int] = None) -> Optional[Dict[str, Any
         with open(manifest_path, "r") as f:
             manifest = json.load(f)
     except Exception:
-        logger.warning(
-            f"Resume manifest {manifest_path} is unreadable, ignoring it.", exc_info=True
-        )
+        logger.warning(f"Resume manifest {manifest_path} is unreadable, ignoring", exc_info=True)
         return None
     if not isinstance(manifest, dict):
-        logger.warning(f"Resume manifest {manifest_path} has unexpected content, ignoring it.")
+        logger.warning(f"Resume manifest {manifest_path} has unexpected content, ignoring")
         return None
     if manifest.get("version") != VERSION:
         logger.warning(
-            f"Resume manifest {manifest_path} has version {manifest.get('version')}, "
-            f"expected {VERSION}. Ignoring it."
+            f"Resume manifest version {manifest.get('version')} != {VERSION}, ignoring"
         )
         return None
     if task_id is not None and manifest.get("task_id") != task_id:
         logger.info(
-            f"Resume manifest {manifest_path} belongs to task {manifest.get('task_id')}, "
-            f"current task is {task_id}. Ignoring it."
+            f"Resume manifest belongs to task {manifest.get('task_id')}, current is {task_id}"
         )
         return None
     return manifest
@@ -85,7 +77,7 @@ def update(work_dir: str, **fields: Any) -> Optional[Dict[str, Any]]:
 
 
 def mark_done(work_dir: str, step: str) -> None:
-    """Record a finalize step as completed, so a later resume does not repeat it."""
+    """Mark a finalize step done, so a later resume does not repeat it."""
     manifest = load(work_dir)
     if manifest is None:
         return
@@ -116,7 +108,7 @@ def bump_attempt(work_dir: str) -> int:
 
 
 def remove(work_dir: str) -> None:
-    """Delete the manifest — the run is complete and must not be resumed."""
+    """Delete the manifest: the run is complete."""
     sly_fs.silent_remove(path(work_dir))
 
 
@@ -131,8 +123,7 @@ def _write(work_dir: str, manifest: Dict[str, Any]) -> bool:
         return True
     except Exception:
         logger.warning(
-            f"Failed to write resume manifest to {manifest_path}. "
-            "Resuming the upload will not be possible for this run.",
+            f"Failed to write {manifest_path}, resuming the upload will not be possible",
             exc_info=True,
         )
         sly_fs.silent_remove(tmp_path)

@@ -81,7 +81,7 @@ class TrainingProcess:
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
-        # shown when this task is relaunched after a failed artifacts upload; Start is disabled then
+        # shown when the task is relaunched after a failed upload; Start is disabled then
         self.resume_button = Button(
             "Resume Upload", button_type="success", icon="zmdi zmdi-cloud-upload"
         )

@@ -77,7 +77,7 @@ from supervisely.project.download import (
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
 
-# minimal stand-in for a split item on resume: only these two fields are read by finalize
+# split item stand-in for resume: finalize reads only these two fields
 _ResumeSplitItem = namedtuple("_ResumeSplitItem", ["dataset_name", "name"])
 
 
@@ -164,7 +164,7 @@ class TrainApp:
         self._default_work_dir_name = "work_dir"
         self._export_dir_name = "export"
         self._benchmark_dir_name = "benchmark"
-        # produced inside output_dir by the finalize steps that run after the upload
+        # created in output_dir by the steps that run after the upload
         self._post_upload_dir_names = (self._benchmark_dir_name,)
         self._tensorboard_port = 6006
 
@@ -242,7 +242,7 @@ class TrainApp:
 
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
-        # registered after Application(), so it runs after the framework shutdown handlers
+        # registered after Application(), so it runs last on shutdown
         _add_event_handler(self._server, "shutdown", self._exit_with_requested_code)
         self._train_func = None
         self._training_duration = None
@@ -318,9 +318,8 @@ class TrainApp:
         # Use for debugging guiState
         # gui_state_raw = self.__debug_gui_state()
 
-        # On resume the platform re-sends the original modal.state, so guiState is present again.
-        # Loading it would be a second load_from_app_state call, and step callbacks are toggles:
-        # calling them twice re-locks the cards. The resume state already covers everything.
+        # On resume the platform re-sends guiState, and a second load_from_app_state would
+        # re-lock the cards: step callbacks are toggles. The resume state already covers it.
         if gui_state_raw is not None and not self._is_resume_upload:
             logger.info("Loading GUI from state")
             logger.debug(f"GUI State: {gui_state_raw}")
@@ -490,8 +489,7 @@ class TrainApp:
         :returns: Device name.
         :rtype: str
         """
-        # the device widget cannot be restored from app_state, so on resume the value the
-        # training actually ran on comes from the manifest
+        # app_state cannot carry the device, so on resume it comes from the manifest
         if self._is_resume_upload and self._resume_ctx.get("device"):
             return self._resume_ctx["device"]
         return self.gui.training_process.get_device()
@@ -695,8 +693,7 @@ class TrainApp:
             self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
             if self._is_resume_upload:
-                # the model is already trained: the only action left is finishing the upload.
-                # Start stays visible but disabled, so the button row keeps its layout.
+                # only the upload is left; Start stays visible but disabled to keep the layout
                 self.gui.training_process.resume_button.click(self._wrapped_resume_upload)
                 self.gui.training_process.resume_button.show()
                 self.gui.training_process.start_button.disable()
@@ -785,26 +782,18 @@ class TrainApp:
     # Resume upload
     def _request_non_zero_exit(self) -> None:
         """
-        Ask the process to exit with a non-zero code, but only if a resume is actually possible.
-
-        The agent deletes the task data dir on the host as soon as the container exits with 0
-        (`agent/worker/task_app.py`, success-only cleanup at the end of `main_step`). A failure
-        raised inside a GUI button handler is answered with HTTP 500 and then a graceful uvicorn
-        shutdown, so without this the process still exits 0 and the artifacts a resume needs are
-        wiped.
+        Exit non-zero, but only if a resume is possible: the agent deletes the task data dir as
+        soon as the container exits with 0, and a failure inside a button handler otherwise ends
+        in a graceful shutdown with code 0.
         """
         if resume_manifest.load(self.work_dir, self.task_id) is None:
-            # nothing to resume from, keep the previous behaviour and let the dir be cleaned
+            # nothing to resume from: let the agent clean the dir as before
             return
         self._exit_code = 1
-        logger.info(
-            "Artifacts are kept on the agent for a resume upload: "
-            "the task will finish with a non-zero exit code."
-        )
+        logger.info("Artifacts kept on the agent for a resume upload, exiting non-zero")
 
     def _exit_with_requested_code(self) -> None:
-        """Shutdown hook: registered last, so state and logs are flushed by the framework
-        handlers before the process is terminated."""
+        """Shutdown hook, registered last so the framework flushes state and logs first."""
         if self._exit_code == 0:
             return
         logger.info(f"Exiting with code {self._exit_code}")
@@ -818,10 +807,7 @@ class TrainApp:
         os._exit(self._exit_code)
 
     def _init_resume_upload(self) -> None:
-        """
-        Detects a relaunch of the same task that crashed while uploading artifacts and
-        restores the GUI from the manifest that run left on the agent.
-        """
+        """Detect a relaunch of a task that crashed while uploading and restore its GUI."""
         if self.task_id == -1:
             return
         manifest = resume_manifest.load(self.work_dir, self.task_id)
@@ -829,28 +815,26 @@ class TrainApp:
             return
         app_state = manifest.get("app_state")
         if not app_state:
-            logger.warning("Resume manifest has no GUI state. Resuming the upload is not possible.")
+            logger.warning("Resume manifest has no GUI state, cannot resume the upload")
             return
         try:
-            # click_cb=True is what unlocks the steps the user had already passed.
-            # Validation is off: the manifest is authoritative and re-validating against a
-            # possibly changed project would only lock the GUI again.
+            # click_cb=True unlocks the passed steps; validation is off because the manifest
+            # is authoritative and re-validating a changed project would lock the GUI again
             self.gui.load_from_app_state(app_state, click_cb=True, validate_steps=False)
         except Exception:
-            logger.error("Failed to restore the GUI state for the upload resume.", exc_info=True)
+            logger.error("Failed to restore the GUI state for the resume", exc_info=True)
             return
 
         self._resume_ctx = manifest
         self._is_resume_upload = True
         self._show_resume_banner(manifest)
         logger.info(
-            "Artifacts of this task were not fully uploaded. Resume upload mode is enabled, "
-            f"previous attempts: {manifest.get('attempts', 0)}"
+            f"Resume upload mode is enabled, previous attempts: {manifest.get('attempts', 0)}"
         )
 
     def _show_resume_banner(self, manifest: dict) -> None:
-        """Tells the user why the app reopened with the steps already filled in, and what to
-        press. The banner sits on the first card, the call to action next to the button."""
+        """Explain why the steps are already filled in: banner on the first card, call to
+        action next to the button."""
         banner = (
             "This session was restarted after the artifacts upload had failed. "
             "The model is already trained, training will not be repeated."
@@ -873,27 +857,23 @@ class TrainApp:
                 self.gui.steps.index(self.gui.training_process.card) + 1
             )
         except Exception:
-            logger.debug("Failed to render the resume banner.", exc_info=True)
+            logger.debug("Failed to render the resume banner", exc_info=True)
 
     def _get_resume_app_state(self, experiment_info: dict) -> dict:
-        """
-        Builds the GUI state to restore on resume. `get_app_state()` alone is not enough:
-        it carries neither the input step nor the experiment name.
-        """
+        """GUI state to restore on resume: `get_app_state()` carries neither the input step
+        nor the experiment name."""
         app_state = self.get_app_state(experiment_info)
         app_state["input"] = {"project_id": self.project_id}
         app_state["start_training"] = False
         try:
             app_state["experiment_name"] = self.gui.training_process.get_experiment_name()
         except Exception:
-            logger.debug("Experiment name is not available for the resume state.", exc_info=True)
+            logger.debug("No experiment name for the resume state", exc_info=True)
         return app_state
 
     def _dump_resume_manifest(self, experiment_info: dict, train_splits_data: dict) -> None:
-        """
-        Persists everything the upload step and the steps after it need, so that a relaunch
-        can redo them without downloading the project or training again.
-        """
+        """Persist what the upload and the steps after it need, so a relaunch can redo them
+        without downloading the project or training again."""
         try:
             resume_manifest.save(
                 self.work_dir,
@@ -911,27 +891,26 @@ class TrainApp:
             )
         except Exception:
             logger.warning(
-                "Failed to prepare the resume manifest. If the upload fails, the artifacts "
-                "will have to be uploaded by re-running the training.",
+                "Failed to write the resume manifest, a failed upload will not be resumable",
                 exc_info=True,
             )
 
     def _device_name(self) -> Optional[str]:
-        """Human-readable device the training ran on; taken from the manifest on resume."""
+        """Device the training ran on; from the manifest on resume."""
         if self._is_resume_upload and self._resume_ctx.get("device_name"):
             return self._resume_ctx["device_name"]
         return self.gui.training_process.get_device_name()
 
     @staticmethod
     def _safe_gui_value(getter, default=None):
-        """GUI getters may be disabled by app options; a missing value must not break the dump."""
+        """App options may disable a getter; a missing value must not break the dump."""
         try:
             return getter()
         except Exception:
             return default
 
     def _dump_splits_items(self) -> dict:
-        """Stores only the fields the finalize steps read from split items."""
+        """Store only the split item fields finalize reads."""
 
         def dump(split: list) -> list:
             return [
@@ -953,7 +932,7 @@ class TrainApp:
         primary_metric_name: Optional[str],
         evaluation_report_link: Optional[str],
     ) -> None:
-        """Remembers the benchmark outcome so a resume does not evaluate the model again."""
+        """Remember the benchmark outcome so a resume does not evaluate the model again."""
         resume_manifest.update(
             self.work_dir,
             benchmark={
@@ -968,10 +947,9 @@ class TrainApp:
         resume_manifest.mark_done(self.work_dir, "benchmark")
 
     def _restore_benchmark_results(self) -> tuple:
-        """Restores the benchmark outcome stored by a previous attempt. The two FileInfos are
-        re-read from the server by their remote paths."""
+        """Benchmark outcome of a previous attempt; the FileInfos are re-read by remote path."""
         benchmark = (self._resume_ctx or {}).get("benchmark", {})
-        logger.info("Model benchmark was already done by the previous attempt, reusing its results")
+        logger.info("Benchmark was already done by the previous attempt, reusing its results")
         return (
             self._file_info_by_path(benchmark.get("lnk_path")),
             self._file_info_by_path(benchmark.get("report_path")),
@@ -991,8 +969,8 @@ class TrainApp:
             return None
 
     def _restore_splits_items(self, manifest: dict) -> None:
-        """Rebuilds split items from the manifest. Only `dataset_name` and `name` are needed:
-        the finalize steps use them for counts and for the benchmark GT project split."""
+        """Rebuild split items from the manifest: finalize needs only `dataset_name` and
+        `name`, for counts and for the benchmark GT split."""
         splits_items = manifest.get("splits_items") or {}
         self._train_split = [
             _ResumeSplitItem(item.get("dataset_name"), item.get("name"))
@@ -1018,9 +996,8 @@ class TrainApp:
         :type resume: bool
         """
         logger.info("Finalizing training")
-        # Steps 1-2 are skipped on resume: the manifest holds the already validated and
-        # preprocessed experiment_info, where checkpoint paths are absolute — a shape the
-        # validator (which expects what the user's train function returned) would reject.
+        # Skipped on resume: the manifest holds an already validated and preprocessed
+        # experiment_info, whose absolute checkpoint paths the validator would reject.
         if not resume:
             # Step 1. Validate experiment TaskType
             experiment_info = self._validate_experiment_task_type(experiment_info)
@@ -1034,12 +1011,11 @@ class TrainApp:
         model_meta = self.create_model_meta(experiment_info["task_type"])
 
         # Step 4. Preprocess artifacts
-        # On resume the previous run already moved the artifacts into output_dir and rewrote
-        # the checkpoints, doing it again would corrupt them.
+        # the previous run already moved the artifacts and rewrote the checkpoints
         if not resume:
             experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
         elif self.is_model_benchmark_enabled:
-            # preprocessing is what normally fills these, and the benchmark may still have to run
+            # normally filled by preprocessing, and the benchmark may still have to run
             self._benchmark_params["model_files"] = dict(experiment_info.get("model_files") or {})
             self._benchmark_params["model_files"]["checkpoint"] = experiment_info["best_checkpoint"]
 
@@ -1048,8 +1024,7 @@ class TrainApp:
             train_splits_data = self._resume_ctx.get("train_splits_data", {})
         else:
             train_splits_data = self._postprocess_splits()
-            # Everything the steps below need is known now: persist it before the upload,
-            # which is the step that fails on a bad connection.
+            # persist before the upload: that is the step that fails on a bad connection
             self._dump_resume_manifest(experiment_info, train_splits_data)
 
         # Step 6. Upload artifacts
@@ -1063,7 +1038,7 @@ class TrainApp:
         mb_eval_report_id, eval_metrics = None, {}
         evaluation_report_link, primary_metric_name = None, None
         if resume and resume_manifest.is_done(self._resume_ctx, "benchmark"):
-            # already evaluated by the crashed run: reuse it instead of running inference again
+            # already evaluated by the crashed run: reuse instead of inferring again
             (
                 mb_eval_lnk_file_info,
                 mb_eval_report,
@@ -1144,8 +1119,7 @@ class TrainApp:
         experiment_info = self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, train_splits_data)
         self._generate_model_meta(remote_dir, model_meta)
-        # the metadata files above are uploaded to fixed paths and simply overwritten on resume,
-        # but the demo dir would be duplicated with a suffix, so it is uploaded only once
+        # the files above are overwritten on resume, but a demo dir would get a suffix
         if not (resume and resume_manifest.is_done(self._resume_ctx, "demo")):
             self._upload_demo_files(remote_dir)
             resume_manifest.mark_done(self.work_dir, "demo")
@@ -1175,7 +1149,7 @@ class TrainApp:
                 mb_eval_report_id,
             )
 
-        # Everything is uploaded and the experiment exists: nothing left to resume
+        # everything is uploaded and the experiment exists
         resume_manifest.remove(self.work_dir)
 
     def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
@@ -2561,8 +2535,7 @@ class TrainApp:
                 "model_name": model_name,
             }
         elif self.model_source == ModelSource.CUSTOM:
-            # task_id and checkpoint must point at the experiment the weights came from,
-            # otherwise the state cannot be loaded back by _init_model
+            # must point at the source experiment, else _init_model cannot load it back
             selector = self.gui.model_selector.experiment_selector
             source_task_id = (self.model_info or {}).get("task_id", self.task_id)
             checkpoint = selector.get_selected_checkpoint_name() or "custom checkpoint"
@@ -2577,24 +2550,20 @@ class TrainApp:
     # Upload artifacts
     def _drop_post_upload_files(self, local_files: List[str]) -> List[str]:
         """
-        Removes from the list everything that lives in a directory produced after the upload step.
-        A normal run uploads output_dir before those directories exist; on resume they are already
-        on disk, and the benchmark working directory in particular holds the downloaded GT and DT
-        projects and the visualizations, which have no place in the experiment.
+        Drop files from directories produced after the upload step. A normal run uploads
+        output_dir before they exist; the benchmark one holds downloaded GT/DT projects and
+        visualizations, which have no place in the experiment.
         """
         skipped_prefixes = tuple(
             join(self.output_dir, name) + os.sep for name in self._post_upload_dir_names
         )
         kept = [path for path in local_files if not path.startswith(skipped_prefixes)]
         if len(kept) != len(local_files):
-            logger.debug(
-                f"Skipping {len(local_files) - len(kept)} files from "
-                f"{list(self._post_upload_dir_names)} while resuming the upload."
-            )
+            logger.debug(f"Resume upload skips {len(local_files) - len(kept)} post-upload files")
         return kept
 
     def _remote_artifact_path(self, local_path: str, remote_dir: str) -> str:
-        """Destination of a local artifact inside the remote experiment directory."""
+        """Destination of a local artifact in the remote experiment dir."""
         return remote_dir.rstrip("/") + "/" + os.path.relpath(local_path, self.output_dir)
 
     def _upload_artifacts(self, resume: bool = False) -> None:
@@ -2629,9 +2598,8 @@ class TrainApp:
                     self.progress_bar_main.hide()
 
         if not resume:
-            # Resolve the final directory name before a single byte is uploaded and remember it:
-            # if this task already has an experiment directory, the upload would silently get a
-            # suffixed name, and a later resume must not send the rest into the original one.
+            # Resolve and store the target before uploading: an occupied dir would silently
+            # get a suffix, and a later resume must not send the rest into the original one.
             if self._api.file.dir_exists(self.team_id, remote_artifacts_dir):
                 remote_artifacts_dir = self._api.file.get_free_dir_name(
                     self.team_id, remote_artifacts_dir
@@ -2664,16 +2632,14 @@ class TrainApp:
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             if resume:
-                # a file list instead of the whole directory: the working directories of the
-                # steps that run after the upload must stay out of the experiment
+                # a file list, not the whole dir: post-upload working dirs must stay out
                 remote_dir = remote_artifacts_dir
                 self._api.file.upload_bulk_fast(
                     team_id=self.team_id,
                     src_paths=local_files,
                     dst_paths=[self._remote_artifact_path(p, remote_dir) for p in local_files],
                     progress_cb=upload_artifacts_pbar.update,
-                    # never fall back to the sync path: it cannot skip by hash and would re-send
-                    # everything that already made it to the server
+                    # no sync fallback: it cannot skip by hash and would re-send everything
                     skip_existing_by_hash=True,
                     enable_fallback=False,
                 )
@@ -3322,9 +3288,8 @@ class TrainApp:
         experiment_info = None
         check_logs_text = "Please check the logs for more details."
 
-        # The Start button is disabled in resume mode, but this method is also reachable from
-        # /train_from_api and from start_in_thread(). Training wipes work_dir, which is where the
-        # artifacts waiting to be uploaded live, so refuse instead of destroying them.
+        # Also reachable from /train_from_api and start_in_thread(), where the disabled button
+        # does not help. Training wipes work_dir, where the pending artifacts live.
         if self._is_resume_upload:
             message = (
                 "This task is in resume-upload mode: its trained artifacts are still waiting to be "
@@ -3401,9 +3366,8 @@ class TrainApp:
 
     def _wrapped_resume_upload(self):
         """
-        Finishes a run whose training succeeded but whose artifacts upload did not.
-        The artifacts are still in work_dir on the agent, so nothing is downloaded, nothing is
-        split again and the training function is not called.
+        Finish a run whose training succeeded but whose upload did not. The artifacts are still
+        in work_dir, so nothing is downloaded, re-split or trained again.
         """
         check_logs_text = "Please check the logs for more details."
         manifest = self._resume_ctx
@@ -3411,28 +3375,22 @@ class TrainApp:
         try:
             self._set_train_widgets_state_on_start()
             self._init_logger()
-            # neither _prepare_working_dir() nor _prepare(): work_dir holds the artifacts and
-            # the manifest, and wiping or re-downloading it is exactly what must not happen
+            # no _prepare_working_dir() / _prepare(): that would wipe or re-download work_dir
             self._training_duration = manifest.get("training_duration")
             self._train_collection_id = manifest.get("train_collection_id")
             self._val_collection_id = manifest.get("val_collection_id")
             self._restore_splits_items(manifest)
-            # finalize itself never reads sly_project, but an app-side export converter may,
-            # so open it when it is there and do not let a damaged project block the recovery
+            # finalize never reads sly_project, but an app export converter may
             try:
                 self._read_project()
             except Exception:
-                logger.warning(
-                    "Could not read the local project on resume. The upload does not need it, "
-                    "continuing.",
-                    exc_info=True,
-                )
+                logger.warning("Could not read the local project, the upload does not need it")
             resume_manifest.bump_attempt(self.work_dir)
         except Exception as e:
             message = f"Error occurred during upload resume initialization. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
-            # the artifacts are still on disk: keep them for another attempt
+            # the artifacts are still on disk: keep them
             self._request_non_zero_exit()
             self.app.shutdown()
             raise e
