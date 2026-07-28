@@ -163,6 +163,9 @@ class TrainApp:
         self._experiments_dir_name = "experiments"
         self._default_work_dir_name = "work_dir"
         self._export_dir_name = "export"
+        self._benchmark_dir_name = "benchmark"
+        # produced inside output_dir by the finalize steps that run after the upload
+        self._post_upload_dir_names = (self._benchmark_dir_name,)
         self._tensorboard_port = 6006
 
         if is_production():
@@ -2572,6 +2575,28 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Upload artifacts
+    def _drop_post_upload_files(self, local_files: List[str]) -> List[str]:
+        """
+        Removes from the list everything that lives in a directory produced after the upload step.
+        A normal run uploads output_dir before those directories exist; on resume they are already
+        on disk, and the benchmark working directory in particular holds the downloaded GT and DT
+        projects and the visualizations, which have no place in the experiment.
+        """
+        skipped_prefixes = tuple(
+            join(self.output_dir, name) + os.sep for name in self._post_upload_dir_names
+        )
+        kept = [path for path in local_files if not path.startswith(skipped_prefixes)]
+        if len(kept) != len(local_files):
+            logger.debug(
+                f"Skipping {len(local_files) - len(kept)} files from "
+                f"{list(self._post_upload_dir_names)} while resuming the upload."
+            )
+        return kept
+
+    def _remote_artifact_path(self, local_path: str, remote_dir: str) -> str:
+        """Destination of a local artifact inside the remote experiment directory."""
+        return remote_dir.rstrip("/") + "/" + os.path.relpath(local_path, self.output_dir)
+
     def _upload_artifacts(self, resume: bool = False) -> None:
         """
         Uploads the training artifacts to Supervisely.
@@ -2590,9 +2615,7 @@ class TrainApp:
         if resume:
             # the previous attempt may have been given a suffixed name, that one is the target
             remote_artifacts_dir = self._resume_ctx.get("remote_dir") or remote_artifacts_dir
-        logger.info(
-            f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
-        )
+
         # Clean debug directory if exists
         if task_id == -1 and not resume:
             if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
@@ -2605,6 +2628,20 @@ class TrainApp:
                     upload_artifacts_pbar.update(1)
                     self.progress_bar_main.hide()
 
+        if not resume:
+            # Resolve the final directory name before a single byte is uploaded and remember it:
+            # if this task already has an experiment directory, the upload would silently get a
+            # suffixed name, and a later resume must not send the rest into the original one.
+            if self._api.file.dir_exists(self.team_id, remote_artifacts_dir):
+                remote_artifacts_dir = self._api.file.get_free_dir_name(
+                    self.team_id, remote_artifacts_dir
+                )
+            resume_manifest.update(self.work_dir, remote_dir=remote_artifacts_dir)
+
+        logger.info(
+            f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
+        )
+
         # Generate link file
         if is_production():
             app_url = f"/apps/sessions/{task_id}"
@@ -2615,6 +2652,8 @@ class TrainApp:
             print(app_url, file=text_file)
 
         local_files = sly_fs.list_files_recursively(self.output_dir)
+        if resume:
+            local_files = self._drop_post_upload_files(local_files)
         total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
         with self.progress_bar_main(
             message="Uploading train artifacts to Team Files",
@@ -2624,18 +2663,27 @@ class TrainApp:
             unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory_fast(
-                team_id=self.team_id,
-                local_dir=self.output_dir,
-                remote_dir=remote_artifacts_dir,
-                progress_cb=upload_artifacts_pbar.update,
-                # on resume: same dir, skip what is already there, and never fall back to the
-                # sync path — it cannot skip by hash and would re-send everything
-                change_name_if_conflict=not resume,
-                replace_if_conflict=resume,
-                skip_existing_by_hash=resume,
-                enable_fallback=not resume,
-            )
+            if resume:
+                # a file list instead of the whole directory: the working directories of the
+                # steps that run after the upload must stay out of the experiment
+                remote_dir = remote_artifacts_dir
+                self._api.file.upload_bulk_fast(
+                    team_id=self.team_id,
+                    src_paths=local_files,
+                    dst_paths=[self._remote_artifact_path(p, remote_dir) for p in local_files],
+                    progress_cb=upload_artifacts_pbar.update,
+                    # never fall back to the sync path: it cannot skip by hash and would re-send
+                    # everything that already made it to the server
+                    skip_existing_by_hash=True,
+                    enable_fallback=False,
+                )
+            else:
+                remote_dir = self._api.file.upload_directory_fast(
+                    team_id=self.team_id,
+                    local_dir=self.output_dir,
+                    remote_dir=remote_artifacts_dir,
+                    progress_cb=upload_artifacts_pbar.update,
+                )
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
@@ -2849,7 +2897,7 @@ class TrainApp:
 
             port = 8000
             session = SessionJSON(self._api, session_url=f"http://localhost:{port}")
-            benchmark_dir = join(local_artifacts_dir, "benchmark")
+            benchmark_dir = join(local_artifacts_dir, self._benchmark_dir_name)
             sly_fs.mkdir(benchmark_dir, True)
 
             # 1. Init benchmark
@@ -3273,6 +3321,18 @@ class TrainApp:
         """
         experiment_info = None
         check_logs_text = "Please check the logs for more details."
+
+        # The Start button is disabled in resume mode, but this method is also reachable from
+        # /train_from_api and from start_in_thread(). Training wipes work_dir, which is where the
+        # artifacts waiting to be uploaded live, so refuse instead of destroying them.
+        if self._is_resume_upload:
+            message = (
+                "This task is in resume-upload mode: its trained artifacts are still waiting to be "
+                "uploaded. Starting the training would erase them. Press 'Resume Upload' to finish "
+                "the upload, or run a new task to train again."
+            )
+            logger.error(message)
+            raise RuntimeError(message)
 
         try:
             self._set_train_widgets_state_on_start()
