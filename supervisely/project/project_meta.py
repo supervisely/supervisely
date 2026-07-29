@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
+from supervisely._pickle_compat import LegacyPickleCompat
 from supervisely._utils import take_with_default
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -49,12 +50,15 @@ def _merge_img_obj_tag_metas(
     return img_tag_metas.add_items(obj_tag_metas_to_add)
 
 
-class ProjectMeta(JsonSerializable):
+class ProjectMeta(LegacyPickleCompat, JsonSerializable):
     """
     Project-level metadata: object classes, tag metas, project type and settings.
 
     This schema is used to validate and interpret annotations across a Supervisely project.
     """
+
+    # Pickles predating #810 have no _project_settings.
+    _PICKLE_DEFAULTS = {"_project_settings": lambda self: ProjectSettings()}
 
     def __init__(
         self,
@@ -170,13 +174,6 @@ class ProjectMeta(JsonSerializable):
             if project_settings is None:
                 self._project_settings = ProjectSettings()
 
-        self._project_settings.validate(self)
-
-    def __setstate__(self, state: Dict[str, Any]):
-        self.__dict__.update(state)
-        if self.__dict__.get("_project_settings") is None:
-            # Backfill for objects pickled before #810 (no __init__ call on unpickle).
-            self._project_settings = ProjectSettings()
         self._project_settings.validate(self)
 
     @property

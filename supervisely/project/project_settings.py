@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 from jsonschema import ValidationError, validate
 
+from supervisely._pickle_compat import LegacyPickleCompat
 from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.collection.str_enum import StrEnum
@@ -88,8 +89,11 @@ def validate_project_settings_schema(data: dict) -> None:
             raise ValidationError(msg)
 
 
-class ProjectSettings(JsonSerializable):
+class ProjectSettings(LegacyPickleCompat, JsonSerializable):
     """Project settings: multi-view mode, labeling interface, etc."""
+
+    # Pickles predating #979 have no labeling_interface.
+    _PICKLE_DEFAULTS = {"labeling_interface": None}
 
     def __init__(
         self,
@@ -136,12 +140,6 @@ class ProjectSettings(JsonSerializable):
             logger.warning(
                 "The 'Group Images sync mode' is enabled, but it won't effect while multi-view mode is disabled. Please enable the multi-view mode (a.k.a. 'Group Images mode')."
             )
-
-    def __setstate__(self, state: Dict):
-        self.__dict__.update(state)
-        if "labeling_interface" not in self.__dict__:
-            # Backfill for objects pickled before #979 (no __init__ call on unpickle).
-            self.labeling_interface = None
 
     @classmethod
     def from_json(cls, data: Dict) -> ProjectSettings:

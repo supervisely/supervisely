@@ -7,6 +7,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Dict, List, Optional, Union
 
+from supervisely._pickle_compat import LegacyPickleCompat
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.collection.key_indexed_collection import KeyObject
@@ -38,8 +39,17 @@ class ObjClassJsonFields:
     """"""
 
 
-class ObjClass(KeyObject, JsonSerializable):
+class ObjClass(LegacyPickleCompat, KeyObject, JsonSerializable):
     """Object class: name, geometry type (Rectangle, Polygon, etc.), color. Immutable."""
+
+    # SDK < v6.74.10 pickles have no _geometry_type_name.
+    _PICKLE_DEFAULTS = {
+        "_geometry_type_name": lambda self: (
+            AnyGeometry.geometry_name()
+            if self._geometry_type == AnyGeometry
+            else self._geometry_type.geometry_name()
+        )
+    }
 
     def __init__(
         self,
@@ -102,16 +112,6 @@ class ObjClass(KeyObject, JsonSerializable):
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")
         self._description = take_with_default(description, "")
-
-    def __setstate__(self, state: Dict):
-        self.__dict__.update(state)
-        if "_geometry_type_name" not in self.__dict__:
-            # Backfill for objects pickled before SDK v6.74.10 (no __init__ call on unpickle).
-            geometry_type = self._geometry_type
-            if geometry_type == AnyGeometry:
-                self._geometry_type_name = AnyGeometry.geometry_name()
-            else:
-                self._geometry_type_name = geometry_type.geometry_name()
 
     @property
     def name(self) -> str:

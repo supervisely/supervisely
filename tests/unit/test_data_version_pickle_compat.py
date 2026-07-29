@@ -15,9 +15,13 @@ and to_json() still work via the class's __setstate__.
 
 import pickle
 
+import pytest
+
 import supervisely as sly
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagTargetType
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import ProjectSettings
@@ -111,3 +115,48 @@ def test_project_meta_unpickle_all_legacy_attrs_missing_at_once():
     assert json_meta["classes"][0]["shape"] == "rectangle"
     assert json_meta["tags"][0]["target_type"] == TagTargetType.ALL
     assert json_meta["projectSettings"] == ProjectSettings().to_json()
+
+
+def test_project_meta_unpickle_never_revalidates_against_stricter_rules():
+    """
+    ProjectSettings.validate() rejects multiview_tag_name for VIDEOS projects,
+    but that rule was only added in #1547 (2025-11-21, video multiview support)
+    - before it, validate() didn't even branch on project type. A video
+    project version backed up earlier could have multiview_tag_name set and
+    be perfectly valid at creation time. __setstate__ must never re-run
+    validate(), or restoring such a (now technically non-compliant) backup
+    would newly crash on unpickle, even though nothing about the object
+    itself changed.
+
+    __init__ enforces this rule today, so such an object can no longer be
+    built through the normal constructor - it is hand-crafted here via
+    __new__ to stand in for a real legacy pickle.
+    """
+    settings = ProjectSettings.__new__(ProjectSettings)
+    settings.__dict__.update(
+        {
+            "multiview_enabled": True,
+            "multiview_tag_name": "group",
+            "multiview_tag_id": None,
+            "multiview_is_synced": False,
+            "labeling_interface": None,
+        }
+    )
+    meta = ProjectMeta.__new__(ProjectMeta)
+    meta.__dict__.update(
+        {
+            "_obj_classes": ObjClassCollection(),
+            "_tag_metas": TagMetaCollection(),
+            "_project_type": sly.ProjectType.VIDEOS,
+            "_project_settings": settings,
+        }
+    )
+
+    # Confirms the scenario is realistic: today's validate() really does
+    # reject it, so a crash-on-unpickle regression here would be silent otherwise.
+    with pytest.raises(RuntimeError):
+        meta.project_settings.validate(meta)
+
+    restored = _roundtrip(meta)  # must not raise
+
+    assert restored.project_settings.multiview_tag_name == "group"

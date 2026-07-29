@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from supervisely._pickle_compat import LegacyPickleCompat
 from supervisely._utils import take_with_default
 from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
@@ -120,8 +121,11 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
-class TagMeta(KeyObject, JsonSerializable):
+class TagMeta(LegacyPickleCompat, KeyObject, JsonSerializable):
     """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
+
+    # Pickles predating #1214 have no _target_type.
+    _PICKLE_DEFAULTS = {"_target_type": TagTargetType.ALL}
 
     def __init__(
         self,
@@ -214,12 +218,6 @@ class TagMeta(KeyObject, JsonSerializable):
             )
 
         _validate_color(self._color)
-
-    def __setstate__(self, state: Dict):
-        self.__dict__.update(state)
-        if "_target_type" not in self.__dict__:
-            # Backfill for objects pickled before #1214 (no __init__ call on unpickle).
-            self._target_type = TagTargetType.ALL
 
     @property
     def name(self) -> str:
