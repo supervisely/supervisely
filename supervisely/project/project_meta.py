@@ -174,9 +174,10 @@ class ProjectMeta(JsonSerializable):
 
     def __setstate__(self, state: Dict[str, Any]):
         self.__dict__.update(state)
-        if "_project_settings" not in self.__dict__:
+        if self.__dict__.get("_project_settings") is None:
             # Backfill for objects pickled before #810 (no __init__ call on unpickle).
             self._project_settings = ProjectSettings()
+        self._project_settings.validate(self)
 
     @property
     def obj_classes(self) -> ObjClassCollection:
