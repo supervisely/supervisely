@@ -10,7 +10,7 @@ in to_json() (see supervisely/project/project.py Project.upload_bin()).
 
 Each test below deletes the newly-added attribute from a fresh instance's
 __dict__ before pickling, to simulate an old backup, then asserts unpickling
-and to_json() still work via the class's __setstate__.
+and to_json() still work via @legacy_pickle_defaults.
 """
 
 import pickle
@@ -123,7 +123,7 @@ def test_project_meta_unpickle_never_revalidates_against_stricter_rules():
     but that rule was only added in #1547 (2025-11-21, video multiview support)
     - before it, validate() didn't even branch on project type. A video
     project version backed up earlier could have multiview_tag_name set and
-    be perfectly valid at creation time. __setstate__ must never re-run
+    be perfectly valid at creation time. Unpickling must never re-run
     validate(), or restoring such a (now technically non-compliant) backup
     would newly crash on unpickle, even though nothing about the object
     itself changed.

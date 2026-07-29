@@ -7,7 +7,6 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Dict, List, Optional, Union
 
-from supervisely._pickle_compat import LegacyPickleCompat
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.collection.key_indexed_collection import KeyObject
@@ -17,6 +16,7 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
+from supervisely.io.pickle_compat import legacy_pickle_defaults
 from supervisely.sly_logger import logger
 
 
@@ -39,17 +39,16 @@ class ObjClassJsonFields:
     """"""
 
 
-class ObjClass(LegacyPickleCompat, KeyObject, JsonSerializable):
+# SDK < v6.74.10 pickles have no _geometry_type_name.
+@legacy_pickle_defaults(
+    _geometry_type_name=lambda self: (
+        AnyGeometry.geometry_name()
+        if self._geometry_type == AnyGeometry
+        else self._geometry_type.geometry_name()
+    )
+)
+class ObjClass(KeyObject, JsonSerializable):
     """Object class: name, geometry type (Rectangle, Polygon, etc.), color. Immutable."""
-
-    # SDK < v6.74.10 pickles have no _geometry_type_name.
-    _PICKLE_DEFAULTS = {
-        "_geometry_type_name": lambda self: (
-            AnyGeometry.geometry_name()
-            if self._geometry_type == AnyGeometry
-            else self._geometry_type.geometry_name()
-        )
-    }
 
     def __init__(
         self,
