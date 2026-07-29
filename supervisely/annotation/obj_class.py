@@ -103,6 +103,16 @@ class ObjClass(KeyObject, JsonSerializable):
         self._hotkey = take_with_default(hotkey, "")
         self._description = take_with_default(description, "")
 
+    def __setstate__(self, state: Dict):
+        self.__dict__.update(state)
+        if "_geometry_type_name" not in self.__dict__:
+            # Backfill for objects pickled before SDK v6.74.10 (no __init__ call on unpickle).
+            geometry_type = self._geometry_type
+            if geometry_type == AnyGeometry:
+                self._geometry_type_name = AnyGeometry.geometry_name()
+            else:
+                self._geometry_type_name = geometry_type.geometry_name()
+
     @property
     def name(self) -> str:
         """

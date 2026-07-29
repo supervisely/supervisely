@@ -137,6 +137,12 @@ class ProjectSettings(JsonSerializable):
                 "The 'Group Images sync mode' is enabled, but it won't effect while multi-view mode is disabled. Please enable the multi-view mode (a.k.a. 'Group Images mode')."
             )
 
+    def __setstate__(self, state: Dict):
+        self.__dict__.update(state)
+        if "labeling_interface" not in self.__dict__:
+            # Backfill for objects pickled before #979 (no __init__ call on unpickle).
+            self.labeling_interface = None
+
     @classmethod
     def from_json(cls, data: Dict) -> ProjectSettings:
         validate_project_settings_schema(data)

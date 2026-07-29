@@ -215,6 +215,12 @@ class TagMeta(KeyObject, JsonSerializable):
 
         _validate_color(self._color)
 
+    def __setstate__(self, state: Dict):
+        self.__dict__.update(state)
+        if "_target_type" not in self.__dict__:
+            # Backfill for objects pickled before #1214 (no __init__ call on unpickle).
+            self._target_type = TagTargetType.ALL
+
     @property
     def name(self) -> str:
         """
@@ -455,11 +461,6 @@ class TagMeta(KeyObject, JsonSerializable):
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
-
-        #! fix for the issue with the default value of the target_type
-        #! while restoring Data Version with old class definitions
-        if not hasattr(self, "_target_type"):
-            self._target_type = TagTargetType.ALL
 
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
