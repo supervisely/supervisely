@@ -3884,12 +3884,13 @@ class Project:
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0
+        if with_custom_data:
+            # Merge first so restored_from below always wins over an inherited stale one.
+            custom_data.update(project_info.custom_data)
         custom_data[CUSTOM_DATA_VERSION_RESTORED_KEY] = {
             "project_id": project_info.id,
             "version_num": version_num + 1 if version_num is not None else "Unable to determine",
         }
-        if with_custom_data:
-            custom_data.update(project_info.custom_data)
         api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
         new_meta = api.project.update_meta(new_project_info.id, meta)
         # remap tags
