@@ -10,7 +10,6 @@ from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.json import JsonSerializable
-from supervisely.io.pickle_compat import legacy_pickle_defaults
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
@@ -89,8 +88,6 @@ def validate_project_settings_schema(data: dict) -> None:
             raise ValidationError(msg)
 
 
-# Pickles predating #979 have no labeling_interface.
-@legacy_pickle_defaults(labeling_interface=None)
 class ProjectSettings(JsonSerializable):
     """Project settings: multi-view mode, labeling interface, etc."""
 

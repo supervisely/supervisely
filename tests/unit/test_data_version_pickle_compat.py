@@ -1,16 +1,17 @@
 # coding: utf-8
 """Regression tests for Data Version restore's unpickle backward-compat.
 
-ObjClass, TagMeta, ProjectMeta and ProjectSettings each gained a new
-required attribute over time. Data Version backups are pickles of objects
-built by the SDK version active at backup time, and pickle restores
-__dict__ directly without calling __init__ - so unpickling an object
-created before one of these attributes existed used to raise AttributeError
-in to_json() (see supervisely/project/project.py Project.upload_bin()).
+ObjClass gained _geometry_type_name (SDK v6.74.10) and TagMeta gained
+_target_type (v6.73.260) after the .bin backup format already existed
+(v6.73.123). Backups are pickles of objects built by the SDK active at
+backup time, and pickle restores __dict__ directly without calling
+__init__ - so unpickling an object created before one of these attributes
+existed used to raise AttributeError in to_json() (see
+supervisely/project/project.py Project.upload_bin()).
 
-Each test below deletes the newly-added attribute from a fresh instance's
-__dict__ before pickling, to simulate an old backup, then asserts unpickling
-and to_json() still work via @legacy_pickle_defaults.
+Each test deletes the newly-added attribute from a fresh instance's
+__dict__ before pickling, to simulate an old backup, then asserts
+unpickling and to_json() still work via @legacy_pickle_defaults.
 """
 
 import pickle
@@ -76,36 +77,14 @@ def test_tag_meta_unpickle_new_style_unchanged():
     assert restored.to_json() == tag_meta.to_json()
 
 
-def test_project_settings_unpickle_missing_labeling_interface():
-    settings = ProjectSettings(multiview_enabled=True, multiview_tag_name="group")
-    del settings.__dict__["labeling_interface"]
-
-    restored = _roundtrip(settings)
-
-    assert restored.labeling_interface is None
-    assert "labelingInterface" not in restored.to_json()
-
-
-def test_project_meta_unpickle_missing_project_settings():
-    meta = ProjectMeta(
-        obj_classes=[ObjClass("lemon", sly.Rectangle)],
-        tag_metas=[TagMeta("fruit", sly.TagValueType.ANY_STRING)],
-        project_type=sly.ProjectType.IMAGES,
-    )
-    del meta.__dict__["_project_settings"]
-
-    restored = _roundtrip(meta)
-
-    assert restored.to_json()["projectSettings"] == ProjectSettings().to_json()
-
-
-def test_project_meta_unpickle_all_legacy_attrs_missing_at_once():
+def test_project_meta_unpickle_backfills_nested_objects():
+    """The backfill must reach classes and tags nested inside a pickled ProjectMeta,
+    which is how they actually arrive in a Data Version backup."""
     obj_class = ObjClass("lemon", sly.Rectangle)
     tag_meta = TagMeta("fruit", sly.TagValueType.ANY_STRING)
     meta = ProjectMeta(
         obj_classes=[obj_class], tag_metas=[tag_meta], project_type=sly.ProjectType.IMAGES
     )
-    del meta.__dict__["_project_settings"]
     del obj_class.__dict__["_geometry_type_name"]
     del tag_meta.__dict__["_target_type"]
 
@@ -114,7 +93,6 @@ def test_project_meta_unpickle_all_legacy_attrs_missing_at_once():
 
     assert json_meta["classes"][0]["shape"] == "rectangle"
     assert json_meta["tags"][0]["target_type"] == TagTargetType.ALL
-    assert json_meta["projectSettings"] == ProjectSettings().to_json()
 
 
 def test_project_meta_unpickle_never_revalidates_against_stricter_rules():

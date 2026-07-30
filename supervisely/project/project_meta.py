@@ -14,7 +14,6 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.json import JsonSerializable
-from supervisely.io.pickle_compat import legacy_pickle_defaults
 from supervisely.project.project_settings import LabelingInterface, ProjectSettings
 from supervisely.project.project_type import ProjectType
 
@@ -50,8 +49,6 @@ def _merge_img_obj_tag_metas(
     return img_tag_metas.add_items(obj_tag_metas_to_add)
 
 
-# Pickles predating #810 have no _project_settings.
-@legacy_pickle_defaults(_project_settings=lambda self: ProjectSettings())
 class ProjectMeta(JsonSerializable):
     """
     Project-level metadata: object classes, tag metas, project type and settings.
