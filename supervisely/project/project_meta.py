@@ -169,6 +169,9 @@ class ProjectMeta(JsonSerializable):
             self._project_settings = project_settings
             if project_settings is None:
                 self._project_settings = ProjectSettings()
+        # Instances are pickled into .bin backups: a new attribute here needs a
+        # @legacy_pickle_defaults declaration on this class, else old backups
+        # restore without it.
 
         self._project_settings.validate(self)
 

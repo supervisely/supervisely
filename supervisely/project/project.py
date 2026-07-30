@@ -80,6 +80,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
+from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.versioning.common import CUSTOM_DATA_VERSION_RESTORED_KEY
@@ -3871,6 +3872,9 @@ class Project:
             project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
                 unpickler.load()
             )
+        # Backups written by older SDKs predate some attributes of these classes;
+        # pickle skips __init__, so they arrive missing and must be backfilled.
+        restore_legacy_defaults(meta, meta.project_settings, *meta.obj_classes, *meta.tag_metas)
         if project_name is None:
             project_name = project_info.name
 

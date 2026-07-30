@@ -39,14 +39,15 @@ class ObjClassJsonFields:
     """"""
 
 
-# SDK < v6.74.10 pickles have no _geometry_type_name.
-@legacy_pickle_defaults(
-    _geometry_type_name=lambda self: (
-        AnyGeometry.geometry_name()
-        if self._geometry_type == AnyGeometry
-        else self._geometry_type.geometry_name()
-    )
-)
+def _restore_geometry_type_name(obj_class: ObjClass) -> str:
+    """Recompute _geometry_type_name for pickles predating SDK v6.74.10."""
+    geometry_type = obj_class._geometry_type
+    if geometry_type == AnyGeometry:
+        return AnyGeometry.geometry_name()
+    return geometry_type.geometry_name()
+
+
+@legacy_pickle_defaults(_geometry_type_name=_restore_geometry_type_name)
 class ObjClass(KeyObject, JsonSerializable):
     """Object class: name, geometry type (Rectangle, Polygon, etc.), color. Immutable."""
 
@@ -111,6 +112,8 @@ class ObjClass(KeyObject, JsonSerializable):
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")
         self._description = take_with_default(description, "")
+        # Instances are pickled into .bin backups: a new attribute here needs an
+        # entry in @legacy_pickle_defaults above, else old backups restore without it.
 
     @property
     def name(self) -> str:

@@ -186,6 +186,8 @@ class TagMeta(KeyObject, JsonSerializable):
         self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
         self._applicable_classes = take_with_default(applicable_classes, [])
         self._target_type = take_with_default(target_type, TagTargetType.ALL)
+        # Instances are pickled into .bin backups: a new attribute here needs an
+        # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
             raise ValueError(
                 "applicable_to = {!r} is unknown, should be one of {}".format(

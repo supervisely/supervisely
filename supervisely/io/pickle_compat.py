@@ -1,26 +1,28 @@
 # coding: utf-8
-"""Backward compatibility for objects pickled by older SDK versions.
+"""Backward compatibility for objects restored from pickles written by older SDK versions.
 
 Pickle restores __dict__ directly and never calls __init__, so an object
 pickled before a new attribute existed comes back missing it entirely
-(e.g. Data Version restore unpickling an old project backup). Declare such
-attributes with @legacy_pickle_defaults to backfill them on unpickle:
+(e.g. Data Version restore reading an old project backup). Declare such
+attributes with @legacy_pickle_defaults:
 
     @legacy_pickle_defaults(_target_type=TagTargetType.ALL)
     class TagMeta(KeyObject, JsonSerializable):
         ...
 
-Values may be plain defaults, or callable(self) when computed from other
+Values may be plain defaults, or callable(obj) when computed from other
 attributes - so a default that is itself a callable value is not supported.
 When adding an attribute to a class that ends up inside a pickled payload,
 declare its default here too.
 
-Note this hooks every state restore, including copy.copy/copy.deepcopy, not
-just unpickling; on a live object every attribute is present, so the backfill
-is a no-op there. Only classes whose instances keep state in __dict__ are
-supported - __slots__ classes receive a different state layout.
+The decorator only records the declaration; it installs no __setstate__ and
+leaves the class otherwise untouched, so nothing changes for normal use,
+copying or pickling. The backfill is applied explicitly by whoever loads a
+legacy payload, by calling restore_legacy_defaults() on the objects it
+reconstructed - see Project.upload_bin(). Only classes whose instances keep
+state in __dict__ are supported.
 
-Backfill only - never re-validate business rules on unpickle. Validation
+Backfill only - never re-validate business rules on restore. Validation
 rules get stricter over time, so re-running today's validation against
 yesterday's data would turn a harmless restore into a crash that could not
 have happened when that data was created. A deserialized object represents
@@ -32,7 +34,7 @@ from supervisely.sly_logger import logger
 
 _DEFAULTS_ATTR = "_pickle_defaults"
 
-# Warn once per (class, attribute), not once per unpickled object.
+# Warn once per (class, attribute), not once per restored object.
 _warned = set()
 
 
@@ -44,39 +46,33 @@ def _collect_defaults(cls):
     return merged
 
 
-def _setstate(self, state):
-    self.__dict__.update(state)
-    for attr, default in _collect_defaults(type(self)).items():
-        if attr not in self.__dict__:
-            self.__dict__[attr] = default(self) if callable(default) else default
-            key = (type(self).__name__, attr)
-            if key not in _warned:
-                _warned.add(key)
-                logger.warning(
-                    f"Unpickled a legacy '{key[0]}' object with no '{key[1]}' "
-                    "(created by an older SDK version) - backfilled with a default."
-                )
-
-
 def legacy_pickle_defaults(**defaults):
-    """Backfill the given attributes when unpickling legacy objects of this class."""
+    """Declare defaults used to backfill this class when restoring a legacy pickle."""
 
     def decorator(cls):
-        # Walk the MRO, not just cls: an inherited __setstate__ would be
-        # shadowed silently. object is skipped - overriding its default
-        # state handling is exactly the point.
-        for klass in cls.__mro__:
-            if klass is object:
-                continue
-            existing = vars(klass).get("__setstate__")
-            if existing is not None and existing is not _setstate:
-                raise TypeError(
-                    f"{cls.__name__} already gets __setstate__ from {klass.__name__}; "
-                    "fold its logic into the @legacy_pickle_defaults declaration "
-                    "instead of using both."
-                )
         setattr(cls, _DEFAULTS_ATTR, defaults)
-        cls.__setstate__ = _setstate
         return cls
 
     return decorator
+
+
+def restore_legacy_defaults(*objects):
+    """Backfill declared attributes missing from objects restored from an old pickle.
+
+    Pass the objects reconstructed from the payload; objects whose class
+    declares no defaults, and attributes already present, are left alone.
+    """
+    for obj in objects:
+        if obj is None:
+            continue
+        for attr, default in _collect_defaults(type(obj)).items():
+            if attr in obj.__dict__:
+                continue
+            obj.__dict__[attr] = default(obj) if callable(default) else default
+            key = (type(obj).__name__, attr)
+            if key not in _warned:
+                _warned.add(key)
+                logger.warning(
+                    f"Restored a legacy '{key[0]}' object with no '{key[1]}' "
+                    "(created by an older SDK version) - backfilled with a default."
+                )

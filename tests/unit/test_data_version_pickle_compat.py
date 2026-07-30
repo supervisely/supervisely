@@ -10,8 +10,9 @@ existed used to raise AttributeError in to_json() (see
 supervisely/project/project.py Project.upload_bin()).
 
 Each test deletes the newly-added attribute from a fresh instance's
-__dict__ before pickling, to simulate an old backup, then asserts
-unpickling and to_json() still work via @legacy_pickle_defaults.
+__dict__ before pickling, to simulate an old backup, then asserts the
+object is usable after the restore path runs restore_legacy_defaults()
+over it, the way Project.upload_bin() does.
 """
 
 import pickle
@@ -24,12 +25,28 @@ from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagTargetType
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import ProjectSettings
 
 
 def _roundtrip(obj):
-    return pickle.loads(pickle.dumps(obj))
+    """Unpickle, then backfill the way Project.upload_bin() does."""
+    restored = pickle.loads(pickle.dumps(obj))
+    restore_legacy_defaults(restored)
+    return restored
+
+
+def _roundtrip_meta(meta):
+    """Same, mirroring the exact call upload_bin() makes for a ProjectMeta."""
+    restored = pickle.loads(pickle.dumps(meta))
+    restore_legacy_defaults(
+        restored,
+        restored.project_settings,
+        *restored.obj_classes,
+        *restored.tag_metas,
+    )
+    return restored
 
 
 def test_obj_class_unpickle_missing_geometry_type_name():
@@ -88,7 +105,7 @@ def test_project_meta_unpickle_backfills_nested_objects():
     del obj_class.__dict__["_geometry_type_name"]
     del tag_meta.__dict__["_target_type"]
 
-    restored = _roundtrip(meta)
+    restored = _roundtrip_meta(meta)
     json_meta = restored.to_json()
 
     assert json_meta["classes"][0]["shape"] == "rectangle"
@@ -101,10 +118,9 @@ def test_project_meta_unpickle_never_revalidates_against_stricter_rules():
     but that rule was only added in #1547 (2025-11-21, video multiview support)
     - before it, validate() didn't even branch on project type. A video
     project version backed up earlier could have multiview_tag_name set and
-    be perfectly valid at creation time. Unpickling must never re-run
+    be perfectly valid at creation time. The restore path must never re-run
     validate(), or restoring such a (now technically non-compliant) backup
-    would newly crash on unpickle, even though nothing about the object
-    itself changed.
+    would newly crash, even though nothing about the object itself changed.
 
     __init__ enforces this rule today, so such an object can no longer be
     built through the normal constructor - it is hand-crafted here via
@@ -135,6 +151,6 @@ def test_project_meta_unpickle_never_revalidates_against_stricter_rules():
     with pytest.raises(RuntimeError):
         meta.project_settings.validate(meta)
 
-    restored = _roundtrip(meta)  # must not raise
+    restored = _roundtrip_meta(meta)  # must not raise
 
     assert restored.project_settings.multiview_tag_name == "group"
