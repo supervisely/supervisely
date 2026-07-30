@@ -796,6 +796,7 @@ ERROR_PATTERNS = {
         r".*file-storage\.bulk\.upload.*File too large.*": ErrorHandler.API.FileSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
         r".*videos\.bulk\.upload.*FileSize.*sizeLimit\":314572800.*": ErrorHandler.API.VideoFilesSizeTooLarge,
+        r".*videos\.bulk\.upload.*FileSize.*sizeLimit\":\"100mb\".*": ErrorHandler.API.VideoFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":\"25mb\".*": ErrorHandler.API.VolumeFilesSizeTooLarge,
         r".*Dataset with datasetId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.DatasetNotFound,
