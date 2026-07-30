@@ -11,8 +11,14 @@ attributes with @legacy_pickle_defaults to backfill them on unpickle:
         ...
 
 Values may be plain defaults, or callable(self) when computed from other
-attributes. When adding an attribute to a class that ends up inside a
-pickled payload, declare its default here too.
+attributes - so a default that is itself a callable value is not supported.
+When adding an attribute to a class that ends up inside a pickled payload,
+declare its default here too.
+
+Note this hooks every state restore, including copy.copy/copy.deepcopy, not
+just unpickling; on a live object every attribute is present, so the backfill
+is a no-op there. Only classes whose instances keep state in __dict__ are
+supported - __slots__ classes receive a different state layout.
 
 Backfill only - never re-validate business rules on unpickle. Validation
 rules get stricter over time, so re-running today's validation against
@@ -56,11 +62,19 @@ def legacy_pickle_defaults(**defaults):
     """Backfill the given attributes when unpickling legacy objects of this class."""
 
     def decorator(cls):
-        if "__setstate__" in vars(cls):
-            raise TypeError(
-                f"{cls.__name__} defines its own __setstate__; fold its logic into the "
-                "@legacy_pickle_defaults declaration instead of using both."
-            )
+        # Walk the MRO, not just cls: an inherited __setstate__ would be
+        # shadowed silently. object is skipped - overriding its default
+        # state handling is exactly the point.
+        for klass in cls.__mro__:
+            if klass is object:
+                continue
+            existing = vars(klass).get("__setstate__")
+            if existing is not None and existing is not _setstate:
+                raise TypeError(
+                    f"{cls.__name__} already gets __setstate__ from {klass.__name__}; "
+                    "fold its logic into the @legacy_pickle_defaults declaration "
+                    "instead of using both."
+                )
         setattr(cls, _DEFAULTS_ATTR, defaults)
         cls.__setstate__ = _setstate
         return cls
