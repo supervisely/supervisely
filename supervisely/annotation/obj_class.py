@@ -16,6 +16,7 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
+from supervisely.io.pickle_compat import legacy_pickle_defaults
 from supervisely.sly_logger import logger
 
 
@@ -38,6 +39,15 @@ class ObjClassJsonFields:
     """"""
 
 
+def _restore_geometry_type_name(obj_class: ObjClass) -> str:
+    """Recompute _geometry_type_name for pickles predating SDK v6.74.10."""
+    geometry_type = obj_class._geometry_type
+    if geometry_type == AnyGeometry:
+        return AnyGeometry.geometry_name()
+    return geometry_type.geometry_name()
+
+
+@legacy_pickle_defaults(_geometry_type_name=_restore_geometry_type_name)
 class ObjClass(KeyObject, JsonSerializable):
     """Object class: name, geometry type (Rectangle, Polygon, etc.), color. Immutable."""
 
@@ -102,6 +112,8 @@ class ObjClass(KeyObject, JsonSerializable):
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")
         self._description = take_with_default(description, "")
+        # Instances are pickled into .bin backups: a new attribute here needs an
+        # entry in @legacy_pickle_defaults above, else old backups restore without it.
 
     @property
     def name(self) -> str:

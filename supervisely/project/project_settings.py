@@ -131,6 +131,9 @@ class ProjectSettings(JsonSerializable):
                 )
 
         self.labeling_interface = labeling_interface
+        # Instances are pickled into .bin backups: a new attribute here needs a
+        # @legacy_pickle_defaults declaration on this class, else old backups
+        # restore without it.
 
         if multiview_enabled is False and multiview_is_synced is True:
             logger.warning(

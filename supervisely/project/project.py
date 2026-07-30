@@ -80,6 +80,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
+from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.versioning.common import CUSTOM_DATA_VERSION_RESTORED_KEY
@@ -3871,6 +3872,9 @@ class Project:
             project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
                 unpickler.load()
             )
+        # Backups written by older SDKs predate some attributes of these classes;
+        # pickle skips __init__, so they arrive missing and must be backfilled.
+        restore_legacy_defaults(meta, meta.project_settings, *meta.obj_classes, *meta.tag_metas)
         if project_name is None:
             project_name = project_info.name
 
@@ -3884,12 +3888,13 @@ class Project:
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0
+        if with_custom_data:
+            # Merge first so restored_from below always wins over an inherited stale one.
+            custom_data.update(project_info.custom_data)
         custom_data[CUSTOM_DATA_VERSION_RESTORED_KEY] = {
             "project_id": project_info.id,
             "version_num": version_num + 1 if version_num is not None else "Unable to determine",
         }
-        if with_custom_data:
-            custom_data.update(project_info.custom_data)
         api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
         new_meta = api.project.update_meta(new_project_info.id, meta)
         # remap tags
@@ -4039,6 +4044,7 @@ class Project:
             other_figures = []
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
             old_alpha_figure_ids = []
+            old_other_figure_ids = []
             tags_list = []  # to append tags to figures in bulk
             if ds_progress is not None:
                 ds_fig_progress = tqdm_sly(
@@ -4079,6 +4085,9 @@ class Project:
                     ]
                     other_figures.extend(new_figure_jsons)
                     alpha_figures.extend(new_alpha_figure_jsons)
+                    # Keep old ids in the same order as the figures they belong to,
+                    # so tags can be matched by id rather than by position below.
+                    old_other_figure_ids.extend(f["id"] for f in other_figure_jsons)
 
                     def process_figures(figure_jsons, figure_tags):
                         for figure in figure_jsons:
@@ -4103,8 +4112,13 @@ class Project:
             for tag, value in image_lists_by_tags.items():
                 for value, image_ids in value.items():
                     api.image.add_tag_batch(image_ids, tag, value, batch_size=200)
-            for new_of_id, tags in zip(all_figure_ids, all_figure_tags.values()):
-                for tag_id, tag_value in tags:
+            # all_figure_ids is ordered "every other figure, then every alpha figure",
+            # while all_figure_tags was filled per image (that image's other figures,
+            # then its alpha ones). Pairing them positionally shifted every tag after
+            # the first alpha mask onto the wrong figure, so match by old figure id.
+            old_figure_ids = old_other_figure_ids + old_alpha_figure_ids
+            for new_of_id, old_fig_id in zip(all_figure_ids, old_figure_ids):
+                for tag_id, tag_value in all_figure_tags.get(old_fig_id, []):
                     new_tag_id = old_new_tags_mapping[tag_id]
                     tags_list.append(
                         {"tagId": new_tag_id, "figureId": new_of_id, "value": tag_value}

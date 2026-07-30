@@ -10,6 +10,7 @@ from supervisely._utils import take_with_default
 from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
+from supervisely.io.pickle_compat import legacy_pickle_defaults
 
 
 class TagValueType:
@@ -120,6 +121,8 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
+# Pickles predating #1214 have no _target_type.
+@legacy_pickle_defaults(_target_type=TagTargetType.ALL)
 class TagMeta(KeyObject, JsonSerializable):
     """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
 
@@ -183,6 +186,8 @@ class TagMeta(KeyObject, JsonSerializable):
         self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
         self._applicable_classes = take_with_default(applicable_classes, [])
         self._target_type = take_with_default(target_type, TagTargetType.ALL)
+        # Instances are pickled into .bin backups: a new attribute here needs an
+        # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
             raise ValueError(
                 "applicable_to = {!r} is unknown, should be one of {}".format(
@@ -455,11 +460,6 @@ class TagMeta(KeyObject, JsonSerializable):
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
-
-        #! fix for the issue with the default value of the target_type
-        #! while restoring Data Version with old class definitions
-        if not hasattr(self, "_target_type"):
-            self._target_type = TagTargetType.ALL
 
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
