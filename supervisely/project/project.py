@@ -3906,45 +3906,47 @@ class Project:
 
         # Detect duplicate tag applications in the backup - the same tag
         # (regardless of value) applied more than once to one image or one
-        # figure/object. This can exist even when "Multiple tags mode" is off on
-        # the source project, since uploading annotations doesn't enforce that
-        # check (only adding a single tag through the UI/API does). If the
-        # restored project doesn't allow duplicates, the server rejects the
-        # write outright - so point out exactly where each one is, for the user
-        # to review by hand, and force the setting on below so nothing is lost.
-        tag_id_to_name = {t["id"]: t["name"] for t in old_tags}
-        dataset_name_by_id = {d.id: d.name for d in dataset_infos}
-        image_name_by_id = {img.id: img.name for img in image_infos}
+        # figure/object. Only worth checking when the source doesn't already
+        # allow it: if it does, the restored project inherits that below and
+        # there's nothing to force or warn about. This can still happen with
+        # the setting off, since uploading an annotation doesn't enforce the
+        # check that adding a single tag does - so point out exactly where
+        # each one is, for the user to review by hand, and force the setting
+        # on below so nothing is lost.
         has_duplicate_tags = False
-        for image_info in image_infos:
-            for tag_id, count in Counter(t.get("tagId") for t in image_info.tags).items():
-                if count > 1:
-                    has_duplicate_tags = True
-                    logger.warning(
-                        f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
-                        f"{count} times to image '{image_info.name}' (dataset "
-                        f"'{dataset_name_by_id.get(image_info.dataset_id, image_info.dataset_id)}') "
-                        "in the backup."
-                    )
-        for image_id, image_figures in figures.items():
-            for figure in image_figures:
-                for tag_id, count in Counter(t.get("tagId") for t in figure.tags).items():
+        if not (project_info.settings or {}).get("allowDuplicateTags"):
+            tag_id_to_name = {t["id"]: t["name"] for t in old_tags}
+            dataset_name_by_id = {d.id: d.name for d in dataset_infos}
+            image_name_by_id = {img.id: img.name for img in image_infos}
+            for image_info in image_infos:
+                for tag_id, count in Counter(t.get("tagId") for t in image_info.tags).items():
                     if count > 1:
                         has_duplicate_tags = True
                         logger.warning(
                             f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
-                            f"{count} times to an object on image "
-                            f"'{image_name_by_id.get(image_id, image_id)}' (dataset "
-                            f"'{dataset_name_by_id.get(figure.dataset_id, figure.dataset_id)}') "
+                            f"{count} times to image '{image_info.name}' (dataset "
+                            f"'{dataset_name_by_id.get(image_info.dataset_id, image_info.dataset_id)}') "
                             "in the backup."
                         )
-        if has_duplicate_tags:
-            logger.warning(
-                "The backup contains images/objects with the same tag applied "
-                "more than once - 'Multiple tags mode' will be enabled on the "
-                "restored project so nothing is lost. Review the items listed "
-                "above and decide by hand whether any of them need cleanup."
-            )
+            for image_id, image_figures in figures.items():
+                for figure in image_figures:
+                    for tag_id, count in Counter(t.get("tagId") for t in figure.tags).items():
+                        if count > 1:
+                            has_duplicate_tags = True
+                            logger.warning(
+                                f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
+                                f"{count} times to an object on image "
+                                f"'{image_name_by_id.get(image_id, image_id)}' (dataset "
+                                f"'{dataset_name_by_id.get(figure.dataset_id, figure.dataset_id)}') "
+                                "in the backup."
+                            )
+            if has_duplicate_tags:
+                logger.warning(
+                    "The backup contains images/objects with the same tag applied "
+                    "more than once - 'Multiple tags mode' will be enabled on the "
+                    "restored project so nothing is lost. Review the items listed "
+                    "above and decide by hand whether any of them need cleanup."
+                )
 
         # Restore project-level settings from the backup. The server silently
         # ignores any key here it doesn't support, so it's safe to pass the whole
