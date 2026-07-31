@@ -10,7 +10,7 @@ import os
 import pickle
 import random
 import shutil
-from collections import defaultdict, namedtuple
+from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -4038,7 +4038,12 @@ class Project:
                 new_file_infos.extend(new_file_infos_link)
             # ----------------------------------------------- - ---------------------------------------------- #
 
-            # image_lists_by_tags -> tagId: {tagValue: [imageId]}
+            # image_lists_by_tags -> tagId: {tagValue: [imageId, ...]}
+            # A project with "Multiple tags mode" (allowDuplicateTags) enabled lets
+            # the same tag+value be applied to one image more than once - keep the
+            # list as-is (with repeats) so that count survives the restore; it's
+            # peeled off into duplicate-free batches below, since the bulk endpoint
+            # rejects a batch containing the same image id twice.
             image_lists_by_tags = defaultdict(lambda: defaultdict(list))
             alpha_figures = []
             other_figures = []
@@ -4111,7 +4116,16 @@ class Project:
             api.image.figure.upload_geometries_batch(new_alpha_figure_ids, ordered_alpha_geometries)
             for tag, value in image_lists_by_tags.items():
                 for value, image_ids in value.items():
-                    api.image.add_tag_batch(image_ids, tag, value, batch_size=200)
+                    # Peel off one occurrence per image per call: level 1 covers every
+                    # image that has this tag+value at least once, level 2 only those
+                    # that had it twice, and so on - each call's ids are unique, and
+                    # the total number of calls an image appears in equals its count.
+                    remaining = Counter(image_ids)
+                    while remaining:
+                        api.image.add_tag_batch(list(remaining), tag, value, batch_size=200)
+                        remaining = Counter(
+                            {img_id: n - 1 for img_id, n in remaining.items() if n > 1}
+                        )
             # all_figure_ids is ordered "every other figure, then every alpha figure",
             # while all_figure_tags was filled per image (that image's other figures,
             # then its alpha ones). Pairing them positionally shifted every tag after
