@@ -10,7 +10,7 @@ import os
 import pickle
 import random
 import shutil
-from collections import Counter, defaultdict, namedtuple
+from collections import defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -3903,6 +3903,19 @@ class Project:
         old_new_tags_mapping = dict(
             map(lambda old_tag, new_tag: (old_tag["id"], new_tag["id"]), old_tags, new_tags)
         )
+
+        # Restore project-level settings from the backup. The server silently
+        # ignores any key here it doesn't support, so it's safe to pass the whole
+        # block through as-is. groupImagesByTagId is remapped like every other tag
+        # reference, since it points at a tag id from the source project.
+        if project_info.settings:
+            new_settings = dict(project_info.settings)
+            if new_settings.get("groupImagesByTagId") is not None:
+                new_settings["groupImagesByTagId"] = old_new_tags_mapping.get(
+                    new_settings["groupImagesByTagId"]
+                )
+            api.project.update_settings(new_project_info.id, new_settings)
+
         # remap classes
         old_classes = meta.obj_classes.to_json()
         new_classes = new_meta.obj_classes.to_json()
@@ -4038,13 +4051,7 @@ class Project:
                 new_file_infos.extend(new_file_infos_link)
             # ----------------------------------------------- - ---------------------------------------------- #
 
-            # image_lists_by_tags -> tagId: {tagValue: [imageId, ...]}
-            # A project with "Multiple tags mode" (allowDuplicateTags) enabled lets
-            # the same tag+value be applied to one image more than once - keep the
-            # list as-is (with repeats) so that count survives the restore; it's
-            # peeled off into duplicate-free batches below, since the bulk endpoint
-            # rejects a batch containing the same image id twice.
-            image_lists_by_tags = defaultdict(lambda: defaultdict(list))
+            image_tags_list = []  # to append tags to images in bulk
             alpha_figures = []
             other_figures = []
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
@@ -4059,7 +4066,13 @@ class Project:
             for old_file_info, new_file_info in zip(values["infos"], new_file_infos):
                 for tag in old_file_info.tags:
                     new_tag_id = old_new_tags_mapping[tag.get("tagId")]
-                    image_lists_by_tags[new_tag_id][tag.get("value")].append(new_file_info.id)
+                    image_tags_list.append(
+                        {
+                            "tagId": new_tag_id,
+                            "entityId": new_file_info.id,
+                            "value": tag.get("value"),
+                        }
+                    )
                 image_figures = figures.get(old_file_info.id, [])
                 if len(image_figures) > 0:
                     alpha_figure_jsons = []
@@ -4114,18 +4127,17 @@ class Project:
             all_figure_ids.extend(new_alpha_figure_ids)
             ordered_alpha_geometries = list(map(alpha_geometries.get, old_alpha_figure_ids))
             api.image.figure.upload_geometries_batch(new_alpha_figure_ids, ordered_alpha_geometries)
-            for tag, value in image_lists_by_tags.items():
-                for value, image_ids in value.items():
-                    # Peel off one occurrence per image per call: level 1 covers every
-                    # image that has this tag+value at least once, level 2 only those
-                    # that had it twice, and so on - each call's ids are unique, and
-                    # the total number of calls an image appears in equals its count.
-                    remaining = Counter(image_ids)
-                    while remaining:
-                        api.image.add_tag_batch(list(remaining), tag, value, batch_size=200)
-                        remaining = Counter(
-                            {img_id: n - 1 for img_id, n in remaining.items() if n > 1}
-                        )
+            # add_tag_batch's endpoint (image-tags.bulk.add-to-image) requires unique
+            # image ids per call, which can't represent the same tag+value applied to
+            # one image more than once (allowed when allowDuplicateTags is enabled -
+            # restored above). add_to_entities_json posts a plain list of
+            # {tagId, entityId, value} dicts instead, so repeats are just more entries.
+            api.image.tag.add_to_entities_json(
+                new_project_info.id,
+                image_tags_list,
+                batch_size=300,
+                log_progress=True if ds_progress is not None else False,
+            )
             # all_figure_ids is ordered "every other figure, then every alpha figure",
             # while all_figure_tags was filled per image (that image's other figures,
             # then its alpha ones). Pairing them positionally shifted every tag after
