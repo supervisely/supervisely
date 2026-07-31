@@ -3952,11 +3952,17 @@ class Project:
         # ignores any key here it doesn't support, so it's safe to pass the whole
         # block through as-is. groupImagesByTagId is remapped like every other tag
         # reference, since it points at a tag id from the source project.
+        # labelingInterface is dropped: it's already restored via ProjectMeta/
+        # update_meta above, and re-sending it here as an explicit null makes the
+        # server coerce it to the literal string "default" instead of leaving it
+        # unset - ProjectSettings.to_json() avoids this by omitting the key
+        # entirely when it's None, so mirror that here rather than resending it.
         # allowDuplicateTags is forced on if duplicates were found above,
         # regardless of what the source had it set to - otherwise the restore
         # would fail even though the source project's data already had them.
         if project_info.settings or has_duplicate_tags:
             new_settings = dict(project_info.settings or {})
+            new_settings.pop("labelingInterface", None)
             if new_settings.get("groupImagesByTagId") is not None:
                 new_settings["groupImagesByTagId"] = old_new_tags_mapping.get(
                     new_settings["groupImagesByTagId"]
