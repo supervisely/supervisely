@@ -732,6 +732,10 @@ class ApiField:
     TRACKED_FIGURES = "trackedFigures"
     """"""
     TEAM_FILE_ID = "teamFileId"
+    """"""
+    TEAMS_IDS = "teamsIds"
+    """"""
+    WORKSPACES_IDS = "workspacesIds"
 
 
 def _get_single_item(items):
