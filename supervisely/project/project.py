@@ -10,7 +10,7 @@ import os
 import pickle
 import random
 import shutil
-from collections import defaultdict, namedtuple
+from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -3904,16 +3904,63 @@ class Project:
             map(lambda old_tag, new_tag: (old_tag["id"], new_tag["id"]), old_tags, new_tags)
         )
 
+        # Detect duplicate tag applications in the backup - the same tag
+        # (regardless of value) applied more than once to one image or one
+        # figure/object. This can exist even when "Multiple tags mode" is off on
+        # the source project, since uploading annotations doesn't enforce that
+        # check (only adding a single tag through the UI/API does). If the
+        # restored project doesn't allow duplicates, the server rejects the
+        # write outright - so point out exactly where each one is, for the user
+        # to review by hand, and force the setting on below so nothing is lost.
+        tag_id_to_name = {t["id"]: t["name"] for t in old_tags}
+        dataset_name_by_id = {d.id: d.name for d in dataset_infos}
+        image_name_by_id = {img.id: img.name for img in image_infos}
+        has_duplicate_tags = False
+        for image_info in image_infos:
+            for tag_id, count in Counter(t.get("tagId") for t in image_info.tags).items():
+                if count > 1:
+                    has_duplicate_tags = True
+                    logger.warning(
+                        f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
+                        f"{count} times to image '{image_info.name}' (dataset "
+                        f"'{dataset_name_by_id.get(image_info.dataset_id, image_info.dataset_id)}') "
+                        "in the backup."
+                    )
+        for image_id, image_figures in figures.items():
+            for figure in image_figures:
+                for tag_id, count in Counter(t.get("tagId") for t in figure.tags).items():
+                    if count > 1:
+                        has_duplicate_tags = True
+                        logger.warning(
+                            f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
+                            f"{count} times to an object on image "
+                            f"'{image_name_by_id.get(image_id, image_id)}' (dataset "
+                            f"'{dataset_name_by_id.get(figure.dataset_id, figure.dataset_id)}') "
+                            "in the backup."
+                        )
+        if has_duplicate_tags:
+            logger.warning(
+                "The backup contains images/objects with the same tag applied "
+                "more than once - 'Multiple tags mode' will be enabled on the "
+                "restored project so nothing is lost. Review the items listed "
+                "above and decide by hand whether any of them need cleanup."
+            )
+
         # Restore project-level settings from the backup. The server silently
         # ignores any key here it doesn't support, so it's safe to pass the whole
         # block through as-is. groupImagesByTagId is remapped like every other tag
         # reference, since it points at a tag id from the source project.
-        if project_info.settings:
-            new_settings = dict(project_info.settings)
+        # allowDuplicateTags is forced on if duplicates were found above,
+        # regardless of what the source had it set to - otherwise the restore
+        # would fail even though the source project's data already had them.
+        if project_info.settings or has_duplicate_tags:
+            new_settings = dict(project_info.settings or {})
             if new_settings.get("groupImagesByTagId") is not None:
                 new_settings["groupImagesByTagId"] = old_new_tags_mapping.get(
                     new_settings["groupImagesByTagId"]
                 )
+            if has_duplicate_tags:
+                new_settings["allowDuplicateTags"] = True
             api.project.update_settings(new_project_info.id, new_settings)
 
         # remap classes
