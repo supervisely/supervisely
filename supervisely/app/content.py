@@ -102,6 +102,34 @@ def get_synced_data_dir():
     return dir
 
 
+def _resolve_append_tokens(src: dict, ops: list) -> list:
+    """Rewrite the RFC 6902 array-append token '-' into an explicit index.
+
+    patchdiff emits {"op": "add", "path": ".../-"} for a push to the end of a
+    list. The token is valid RFC 6902, but the frontend patch appliers shipped
+    with older instances choke on it and drop the whole websocket message, so
+    the UI silently stops updating (issues#5992). Indices are resolved against
+    the document as it looks when the op is applied, not against `src`.
+    """
+    doc = None
+    resolved = []
+    for op in ops:
+        path = op.get("path", "")
+        if path.endswith("/-") and op.get("op") == "add":
+            if doc is None:
+                doc = copy.deepcopy(src)
+                for previous in resolved:
+                    jsonpatch.JsonPatch([previous]).apply(doc, in_place=True)
+            target = jsonpointer.JsonPointer(path[: -len("/-")]).resolve(doc)
+            if not isinstance(target, list):
+                raise ValueError(f"append token on a non-list path: {path}")
+            op = dict(op, path=f"{path[: -len('-')]}{len(target)}")
+        resolved.append(op)
+        if doc is not None:
+            jsonpatch.JsonPatch([op]).apply(doc, in_place=True)
+    return resolved
+
+
 def _diff(src: dict, dst: dict) -> jsonpatch.JsonPatch:
     """Minimal RFC 6902 diff of `src` -> `dst`.
 
@@ -111,7 +139,7 @@ def _diff(src: dict, dst: dict) -> jsonpatch.JsonPatch:
     """
     if patchdiff is not None:
         ops, _ = patchdiff.diff(src, dst)
-        return jsonpatch.JsonPatch(to_str_paths(ops))
+        return jsonpatch.JsonPatch(_resolve_append_tokens(src, to_str_paths(ops)))
     patch = jsonpatch.JsonPatch.from_diff(src, dst)
     if patch.apply(src) != dst:
         raise ValueError("jsonpatch.from_diff produced an invalid patch")
