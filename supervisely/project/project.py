@@ -10,7 +10,7 @@ import os
 import pickle
 import random
 import shutil
-from collections import defaultdict, namedtuple
+from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -39,7 +39,12 @@ from supervisely._utils import (
     removesuffix,
     snake_to_human,
 )
-from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
+from supervisely.annotation.annotation import (
+    ANN_EXT,
+    Annotation,
+    AnnotationJsonFields,
+    TagCollection,
+)
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.api.api import Api, ApiContext, ApiField
@@ -75,6 +80,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
+from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.versioning.common import CUSTOM_DATA_VERSION_RESTORED_KEY
@@ -3756,7 +3762,11 @@ class Project:
 
             for batch in batched(ds_image_infos, batch_size):
                 image_ids = [image_info.id for image_info in batch]
-                ds_figures = api.image.figure.download(dataset_info.id, image_ids)
+                # integer_coords=False keeps exact subpixel coordinates so that
+                # upload_bin can restore figures without a half-pixel shift
+                ds_figures = api.image.figure.download(
+                    dataset_info.id, image_ids, integer_coords=False
+                )
                 alpha_ids = [
                     figure.id
                     for figures in ds_figures.values()
@@ -3862,6 +3872,9 @@ class Project:
             project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
                 unpickler.load()
             )
+        # Backups written by older SDKs predate some attributes of these classes;
+        # pickle skips __init__, so they arrive missing and must be backfilled.
+        restore_legacy_defaults(meta, meta.project_settings, *meta.obj_classes, *meta.tag_metas)
         if project_name is None:
             project_name = project_info.name
 
@@ -3875,12 +3888,13 @@ class Project:
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0
+        if with_custom_data:
+            # Merge first so restored_from below always wins over an inherited stale one.
+            custom_data.update(project_info.custom_data)
         custom_data[CUSTOM_DATA_VERSION_RESTORED_KEY] = {
             "project_id": project_info.id,
             "version_num": version_num + 1 if version_num is not None else "Unable to determine",
         }
-        if with_custom_data:
-            custom_data.update(project_info.custom_data)
         api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
         new_meta = api.project.update_meta(new_project_info.id, meta)
         # remap tags
@@ -3889,6 +3903,74 @@ class Project:
         old_new_tags_mapping = dict(
             map(lambda old_tag, new_tag: (old_tag["id"], new_tag["id"]), old_tags, new_tags)
         )
+
+        # Detect duplicate tag applications in the backup - the same tag
+        # (regardless of value) applied more than once to one image or one
+        # figure/object. Only worth checking when the source doesn't already
+        # allow it: if it does, the restored project inherits that below and
+        # there's nothing to force or warn about. This can still happen with
+        # the setting off, since uploading an annotation doesn't enforce the
+        # check that adding a single tag does - so point out exactly where
+        # each one is, for the user to review by hand, and force the setting
+        # on below so nothing is lost.
+        has_duplicate_tags = False
+        if not (project_info.settings or {}).get("allowDuplicateTags"):
+            tag_id_to_name = {t["id"]: t["name"] for t in old_tags}
+            dataset_name_by_id = {d.id: d.name for d in dataset_infos}
+            image_name_by_id = {img.id: img.name for img in image_infos}
+            for image_info in image_infos:
+                for tag_id, count in Counter(t.get("tagId") for t in image_info.tags).items():
+                    if count > 1:
+                        has_duplicate_tags = True
+                        logger.warning(
+                            f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
+                            f"{count} times to image '{image_info.name}' (dataset "
+                            f"'{dataset_name_by_id.get(image_info.dataset_id, image_info.dataset_id)}') "
+                            "in the backup."
+                        )
+            for image_id, image_figures in figures.items():
+                for figure in image_figures:
+                    for tag_id, count in Counter(t.get("tagId") for t in figure.tags).items():
+                        if count > 1:
+                            has_duplicate_tags = True
+                            logger.warning(
+                                f"Duplicate tag '{tag_id_to_name.get(tag_id, tag_id)}' is applied "
+                                f"{count} times to an object on image "
+                                f"'{image_name_by_id.get(image_id, image_id)}' (dataset "
+                                f"'{dataset_name_by_id.get(figure.dataset_id, figure.dataset_id)}') "
+                                "in the backup."
+                            )
+            if has_duplicate_tags:
+                logger.warning(
+                    "The backup contains images/objects with the same tag applied "
+                    "more than once - 'Multiple tags mode' will be enabled on the "
+                    "restored project so nothing is lost. Review the items listed "
+                    "above and decide by hand whether any of them need cleanup."
+                )
+
+        # Restore project-level settings from the backup. The server silently
+        # ignores any key here it doesn't support, so it's safe to pass the whole
+        # block through as-is. groupImagesByTagId is remapped like every other tag
+        # reference, since it points at a tag id from the source project.
+        # labelingInterface is dropped: it's already restored via ProjectMeta/
+        # update_meta above, and re-sending it here as an explicit null makes the
+        # server coerce it to the literal string "default" instead of leaving it
+        # unset - ProjectSettings.to_json() avoids this by omitting the key
+        # entirely when it's None, so mirror that here rather than resending it.
+        # allowDuplicateTags is forced on if duplicates were found above,
+        # regardless of what the source had it set to - otherwise the restore
+        # would fail even though the source project's data already had them.
+        if project_info.settings or has_duplicate_tags:
+            new_settings = dict(project_info.settings or {})
+            new_settings.pop("labelingInterface", None)
+            if new_settings.get("groupImagesByTagId") is not None:
+                new_settings["groupImagesByTagId"] = old_new_tags_mapping.get(
+                    new_settings["groupImagesByTagId"]
+                )
+            if has_duplicate_tags:
+                new_settings["allowDuplicateTags"] = True
+            api.project.update_settings(new_project_info.id, new_settings)
+
         # remap classes
         old_classes = meta.obj_classes.to_json()
         new_classes = new_meta.obj_classes.to_json()
@@ -4024,12 +4106,12 @@ class Project:
                 new_file_infos.extend(new_file_infos_link)
             # ----------------------------------------------- - ---------------------------------------------- #
 
-            # image_lists_by_tags -> tagId: {tagValue: [imageId]}
-            image_lists_by_tags = defaultdict(lambda: defaultdict(list))
+            image_tags_list = []  # to append tags to images in bulk
             alpha_figures = []
             other_figures = []
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
             old_alpha_figure_ids = []
+            old_other_figure_ids = []
             tags_list = []  # to append tags to figures in bulk
             if ds_progress is not None:
                 ds_fig_progress = tqdm_sly(
@@ -4039,7 +4121,13 @@ class Project:
             for old_file_info, new_file_info in zip(values["infos"], new_file_infos):
                 for tag in old_file_info.tags:
                     new_tag_id = old_new_tags_mapping[tag.get("tagId")]
-                    image_lists_by_tags[new_tag_id][tag.get("value")].append(new_file_info.id)
+                    image_tags_list.append(
+                        {
+                            "tagId": new_tag_id,
+                            "entityId": new_file_info.id,
+                            "value": tag.get("value"),
+                        }
+                    )
                 image_figures = figures.get(old_file_info.id, [])
                 if len(image_figures) > 0:
                     alpha_figure_jsons = []
@@ -4070,6 +4158,9 @@ class Project:
                     ]
                     other_figures.extend(new_figure_jsons)
                     alpha_figures.extend(new_alpha_figure_jsons)
+                    # Keep old ids in the same order as the figures they belong to,
+                    # so tags can be matched by id rather than by position below.
+                    old_other_figure_ids.extend(f["id"] for f in other_figure_jsons)
 
                     def process_figures(figure_jsons, figure_tags):
                         for figure in figure_jsons:
@@ -4091,11 +4182,24 @@ class Project:
             all_figure_ids.extend(new_alpha_figure_ids)
             ordered_alpha_geometries = list(map(alpha_geometries.get, old_alpha_figure_ids))
             api.image.figure.upload_geometries_batch(new_alpha_figure_ids, ordered_alpha_geometries)
-            for tag, value in image_lists_by_tags.items():
-                for value, image_ids in value.items():
-                    api.image.add_tag_batch(image_ids, tag, value, batch_size=200)
-            for new_of_id, tags in zip(all_figure_ids, all_figure_tags.values()):
-                for tag_id, tag_value in tags:
+            # add_tag_batch's endpoint (image-tags.bulk.add-to-image) requires unique
+            # image ids per call, which can't represent the same tag+value applied to
+            # one image more than once (allowed when allowDuplicateTags is enabled -
+            # restored above). add_to_entities_json posts a plain list of
+            # {tagId, entityId, value} dicts instead, so repeats are just more entries.
+            api.image.tag.add_to_entities_json(
+                new_project_info.id,
+                image_tags_list,
+                batch_size=300,
+                log_progress=True if ds_progress is not None else False,
+            )
+            # all_figure_ids is ordered "every other figure, then every alpha figure",
+            # while all_figure_tags was filled per image (that image's other figures,
+            # then its alpha ones). Pairing them positionally shifted every tag after
+            # the first alpha mask onto the wrong figure, so match by old figure id.
+            old_figure_ids = old_other_figure_ids + old_alpha_figure_ids
+            for new_of_id, old_fig_id in zip(all_figure_ids, old_figure_ids):
+                for tag_id, tag_value in all_figure_tags.get(old_fig_id, []):
                     new_tag_id = old_new_tags_mapping[tag_id]
                     tags_list.append(
                         {"tagId": new_tag_id, "figureId": new_of_id, "value": tag_value}
@@ -6191,6 +6295,18 @@ async def _download_project_async(
             logger.info(f"There was an error while creating README: {e}")
 
 
+def _set_ann_json_size(ann_json: dict, height: Optional[int], width: Optional[int]) -> None:
+    """Patch image size directly in the raw annotation JSON received from the server.
+
+    Re-serializing through ``Annotation.from_json(...).to_json()`` would drop
+    server-only fields which the SDK does not know about (e.g. ``objectId``).
+    """
+    ann_json[AnnotationJsonFields.IMG_SIZE] = {
+        AnnotationJsonFields.IMG_SIZE_HEIGHT: height,
+        AnnotationJsonFields.IMG_SIZE_WIDTH: width,
+    }
+
+
 async def _download_project_item_async(
     api: sly.Api,
     img_info: sly.ImageInfo,
@@ -6224,7 +6340,7 @@ async def _download_project_item_async(
             raise
         if None in tmp_ann.img_size:
             tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-            ann_json = tmp_ann.to_json()
+            _set_ann_json_size(ann_json, img_info.height, img_info.width)
     else:
         tags = TagCollection.from_api_response(
             img_info.tags,
@@ -6267,7 +6383,7 @@ async def _download_project_item_async(
             # Update annotation with correct dimensions if needed
             if None in tmp_ann.img_size:
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                ann_json = tmp_ann.to_json()
+                _set_ann_json_size(ann_json, img_info.height, img_info.width)
 
             # os.rename is atomic and will overwrite the destination if it exists
             os.rename(temp_path, final_path)
@@ -6293,7 +6409,7 @@ async def _download_project_item_async(
             # Update annotation with correct dimensions if needed
             if None in tmp_ann.img_size:
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                ann_json = tmp_ann.to_json()
+                _set_ann_json_size(ann_json, img_info.height, img_info.width)
 
             # Clean up existing item first, then save new one
             dataset_fs.delete_item(img_info.name)
@@ -6351,16 +6467,17 @@ async def _download_project_items_batch_async(
         )
         id_to_annotation = {}
         for img_info, ann_info in zip(img_infos, ann_infos):
+            ann_json = ann_info.annotation
             try:
-                tmp_ann = Annotation.from_json(ann_info.annotation, meta)
-                if None in tmp_ann.img_size:
-                    tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                id_to_annotation[img_info.id] = tmp_ann.to_json()
+                tmp_ann = Annotation.from_json(ann_json, meta)
             except Exception:
                 logger.error(
                     f"Error while deserializing annotation for image with ID: {img_info.id}"
                 )
                 raise
+            if None in tmp_ann.img_size:
+                _set_ann_json_size(ann_json, img_info.height, img_info.width)
+            id_to_annotation[img_info.id] = ann_json
     else:
         id_to_annotation = {}
         for img_info in img_infos:
@@ -6390,8 +6507,7 @@ async def _download_project_items_batch_async(
                     try:
                         tmp_ann = Annotation.from_json(ann_json, meta)
                         if None in tmp_ann.img_size:
-                            tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-                        ann_json = tmp_ann.to_json()
+                            _set_ann_json_size(ann_json, img_info.height, img_info.width)
                     except Exception:
                         pass
             else:

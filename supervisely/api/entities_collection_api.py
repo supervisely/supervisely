@@ -15,11 +15,14 @@ from supervisely.api.module_api import (
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.api.image_api import ImageInfo
+    from supervisely.api.video.video_api import VideoInfo
+    from supervisely.api.volume.volume_api import VolumeInfo
 
 
 class CollectionType:
@@ -604,7 +607,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         project_id: Optional[int] = None,
         ai_search_threshold: Optional[float] = None,
         ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
-    ) -> List[ImageInfo]:
+    ) -> Union[List[ImageInfo], List[VideoInfo], List[VolumeInfo]]:
         """
         Get items from Entities Collection.
 
@@ -618,9 +621,11 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type ai_search_threshold: float, optional
         :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to 'above'.
         :type ai_search_threshold_direction: str
-        :returns: List of ImageInfo objects.
-        :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
+        :returns: List of ImageInfo objects for `images` projects, VideoInfo for `videos`, VolumeInfo for `volumes`.
+            AI_SEARCH collections only exist for `images` projects - the server rejects their creation otherwise.
+        :rtype: Union[List[:class:`~supervisely.api.image_api.ImageInfo`], List[:class:`~supervisely.api.video.video_api.VideoInfo`], List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]]
         :raises RuntimeError: If Entities Collection with given ID not found.
+        :raises NotImplementedError: If the collection's project type is not `images`, `videos` or `volumes`.
 
         :Usage Example:
 
@@ -650,6 +655,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             project_id = info.project_id
 
         if collection_type == CollectionTypeFilter.AI_SEARCH:
+            # AI Search collections can only be created for `images` projects (server-enforced).
             return self._api.image.get_list(
                 project_id=project_id,
                 ai_search_collection_id=collection_id,
@@ -657,10 +663,26 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
                 ai_search_threshold=ai_search_threshold,
                 ai_search_threshold_direction=ai_search_threshold_direction,
             )
-        else:
+
+        project_type = self._api.project.get_info_by_id(project_id).type
+        if project_type == ProjectType.IMAGES.value:
             return self._api.image.get_list(
                 project_id=project_id,
                 entities_collection_id=collection_id,
+            )
+        elif project_type == ProjectType.VIDEOS.value:
+            return self._api.video.get_list(
+                project_id=project_id,
+                entities_collection_id=collection_id,
+            )
+        elif project_type == ProjectType.VOLUMES.value:
+            return self._api.volume.get_list(
+                project_id=project_id,
+                entities_collection_id=collection_id,
+            )
+        else:
+            raise NotImplementedError(
+                f"Entities Collection items are not supported for project type {project_type!r}."
             )
 
     def remove_items(self, id: int, items: List[int]) -> List[Dict[str, int]]:

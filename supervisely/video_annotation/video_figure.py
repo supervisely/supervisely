@@ -14,6 +14,8 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
+    GEOMETRY_SHAPE,
+    GEOMETRY_TYPE,
     LABELER_LOGIN,
     TRACK_ID,
     UPDATED_AT,
@@ -341,11 +343,20 @@ class VideoFigure:
                 #     "nnUpdated": false
                 # }
         """
+        geometry_type = (
+            self.geometry.raw_geometry_type
+            if isinstance(self.geometry, AnyGeometry)
+            else self.geometry.geometry_name()
+        )
+        geometry_json = self.geometry.to_json()
+        if isinstance(self.geometry, AnyGeometry):
+            geometry_json.pop(GEOMETRY_TYPE, None)
+            geometry_json.pop(GEOMETRY_SHAPE, None)
         data_json = {
             KEY: self.key().hex,
             OBJECT_KEY: self.parent_object.key().hex,
-            ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
-            ApiField.GEOMETRY: self.geometry.to_json(),
+            ApiField.GEOMETRY_TYPE: geometry_type,
+            ApiField.GEOMETRY: geometry_json,
             ApiField.NN_CREATED: self._nn_created,
             ApiField.NN_UPDATED: self._nn_updated,
         }
@@ -458,7 +469,10 @@ class VideoFigure:
         geometry_json = data[ApiField.GEOMETRY]
 
         shape = GET_GEOMETRY_FROM_STR(shape_str)
-        geometry = shape.from_json(geometry_json)
+        if shape == AnyGeometry:
+            geometry = AnyGeometry(geometry_json, geometry_type=shape_str)
+        else:
+            geometry = shape.from_json(geometry_json)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 

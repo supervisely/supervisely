@@ -1,8 +1,6 @@
 <el-select
   v-model="state.{{{widget.widget_id}}}.value"
-  {% if widget._changes_handled == true %}
   @change="post('/{{{widget.widget_id}}}/value_changed')"
-  {% endif %}
   {% if widget._size is not none %}
   :size="data.{{{widget.widget_id}}}.size"
   {% endif %}

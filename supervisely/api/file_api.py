@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import mimetypes
 import os
 import shutil
@@ -11,7 +12,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import aiofiles
 import httpx
@@ -31,6 +32,7 @@ from supervisely.io.fs import (
     get_file_ext,
     get_file_hash,
     get_file_hash_async,
+    get_file_hash_chunked_async,
     get_file_name,
     get_file_name_with_ext,
     get_file_size,
@@ -955,10 +957,24 @@ class FileApi(ModuleApiBase):
         if progress_cb is None:
             data = encoder
         else:
-            try:
-                data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
-            except AttributeError:
-                data = MultipartEncoderMonitor(encoder, progress_cb)
+            get_partial = getattr(progress_cb, "get_partial", None)
+            if callable(get_partial):
+                # tqdm_sly / CustomTqdm: monitor-aware (checked first; they subclass tqdm)
+                data = MultipartEncoderMonitor(encoder, get_partial())
+            else:
+                if isinstance(progress_cb, tqdm):
+                    progress_cb = progress_cb.update  # bare tqdm isn't callable
+                elif not callable(progress_cb):
+                    raise TypeError("progress_cb must be callable, tqdm, or have get_partial()")
+                # delta-int callable: monitor gives cumulative bytes_read, feed increments
+                reported = 0
+
+                def _monitor_cb(monitor):
+                    nonlocal reported
+                    progress_cb(monitor.bytes_read - reported)
+                    reported = monitor.bytes_read
+
+                data = MultipartEncoderMonitor(encoder, _monitor_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
@@ -1689,11 +1705,17 @@ class FileApi(ModuleApiBase):
                 raise ValueError(f"File is not JSON: {remote_path}")
             content = None
             if file_info.sizeb <= max_readable_size or not download:
-                response = requests.get(file_info.full_storage_url)
-                if response.status_code != 200:
+                self._api._set_client()
+                response = self._api.httpx_client.get(
+                    file_info.full_storage_url, headers=self._api.headers
+                )
+                if response.status_code != httpx.codes.OK:
                     download = True
                 else:
-                    content = response.json()
+                    try:
+                        content = response.json()
+                    except ValueError:
+                        download = True
             if file_info.sizeb > max_readable_size or download:
                 temp_path = os.path.join(tempfile.mkdtemp(), "temp.json")
                 self._download(team_id, remote_path, temp_path)
@@ -2215,8 +2237,8 @@ class FileApi(ModuleApiBase):
         src: str,
         dst: str,
         semaphore: Optional[asyncio.Semaphore] = None,
-        # chunk_size: int = 1024 * 1024, #TODO add with resumaple api
-        # check_hash: bool = True, #TODO add with resumaple api
+        check_hash: bool = True,
+        raise_check_error: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
     ) -> None:
@@ -2231,6 +2253,13 @@ class FileApi(ModuleApiBase):
         :type dst: str
         :param semaphore: Semaphore for limiting the number of simultaneous uploads.
         :type semaphore: asyncio.Semaphore, optional
+        :param check_hash: If True, verifies hash (or size) of the uploaded file
+            against the local one.
+        :type check_hash: bool, optional
+        :param raise_check_error: Only applies when ``check_hash`` is True. If True,
+            a failed check raises IOError; otherwise (default) the mismatch is only
+            logged as a warning.
+        :type raise_check_error: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -2263,38 +2292,150 @@ class FileApi(ModuleApiBase):
         """
         api_method = "file-storage.upload"
         headers = {"Content-Type": "application/octet-stream"}
-        # sha256 = await get_file_hash_async(src) #TODO add with resumaple api
         json_body = {
             ApiField.TEAM_ID: team_id,
             ApiField.PATH: dst,
-            # "sha256": sha256, #TODO add with resumaple api
         }
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
         logger.debug(f"Uploading with async to: {dst}. Semaphore: {semaphore}")
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
+                progress_reported = 0
 
                 async def file_chunk_generator():
+                    # rewind so a retry resends the file from the beginning;
+                    # progress is deduplicated to not count re-sent bytes twice
+                    nonlocal progress_reported
+                    await fd.seek(0)
+                    read_total = 0
                     while True:
                         chunk = await fd.read(8 * 1024 * 1024)
                         if not chunk:
                             break
-                        if progress_cb is not None and progress_cb_type == "size":
-                            progress_cb(len(chunk))
+                        read_total += len(chunk)
+                        if (
+                            progress_cb is not None
+                            and progress_cb_type == "size"
+                            and read_total > progress_reported
+                        ):
+                            progress_cb(read_total - progress_reported)
+                            progress_reported = read_total
                         yield chunk
 
+                response_body = bytearray()
                 async for chunk, _ in self._api.stream_async(
                     method=api_method,
                     method_type="POST",
-                    data=file_chunk_generator(),  # added as required, but not used inside
+                    data=None,
                     headers=headers,
-                    content=file_chunk_generator(),  # used instead of data inside stream_async
+                    content=file_chunk_generator,  # factory: recreated on every retry
                     params=json_body,
                 ):
-                    pass
-                if progress_cb is not None and progress_cb_type == "number":
-                    progress_cb(1)
+                    response_body.extend(chunk)
+            if check_hash:
+                try:
+                    await self._check_uploaded_file(src, dst, bytes(response_body))
+                except IOError as e:
+                    if raise_check_error:
+                        raise
+                    logger.warning(str(e))
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+
+    @staticmethod
+    def _report_progress(
+        progress_cb: Optional[Union[tqdm, Callable]],
+        value: int,
+    ) -> None:
+        """Report progress to either a tqdm-like object or a plain callable."""
+        if progress_cb is None:
+            return
+        if hasattr(progress_cb, "update"):
+            progress_cb.update(value)
+        else:
+            progress_cb(value)
+
+    def _remote_files_by_name(self, team_id: int, remote_dir: str) -> Dict[str, FileInfo]:
+        """Listing of `remote_dir` as {name: FileInfo}. Missing dir gives {}, API errors raise."""
+        if not self.dir_exists(team_id, remote_dir):
+            return {}
+        infos = self.list(team_id, remote_dir, recursive=False, return_type="fileinfo")
+        return {get_file_name_with_ext(info.path.rstrip("/")): info for info in infos}
+
+    async def _matches_remote_file(self, src: str, info: FileInfo) -> bool:
+        """True if the local file is already on the server: by hash, or by size as a fallback."""
+        if info.hash is not None:
+            return info.hash == await get_file_hash_chunked_async(src)
+        if info.sizeb is not None:
+            logger.debug(f"No hash for {info.path}, comparing by size")
+            return info.sizeb == get_file_size(src)
+        return False
+
+    async def _filter_uploaded_by_hash(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+    ) -> Tuple[List[str], List[str]]:
+        """Drop pairs whose destination already holds the same file. Skipped files are still
+        reported to `progress_cb` so the bar reaches 100%."""
+        listed: Dict[str, Dict[str, FileInfo]] = {}
+        filtered_src, filtered_dst = [], []
+        skipped = 0
+        for src, dst in zip(src_paths, dst_paths):
+            remote_dir = os.path.dirname(dst)
+            if remote_dir not in listed:
+                listed[remote_dir] = self._remote_files_by_name(team_id, remote_dir)
+            info = listed[remote_dir].get(get_file_name_with_ext(dst))
+            if info is not None and await self._matches_remote_file(src, info):
+                value = get_file_size(src) if progress_cb_type == "size" else 1
+                self._report_progress(progress_cb, value)
+                skipped += 1
+                continue
+            filtered_src.append(src)
+            filtered_dst.append(dst)
+        if skipped > 0:
+            logger.info(f"Skipping {skipped}/{len(src_paths)} already uploaded files")
+        return filtered_src, filtered_dst
+
+    async def _check_uploaded_file(self, src: str, dst: str, response_body: bytes) -> None:
+        """Verify that the file uploaded to `dst` matches the local file `src`,
+        using hash (or size) from the upload response. Raises IOError on mismatch."""
+        try:
+            file_info = json.loads(response_body)
+            if isinstance(file_info, list):
+                file_info = file_info[0]
+        except (ValueError, IndexError):
+            logger.debug(f"Cannot parse upload response for '{dst}', skipping upload check")
+            return
+        remote_hash = file_info.get(ApiField.HASH)
+        if remote_hash is not None:
+            # chunked to keep RAM bounded for multi-GB files (same sha256 digest)
+            local_hash = await get_file_hash_chunked_async(src)
+            if remote_hash != local_hash:
+                raise IOError(
+                    f"Uploaded file hash does not match the local one "
+                    f"(local: '{src}', remote: '{dst}'): {remote_hash} != {local_hash}"
+                )
+            return
+        remote_size = file_info.get(ApiField.SIZE)
+        if remote_size is not None:
+            try:
+                remote_size = int(remote_size)
+            except (ValueError, TypeError):
+                logger.debug(f"Upload response for '{dst}' has non-numeric size, skipping check")
+                return
+            local_size = os.path.getsize(src)
+            if remote_size != local_size:
+                raise IOError(
+                    f"Uploaded file size does not match the local one "
+                    f"(local: '{src}', remote: '{dst}'): {remote_size} != {local_size}"
+                )
+            return
+        logger.debug(f"Upload response for '{dst}' has no hash or size, skipping upload check")
 
     async def upload_bulk_async(
         self,
@@ -2302,11 +2443,12 @@ class FileApi(ModuleApiBase):
         src_paths: List[str],
         dst_paths: List[str],
         semaphore: Optional[asyncio.Semaphore] = None,
-        # chunk_size: int = 1024 * 1024, #TODO add with resumaple api
-        # check_hash: bool = True, #TODO add with resumaple api
+        check_hash: bool = True,
+        raise_check_error: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files asynchronously.
@@ -2319,12 +2461,24 @@ class FileApi(ModuleApiBase):
         :type dst_paths: List[str]
         :param semaphore: Semaphore for limiting the number of simultaneous uploads.
         :type semaphore: asyncio.Semaphore, optional
+        :param check_hash: If True, verifies hash (or size) of each uploaded file
+            against the local one.
+        :type check_hash: bool, optional
+        :param raise_check_error: Only applies when ``check_hash`` is True. If True,
+            a failed check raises IOError; otherwise (default) the mismatch is only
+            logged as a warning.
+        :type raise_check_error: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files whose destination already holds an identical
+            file (compared by hash, or by size when the server reports no hash) are not uploaded
+            again. Useful to resume an interrupted upload. Not supported by the synchronous
+            fallback, so combine it with ``enable_fallback=False``.
+        :type skip_existing_by_hash: bool, optional
         :returns: None
         :rtype: None
 
@@ -2359,6 +2513,15 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
+        # outside the try: a listing error must not degrade into a full re-upload
+        if skip_existing_by_hash:
+            src_paths, dst_paths = await self._filter_uploaded_by_hash(
+                team_id=team_id,
+                src_paths=src_paths,
+                dst_paths=dst_paths,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
         try:
             if semaphore is None:
                 semaphore = self._api.get_default_semaphore()
@@ -2370,8 +2533,8 @@ class FileApi(ModuleApiBase):
                         src=src,
                         dst=dst,
                         semaphore=semaphore,
-                        # chunk_size=chunk_size, #TODO add with resumaple api
-                        # check_hash=check_hash, #TODO add with resumaple api
+                        check_hash=check_hash,
+                        raise_check_error=raise_check_error,
                         progress_cb=progress_cb,
                         progress_cb_type=progress_cb_type,
                     )
@@ -2409,6 +2572,7 @@ class FileApi(ModuleApiBase):
         progress_size_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path.
@@ -2428,6 +2592,10 @@ class FileApi(ModuleApiBase):
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files already present at the destination with an
+            identical hash (or size, when the server reports no hash) are not uploaded again.
+            Not supported by the synchronous fallback.
+        :type skip_existing_by_hash: bool, optional
         :returns: Path to Directory in Team Files
         :rtype: str
 
@@ -2452,10 +2620,11 @@ class FileApi(ModuleApiBase):
 
                 api.file.upload_directory(8, local_path, path_to_dir)
         """
+        if not remote_dir.startswith("/"):
+            remote_dir = "/" + remote_dir
+        # bound before the first API call: the fallback below reads it
+        res_remote_dir = remote_dir
         try:
-            if not remote_dir.startswith("/"):
-                remote_dir = "/" + remote_dir
-
             if self.dir_exists(team_id, remote_dir):
                 if change_name_if_conflict is True:
                     res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
@@ -2479,6 +2648,8 @@ class FileApi(ModuleApiBase):
                 src_paths=local_files,
                 dst_paths=remote_files,
                 progress_cb=progress_size_cb,
+                enable_fallback=enable_fallback,
+                skip_existing_by_hash=skip_existing_by_hash,
             )
         except Exception as e:
             if enable_fallback:
@@ -2507,6 +2678,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> str:
         """
         Upload Directory to Team Files from local path in fast mode.
@@ -2526,6 +2698,10 @@ class FileApi(ModuleApiBase):
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files already present at the destination with an
+            identical hash (or size, when the server reports no hash) are not uploaded again.
+            Not supported by the synchronous fallback.
+        :type skip_existing_by_hash: bool, optional
         :returns: Path to Directory in Team Files
         :rtype: str
         """
@@ -2537,6 +2713,7 @@ class FileApi(ModuleApiBase):
             progress_size_cb=progress_cb,
             replace_if_conflict=replace_if_conflict,
             enable_fallback=enable_fallback,
+            skip_existing_by_hash=skip_existing_by_hash,
         )
         return run_coroutine(coroutine)
 
@@ -2549,6 +2726,7 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
         enable_fallback: Optional[bool] = True,
+        skip_existing_by_hash: bool = False,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files in fast mode.
@@ -2570,6 +2748,10 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
+        :param skip_existing_by_hash: If True, files already present at the destination with an
+            identical hash (or size, when the server reports no hash) are not uploaded again.
+            Not supported by the synchronous fallback.
+        :type skip_existing_by_hash: bool, optional
         :returns: None
         :rtype: None
         """
@@ -2581,5 +2763,6 @@ class FileApi(ModuleApiBase):
             progress_cb=progress_cb,
             progress_cb_type=progress_cb_type,
             enable_fallback=enable_fallback,
+            skip_existing_by_hash=skip_existing_by_hash,
         )
         return run_coroutine(coroutine)

@@ -30,7 +30,8 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.geometry.alpha_mask import AlphaMask
-from supervisely.geometry.constants import BITMAP
+from supervisely.geometry.constants import BITMAP, PARTS
+from supervisely.geometry.multipolygon import Multipolygon
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import _LABEL_GROUP_TAG_NAME
 from supervisely.sly_logger import logger
@@ -1069,18 +1070,23 @@ class AnnotationApi(ModuleApi):
             project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
             context["project_meta"] = project_meta
 
+        need_upload_special_figures = False
         need_upload_alpha_masks = False
         for obj_cls in project_meta.obj_classes:
             if obj_cls.geometry_type == AlphaMask:
+                need_upload_special_figures = True
                 need_upload_alpha_masks = True
-                break
+            elif obj_cls.geometry_type == Multipolygon:
+                need_upload_special_figures = True
 
         for batch in batched(list(zip(img_ids, anns))):
             data = []
-            if need_upload_alpha_masks:
+            if need_upload_special_figures:
                 special_figures = []
                 special_geometries = []
-                # check if there are any AlphaMask geometries in the batch
+                special_geometry_fig_indexes = []
+                # Some geometries are uploaded through figures.bulk.add because
+                # annotations.bulk.add does not accept their inline payloads.
                 for img_id, ann in batch:
                     ann_json = func_ann_to_json(ann)
                     ann_json = deepcopy(ann_json)  # Avoid changing the original data
@@ -1113,7 +1119,21 @@ class AnnotationApi(ModuleApi):
                             geometry = label_json.pop(
                                 BITMAP
                             )  # remove alpha mask geometry from label json
+                            special_geometry_fig_indexes.append(len(special_figures))
                             special_geometries.append(geometry)
+                            special_figures.append(label_json)
+                        elif label_json[LabelJsonFields.GEOMETRY_TYPE] == Multipolygon.geometry_name():
+                            label_json.update({ApiField.ENTITY_ID: img_id})
+
+                            obj_cls_name = label_json.get(LabelJsonFields.OBJ_CLASS_NAME)
+                            obj_cls = project_meta.get_obj_class(obj_cls_name)
+                            if obj_cls is None:
+                                raise RuntimeError(
+                                    f"Object class '{obj_cls_name}' not found in project meta"
+                                )
+                            label_json[LabelJsonFields.OBJ_CLASS_ID] = obj_cls.sly_id
+
+                            label_json[ApiField.GEOMETRY] = {PARTS: label_json.pop(PARTS)}
                             special_figures.append(label_json)
                         else:
                             filtered_labels.append(label_json)
@@ -1135,7 +1155,7 @@ class AnnotationApi(ModuleApi):
                     ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
                 },
             )
-            if need_upload_alpha_masks:
+            if need_upload_special_figures:
                 if len(special_figures) > 0:
                     # 1. create figures
                     json_body = {
@@ -1147,9 +1167,13 @@ class AnnotationApi(ModuleApi):
                     added_fig_ids = [resp_obj[ApiField.ID] for resp_obj in resp.json()]
 
                     # 2. upload alpha mask geometries
-                    self._api.image.figure.upload_geometries_batch(
-                        added_fig_ids, special_geometries
-                    )
+                    if need_upload_alpha_masks and len(special_geometries) > 0:
+                        alpha_fig_ids = [
+                            added_fig_ids[index] for index in special_geometry_fig_indexes
+                        ]
+                        self._api.image.figure.upload_geometries_batch(
+                            alpha_fig_ids, special_geometries
+                        )
 
             if progress_cb is not None:
                 progress_cb(len(batch))

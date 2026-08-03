@@ -503,6 +503,7 @@ class FigureApi(RemoveableBulkModuleApi):
         image_ids: List[int] = None,
         skip_geometry: bool = False,
         filters: Optional[List[Dict[str, Any]]] = None,
+        integer_coords: bool = True,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -515,6 +516,10 @@ class FigureApi(RemoveableBulkModuleApi):
         :type skip_geometry: bool
         :param filters: Filters for the figures. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type filters: List[Dict[str, Any]], optional
+        :param integer_coords: If True (server default), coordinates are rounded to integer pixel values.
+                            Set to False to get exact subpixel coordinates as stored on the server —
+                            required for lossless re-upload of the geometries (e.g. backups, project versions).
+        :type integer_coords: bool
 
         :returns: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
@@ -595,6 +600,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
             ApiField.FILTER: list_filter,
+            ApiField.INTEGER_COORDS: integer_coords,
         }
         if filters:
             data[ApiField.PROJECT_ID] = self._api.dataset.get_info_by_id(dataset_id).project_id

@@ -411,6 +411,7 @@ def _get_items_infos(api: Api, project_type: str, dataset_id: int) -> List[Image
         str(ProjectType.POINT_CLOUDS): api.pointcloud.get_list,
         str(ProjectType.POINT_CLOUD_EPISODES): api.pointcloud.get_list,
         str(ProjectType.VOLUMES): api.volume.get_list,
+        str(ProjectType.MESHES): api.mesh.get_list,
     }
     return funcs[project_type](dataset_id)
 
@@ -553,6 +554,7 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
         str(ProjectType.POINT_CLOUDS): "download_pointclouds_info",
         str(ProjectType.POINT_CLOUD_EPISODES): "download_pointclouds_info",
         str(ProjectType.VOLUMES): "save_volumes_info",
+        str(ProjectType.MESHES): "download_meshes_info",
     }
     kwargs[arg_name[project_type]] = True
     return kwargs

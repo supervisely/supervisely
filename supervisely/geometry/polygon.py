@@ -309,6 +309,7 @@ class Polygon(VectorGeometry):
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
+        from supervisely.geometry.multipolygon import Multipolygon
         from supervisely.geometry.rectangle import Rectangle
 
-        return [AnyGeometry, Rectangle, Bitmap, AlphaMask]
+        return [AnyGeometry, Rectangle, Bitmap, AlphaMask, Multipolygon]

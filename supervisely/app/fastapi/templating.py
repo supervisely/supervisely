@@ -14,7 +14,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 js_bundle_version = "2.2.5"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
-js_frontend_version = "v0.0.56"
+js_frontend_version = "0.0.56"
 
 
 pyodide_version = "v0.25.0"

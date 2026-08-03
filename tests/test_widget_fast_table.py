@@ -446,6 +446,20 @@ class TestFastTableDataFormats:
         assert table._rows_total == 2
         assert popped.tolist() == [5, 6]
 
+    def test_pop_row_repeated(self):
+        """pop_row must reset the dataframe index: dropping by label without
+        reset left a hole, so a second pop_row(0) raised KeyError."""
+        data = [[1, 2], [3, 4], [5, 6]]
+        table = FastTable(data=data, columns=["a", "b"])
+
+        first = table.pop_row(0)
+        second = table.pop_row(0)
+
+        assert first.tolist() == [1, 2]
+        assert second.tolist() == [3, 4]
+        assert table._rows_total == 1
+        assert table._source_data.index.tolist() == [0]
+
     def test_mixed_data_types_in_columns(self):
         """Test table with mixed data types (strings and numbers)."""
         data = [
@@ -937,6 +951,39 @@ class TestFastTableSorting:
         sorted_df = table._sorted_data
         assert sorted_df.iloc[:, 0].tolist() == [1, 2, 5, 8]
 
+    def test_sort_on_init_with_dataframe(self):
+        """Active page must be sorted when sort params are passed to the
+        constructor with a DataFrame input. _prepare_working_data() used to
+        slice raw _source_data, so the page showed unsorted rows while the
+        sort arrow pointed at the column."""
+        df = pd.DataFrame([[5, "e"], [2, "b"], [8, "h"], [1, "a"]], columns=["num", "letter"])
+        table = FastTable(data=df, sort_column_idx=0, sort_order="desc", page_size=2)
+
+        active_rows = [r["items"][0] for r in table.get_json_data()["data"]]
+        assert active_rows == [8, 5]
+
+    def test_add_rows_keeps_sort(self):
+        """Row mutations must not revert the active page to unsorted order."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+        table.sort(column_idx=0, order="desc")
+
+        table.add_rows([[9, "z"]])
+
+        active_rows = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active_rows == [9, 8, 5, 2, 1]
+
+    def test_pop_row_keeps_sort(self):
+        """Removing a row must keep the active page sorted."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+        table.sort(column_idx=0, order="desc")
+
+        table.pop_row(0)
+
+        active_rows = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active_rows == [8, 2, 1]
+
     def test_sort_none_column_idx(self):
         """Test that passing None parameters without reset preserves current sorting."""
         data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
@@ -1307,6 +1354,157 @@ class TestFastTableSorting:
         # Verify floats are preserved
         assert sorted_df.iloc[0, 0] == 1.0
         assert isinstance(sorted_df.iloc[0, 0], float)
+
+
+class TestFastTableLeftoverBugs:
+
+    def test_page_size_setter_reslices_data(self):
+        """page_size setter must re-slice the active page, not only send the new size."""
+        from supervisely.app import DataJson
+
+        table = FastTable(data=[[i, f"r{i}"] for i in range(1, 11)], columns=["id", "name"], page_size=10)
+
+        table.page_size = 5
+
+        assert len(DataJson()[table.widget_id]["data"]) == 5
+        assert DataJson()[table.widget_id]["total"] == 10
+
+    def test_read_pandas_resets_search(self):
+        """Old search must not be silently applied to the new data."""
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=[["fruit apple", 1], ["fruit pear", 2], ["car", 3]], columns=["name", "v"])
+        table.search("fruit")
+
+        table.read_pandas(pd.DataFrame([["x", 10], ["y", 20], ["z", 30]], columns=["name", "v"]))
+
+        assert table._search_str == ""
+        assert StateJson()[table.widget_id]["search"] == ""
+        table._refresh()
+        assert table._rows_total == 3
+
+    def test_read_json_resets_search(self):
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=[["fruit", 1], ["car", 2]], columns=["name", "v"])
+        table.search("fruit")
+
+        table.read_json({"data": [["x", 10], ["y", 20]], "columns": ["name", "v"], "options": {}})
+
+        assert table._search_str == ""
+        assert StateJson()[table.widget_id]["search"] == ""
+
+    def test_read_pandas_resets_filter_by_default(self):
+        """Default reset_filters=True clears both the search query and the
+        programmatic filter value — new data arrives unfiltered."""
+        from supervisely.app import DataJson
+
+        table = FastTable(data=[[10], [20], [30], [40], [50]], columns=["v"])
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
+        table.filter(25)
+        assert table._rows_total == 3
+
+        table.read_pandas(pd.DataFrame([[1], [2], [30], [40]], columns=["v"]))
+
+        assert table._filter_value is None
+        assert table._rows_total == 4
+        assert DataJson()[table.widget_id]["total"] == 4
+        # no surprise on the next interaction
+        table._refresh()
+        assert table._rows_total == 4
+
+    def test_read_pandas_keeps_filters_when_asked(self):
+        """reset_filters=False keeps search and filter and applies both to the
+        new data immediately, not on the next user interaction."""
+        from supervisely.app import DataJson
+        from supervisely.app.content import StateJson
+
+        table = FastTable(
+            data=[["fruit_10", 10], ["fruit_20", 20], ["car_30", 30], ["fruit_40", 40]],
+            columns=["name", "v"],
+        )
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[1]] > v])
+        table.filter(15)
+        table.search("fruit")
+
+        table.read_pandas(
+            pd.DataFrame(
+                [["fruit_1", 1], ["fruit_30", 30], ["car_40", 40]], columns=["name", "v"]
+            ),
+            reset_filters=False,
+        )
+
+        # search is kept in the box and applied; filter is kept and applied
+        assert table._search_str == "fruit"
+        assert StateJson()[table.widget_id]["search"] == "fruit"
+        assert table._filter_value == 15
+        active = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active == ["fruit_30"]  # fruit_1 fails filter, car_40 fails search
+        assert table._rows_total == 1
+        assert DataJson()[table.widget_id]["total"] == 1
+        # no surprise on the next interaction
+        table._refresh()
+        assert table._rows_total == 1
+
+    def test_read_json_resets_filter_by_default(self):
+        table = FastTable(data=[[10], [20], [30]], columns=["v"])
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
+        table.filter(25)
+
+        table.read_json({"data": [[1], [50]], "columns": ["v"], "options": {}})
+
+        assert table._filter_value is None
+        assert table._rows_total == 2
+
+    def test_read_json_keeps_filters_when_asked(self):
+        table = FastTable(data=[[10], [20], [30]], columns=["v"])
+        table.set_filter(lambda df, v: df if v is None else df[df[df.columns[0]] > v])
+        table.filter(25)
+
+        table.read_json(
+            {"data": [[1], [50]], "columns": ["v"], "options": {}}, reset_filters=False
+        )
+
+        assert table._filter_value == 25
+        assert table._rows_total == 1
+        active = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert active == [50]
+
+    def test_select_row_navigates_to_sorted_page(self):
+        """select_row must compute the page from the row position in the sorted view."""
+        table = FastTable(
+            data=[[i, f"r{i}"] for i in range(1, 10)], columns=["id", "name"],
+            page_size=3, is_selectable=True,
+        )
+        table.sort(column_idx=0, order="desc")
+
+        table.select_row(0)  # id=1 -> sorted position 8 -> page 3
+
+        assert table._active_page == 3
+        page_ids = [r["items"][0] for r in table._parsed_active_data["data"]]
+        assert 1 in page_ids
+
+    def test_row_click_with_multiselect(self):
+        """row_click handler must use get_clicked_row(): with 2+ rows checked
+        get_selected_row() raised ValueError -> HTTP 500."""
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=[[i, f"r{i}"] for i in range(1, 5)], columns=["id", "name"], is_selectable=True)
+        received = []
+
+        @table.row_click
+        def _handler(row):
+            received.append((row.row_index, row.row))
+
+        table.select_rows([0, 1])
+        server = table._sly_app.get_server()
+        route = table.get_route_path(FastTable.Routes.ROW_CLICKED)
+        endpoint = next(r.endpoint for r in server.routes if getattr(r, "path", None) == route)
+        StateJson()[table.widget_id]["clickedRow"] = {"idx": 2, "row": [3, "r3"]}
+
+        endpoint()  # must not raise
+
+        assert received == [(2, [3, "r3"])]
 
 
 if __name__ == "__main__":

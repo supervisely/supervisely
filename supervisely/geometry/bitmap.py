@@ -574,10 +574,11 @@ class Bitmap(BitmapBase):
         """Returns the allowed transforms for the AlphaMask."""
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
+        from supervisely.geometry.multipolygon import Multipolygon
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
 
-        return [AlphaMask, AnyGeometry, Polygon, Rectangle]
+        return [AlphaMask, AnyGeometry, Multipolygon, Polygon, Rectangle]
 
     @classmethod
     def from_path(cls, path: str) -> Bitmap:

@@ -49,6 +49,7 @@ import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.mesh.mesh_api as mesh_api
 import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
@@ -378,6 +379,7 @@ class Api:
         self.report = report_api.ReportApi(self)
         self.pointcloud = pointcloud_api.PointcloudApi(self)
         self.pointcloud_episode = pointcloud_episode_api.PointcloudEpisodeApi(self)
+        self.mesh = mesh_api.MeshApi(self)
         self.app = app_api.AppApi(self)
         self.file = file_api.FileApi(self)
         self.storage = storage_api.StorageApi(self)
@@ -411,6 +413,7 @@ class Api:
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
         self._semaphore = None
+        self._semaphore_size = None  # configured size of the global semaphore
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
@@ -1596,6 +1599,9 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
+        :param content: Request body passed via kwargs. May be bytes, an iterator,
+            or a zero-arg callable returning a fresh body iterator — a callable is
+            invoked on every attempt so retries resend the full body.
         :returns: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
@@ -1634,12 +1640,15 @@ class Api:
 
         for retry_idx in range(retries):
             total_streamed = 0
+            # content may be a zero-arg factory returning a fresh body iterator,
+            # so each retry sends the full body instead of an exhausted generator
+            request_content = content() if callable(content) else content
             try:
                 if method_type == "POST":
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        content=content,
+                        content=request_content,
                         json=json_body,
                         headers=headers,
                         timeout=timeout,
@@ -1649,7 +1658,7 @@ class Api:
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        content=content,
+                        content=request_content,
                         json=json_body,
                         headers=headers,
                         timeout=timeout,
@@ -1672,9 +1681,18 @@ class Api:
 
                     # received hash of the content to check integrity of the data stream
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    # Uploads (request has a body) can't resume the response via Range,
+                    # so a mid-stream response error would make the consumer accumulate
+                    # attempt-1 partial + attempt-2 full. Buffer the (small) upload
+                    # response and yield it once, only after a fully successful read.
+                    is_upload = content is not None
+                    response_buffer = bytearray() if is_upload else None
                     try:
                         async for chunk in resp.aiter_raw(chunk_size):
-                            yield chunk, hhash
+                            if is_upload:
+                                response_buffer.extend(chunk)
+                            else:
+                                yield chunk, hhash
                             total_streamed += len(chunk)
                     except Exception as e:
                         raise RetryableRequestException(repr(e))
@@ -1683,6 +1701,8 @@ class Api:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
+                    if is_upload:
+                        yield bytes(response_buffer), hhash
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
@@ -1696,11 +1716,15 @@ class Api:
                     )
 
                 client_recreated = await self._recreate_client_if_needed(e)
-                retry_range_start = total_streamed + (range_start or 0)
-                if total_streamed != 0:
-                    retry_range_start += 1
-                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
-                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                if content is None:
+                    # Range resume only makes sense for downloads; for uploads
+                    # (request has a body stream) total_streamed counts response
+                    # bytes and a Range header would be meaningless
+                    retry_range_start = total_streamed + (range_start or 0)
+                    if total_streamed != 0:
+                        retry_range_start += 1
+                    headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                    logger.debug(f"Setting Range header {headers['Range']} for retry")
                 await process_requests_exception_async(
                     self.logger,
                     e,
@@ -1726,7 +1750,7 @@ class Api:
         Set async httpx client with HTTP/2 if it is not set yet.
         """
         if self.async_httpx_client is None:
-            semaphore_size = self.get_default_semaphore()._value
+            semaphore_size = self.get_default_semaphore_size()
             limits = httpx.Limits(
                 max_connections=semaphore_size + 2,
                 max_keepalive_connections=semaphore_size,
@@ -1739,7 +1763,7 @@ class Api:
         Set sync httpx client with HTTP/2 if it is not set yet.
         """
         if self.httpx_client is None:
-            semaphore_size = self.get_default_semaphore()._value
+            semaphore_size = self.get_default_semaphore_size()
             limits = httpx.Limits(
                 max_connections=semaphore_size + 2,
                 max_keepalive_connections=semaphore_size,
@@ -1851,9 +1875,9 @@ class Api:
         """
         semaphore_size = sly_env.semaphore_size()
         if semaphore_size is not None:
-            self._semaphore = asyncio.Semaphore(semaphore_size)
+            size = semaphore_size
             logger.debug(
-                f"Setting global API semaphore size to {semaphore_size} from environment variable"
+                f"Setting global API semaphore size to {size} from environment variable"
             )
         else:
             if not self._skip_https_redirect_check:
@@ -1866,7 +1890,8 @@ class Api:
             else:
                 size = 5
                 logger.debug(f"Setting global API semaphore size to {size} for HTTP")
-            self._semaphore = asyncio.Semaphore(size)
+        self._semaphore = asyncio.Semaphore(size)
+        self._semaphore_size = size
 
     def set_semaphore_size(self, size: int = None):
         """
@@ -1879,8 +1904,24 @@ class Api:
         """
         if size is not None:
             self._semaphore = asyncio.Semaphore(size)
+            self._semaphore_size = size
         else:
             self._initialize_semaphore()
+
+    def get_default_semaphore_size(self) -> int:
+        """
+        Get the configured size of the global API semaphore (the number of permits it was
+        created with), as opposed to ``get_default_semaphore()._value`` which reflects the
+        currently available permits and may be lower while requests are in-flight.
+
+        Initializes the semaphore if it has not been created yet.
+
+        :returns: Configured semaphore size.
+        :rtype: int
+        """
+        if self._semaphore is None:
+            self._initialize_semaphore()
+        return self._semaphore_size
 
     @property
     def semaphore(self) -> asyncio.Semaphore:

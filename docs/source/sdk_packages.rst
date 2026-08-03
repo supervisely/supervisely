@@ -142,6 +142,34 @@ API for working with volumes in Supervisely.
     ~supervisely.api.volume.volume_object_api.VolumeObjectApi
     ~supervisely.api.volume.volume_tag_api.VolumeTagApi
 
+Mesh API
+--------
+API for working with meshes in Supervisely.
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.api.mesh.mesh_api.MeshApi
+    ~supervisely.api.mesh.mesh_api.MeshInfo
+    ~supervisely.api.mesh.mesh_annotation_api.MeshAnnotationAPI
+    ~supervisely.api.mesh.mesh_tag_api.MeshTagApi
+
+Mesh Annotation
+---------------
+Data model for mesh annotations (labels and tags).
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.mesh_annotation.mesh_annotation.MeshAnnotation
+    ~supervisely.mesh_annotation.mesh_label.MeshLabel
+    ~supervisely.mesh_annotation.mesh_tag.MeshTag
+    ~supervisely.mesh_annotation.mesh_tag_collection.MeshTagCollection
+
 Pointcloud API
 --------------
 API for working with pointclouds in Supervisely.

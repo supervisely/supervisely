@@ -905,6 +905,7 @@ class ImageApi(RemoveableBulkModuleApi):
             "tagged_by_annotator",
             "issues_count",
             "job",
+            "entities_collection",
         ]
         if not all([filter["type"] in allowed_filter_types for filter in filters]):
             raise ValueError(f"'type' field must be one of: {allowed_filter_types}")

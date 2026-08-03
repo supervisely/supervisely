@@ -327,13 +327,18 @@ class LabelBase:
                 #    "nnUpdated": false
                 # }
         """
+        geometry_name = (
+            self.geometry.raw_geometry_type
+            if isinstance(self.geometry, AnyGeometry)
+            else self.geometry.geometry_name()
+        )
         res = {
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
             LabelJsonFields.DESCRIPTION: self.description,
             LabelJsonFields.TAGS: self.tags.to_json(),
             **self.geometry.to_json(),
-            GEOMETRY_TYPE: self.geometry.geometry_name(),
-            GEOMETRY_SHAPE: self.geometry.geometry_name(),
+            GEOMETRY_TYPE: geometry_name,
+            GEOMETRY_SHAPE: geometry_name,
             LabelJsonFields.NN_CREATED: self._nn_created,
             LabelJsonFields.NN_UPDATED: self._nn_updated,
         }

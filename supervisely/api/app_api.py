@@ -83,6 +83,16 @@ _context_menu_targets = {
         "type": int,
         "key": "slyDatasetId",
     },
+    "mesh_project": {
+        "help": "Context menu of meshes project. Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "mesh_dataset": {
+        "help": "Context menu of meshes dataset. Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
     "volumes_project": {
         "help": "Context menu of volumes project (DICOMs). Target value is project id.",
         "type": int,

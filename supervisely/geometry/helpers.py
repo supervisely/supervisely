@@ -9,6 +9,7 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.multipolygon import Multipolygon
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
@@ -126,7 +127,15 @@ def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometr
 
 
 def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int] = None) -> List[Geometry]:
-    if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap, AlphaMask, OrientedBBox):
+    if type(geometry) not in (
+        Rectangle,
+        Polyline,
+        Polygon,
+        Multipolygon,
+        Bitmap,
+        AlphaMask,
+        OrientedBBox,
+    ):
         raise KeyError(
             "Can not convert {} to {}".format(geometry.geometry_name(), Polygon.__name__)
         )
@@ -139,7 +148,10 @@ def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int] = None
 
     if type(geometry) == Polygon:
         return [geometry]
-    
+
+    if type(geometry) == Multipolygon:
+        return geometry.to_polygons()
+
     if type(geometry) == OrientedBBox:
         return [Polygon(geometry.calculate_rotated_corners(), [])]
 

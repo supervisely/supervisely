@@ -736,6 +736,8 @@ class ApiField:
     TEAMS_IDS = "teamsIds"
     """"""
     WORKSPACES_IDS = "workspacesIds"
+    """"""
+    IS_FAVORITE = "isFavorite"
 
 
 def _get_single_item(items):
