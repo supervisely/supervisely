@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Union
 
 from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 from supervisely.sly_logger import logger
@@ -257,6 +257,102 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
     def _get_update_method(self):
         """ """
         return "workspaces.editInfo"
+
+    def archive(self, id: int) -> None:
+        """
+        Archive Workspace by ID.
+
+        The Workspace is not deleted from the database, it is hidden from the Workspace list and
+        can be restored. To delete the Workspace and all its data permanently use
+        :func:`remove_permanently`.
+
+        :param id: Workspace ID in Supervisely.
+        :type id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.workspace.archive(58)
+        """
+        self._api.post("workspaces.archive", {ApiField.ID: id})
+
+    def remove_permanently(
+        self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
+    ) -> List[dict]:
+        """
+        !!! WARNING !!!
+        Be careful, this method deletes data from the database, recovery is not possible.
+
+        Delete permanently workspaces with given IDs from the Supervisely server.
+        Workspaces must be archived with :func:`archive` before calling this method, otherwise the
+        server rejects the request. The method is available only for the instance administrator
+        (root user), a regular user token is not enough.
+
+        :param ids: IDs of workspaces in Supervisely.
+        :type ids: Union[int, List]
+        :param batch_size: The number of entities that will be deleted by a single API call. This value must be in the range 1-50 inclusive, if you set a value out of range it will automatically adjust to the boundary values.
+        :type batch_size: int, optional
+        :param progress_cb: Function for control delete progress.
+        :type progress_cb: Callable, optional
+        :returns: A list of response content in JSON format for each API call.
+        :rtype: List[dict]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                workspace_ids = [58, 59]
+                for workspace_id in workspace_ids:
+                    api.workspace.archive(workspace_id)
+                responses = api.workspace.remove_permanently(workspace_ids)
+        """
+        if batch_size > 50:
+            batch_size = 50
+        elif batch_size < 1:
+            batch_size = 1
+
+        if isinstance(ids, int):
+            workspaces = [ids]
+        else:
+            workspaces = list(ids)
+
+        batches = [workspaces[i : i + batch_size] for i in range(0, len(workspaces), batch_size)]
+        responses = []
+        for batch in batches:
+            response = self._api.post(
+                "workspaces.remove.permanently", {ApiField.WORKSPACES_IDS: batch}
+            )
+            if progress_cb is not None:
+                progress_cb(len(batch))
+            responses.append(response.json())
+        return responses
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> WorkspaceInfo:
         """ """
