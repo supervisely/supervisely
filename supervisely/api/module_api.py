@@ -733,6 +733,10 @@ class ApiField:
     """"""
     TEAM_FILE_ID = "teamFileId"
     """"""
+    TEAMS_IDS = "teamsIds"
+    """"""
+    WORKSPACES_IDS = "workspacesIds"
+    """"""
     IS_FAVORITE = "isFavorite"
 
 

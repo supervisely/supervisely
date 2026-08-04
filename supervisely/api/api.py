@@ -621,6 +621,41 @@ class Api:
 
         return Version(instance_version) >= Version(version)
 
+    def cleanup_unused_data(self) -> int:
+        """Start the instance-wide cleanup of the data that is not referenced by any entity
+        anymore, e.g. the data left by the permanently removed teams, workspaces, projects and
+        datasets. The cleanup is performed in the background, the method returns as soon as the
+        task is created.
+
+        The method is available only for the instance administrator (root user), a regular user
+        token is not enough.
+
+        :returns: ID of the created cleanup task.
+        :rtype: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = api.cleanup_unused_data()
+                print(task_id)
+                # Output: 34698
+        """
+        response = self.post("instance.data.cleanup-unused", {})
+        return response.json()[ApiField.TASK_ID]
+
     def _check_version(self, version: Optional[str] = None) -> None:
         """Check if the given version is compatible with the current Supervisely instance version.
         Compatible means that the given version is lower or equal to the current Supervisely instance version.

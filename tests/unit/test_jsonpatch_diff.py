@@ -15,6 +15,7 @@ frontend applies them as-is. Run as `python -m pytest` from the repo root
 
 import copy
 import random
+from types import SimpleNamespace
 
 import jsonpatch
 import pytest
@@ -164,6 +165,60 @@ def test_safe_diff_prepend(diff_engine):
     assert patch.apply(pre) == post
     if diff_engine == "patchdiff":
         assert len(patch.patch) <= 3, f"prepend produced {len(patch.patch)} ops instead of ~1"
+
+
+def _append_token_ops(patch):
+    return [op for op in patch.patch if op["path"].endswith("/-")]
+
+
+def test_safe_diff_never_emits_append_token(doc_pairs, diff_engine):
+    # patchdiff pushes to a list as {"op": "add", "path": ".../-"}; frontend patch
+    # appliers of older instances break on that token and drop the whole message
+    for pre, post in doc_pairs:
+        assert not _append_token_ops(content._safe_diff(pre, post))
+
+
+def test_safe_diff_append_resolves_to_index(diff_engine):
+    pre = {"w": {"rows": ["a", "b"]}}
+    post = {"w": {"rows": ["a", "b", "c", "d"]}}
+    patch = content._safe_diff(pre, post)
+    assert not _append_token_ops(patch)
+    assert patch.apply(pre) == post
+    assert [op["path"] for op in patch.patch] == ["/w/rows/2", "/w/rows/3"]
+
+
+def test_safe_diff_append_index_accounts_for_earlier_removes(diff_engine):
+    # GridGallery.clean_up() + append(): the same lists shrink and grow within one
+    # diff, so an append index must be resolved against the mid-patch document
+    pre = {"g": {"layout": [["a1", "a2"], ["a3", "a4"]], "cells": {"a1": 1}}}
+    post = {"g": {"layout": [["b1"], ["b2", "b3"]], "cells": {"b1": 1}}}
+    patch = content._safe_diff(pre, post)
+    assert not _append_token_ops(patch)
+    assert patch.apply(pre) == post
+
+
+def test_safe_diff_appends_to_several_lists(diff_engine):
+    pre = {"g": {"layout": [[], [], []]}}
+    post = {"g": {"layout": [["x1", "x2"], [], ["x3"]]}}
+    patch = content._safe_diff(pre, post)
+    assert not _append_token_ops(patch)
+    assert patch.apply(pre) == post
+
+
+def test_safe_diff_falls_back_when_append_token_is_unresolvable(monkeypatch):
+    # a '-' path that does not point at a list is a bug in the diff engine: the
+    # resolver raises and _safe_diff degrades to a valid whole-key replace
+    monkeypatch.setattr(
+        content, "patchdiff", SimpleNamespace(diff=lambda src, dst: ([], None))
+    )
+    monkeypatch.setattr(
+        content, "to_str_paths", lambda ops: [{"op": "add", "path": "/w/rows/-", "value": "c"}]
+    )
+    pre = {"w": {"rows": "not-a-list"}}
+    post = {"w": {"rows": "changed"}}
+    patch = content._safe_diff(pre, post)
+    assert not _append_token_ops(patch)
+    assert patch.apply(pre) == post
 
 
 def test_fallback_patch_handles_all_key_ops():

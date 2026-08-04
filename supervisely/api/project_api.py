@@ -989,7 +989,40 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def _remove_api_method_name(self):
         """"""
-        return "projects.remove"
+        return "projects.archive"
+
+    def remove(self, id: int) -> None:
+        """
+        Archive Project by ID.
+
+        The Project is not deleted from the database, it is hidden from the Project list and can be
+        restored. To delete the Project and all its data permanently use
+        :func:`remove_permanently`.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.project.remove(1951)
+        """
+        super().remove(id)
 
     def merge_metas(self, src_project_id: int, dst_project_id: int) -> Dict:
         """
@@ -2404,6 +2437,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         Delete permanently projects with given IDs from the Supervisely server.
         All project IDs must belong to the same team.
         Therefore, it is necessary to sort IDs before calling this method.
+
+        Projects must be archived with :func:`remove` before calling this method, otherwise the
+        server rejects the request. The method is available only for the instance administrator
+        (root user), a regular user token is not enough.
 
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]
