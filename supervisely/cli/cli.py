@@ -2,6 +2,7 @@ import sys
 import click
 
 
+from supervisely.cli.common import CliState
 from supervisely.cli.project import download_run, upload_run, get_project_name_run
 from supervisely.cli.task import set_output_directory_run
 from supervisely.cli.teamfiles import (
@@ -13,8 +14,31 @@ from supervisely.cli.teamfiles import (
 
 
 @click.group()
-def cli():
-    pass
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    help="Render supported command results as JSON.",
+)
+@click.option(
+    "--server-address",
+    type=str,
+    help="Override SERVER_ADDRESS for this invocation.",
+)
+@click.option(
+    "--api-token",
+    type=str,
+    help="Override API_TOKEN for this invocation.",
+)
+@click.pass_context
+def cli(ctx: click.Context, json_output: bool, server_address: str, api_token: str):
+    """Manage Supervisely resources and applications."""
+
+    ctx.obj = CliState(
+        json_output=json_output,
+        server_address=server_address,
+        api_token=api_token,
+    )
 
 
 @cli.command(help="This app allows you to release your aplication to Supervisely platform")
@@ -74,7 +98,7 @@ def release(path, sub_app, slug, y, release_version, release_description, share)
 
 @cli.group()
 def project():
-    """Commands: download, get-name, upload"""
+    """Inspect, create, transfer, and manage projects."""
     pass
 
 
@@ -304,7 +328,7 @@ def upload(id: int, src: str, dst: str) -> None:
 
 @cli.group()
 def task():
-    """Commands: set-output-dir"""
+    """Inspect and manage application tasks."""
     pass
 
 
@@ -339,3 +363,22 @@ def set_output_dir(id: int, team_id: int, dir: str) -> None:
     except KeyboardInterrupt:
         print("Setting task output directory aborted")
         sys.exit(1)
+
+
+# Import command collections only after the legacy groups above have been
+# created. This keeps existing entry points stable and lets the new modules
+# attach commands to the established ``project`` and ``task`` namespaces.
+from supervisely.cli.app_commands import app_group
+from supervisely.cli.dataset_commands import dataset_group
+from supervisely.cli.project_commands import register_project_commands
+from supervisely.cli.resource_commands import agent_group, team_group, workspace_group
+from supervisely.cli.task_commands import register_task_commands
+
+
+register_project_commands(project)
+register_task_commands(task)
+cli.add_command(team_group)
+cli.add_command(workspace_group)
+cli.add_command(dataset_group)
+cli.add_command(agent_group)
+cli.add_command(app_group)
