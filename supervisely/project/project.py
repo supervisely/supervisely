@@ -3744,7 +3744,11 @@ class Project:
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
 
-        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
+        # include_custom_data is off by default, so without it a dataset's custom_data
+        # never reaches the backup at all and can't be restored later.
+        dataset_infos = api.dataset.get_list(
+            project_id, filters=ds_filters, recursive=True, include_custom_data=True
+        )
 
         image_infos = []
         figures = {}
@@ -3996,7 +4000,11 @@ class Project:
                     f"Parent dataset for dataset '{dataset_info.name}' not found. Will be added to project root."
                 )
             new_dataset_info = api.dataset.create(
-                new_project_info.id, dataset_info.name, parent_id=new_parent_id
+                new_project_info.id,
+                dataset_info.name,
+                description=dataset_info.description,
+                parent_id=new_parent_id,
+                custom_data=dataset_info.custom_data if with_custom_data else None,
             )
             if new_dataset_info is None:
                 raise RuntimeError(f"Failed to restore dataset {dataset_info.name}")
