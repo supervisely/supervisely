@@ -3744,7 +3744,9 @@ class Project:
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
 
-        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
+        dataset_infos = api.dataset.get_list(
+            project_id, filters=ds_filters, recursive=True, include_custom_data=True
+        )
 
         image_infos = []
         figures = {}
@@ -3878,7 +3880,10 @@ class Project:
         if project_name is None:
             project_name = project_info.name
 
-        project_description = project_description or project_info.description
+        if project_description and project_info.description:
+            project_description = f"{project_description}\n\n{project_info.description}"
+        else:
+            project_description = project_description or project_info.description
         new_project_info = api.project.create(
             workspace_id,
             project_name,
@@ -3996,7 +4001,11 @@ class Project:
                     f"Parent dataset for dataset '{dataset_info.name}' not found. Will be added to project root."
                 )
             new_dataset_info = api.dataset.create(
-                new_project_info.id, dataset_info.name, parent_id=new_parent_id
+                new_project_info.id,
+                dataset_info.name,
+                description=dataset_info.description,
+                parent_id=new_parent_id,
+                custom_data=dataset_info.custom_data if with_custom_data else None,
             )
             if new_dataset_info is None:
                 raise RuntimeError(f"Failed to restore dataset {dataset_info.name}")
