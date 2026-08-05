@@ -3882,7 +3882,13 @@ class Project:
         if project_name is None:
             project_name = project_info.name
 
-        project_description = project_description or project_info.description
+        # An explicit description (e.g. the "Restored from version N" note that
+        # DataVersion.restore passes in) goes first, followed by whatever the backup
+        # itself carried - otherwise the project's own description is silently lost.
+        if project_description and project_info.description:
+            project_description = f"{project_description}\n\n{project_info.description}"
+        else:
+            project_description = project_description or project_info.description
         new_project_info = api.project.create(
             workspace_id,
             project_name,
