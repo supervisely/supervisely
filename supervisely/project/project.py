@@ -3744,8 +3744,6 @@ class Project:
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
 
-        # include_custom_data is off by default, so without it a dataset's custom_data
-        # never reaches the backup at all and can't be restored later.
         dataset_infos = api.dataset.get_list(
             project_id, filters=ds_filters, recursive=True, include_custom_data=True
         )
@@ -3882,9 +3880,6 @@ class Project:
         if project_name is None:
             project_name = project_info.name
 
-        # An explicit description (e.g. the "Restored from version N" note that
-        # DataVersion.restore passes in) goes first, followed by whatever the backup
-        # itself carried - otherwise the project's own description is silently lost.
         if project_description and project_info.description:
             project_description = f"{project_description}\n\n{project_info.description}"
         else:
