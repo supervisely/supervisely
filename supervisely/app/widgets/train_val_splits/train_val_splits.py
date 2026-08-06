@@ -314,13 +314,19 @@ class TrainValSplits(Widget):
                 self._val_ds_select: SelectDatasetTree
                 train_ds_ids = self._train_ds_select.get_selected_ids()
                 val_ds_ids = self._val_ds_select.get_selected_ids()
-                ds_infos = [dataset for _, dataset in self._api.dataset.tree(self._project_id)]
                 train_ds_names, val_ds_names = [], []
-                for ds_info in ds_infos:
+                for parents, ds_info in self._api.dataset.tree(self._project_id):
+                    # Nested datasets are keyed in the downloaded local project (see
+                    # Dataset.__init__ in project.py) by their full name, i.e. parents
+                    # joined with the dataset's own (short) name. The API dataset tree
+                    # only gives us the short name, so it has to be combined with the
+                    # parents path here, or get_train_val_splits_by_dataset() below
+                    # won't be able to find nested datasets by name.
+                    full_ds_name = os.path.join(*parents, ds_info.name)
                     if ds_info.id in train_ds_ids:
-                        train_ds_names.append(ds_info.name)
+                        train_ds_names.append(full_ds_name)
                     if ds_info.id in val_ds_ids:
-                        val_ds_names.append(ds_info.name)
+                        val_ds_names.append(full_ds_name)
             elif self._project_fs is not None:
                 self._train_ds_select: SelectString
                 self._val_ds_select: SelectString
