@@ -1,12 +1,12 @@
 Supervisely command-line interface
 ==================================
 
-The ``supervisely`` executable provides operational commands for teams,
-workspaces, projects, datasets, agents, Ecosystem applications, tasks, and Team
-Files. It uses ``SERVER_ADDRESS`` and ``API_TOKEN`` from the normal SDK
-environment (including ``~/supervisely.env`` in development). Credentials can
-be overridden for one invocation with the global ``--server-address`` and
-``--api-token`` options.
+The ``supervisely`` executable provides operational commands for users, roles,
+teams, workspaces, projects, datasets, images, agents, Ecosystem applications,
+tasks, and Team Files. It uses ``SERVER_ADDRESS`` and ``API_TOKEN`` from the
+normal SDK environment (including ``~/supervisely.env`` in development).
+Credentials can be overridden for one invocation with the global
+``--server-address`` and ``--api-token`` options.
 
 Use the global ``--json`` option before the command group when output will be
 consumed by another program::
@@ -71,3 +71,35 @@ Stopping an app session or task requires an explicit ``--yes`` flag::
 
    supervisely app stop --task-id 12345 --yes
    supervisely task stop --id 12345 --yes
+
+Agent-oriented discovery
+------------------------
+
+Read-only commands expose the IDs and context needed to assemble app launch
+parameters without opening the web interface::
+
+   supervisely --json user me
+   supervisely --json role list
+   supervisely --json team members --team-id 9
+   supervisely --json task context --id 12345
+   supervisely --json app url --task-id 12345
+
+Team Files and connected storage paths can be inspected and validated before
+placing them in an app parameter file. Listings are shallow and limited to 100
+entries by default; use ``--recursive`` or ``--limit`` explicitly when needed::
+
+   supervisely --json teamfiles list --team-id 9 --path /models
+   supervisely --json teamfiles info \
+       --team-id 9 --path /models/model.onnx
+   supervisely --json teamfiles exists \
+       --team-id 9 --path /models/model.onnx --kind file
+
+Image resources and annotations have equivalent read-only helpers::
+
+   supervisely --json image list --dataset-id 123 --limit 25
+   supervisely --json image get --id 456
+   supervisely --json image annotation --id 456
+
+Image and storage summaries intentionally omit internal storage URLs and paths.
+Annotation output is not summarized and can be large. Legacy Team Files removal
+commands now require ``--yes`` and honor the global credential overrides.

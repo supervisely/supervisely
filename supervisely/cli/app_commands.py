@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping
 from typing import Any, Dict, List, Optional
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import click
 
@@ -122,6 +123,20 @@ _PARAMS_LIMITATION = (
 )
 
 _TASK_STATUSES = tuple(status.value for status in TaskApi.Status)
+
+
+def _absolute_session_url(server_address: str, path: str) -> str:
+    """Join a session path without exposing URL credentials or query values."""
+
+    parsed = urlsplit(server_address)
+    hostname = parsed.hostname or ""
+    if ":" in hostname:
+        hostname = "[{}]".format(hostname)
+    netloc = hostname
+    if parsed.port is not None:
+        netloc = "{}:{}".format(netloc, parsed.port)
+    origin = urlunsplit((parsed.scheme, netloc, "/", "", ""))
+    return urljoin(origin, path)
 
 
 def _module_data(module_info: Any) -> Dict[str, Any]:
@@ -527,6 +542,19 @@ def stop_app(task_id: int, yes: bool) -> None:
     require_yes(yes, f"Stopping application task {task_id}")
     status = get_api().app.stop(task_id)
     emit({"task_id": task_id, "status": status}, title="Application session stopped")
+
+
+@app_group.command(name="url")
+@click.option("--task-id", required=True, type=int, help="Application task ID.")
+@command_handler
+def app_url(task_id: int) -> None:
+    """Get the browser URL for an application session."""
+
+    api = get_api()
+    path = api.app.get_url(task_id)
+    server_address = getattr(api, "server_address", None)
+    url = _absolute_session_url(server_address, path) if server_address else path
+    emit({"task_id": task_id, "path": path, "url": url}, title="Application session URL")
 
 
 __all__ = ["app_group"]

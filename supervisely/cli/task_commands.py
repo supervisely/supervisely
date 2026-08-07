@@ -64,6 +64,15 @@ def register_task_commands(task_group: click.Group) -> None:
         status = _status_value(get_api().task.get_status(task_id))
         emit({"id": task_id, "status": status})
 
+    @task_group.command(
+        name="context", help="Get the team and workspace context for a task."
+    )
+    @click.option("--id", "task_id", required=True, type=int, help="Supervisely task ID.")
+    @command_handler
+    def task_context(task_id: int) -> None:
+        context = get_api().task.get_context(task_id)
+        emit(context, title="Task context")
+
     @task_group.command(name="logs", help="Get task logs.")
     @click.option("--id", "task_id", required=True, type=int, help="Supervisely task ID.")
     @click.option("--since", type=str, help="Return logs after this ISO 8601 timestamp.")

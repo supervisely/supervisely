@@ -2,7 +2,7 @@ import sys
 import click
 
 
-from supervisely.cli.common import CliState
+from supervisely.cli.common import CliState, command_handler, get_api, require_yes
 from supervisely.cli.project import download_run, upload_run, get_project_name_run
 from supervisely.cli.task import set_output_directory_run
 from supervisely.cli.teamfiles import (
@@ -186,7 +186,7 @@ def upload_project(src: str, id: int, name: str) -> None:
 
 @cli.group()
 def teamfiles():
-    """Commands: download, remove-file, remove-dir, upload"""
+    """Inspect and transfer Team Files and connected storage."""
     pass
 
 
@@ -226,9 +226,12 @@ def teamfiles():
     is_flag=True,
     help="[Optional] Ignore and skip if source directory not exists",
 )
+@command_handler
 def download(id: int, src: str, dst: str, filter: str, i: bool) -> None:
     try:
-        success = download_directory_run(id, src, dst, filter, ignore_if_not_exists=i)
+        success = download_directory_run(
+            id, src, dst, filter, ignore_if_not_exists=i, api=get_api()
+        )
         if success:
             sys.exit(0)
         else:
@@ -253,9 +256,12 @@ def download(id: int, src: str, dst: str, filter: str, i: bool) -> None:
     type=str,
     help="File path to remove",
 )
-def remove_file(id: int, path: str) -> None:
+@click.option("--yes", is_flag=True, help="Confirm removing the file.")
+@command_handler
+def remove_file(id: int, path: str, yes: bool) -> None:
     try:
-        success = remove_file_run(id, path)
+        require_yes(yes, "Removing a Team Files file")
+        success = remove_file_run(id, path, api=get_api())
         if success:
             sys.exit(0)
         else:
@@ -280,9 +286,12 @@ def remove_file(id: int, path: str) -> None:
     type=str,
     help="Path to remove directory",
 )
-def remove_dir(id: int, path: str) -> None:
+@click.option("--yes", is_flag=True, help="Confirm removing the directory.")
+@command_handler
+def remove_dir(id: int, path: str, yes: bool) -> None:
     try:
-        success = remove_directory_run(id, path)
+        require_yes(yes, "Removing a Team Files directory")
+        success = remove_directory_run(id, path, api=get_api())
         if success:
             sys.exit(0)
         else:
@@ -314,9 +323,10 @@ def remove_dir(id: int, path: str) -> None:
     type=str,
     help="Path to Team files remote destination directory to which files are uploaded",
 )
+@command_handler
 def upload(id: int, src: str, dst: str) -> None:
     try:
-        success = upload_directory_run(id, src, dst)
+        success = upload_directory_run(id, src, dst, api=get_api())
         if success:
             sys.exit(0)
         else:
@@ -370,15 +380,27 @@ def set_output_dir(id: int, team_id: int, dir: str) -> None:
 # attach commands to the established ``project`` and ``task`` namespaces.
 from supervisely.cli.app_commands import app_group
 from supervisely.cli.dataset_commands import dataset_group
+from supervisely.cli.identity_commands import (
+    register_identity_commands,
+    role_group,
+    user_group,
+)
+from supervisely.cli.image_commands import image_group
 from supervisely.cli.project_commands import register_project_commands
 from supervisely.cli.resource_commands import agent_group, team_group, workspace_group
 from supervisely.cli.task_commands import register_task_commands
+from supervisely.cli.teamfiles_commands import register_teamfiles_commands
 
 
 register_project_commands(project)
 register_task_commands(task)
+register_teamfiles_commands(teamfiles)
+register_identity_commands(team_group)
 cli.add_command(team_group)
 cli.add_command(workspace_group)
 cli.add_command(dataset_group)
 cli.add_command(agent_group)
 cli.add_command(app_group)
+cli.add_command(user_group)
+cli.add_command(role_group)
+cli.add_command(image_group)
