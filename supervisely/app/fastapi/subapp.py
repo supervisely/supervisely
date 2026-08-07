@@ -1262,6 +1262,13 @@ def _init(
                 )
             return app.cached_template
 
+        def drop_cached_template():
+            # Application.__init__ requests "/" in a thread, so the page can be cached before
+            # widget handlers are registered (they are baked into the HTML). Drop that render.
+            app.cached_template = None
+
+        _add_event_handler(app, "startup", drop_cached_template)
+
         def shutdown():
             from supervisely.app.content import ContentOrigin
 

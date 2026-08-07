@@ -40,6 +40,8 @@ class TrainingProcess:
         self.experiment_name_field = None
         self.start_button = None
         self.stop_button = None
+        self.resume_button = None
+        self.resume_info_text = None
         self.validator_text = None
         self.container = None
         self.card = None
@@ -79,11 +81,18 @@ class TrainingProcess:
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
+        # shown when the task is relaunched after a failed upload; Start is disabled then
+        self.resume_button = Button(
+            "Resume Upload", button_type="success", icon="zmdi zmdi-cloud-upload"
+        )
+        self.resume_button.hide()
+        self.resume_info_text = Text("")
+        self.resume_info_text.hide()
         button_container = Container(
-            [self.start_button, self.stop_button, Empty()],
+            [self.start_button, self.resume_button, self.stop_button, Empty()],
             "horizontal",
             overflow="wrap",
-            fractions=[1, 1, 10],
+            fractions=[1, 1, 1, 10],
             gap=1,
         )
 
@@ -91,7 +100,12 @@ class TrainingProcess:
         self.validator_text.hide()
 
         self.display_widgets.extend(
-            [self.experiment_name_field, button_container, self.validator_text]
+            [
+                self.experiment_name_field,
+                self.resume_info_text,
+                button_container,
+                self.validator_text,
+            ]
         )
 
         self.container = Container(self.display_widgets)

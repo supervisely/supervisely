@@ -5,7 +5,9 @@ High-level wrapper for building Supervisely training applications.
 import os
 import shutil
 import subprocess
+import sys
 import time
+from collections import namedtuple
 from datetime import datetime
 from os import getcwd, listdir, walk
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
@@ -25,6 +27,7 @@ import supervisely.io.json as sly_json
 from supervisely import (
     Api,
     Application,
+    __version__ as sly_version,
     Dataset,
     DatasetInfo,
     OpenMode,
@@ -58,6 +61,7 @@ from supervisely.nn.benchmark import (
 from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.inference.inference import Inference, torch_load_safe
 from supervisely.nn.task_type import TaskType
+from supervisely.nn.training import resume_manifest
 from supervisely.nn.training.gui.gui import TrainGUI
 from supervisely.nn.training.gui.utils import generate_task_check_function_js
 from supervisely.nn.training.loggers import setup_train_logger, train_logger
@@ -72,6 +76,9 @@ from supervisely.project.download import (
     is_cached,
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
+
+# split item stand-in for resume: finalize reads only these two fields
+_ResumeSplitItem = namedtuple("_ResumeSplitItem", ["dataset_name", "name"])
 
 
 class TrainApp:
@@ -156,6 +163,9 @@ class TrainApp:
         self._experiments_dir_name = "experiments"
         self._default_work_dir_name = "work_dir"
         self._export_dir_name = "export"
+        self._benchmark_dir_name = "benchmark"
+        # created in output_dir by the steps that run after the upload
+        self._post_upload_dir_names = (self._benchmark_dir_name,)
         self._tensorboard_port = 6006
 
         if is_production():
@@ -194,6 +204,12 @@ class TrainApp:
         self.sly_project = None
         # -------------------------- #
 
+        # Resume upload: filled in below, once the GUI exists
+        self._resume_ctx: Optional[Dict[str, Any]] = None
+        self._is_resume_upload = False
+        self._exit_code = 0
+        # -------------------------- #
+
         # Train Val Splits
         self._train_split = []
         self._train_split_item_ids = set()
@@ -226,6 +242,8 @@ class TrainApp:
 
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
+        # registered after Application(), so it runs last on shutdown
+        _add_event_handler(self._server, "shutdown", self._exit_with_requested_code)
         self._train_func = None
         self._training_duration = None
 
@@ -238,15 +256,14 @@ class TrainApp:
         if self._tensorrt_supported:
             self._convert_tensorrt_func = None
 
-        # Benchmark parameters
-        if self.is_model_benchmark_enabled:
-            self._benchmark_params = {
-                "model_files": {},
-                "model_source": ModelSource.CUSTOM,
-                "model_info": {},
-                "device": None,
-                "runtime": RuntimeType.PYTORCH,
-            }
+        # Benchmark parameters: always created, the checkbox can be switched on after startup
+        self._benchmark_params = {
+            "model_files": {},
+            "model_source": ModelSource.CUSTOM,
+            "model_info": {},
+            "device": None,
+            "runtime": RuntimeType.PYTORCH,
+        }
         # -------------------------- #
 
         # Train endpoints
@@ -289,6 +306,9 @@ class TrainApp:
                     pass
             return {"status": status}
 
+        # Detect a relaunch of the same task that crashed while uploading artifacts
+        self._init_resume_upload()
+
         # Read GUI State when launched from experiment modal
         state = self.gui._extract_state_from_env()
         logger.debug(f"State: {state}")
@@ -297,7 +317,9 @@ class TrainApp:
         # Use for debugging guiState
         # gui_state_raw = self.__debug_gui_state()
 
-        if gui_state_raw is not None:
+        # On resume the platform re-sends guiState, and a second load_from_app_state would
+        # re-lock the cards: step callbacks are toggles. The resume state already covers it.
+        if gui_state_raw is not None and not self._is_resume_upload:
             logger.info("Loading GUI from state")
             logger.debug(f"GUI State: {gui_state_raw}")
             try:
@@ -466,6 +488,9 @@ class TrainApp:
         :returns: Device name.
         :rtype: str
         """
+        # app_state cannot carry the device, so on resume it comes from the manifest
+        if self._is_resume_upload and self._resume_ctx.get("device"):
+            return self._resume_ctx["device"]
         return self.gui.training_process.get_device()
 
     @property
@@ -666,6 +691,11 @@ class TrainApp:
         def decorator(func):
             self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
+            if self._is_resume_upload:
+                # only the upload is left; Start stays visible but disabled to keep the layout
+                self.gui.training_process.resume_button.click(self._wrapped_resume_upload)
+                self.gui.training_process.resume_button.show()
+                self.gui.training_process.start_button.disable()
             return func
 
         return decorator
@@ -748,41 +778,275 @@ class TrainApp:
             return [int(p) for p in parts]
         return None
 
-    def _finalize(self, experiment_info: dict) -> None:
+    # Resume upload
+    def _request_non_zero_exit(self) -> None:
+        """
+        Exit non-zero, but only if a resume is possible: the agent deletes the task data dir as
+        soon as the container exits with 0, and a failure inside a button handler otherwise ends
+        in a graceful shutdown with code 0.
+        """
+        if resume_manifest.load(self.work_dir, self.task_id) is None:
+            # nothing to resume from: let the agent clean the dir as before
+            return
+        self._exit_code = 1
+        logger.info("Artifacts kept on the agent for a resume upload, exiting non-zero")
+
+    def _exit_with_requested_code(self) -> None:
+        """Shutdown hook, registered last so the framework flushes state and logs first."""
+        if self._exit_code == 0:
+            return
+        logger.info(f"Exiting with code {self._exit_code}")
+        for handler in logger.handlers:
+            try:
+                handler.flush()
+            except Exception:
+                pass
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(self._exit_code)
+
+    def _init_resume_upload(self) -> None:
+        """Detect a relaunch of a task that crashed while uploading and restore its GUI."""
+        if self.task_id == -1:
+            return
+        manifest = resume_manifest.load(self.work_dir, self.task_id)
+        if manifest is None:
+            return
+        app_state = manifest.get("app_state")
+        if not app_state:
+            logger.warning("Resume manifest has no GUI state, cannot resume the upload")
+            return
+        try:
+            # click_cb=True unlocks the passed steps; validation is off because the manifest
+            # is authoritative and re-validating a changed project would lock the GUI again
+            self.gui.load_from_app_state(app_state, click_cb=True, validate_steps=False)
+        except Exception:
+            logger.error("Failed to restore the GUI state for the resume", exc_info=True)
+            return
+
+        self._resume_ctx = manifest
+        self._is_resume_upload = True
+        self._show_resume_banner(manifest)
+        logger.info(
+            f"Resume upload mode is enabled, previous attempts: {manifest.get('attempts', 0)}"
+        )
+
+    def _show_resume_banner(self, manifest: dict) -> None:
+        """Explain why the steps are already filled in: banner on the first card, call to
+        action next to the button."""
+        banner = (
+            "This session was restarted after the artifacts upload had failed. "
+            "The model is already trained, training will not be repeated."
+        )
+        attempts = manifest.get("attempts", 0)
+        if attempts:
+            banner += f" Previous resume attempts: {attempts}."
+        call_to_action = (
+            "The previous run of this task finished training but failed to upload its artifacts. "
+            "The checkpoints are still on the agent and the training settings below are restored "
+            'from that run. Press "Resume Upload" to upload the remaining files and create the '
+            "experiment — the model will not be trained again."
+        )
+        try:
+            self.gui.input_selector.validator_text.set(banner, "warning")
+            self.gui.input_selector.validator_text.show()
+            self.gui.training_process.resume_info_text.set(call_to_action, "info")
+            self.gui.training_process.resume_info_text.show()
+            self.gui.stepper.set_active_step(
+                self.gui.steps.index(self.gui.training_process.card) + 1
+            )
+        except Exception:
+            logger.debug("Failed to render the resume banner", exc_info=True)
+
+    def _get_resume_app_state(self, experiment_info: dict) -> dict:
+        """GUI state to restore on resume: `get_app_state()` carries neither the input step
+        nor the experiment name."""
+        app_state = self.get_app_state(experiment_info)
+        app_state["input"] = {"project_id": self.project_id}
+        app_state["start_training"] = False
+        try:
+            app_state["experiment_name"] = self.gui.training_process.get_experiment_name()
+        except Exception:
+            logger.debug("No experiment name for the resume state", exc_info=True)
+        return app_state
+
+    def _dump_resume_manifest(self, experiment_info: dict, train_splits_data: dict) -> None:
+        """Persist what the upload and the steps after it need, so a relaunch can redo them
+        without downloading the project or training again."""
+        try:
+            resume_manifest.save(
+                self.work_dir,
+                task_id=self.task_id,
+                sdk_version=sly_version,
+                experiment_info=experiment_info,
+                train_splits_data=train_splits_data,
+                splits_items=self._dump_splits_items(),
+                train_collection_id=self._train_collection_id,
+                val_collection_id=self._val_collection_id,
+                training_duration=self._training_duration,
+                device=self._safe_gui_value(self.gui.training_process.get_device),
+                device_name=self._safe_gui_value(self.gui.training_process.get_device_name),
+                app_state=self._get_resume_app_state(experiment_info),
+            )
+        except Exception:
+            logger.warning(
+                "Failed to write the resume manifest, a failed upload will not be resumable",
+                exc_info=True,
+            )
+
+    def _device_name(self) -> Optional[str]:
+        """Device the training ran on; from the manifest on resume."""
+        if self._is_resume_upload and self._resume_ctx.get("device_name"):
+            return self._resume_ctx["device_name"]
+        return self.gui.training_process.get_device_name()
+
+    @staticmethod
+    def _safe_gui_value(getter, default=None):
+        """App options may disable a getter; a missing value must not break the dump."""
+        try:
+            return getter()
+        except Exception:
+            return default
+
+    def _dump_splits_items(self) -> dict:
+        """Store only the split item fields finalize reads."""
+
+        def dump(split: list) -> list:
+            return [
+                {
+                    "dataset_name": getattr(item, "dataset_name", None),
+                    "name": getattr(item, "name", None),
+                }
+                for item in split
+            ]
+
+        return {"train": dump(self._train_split), "val": dump(self._val_split)}
+
+    def _store_benchmark_results(
+        self,
+        lnk_file_info: Optional[FileInfo],
+        report_file_info: Optional[FileInfo],
+        report_id: Optional[int],
+        eval_metrics: dict,
+        primary_metric_name: Optional[str],
+        evaluation_report_link: Optional[str],
+    ) -> None:
+        """Remember the benchmark outcome so a resume does not evaluate the model again."""
+        resume_manifest.update(
+            self.work_dir,
+            benchmark={
+                "lnk_path": getattr(lnk_file_info, "path", None),
+                "report_path": getattr(report_file_info, "path", None),
+                "report_id": report_id,
+                "eval_metrics": eval_metrics,
+                "primary_metric_name": primary_metric_name,
+                "evaluation_report_link": evaluation_report_link,
+            },
+        )
+        resume_manifest.mark_done(self.work_dir, "benchmark")
+
+    def _restore_benchmark_results(self) -> tuple:
+        """Benchmark outcome of a previous attempt; the FileInfos are re-read by remote path."""
+        benchmark = (self._resume_ctx or {}).get("benchmark", {})
+        logger.info("Benchmark was already done by the previous attempt, reusing its results")
+        return (
+            self._file_info_by_path(benchmark.get("lnk_path")),
+            self._file_info_by_path(benchmark.get("report_path")),
+            benchmark.get("report_id"),
+            benchmark.get("eval_metrics", {}),
+            benchmark.get("primary_metric_name"),
+            benchmark.get("evaluation_report_link"),
+        )
+
+    def _file_info_by_path(self, remote_path: Optional[str]) -> Optional[FileInfo]:
+        if remote_path is None:
+            return None
+        try:
+            return self._api.file.get_info_by_path(self.team_id, remote_path)
+        except Exception:
+            logger.warning(f"Failed to get file info for '{remote_path}'", exc_info=True)
+            return None
+
+    def _restore_splits_items(self, manifest: dict) -> None:
+        """Rebuild split items from the manifest: finalize needs only `dataset_name` and
+        `name`, for counts and for the benchmark GT split."""
+        splits_items = manifest.get("splits_items") or {}
+        self._train_split = [
+            _ResumeSplitItem(item.get("dataset_name"), item.get("name"))
+            for item in splits_items.get("train", [])
+        ]
+        self._val_split = [
+            _ResumeSplitItem(item.get("dataset_name"), item.get("name"))
+            for item in splits_items.get("val", [])
+        ]
+
+    # ----------------------------------------- #
+
+    def _finalize(self, experiment_info: dict, resume: bool = False) -> None:
         """
         Finalizes the training process by validating outputs, uploading artifacts,
         and updating the UI.
 
         :param experiment_info: Information about the experiment results that should be returned in user's training function.
         :type experiment_info: dict
+        :param resume: If True, the artifacts were produced by a previous run of this task and
+            are already on disk: preprocessing and split postprocessing are skipped, and the
+            steps completed by that run are not repeated.
+        :type resume: bool
         """
         logger.info("Finalizing training")
-        # Step 1. Validate experiment TaskType
-        experiment_info = self._validate_experiment_task_type(experiment_info)
+        # Skipped on resume: the manifest holds an already validated and preprocessed
+        # experiment_info, whose absolute checkpoint paths the validator would reject.
+        if not resume:
+            # Step 1. Validate experiment TaskType
+            experiment_info = self._validate_experiment_task_type(experiment_info)
 
-        # Step 2. Validate experiment_info
-        success, reason = self._validate_experiment_info(experiment_info)
-        if not success:
-            raise ValueError(f"{reason}. Failed to upload artifacts")
+            # Step 2. Validate experiment_info
+            success, reason = self._validate_experiment_info(experiment_info)
+            if not success:
+                raise ValueError(f"{reason}. Failed to upload artifacts")
 
         # Step 3. Create model meta according to model CV task type
         model_meta = self.create_model_meta(experiment_info["task_type"])
 
         # Step 4. Preprocess artifacts
-        experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
+        # the previous run already moved the artifacts and rewrote the checkpoints
+        if not resume:
+            experiment_info = self._preprocess_artifacts(experiment_info, model_meta)
+        elif self.is_model_benchmark_enabled:
+            # normally filled by preprocessing, and the benchmark may still have to run
+            self._benchmark_params["model_files"] = dict(experiment_info.get("model_files") or {})
+            self._benchmark_params["model_files"]["checkpoint"] = experiment_info["best_checkpoint"]
 
         # Step 5. Postprocess splits
-        train_splits_data = self._postprocess_splits()
+        if resume:
+            train_splits_data = self._resume_ctx.get("train_splits_data", {})
+        else:
+            train_splits_data = self._postprocess_splits()
+            # persist before the upload: that is the step that fails on a bad connection
+            self._dump_resume_manifest(experiment_info, train_splits_data)
 
         # Step 6. Upload artifacts
         self._set_text_status("uploading")
-        remote_dir, session_link_file_info = self._upload_artifacts()
+        remote_dir, session_link_file_info = self._upload_artifacts(resume=resume)
+        if not resume:
+            resume_manifest.update(self.work_dir, remote_dir=remote_dir)
 
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
         mb_eval_report_id, eval_metrics = None, {}
         evaluation_report_link, primary_metric_name = None, None
-        if self.is_model_benchmark_enabled:
+        if resume and resume_manifest.is_done(self._resume_ctx, "benchmark"):
+            # already evaluated by the crashed run: reuse instead of inferring again
+            (
+                mb_eval_lnk_file_info,
+                mb_eval_report,
+                mb_eval_report_id,
+                eval_metrics,
+                primary_metric_name,
+                evaluation_report_link,
+            ) = self._restore_benchmark_results()
+        elif self.is_model_benchmark_enabled:
             try:
                 # Convert GT project
                 gt_project_id, bm_splits_data = None, train_splits_data
@@ -813,17 +1077,29 @@ class TrainApp:
                     evaluation_report_link = abs_url(
                         f"/model-benchmark?id={str(mb_eval_report_id)}"
                     )
+                self._store_benchmark_results(
+                    mb_eval_lnk_file_info,
+                    mb_eval_report,
+                    mb_eval_report_id,
+                    eval_metrics,
+                    primary_metric_name,
+                    evaluation_report_link,
+                )
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
         # Step 8. [Optional] Convert weights
         export_weights = {}
-        if self.gui.hyperparameters_selector.is_export_required():
+        if resume and resume_manifest.is_done(self._resume_ctx, "export"):
+            export_weights = self._resume_ctx.get("export_weights", {})
+        elif self.gui.hyperparameters_selector.is_export_required():
             try:
                 export_weights, export_classes_path = self._export_weights(experiment_info)
                 export_weights = self._upload_export_weights(
                     export_weights, export_classes_path, remote_dir
                 )
+                resume_manifest.update(self.work_dir, export_weights=export_weights)
+                resume_manifest.mark_done(self.work_dir, "export")
             except Exception as e:
                 logger.error(f"Export weights failed: {e}")
 
@@ -842,7 +1118,10 @@ class TrainApp:
         experiment_info = self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, train_splits_data)
         self._generate_model_meta(remote_dir, model_meta)
-        self._upload_demo_files(remote_dir)
+        # the files above are overwritten on resume, but a demo dir would get a suffix
+        if not (resume and resume_manifest.is_done(self._resume_ctx, "demo")):
+            self._upload_demo_files(remote_dir)
+            resume_manifest.mark_done(self.work_dir, "demo")
 
         # Step 10. Generate training output
         output_file_info, experiment_info = self._generate_experiment_output(
@@ -868,6 +1147,9 @@ class TrainApp:
                 mb_eval_lnk_file_info,
                 mb_eval_report_id,
             )
+
+        # everything is uploaded and the experiment exists
+        resume_manifest.remove(self.work_dir)
 
     def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
         """
@@ -2014,7 +2296,7 @@ class TrainApp:
             "evaluation_metrics": eval_metrics,
             "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
-            "device": self.gui.training_process.get_device_name(),
+            "device": self._device_name(),
             "training_duration": self._training_duration,
             "train_collection_id": self._train_collection_id,
             "val_collection_id": self._val_collection_id,
@@ -2252,31 +2534,58 @@ class TrainApp:
                 "model_name": model_name,
             }
         elif self.model_source == ModelSource.CUSTOM:
+            # must point at the source experiment, else _init_model cannot load it back
+            selector = self.gui.model_selector.experiment_selector
+            source_task_id = (self.model_info or {}).get("task_id", self.task_id)
+            checkpoint = selector.get_selected_checkpoint_name() or "custom checkpoint"
             return {
                 "source": ModelSource.CUSTOM,
-                "task_id": self.task_id,
-                "checkpoint": "custom checkpoint",
+                "task_id": source_task_id,
+                "checkpoint": checkpoint,
             }
 
     # ----------------------------------------- #
 
     # Upload artifacts
-    def _upload_artifacts(self) -> None:
+    def _drop_post_upload_files(self, local_files: List[str]) -> List[str]:
+        """
+        Drop files from directories produced after the upload step. A normal run uploads
+        output_dir before they exist; the benchmark one holds downloaded GT/DT projects and
+        visualizations, which have no place in the experiment.
+        """
+        skipped_prefixes = tuple(
+            join(self.output_dir, name) + os.sep for name in self._post_upload_dir_names
+        )
+        kept = [path for path in local_files if not path.startswith(skipped_prefixes)]
+        if len(kept) != len(local_files):
+            logger.debug(f"Resume upload skips {len(local_files) - len(kept)} post-upload files")
+        return kept
+
+    def _remote_artifact_path(self, local_path: str, remote_dir: str) -> str:
+        """Destination of a local artifact in the remote experiment dir."""
+        return remote_dir.rstrip("/") + "/" + os.path.relpath(local_path, self.output_dir)
+
+    def _upload_artifacts(self, resume: bool = False) -> None:
         """
         Uploads the training artifacts to Supervisely.
         Path is generated based on the project ID, task ID, and framework name.
 
         Path: /experiments/{project_id}_{project_name}/{task_id}_{framework_name}/
         Example path: /experiments/43192_Apples/68271_rt-detr/
+
+        :param resume: If True, upload into the directory a previous attempt of this task
+            started, skipping the files that already made it there.
+        :type resume: bool
         """
         task_id = self.task_id
 
         remote_artifacts_dir = f"/{self._experiments_dir_name}/{self.project_id}_{self.project_name}/{task_id}_{self.framework_name}/"
-        logger.info(
-            f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
-        )
+        if resume:
+            # the previous attempt may have been given a suffixed name, that one is the target
+            remote_artifacts_dir = self._resume_ctx.get("remote_dir") or remote_artifacts_dir
+
         # Clean debug directory if exists
-        if task_id == -1:
+        if task_id == -1 and not resume:
             if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
                 with self.progress_bar_main(
                     message=f"[Debug] Cleaning train artifacts: '{remote_artifacts_dir}/'",
@@ -2286,6 +2595,19 @@ class TrainApp:
                     self._api.file.remove_dir(self.team_id, f"{remote_artifacts_dir}", True)
                     upload_artifacts_pbar.update(1)
                     self.progress_bar_main.hide()
+
+        if not resume:
+            # Resolve and store the target before uploading: an occupied dir would silently
+            # get a suffix, and a later resume must not send the rest into the original one.
+            if self._api.file.dir_exists(self.team_id, remote_artifacts_dir):
+                remote_artifacts_dir = self._api.file.get_free_dir_name(
+                    self.team_id, remote_artifacts_dir
+                )
+            resume_manifest.update(self.work_dir, remote_dir=remote_artifacts_dir)
+
+        logger.info(
+            f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
+        )
 
         # Generate link file
         if is_production():
@@ -2297,6 +2619,8 @@ class TrainApp:
             print(app_url, file=text_file)
 
         local_files = sly_fs.list_files_recursively(self.output_dir)
+        if resume:
+            local_files = self._drop_post_upload_files(local_files)
         total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
         with self.progress_bar_main(
             message="Uploading train artifacts to Team Files",
@@ -2306,12 +2630,25 @@ class TrainApp:
             unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory_fast(
-                team_id=self.team_id,
-                local_dir=self.output_dir,
-                remote_dir=remote_artifacts_dir,
-                progress_cb=upload_artifacts_pbar.update,
-            )
+            if resume:
+                # a file list, not the whole dir: post-upload working dirs must stay out
+                remote_dir = remote_artifacts_dir
+                self._api.file.upload_bulk_fast(
+                    team_id=self.team_id,
+                    src_paths=local_files,
+                    dst_paths=[self._remote_artifact_path(p, remote_dir) for p in local_files],
+                    progress_cb=upload_artifacts_pbar.update,
+                    # no sync fallback: it cannot skip by hash and would re-send everything
+                    skip_existing_by_hash=True,
+                    enable_fallback=False,
+                )
+            else:
+                remote_dir = self._api.file.upload_directory_fast(
+                    team_id=self.team_id,
+                    local_dir=self.output_dir,
+                    remote_dir=remote_artifacts_dir,
+                    progress_cb=upload_artifacts_pbar.update,
+                )
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
@@ -2525,7 +2862,7 @@ class TrainApp:
 
             port = 8000
             session = SessionJSON(self._api, session_url=f"http://localhost:{port}")
-            benchmark_dir = join(local_artifacts_dir, "benchmark")
+            benchmark_dir = join(local_artifacts_dir, self._benchmark_dir_name)
             sly_fs.mkdir(benchmark_dir, True)
 
             # 1. Init benchmark
@@ -2950,6 +3287,17 @@ class TrainApp:
         experiment_info = None
         check_logs_text = "Please check the logs for more details."
 
+        # Also reachable from /train_from_api and start_in_thread(), where the disabled button
+        # does not help. Training wipes work_dir, where the pending artifacts live.
+        if self._is_resume_upload:
+            message = (
+                "This task is in resume-upload mode: its trained artifacts are still waiting to be "
+                "uploaded. Starting the training would erase them. Press 'Resume Upload' to finish "
+                "the upload, or run a new task to train again."
+            )
+            logger.error(message)
+            raise RuntimeError(message)
+
         try:
             self._set_train_widgets_state_on_start()
             if self._train_func is None:
@@ -3010,6 +3358,58 @@ class TrainApp:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            self._request_non_zero_exit()
+            raise e
+        finally:
+            self.app.shutdown()
+
+    def _wrapped_resume_upload(self):
+        """
+        Finish a run whose training succeeded but whose upload did not. The artifacts are still
+        in work_dir, so nothing is downloaded, re-split or trained again.
+        """
+        check_logs_text = "Please check the logs for more details."
+        manifest = self._resume_ctx
+
+        try:
+            self._set_train_widgets_state_on_start()
+            self._init_logger()
+            # no _prepare_working_dir() / _prepare(): that would wipe or re-download work_dir
+            self._training_duration = manifest.get("training_duration")
+            self._train_collection_id = manifest.get("train_collection_id")
+            self._val_collection_id = manifest.get("val_collection_id")
+            self._restore_splits_items(manifest)
+            # finalize never reads sly_project, but an app export converter may
+            try:
+                self._read_project()
+            except Exception:
+                logger.warning("Could not read the local project, the upload does not need it")
+            resume_manifest.bump_attempt(self.work_dir)
+        except Exception as e:
+            message = f"Error occurred during upload resume initialization. {check_logs_text}"
+            self._show_error(message, e)
+            self._set_ws_progress_status("reset")
+            # the artifacts are still on disk: keep them
+            self._request_non_zero_exit()
+            self.app.shutdown()
+            raise e
+
+        try:
+            self._set_text_status("finalizing")
+            self._set_ws_progress_status("finalizing")
+            self._finalize(manifest["experiment_info"], resume=True)
+            self.gui.training_process.resume_button.loading = False
+
+            if is_production() and self.gui.training_logs.tensorboard_offline_button is not None:
+                self.gui.training_logs.tensorboard_button.hide()
+                self.gui.training_logs.tensorboard_offline_button.show()
+
+            time.sleep(1)
+        except Exception as e:
+            message = f"Error occurred during uploading training artifacts. {check_logs_text}"
+            self._show_error(message, e)
+            self._set_ws_progress_status("reset")
+            self._request_non_zero_exit()
             raise e
         finally:
             self.app.shutdown()
@@ -3022,6 +3422,7 @@ class TrainApp:
         self.gui.training_process.validator_text.set(message, "error")
         self.gui.training_process.validator_text.show()
         self.gui.training_process.start_button.loading = False
+        self.gui.training_process.resume_button.loading = False
         self._restore_train_widgets_state_on_error()
         show_dialog(title="Error", description=message, status="error")
 
@@ -3040,9 +3441,14 @@ class TrainApp:
 
         self.gui.training_logs.card.unlock()
         self.gui.stepper.set_active_step(7)
-        self.gui.training_process.validator_text.set("Training has been started...", "info")
+        if self._is_resume_upload:
+            self.gui.training_process.resume_info_text.hide()
+            self.gui.training_process.validator_text.set("Resuming the upload...", "info")
+            self.gui.training_process.resume_button.loading = True
+        else:
+            self.gui.training_process.validator_text.set("Training has been started...", "info")
+            self.gui.training_process.start_button.loading = True
         self.gui.training_process.validator_text.show()
-        self.gui.training_process.start_button.loading = True
 
     def _restore_train_widgets_state_on_error(self):
         self.gui.training_logs.card.lock()

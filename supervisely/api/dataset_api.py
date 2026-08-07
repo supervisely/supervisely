@@ -527,7 +527,40 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
     def _remove_api_method_name(self):
         """ """
-        return "datasets.remove"
+        return "datasets.archive"
+
+    def remove(self, id: int) -> None:
+        """
+        Archive Dataset by ID.
+
+        The Dataset is not deleted from the database, it is hidden from the Dataset list and can be
+        restored. To delete the Dataset and all its data permanently use
+        :func:`remove_permanently`.
+
+        :param id: Dataset ID in Supervisely.
+        :type id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.dataset.remove(2532)
+        """
+        super().remove(id)
 
     def copy_batch(
         self,
@@ -870,6 +903,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         All dataset IDs must belong to the same team.
         Therefore, it is necessary to sort IDs before calling this method.
 
+        Datasets must be archived with :func:`remove` before calling this method, otherwise the
+        server rejects the request. The method is available only for the instance administrator
+        (root user), a regular user token is not enough.
 
         :param ids: IDs of datasets in Supervisely.
         :type ids: Union[int, List]
