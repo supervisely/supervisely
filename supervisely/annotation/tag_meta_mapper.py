@@ -30,6 +30,7 @@ class RenamingTagMetaMapper(TagMetaMapper):
     def map(self, src: TagMeta) -> TagMeta:
         """
         The function map rename TagMeta in given collection
+
         :returns: TagMeta object
         :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
         """
@@ -40,6 +41,7 @@ class RenamingTagMetaMapper(TagMetaMapper):
 def make_renamed_tags(tags: TagCollection, tag_meta_mapper: TagMetaMapper, skip_missing=True) -> TagCollection:
     """
     The function make_renamed_tags rename tags names in given collection and return new collection
+    
     :returns: TagCollection object
     :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
     """
