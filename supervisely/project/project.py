@@ -3546,12 +3546,14 @@ class Project:
         """
         from supervisely.api.entities_collection_api import CollectionTypeFilter
 
-        project = Project(project_dir, OpenMode.READ)
+        def build_ds_id_to_name():
+            return {
+                ds_info.id: "/".join(parents + [ds_info.name])
+                for parents, ds_info in api.dataset.tree(project_id)
+            }
 
-        ds_id_to_name = {}
-        for parents, ds_info in api.dataset.tree(project_id):
-            full_name = "/".join(parents + [ds_info.name])
-            ds_id_to_name[ds_info.id] = full_name
+        project = Project(project_dir, OpenMode.READ)
+        ds_id_to_name = build_ds_id_to_name()
 
         train_items = []
         val_items = []
@@ -3566,9 +3568,47 @@ class Project:
                     project_id=project_id,
                     collection_type=CollectionTypeFilter.DEFAULT,
                 )
+
+                # A dataset referenced by the collection may be missing locally if it was
+                # renamed/moved/created after `project_dir` was downloaded. Fetch just those
+                # datasets instead of failing the whole split.
+                missing_dataset_ids = {
+                    item.dataset_id
+                    for item in collection_items
+                    if project.datasets.get(ds_id_to_name.get(item.dataset_id)) is None
+                }
+                if missing_dataset_ids:
+                    logger.info(
+                        f"Collection_id={collection_id} references dataset(s) {sorted(missing_dataset_ids)} "
+                        f"missing from the local copy of project_id={project_id} (likely renamed/moved "
+                        "after download). Downloading them now."
+                    )
+                    Project.download(
+                        api,
+                        project_id,
+                        project_dir,
+                        dataset_ids=list(missing_dataset_ids),
+                        resume_download=True,
+                    )
+                    project = Project(project_dir, OpenMode.READ)
+                    ds_id_to_name = build_ds_id_to_name()
+
                 for item in collection_items:
                     ds_name = ds_id_to_name.get(item.dataset_id)
+                    if ds_name is None:
+                        raise KeyError(
+                            f"Dataset with id={item.dataset_id!r} (item {item.name!r} from "
+                            f"collection_id={collection_id}) was not found among the datasets "
+                            f"of project_id={project_id}."
+                        )
                     ds = project.datasets.get(ds_name)
+                    if ds is None:
+                        raise KeyError(
+                            f"Dataset {ds_name!r} (item {item.name!r} from collection_id={collection_id}) "
+                            f"could not be downloaded to the local project directory '{project_dir}'. "
+                            f"It may have been deleted from project_id={project_id} after the collection "
+                            "was created."
+                        )
                     img_path, ann_path = ds.get_item_paths(item.name)
                     info = ItemInfo(ds_name, item.name, img_path, ann_path)
                     items_dict.append(info)
