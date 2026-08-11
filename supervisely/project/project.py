@@ -3540,7 +3540,11 @@ class Project:
         :type project_id: int
         :param api: Supervisely API address and token.
         :type api: :class:`~supervisely.api.api.Api`
-        :raises KeyError: if collection ID not found in project
+        :raises KeyError: if none of the items in a given train/val collection set could be
+            resolved against the local project (e.g. their datasets were all renamed, moved,
+            or deleted after the collection was created). Individual unresolvable items are
+            skipped with a warning and do not fail the split on their own, as long as at least
+            one item per non-empty collection list still resolves.
         :returns: Tuple with lists of train items information and val items information
         :rtype: Tuple[List[:class:`~supervisely.project.project.ItemInfo`], List[:class:`~supervisely.project.project.ItemInfo`]]
         """
@@ -3558,7 +3562,7 @@ class Project:
         train_items = []
         val_items = []
 
-        for collection_ids, items_dict in [
+        for collection_ids, items_list in [
             (train_collections, train_items),
             (val_collections, val_items),
         ]:
@@ -3595,23 +3599,37 @@ class Project:
 
                 for item in collection_items:
                     ds_name = ds_id_to_name.get(item.dataset_id)
-                    if ds_name is None:
-                        raise KeyError(
-                            f"Dataset with id={item.dataset_id!r} (item {item.name!r} from "
-                            f"collection_id={collection_id}) was not found among the datasets "
-                            f"of project_id={project_id}."
-                        )
-                    ds = project.datasets.get(ds_name)
+                    ds = project.datasets.get(ds_name) if ds_name is not None else None
                     if ds is None:
-                        raise KeyError(
-                            f"Dataset {ds_name!r} (item {item.name!r} from collection_id={collection_id}) "
-                            f"could not be downloaded to the local project directory '{project_dir}'. "
-                            f"It may have been deleted from project_id={project_id} after the collection "
-                            "was created."
+                        logger.warning(
+                            f"Skipping item {item.name!r} from collection_id={collection_id}: "
+                            f"dataset with id={item.dataset_id!r} was not found among the datasets "
+                            f"of project_id={project_id}. It may have been renamed, moved, or deleted "
+                            "after the collection was created."
                         )
-                    img_path, ann_path = ds.get_item_paths(item.name)
+                        continue
+                    try:
+                        img_path, ann_path = ds.get_item_paths(item.name)
+                    except RuntimeError:
+                        logger.warning(
+                            f"Skipping item {item.name!r} from collection_id={collection_id}: "
+                            f"not found in dataset {ds_name!r} of project_id={project_id}. It may "
+                            "have been deleted or moved after the collection was created."
+                        )
+                        continue
                     info = ItemInfo(ds_name, item.name, img_path, ann_path)
-                    items_dict.append(info)
+                    items_list.append(info)
+
+        if not train_items and train_collections:
+            raise KeyError(
+                f"None of the items in train collections {train_collections} of project_id={project_id} "
+                "could be resolved (see warnings above for the skipped items)."
+            )
+        if not val_items and val_collections:
+            raise KeyError(
+                f"None of the items in val collections {val_collections} of project_id={project_id} "
+                "could be resolved (see warnings above for the skipped items)."
+            )
 
         return train_items, val_items
 
