@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import time
 from dataclasses import dataclass
@@ -28,7 +29,7 @@ from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.api.project_api import ProjectInfo
-from supervisely.io.fs import ensure_base_path, str_is_url
+from supervisely.io.fs import ensure_base_path, silent_remove, str_is_url
 from supervisely.io.json import validate_json
 from supervisely.task.progress import Progress
 
@@ -1468,26 +1469,37 @@ class AppApi(TaskApi):
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
         progress = None
+        expected_length = None
+        if "Content-Length" in response.headers:
+            expected_length = int(response.headers["Content-Length"])
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
-
-            length = None
-            # Content-Length
-            if "Content-Length" in response.headers:
-                length = int(response.headers["Content-Length"])
-            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+            progress = Progress(
+                "Downloading: ", expected_length, ext_logger=ext_logger, is_size=True
+            )
 
         mb1 = 1024 * 1024
         ensure_base_path(save_path)
+        total_written = 0
         with open(save_path, "wb") as fd:
             log_size = 0
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
+                total_written += len(chunk)
                 log_size += len(chunk)
                 if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
+
+        if expected_length is not None and total_written != expected_length:
+            silent_remove(save_path)
+            raise IOError(
+                f"Download of file_path={file_path!r}, file_key={file_key!r} for "
+                f"module_id={module_id!r}, app_id={app_id!r}, version={version!r} is "
+                f"incomplete: expected {expected_length} bytes (per Content-Length), "
+                f"received {total_written}."
+            )
 
     def download_git_archive(
         self,
@@ -1510,26 +1522,51 @@ class AppApi(TaskApi):
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
         progress = None
+        expected_length = None
+        if "Content-Length" in response.headers:
+            expected_length = int(response.headers["Content-Length"])
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
-
-            length = None
-            # Content-Length
-            if "Content-Length" in response.headers:
-                length = int(response.headers["Content-Length"])
-            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+            progress = Progress(
+                "Downloading: ", expected_length, ext_logger=ext_logger, is_size=True
+            )
 
         mb1 = 1024 * 1024
         ensure_base_path(save_path)
+        total_written = 0
         with open(save_path, "wb") as fd:
             log_size = 0
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
+                total_written += len(chunk)
                 log_size += len(chunk)
                 if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
+
+        if expected_length is not None and total_written != expected_length:
+            silent_remove(save_path)
+            raise IOError(
+                f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
+                f"app_id={app_id!r}, version={version!r} is incomplete: expected "
+                f"{expected_length} bytes (per Content-Length), received {total_written}. "
+                "The server-side stored archive is likely corrupted/truncated - "
+                "try re-releasing this version."
+            )
+        if save_path.endswith(".gz"):
+            try:
+                with gzip.open(save_path, "rb") as gz:
+                    while gz.read(mb1):
+                        pass
+            except (EOFError, OSError) as e:
+                silent_remove(save_path)
+                raise IOError(
+                    f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
+                    f"app_id={app_id!r}, version={version!r} downloaded {total_written} bytes "
+                    f"but is not a valid gzip stream ({e}). The server-side stored archive is "
+                    "likely corrupted/truncated - try re-releasing this version."
+                ) from e
 
     def get_info(self, module_id, version=None):
         """get_info"""
