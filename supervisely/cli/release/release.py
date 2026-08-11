@@ -1,5 +1,4 @@
 import datetime
-import gzip
 import io
 import json
 import os
@@ -10,6 +9,7 @@ import string
 import subprocess
 import sys
 import tarfile
+import time
 from pathlib import Path
 
 import git
@@ -158,7 +158,7 @@ def get_app_from_instance(appKey: str, token, server):
 
 
 def _download_archive_bytes(server_address, api_token, ecosystem_item_id, version):
-    """Download the just-uploaded archive back into memory, for post-upload verification."""
+    """Download an archive into memory, for post-upload verification."""
     payload = {
         "moduleId": ecosystem_item_id,
         "version": version,
@@ -171,50 +171,93 @@ def _download_archive_bytes(server_address, api_token, ecosystem_item_id, versio
         stream=True,
     )
     if resp.status_code != 200:
-        return None, None, f"HTTP {resp.status_code} while reading back the uploaded archive"
-    expected_length = resp.headers.get("Content-Length")
-    expected_length = int(expected_length) if expected_length is not None else None
+        return None, f"HTTP {resp.status_code} while reading back the uploaded archive"
     buf = io.BytesIO()
     for chunk in resp.iter_content(chunk_size=1024 * 1024):
         buf.write(chunk)
-    data = buf.getvalue()
-    if expected_length is not None and len(data) != expected_length:
-        return (
-            data,
-            expected_length,
-            f"expected {expected_length} bytes (Content-Length), received {len(data)}",
-        )
-    return data, expected_length, None
+    return buf.getvalue(), None
 
 
-def _verify_uploaded_archive(server_address, api_token, appKey, version, archive_name):
+def _validate_archive_bytes(data, archive_name):
     """
-    Read the just-uploaded archive back from the server and confirm it is a complete,
-    valid gzip/tar stream. Neither the upload endpoint nor the download endpoint
-    validate transfer completeness on their own - a connection that drops mid-transfer
-    can still result in a "successful" HTTP response with a truncated file stored
-    server-side, which then only surfaces much later as an opaque error deep inside
-    tarfile/gzip on whichever agent tries to use it. Returns (is_valid, error_message).
+    Structural validation of an in-memory archive. Uses tarfile's auto-detecting
+    "r:*" mode and actually iterates every member (not just opening the stream),
+    so this covers both the gzip-compressed (.tar.gz) and plain (.tar, used for
+    client_side_app releases) cases, and catches the case where the outer gzip
+    envelope is technically well-formed but the tar content inside it is
+    truncated - a bare gzip-only check would miss that.
     """
-    app_info = get_app_from_instance(appKey, api_token, server_address)
-    if app_info is None or "id" not in app_info:
-        return False, "could not resolve ecosystem item id for appKey after upload"
-    ecosystem_item_id = app_info["id"]
-
-    data, expected_length, err = _download_archive_bytes(
-        server_address, api_token, ecosystem_item_id, version
-    )
-    if err is not None:
-        return False, err
-
-    if archive_name.endswith(".tar.gz"):
-        try:
-            with gzip.GzipFile(fileobj=io.BytesIO(data)) as gz:
-                while gz.read(1024 * 1024):
-                    pass
-        except (EOFError, OSError) as e:
-            return False, f"downloaded archive is not a valid gzip stream: {e}"
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
+            for _ in tar:
+                pass
+    except (EOFError, OSError, tarfile.TarError) as e:
+        return False, f"downloaded archive is not a valid/complete tar stream: {e}"
     return True, None
+
+
+def _read_back_and_verify(
+    server_address,
+    api_token,
+    appKey,
+    version,
+    archive_name,
+    expected_size,
+    max_read_attempts=4,
+    initial_backoff_sec=2,
+):
+    """
+    Read the just-uploaded archive back from the server and confirm it is complete
+    and structurally valid. Neither the upload endpoint nor the download endpoint
+    validate transfer completeness on their own - a connection that drops
+    mid-transfer can still result in a "successful" HTTP response with a truncated
+    file stored server-side.
+
+    Storage/indexing on the server can also be asynchronous: reading back
+    *immediately* after the 200 response can race the server and either 404 or
+    serve a previous version's bytes, which would look identical to real
+    corruption unless we check for it. So this retries the read itself (not the
+    upload) with exponential backoff, and requires the returned size to match the
+    just-uploaded local archive's size before doing any deeper structural check -
+    a size mismatch is treated as "not propagated yet" and retried, not as
+    corruption. Only a size-matched-but-structurally-broken result is treated as
+    a real, immediate failure (no point retrying the read further at that point).
+
+    Returns (is_valid, error_message).
+    """
+    backoff = initial_backoff_sec
+    last_err = "no read-back attempts were made"
+    for attempt in range(1, max_read_attempts + 1):
+        app_info = get_app_from_instance(appKey, api_token, server_address)
+        if app_info is None or "id" not in app_info:
+            last_err = "could not resolve ecosystem item id for appKey"
+        else:
+            data, err = _download_archive_bytes(
+                server_address, api_token, app_info["id"], version
+            )
+            if err is not None:
+                last_err = err
+            elif len(data) != expected_size:
+                last_err = (
+                    f"read-back size {len(data)} does not match the uploaded size "
+                    f"{expected_size} (server storage/indexing may still be propagating)"
+                )
+            else:
+                return _validate_archive_bytes(data, archive_name)
+        if attempt < max_read_attempts:
+            time.sleep(backoff)
+            backoff *= 2
+    return False, f"gave up after {max_read_attempts} read-back attempts: {last_err}"
+
+
+def _is_duplicate_version_response(response):
+    """True if the server rejected the upload because this version was already released."""
+    try:
+        message = json.dumps(response.json())
+    except Exception:
+        message = response.text or ""
+    message = message.lower()
+    return "already exists" in message or "already released" in message
 
 
 def upload_archive(
@@ -231,76 +274,96 @@ def upload_archive(
     subapp_path,
     share_app,
     files,
-    max_attempts=3,
+    max_attempts=2,
 ):
     archive_name = os.path.basename(archive_path)
     version = release.get("version")
+    expected_size = os.path.getsize(archive_path)
     response = None
+    last_ok_response = None
 
     for attempt in range(1, max_attempts + 1):
-        f = open(archive_path, "rb")
-        fields = {
-            "appKey": appKey,
-            "subAppPath": subapp_path,
-            "release": json.dumps(release),
-            "config": json.dumps(config),
-            "readme": readme,
-            "modalTemplate": modal_template,
-            "archive": (
-                archive_name,
-                f,
-                "application/gzip"
-                if archive_name.endswith(".tar.gz")
-                else "application/x-tar",
-            ),
-        }
-        if slug:
-            fields["slug"] = slug
-        if user_id:
-            fields["userId"] = str(user_id)
-        if share_app:
-            fields["isShared"] = "true"
-        if files:
-            files_contents = {}
-            fields["files"] = files_contents
-            for file_name, file_path in files.items():
-                files_contents[file_name] = Path(file_path).read_text(encoding="utf-8")
-            fields["files"] = json.dumps(files_contents)
+        with open(archive_path, "rb") as f:
+            fields = {
+                "appKey": appKey,
+                "subAppPath": subapp_path,
+                "release": json.dumps(release),
+                "config": json.dumps(config),
+                "readme": readme,
+                "modalTemplate": modal_template,
+                "archive": (
+                    archive_name,
+                    f,
+                    "application/gzip"
+                    if archive_name.endswith(".tar.gz")
+                    else "application/x-tar",
+                ),
+            }
+            if slug:
+                fields["slug"] = slug
+            if user_id:
+                fields["userId"] = str(user_id)
+            if share_app:
+                fields["isShared"] = "true"
+            if files:
+                files_contents = {}
+                fields["files"] = files_contents
+                for file_name, file_path in files.items():
+                    files_contents[file_name] = Path(file_path).read_text(encoding="utf-8")
+                fields["files"] = json.dumps(files_contents)
 
-        e = MultipartEncoder(fields=fields)
-        encoder_len = e.len
-        with tqdm(
-            total=encoder_len,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as bar:
-            m = MultipartEncoderMonitor(e, lambda monitor: bar.update(monitor.bytes_read - bar.n))
-            response = requests.post(
-                f"{server_address.rstrip('/')}/public/api/v3/ecosystem.release",
-                data=m,
-                headers={"Content-Type": m.content_type, "x-api-key": api_token},
+            e = MultipartEncoder(fields=fields)
+            encoder_len = e.len
+            with tqdm(
+                total=encoder_len,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as bar:
+                m = MultipartEncoderMonitor(
+                    e, lambda monitor: bar.update(monitor.bytes_read - bar.n)
+                )
+                response = requests.post(
+                    f"{server_address.rstrip('/')}/public/api/v3/ecosystem.release",
+                    data=m,
+                    headers={"Content-Type": m.content_type, "x-api-key": api_token},
+                )
+
+        if response.ok:
+            last_ok_response = response
+        else:
+            if version is None or not _is_duplicate_version_response(response):
+                # A genuine, unrelated rejection - let the existing caller-level
+                # retry/error handling (do_release_with_retry) deal with it as before.
+                return response
+            # The server says this version is already released - almost certainly
+            # because *this function's own previous attempt* already stored it
+            # (retrying with the same version would otherwise never legitimately
+            # hit this). Re-uploading again under the same version cannot help,
+            # so check what is actually stored instead of treating this as fatal.
+            print(
+                f"[upload_archive] Attempt {attempt}/{max_attempts}: server reports version "
+                f"{version!r} already exists; checking whether it was actually stored intact "
+                "before treating this as a failure...",
+                file=sys.stderr,
             )
-        f.close()
-
-        if not response.ok:
-            # Not an upload-integrity problem - let the existing caller-level retry/error
-            # handling (do_release_with_retry) deal with real HTTP/server errors as before.
-            return response
 
         if version is None:
             # Nothing to read back and compare against (e.g. archive_only_config flows).
             return response
 
-        is_valid, err = _verify_uploaded_archive(
-            server_address, api_token, appKey, version, archive_name
+        is_valid, err = _read_back_and_verify(
+            server_address, api_token, appKey, version, archive_name, expected_size
         )
         if is_valid:
-            return response
+            # response itself may be the "already exists" rejection from this attempt
+            # (see above) - report the earlier successful upload's response in that
+            # case, not the rejection, since the verified-good content is what matters.
+            return last_ok_response if last_ok_response is not None else response
 
         print(
-            f"[upload_archive] Attempt {attempt}/{max_attempts}: server accepted the upload "
-            f"(HTTP {response.status_code}) but the stored archive failed verification: {err}. "
+            f"[upload_archive] Attempt {attempt}/{max_attempts}: stored archive for version "
+            f"{version!r} failed verification: {err}. "
             + ("Retrying with a fresh upload..." if attempt < max_attempts else "Giving up."),
             file=sys.stderr,
         )

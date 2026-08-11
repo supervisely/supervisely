@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-import gzip
 import json
+import tarfile
 import time
 from dataclasses import dataclass
 from time import sleep
@@ -1554,18 +1554,22 @@ class AppApi(TaskApi):
                 "The server-side stored archive is likely corrupted/truncated - "
                 "try re-releasing this version."
             )
-        if save_path.endswith(".gz"):
+        if save_path.endswith((".tar.gz", ".tar")):
+            # "r:*" auto-detects gzip vs plain tar (client_side_app releases upload a
+            # plain, uncompressed .tar), and actually iterating every member - not just
+            # opening the stream - is what catches a truncated tar body even when the
+            # outer gzip envelope is technically well-formed.
             try:
-                with gzip.open(save_path, "rb") as gz:
-                    while gz.read(mb1):
+                with tarfile.open(save_path, mode="r:*") as tar:
+                    for _ in tar:
                         pass
-            except (EOFError, OSError) as e:
+            except (EOFError, OSError, tarfile.TarError) as e:
                 silent_remove(save_path)
                 raise IOError(
                     f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
                     f"app_id={app_id!r}, version={version!r} downloaded {total_written} bytes "
-                    f"but is not a valid gzip stream ({e}). The server-side stored archive is "
-                    "likely corrupted/truncated - try re-releasing this version."
+                    f"but is not a valid/complete tar stream ({e}). The server-side stored "
+                    "archive is likely corrupted/truncated - try re-releasing this version."
                 ) from e
 
     def get_info(self, module_id, version=None):
