@@ -554,10 +554,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         except Exception as e:
             logger.trace(
                 f"Failed to get info by name with all available fields for 'projects.list' endpoint: {e} "
-                "Falling back to minimal fields (id) and get_info_by_id()."
+                "Falling back to client-side exact name matching and get_info_by_id()."
             )
             fields = [ApiField.ID]
-            info = super().get_info_by_name(parent_id, name, fields)
+            projects = self.get_list(parent_id, fields=fields)
+            info = next((project for project in projects if project.name == name), None)
             if info is None:
                 if raise_error:
                     raise ProjectNotFound(
