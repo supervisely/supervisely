@@ -1,4 +1,6 @@
 import datetime
+import gzip
+import io
 import json
 import os
 import random
@@ -155,6 +157,66 @@ def get_app_from_instance(appKey: str, token, server):
     return r.json()
 
 
+def _download_archive_bytes(server_address, api_token, ecosystem_item_id, version):
+    """Download the just-uploaded archive back into memory, for post-upload verification."""
+    payload = {
+        "moduleId": ecosystem_item_id,
+        "version": version,
+        "isArchive": True,
+    }
+    resp = requests.post(
+        f"{server_address.rstrip('/')}/public/api/v3/ecosystem.file.download",
+        json=payload,
+        headers={"x-api-key": api_token},
+        stream=True,
+    )
+    if resp.status_code != 200:
+        return None, None, f"HTTP {resp.status_code} while reading back the uploaded archive"
+    expected_length = resp.headers.get("Content-Length")
+    expected_length = int(expected_length) if expected_length is not None else None
+    buf = io.BytesIO()
+    for chunk in resp.iter_content(chunk_size=1024 * 1024):
+        buf.write(chunk)
+    data = buf.getvalue()
+    if expected_length is not None and len(data) != expected_length:
+        return (
+            data,
+            expected_length,
+            f"expected {expected_length} bytes (Content-Length), received {len(data)}",
+        )
+    return data, expected_length, None
+
+
+def _verify_uploaded_archive(server_address, api_token, appKey, version, archive_name):
+    """
+    Read the just-uploaded archive back from the server and confirm it is a complete,
+    valid gzip/tar stream. Neither the upload endpoint nor the download endpoint
+    validate transfer completeness on their own - a connection that drops mid-transfer
+    can still result in a "successful" HTTP response with a truncated file stored
+    server-side, which then only surfaces much later as an opaque error deep inside
+    tarfile/gzip on whichever agent tries to use it. Returns (is_valid, error_message).
+    """
+    app_info = get_app_from_instance(appKey, api_token, server_address)
+    if app_info is None or "id" not in app_info:
+        return False, "could not resolve ecosystem item id for appKey after upload"
+    ecosystem_item_id = app_info["id"]
+
+    data, expected_length, err = _download_archive_bytes(
+        server_address, api_token, ecosystem_item_id, version
+    )
+    if err is not None:
+        return False, err
+
+    if archive_name.endswith(".tar.gz"):
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(data)) as gz:
+                while gz.read(1024 * 1024):
+                    pass
+        except (EOFError, OSError) as e:
+            return False, f"downloaded archive is not a valid gzip stream: {e}"
+    return True, None
+
+
 def upload_archive(
     archive_path,
     server_address,
@@ -169,51 +231,87 @@ def upload_archive(
     subapp_path,
     share_app,
     files,
+    max_attempts=3,
 ):
-    f = open(archive_path, "rb")
     archive_name = os.path.basename(archive_path)
-    fields = {
-        "appKey": appKey,
-        "subAppPath": subapp_path,
-        "release": json.dumps(release),
-        "config": json.dumps(config),
-        "readme": readme,
-        "modalTemplate": modal_template,
-        "archive": (
-            archive_name,
-            f,
-            "application/gzip" if archive_name.endswith(".tar.gz") else "application/x-tar",
-        ),
-    }
-    if slug:
-        fields["slug"] = slug
-    if user_id:
-        fields["userId"] = str(user_id)
-    if share_app:
-        fields["isShared"] = "true"
-    if files:
-        files_contents = {}
-        fields["files"] = files_contents
-        for file_name, file_path in files.items():
-            files_contents[file_name] = Path(file_path).read_text(encoding="utf-8")
-        fields["files"] = json.dumps(files_contents)
+    version = release.get("version")
+    response = None
 
-    e = MultipartEncoder(fields=fields)
-    encoder_len = e.len
-    with tqdm(
-        total=encoder_len,
-        unit="B",
-        unit_scale=True,
-        unit_divisor=1024,
-    ) as bar:
-        m = MultipartEncoderMonitor(e, lambda monitor: bar.update(monitor.bytes_read - bar.n))
-        response = requests.post(
-            f"{server_address.rstrip('/')}/public/api/v3/ecosystem.release",
-            data=m,
-            headers={"Content-Type": m.content_type, "x-api-key": api_token},
+    for attempt in range(1, max_attempts + 1):
+        f = open(archive_path, "rb")
+        fields = {
+            "appKey": appKey,
+            "subAppPath": subapp_path,
+            "release": json.dumps(release),
+            "config": json.dumps(config),
+            "readme": readme,
+            "modalTemplate": modal_template,
+            "archive": (
+                archive_name,
+                f,
+                "application/gzip"
+                if archive_name.endswith(".tar.gz")
+                else "application/x-tar",
+            ),
+        }
+        if slug:
+            fields["slug"] = slug
+        if user_id:
+            fields["userId"] = str(user_id)
+        if share_app:
+            fields["isShared"] = "true"
+        if files:
+            files_contents = {}
+            fields["files"] = files_contents
+            for file_name, file_path in files.items():
+                files_contents[file_name] = Path(file_path).read_text(encoding="utf-8")
+            fields["files"] = json.dumps(files_contents)
+
+        e = MultipartEncoder(fields=fields)
+        encoder_len = e.len
+        with tqdm(
+            total=encoder_len,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as bar:
+            m = MultipartEncoderMonitor(e, lambda monitor: bar.update(monitor.bytes_read - bar.n))
+            response = requests.post(
+                f"{server_address.rstrip('/')}/public/api/v3/ecosystem.release",
+                data=m,
+                headers={"Content-Type": m.content_type, "x-api-key": api_token},
+            )
+        f.close()
+
+        if not response.ok:
+            # Not an upload-integrity problem - let the existing caller-level retry/error
+            # handling (do_release_with_retry) deal with real HTTP/server errors as before.
+            return response
+
+        if version is None:
+            # Nothing to read back and compare against (e.g. archive_only_config flows).
+            return response
+
+        is_valid, err = _verify_uploaded_archive(
+            server_address, api_token, appKey, version, archive_name
         )
-    f.close()
-    return response
+        if is_valid:
+            return response
+
+        print(
+            f"[upload_archive] Attempt {attempt}/{max_attempts}: server accepted the upload "
+            f"(HTTP {response.status_code}) but the stored archive failed verification: {err}. "
+            + ("Retrying with a fresh upload..." if attempt < max_attempts else "Giving up."),
+            file=sys.stderr,
+        )
+
+    raise RuntimeError(
+        f"Uploaded archive for appKey={appKey!r} version={version!r} repeatedly failed "
+        f"post-upload verification after {max_attempts} attempts - the server is storing a "
+        "truncated/corrupted archive despite returning a successful HTTP response. This is "
+        "not a client-side problem to retry away; the ecosystem.release/ecosystem.file.download "
+        "backend needs investigation."
+    )
 
 
 def archive_application(repo: git.Repo, config, slug):
