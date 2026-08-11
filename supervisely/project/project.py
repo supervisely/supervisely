@@ -3562,7 +3562,7 @@ class Project:
         train_items = []
         val_items = []
 
-        for collection_ids, items_dict in [
+        for collection_ids, items_list in [
             (train_collections, train_items),
             (val_collections, val_items),
         ]:
@@ -3618,7 +3618,7 @@ class Project:
                         )
                         continue
                     info = ItemInfo(ds_name, item.name, img_path, ann_path)
-                    items_dict.append(info)
+                    items_list.append(info)
 
         if not train_items and train_collections:
             raise KeyError(
