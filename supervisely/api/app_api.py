@@ -1554,23 +1554,24 @@ class AppApi(TaskApi):
                 "The server-side stored archive is likely corrupted/truncated - "
                 "try re-releasing this version."
             )
-        if save_path.endswith((".tar.gz", ".tar")):
-            # "r:*" auto-detects gzip vs plain tar (client_side_app releases upload a
-            # plain, uncompressed .tar), and actually iterating every member - not just
-            # opening the stream - is what catches a truncated tar body even when the
-            # outer gzip envelope is technically well-formed.
-            try:
-                with tarfile.open(save_path, mode="r:*") as tar:
-                    for _ in tar:
-                        pass
-            except (EOFError, OSError, tarfile.TarError) as e:
-                silent_remove(save_path)
-                raise IOError(
-                    f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
-                    f"app_id={app_id!r}, version={version!r} downloaded {total_written} bytes "
-                    f"but is not a valid/complete tar stream ({e}). The server-side stored "
-                    "archive is likely corrupted/truncated - try re-releasing this version."
-                ) from e
+        # "r:*" auto-detects gzip vs plain tar (client_side_app releases upload a
+        # plain, uncompressed .tar), and actually iterating every member - not just
+        # opening the stream - is what catches a truncated tar body even when the
+        # outer gzip envelope is technically well-formed. Not gated on save_path's
+        # extension: a caller can pass any path, and skipping validation just
+        # because it doesn't end in .tar.gz/.tar would silently defeat the point.
+        try:
+            with tarfile.open(save_path, mode="r:*") as tar:
+                for _ in tar:
+                    pass
+        except (EOFError, OSError, tarfile.TarError) as e:
+            silent_remove(save_path)
+            raise IOError(
+                f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
+                f"app_id={app_id!r}, version={version!r} downloaded {total_written} bytes "
+                f"but is not a valid/complete tar stream ({e}). The server-side stored "
+                "archive is likely corrupted/truncated - try re-releasing this version."
+            ) from e
 
     def get_info(self, module_id, version=None):
         """get_info"""
