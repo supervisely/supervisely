@@ -171,3 +171,4 @@ from supervisely.app.widgets.external_model_selector.external_model_selector imp
     ExternalModelSelector,
 )
 from supervisely.app.widgets.reorder_table.reorder_table import ReorderTable
+from supervisely.app.widgets.hotkeys.hotkeys import Hotkeys

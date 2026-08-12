@@ -1,0 +1,6 @@
+<sly-hotkeys
+  :hotkeys="data.{{{widget.widget_id}}}.hotkeys"
+  :prevent-default="data.{{{widget.widget_id}}}.prevent_default"
+  :ignore-input-focus="data.{{{widget.widget_id}}}.ignore_input_focus"
+  @hotkey-pressed="state.{{{widget.widget_id}}}.pressed_key = $event; post('/{{{widget.widget_id}}}/key_pressed_cb')"
+></sly-hotkeys>
