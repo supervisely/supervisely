@@ -719,6 +719,8 @@ class ApiField:
     """"""
     GUIDE_ID = "guideId"
     """"""
+    MAX_MODULES = "maxModules"
+    """"""
     SINGLE_SESSION_MODE = "singleSessionMode"
     """"""
     READ_ONLY_PROJECT_ID = "readOnlyProjectId"

@@ -401,7 +401,9 @@ class PointcloudEpisodeAnnotation:
         item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
-            key_id_map.add_video(item_key, data.get(ApiField.DATASET_ID, None))
+            dataset_id = data.get(ApiField.DATASET_ID)
+            if dataset_id is not None:
+                key_id_map.add_video(item_key, dataset_id)
 
         description = data.get(DESCRIPTION, "")
         frames_count = data.get(FRAMES_COUNT, 0)

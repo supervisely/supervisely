@@ -183,6 +183,7 @@ class VideoAnnotation:
         self._key = take_with_default(key, uuid.uuid4())
 
         self.validate_figures_bounds()
+        self.validate_tag_ranges()
 
     @property
     def img_size(self) -> Tuple[int, int]:
@@ -549,6 +550,13 @@ class VideoAnnotation:
         """
         for frame in self.frames:
             frame.validate_figures_bounds(self.img_size)
+
+    def validate_tag_ranges(self) -> None:
+        """
+        Checks if video tags reference valid frame bounds.
+        """
+        for tag in self.tags:
+            tag.validate_frame_range_bounds(self.frames_count)
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
