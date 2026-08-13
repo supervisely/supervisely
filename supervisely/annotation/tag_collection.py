@@ -20,7 +20,7 @@ class TagCollection(MultiKeyIndexedCollection):
         """
         :param items: List of :class:`~supervisely.annotation.tag.Tag` instances.
         :type items: list, optional
-        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist
+        :raises :exc:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
 
         :Usage Example:
 
