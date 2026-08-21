@@ -4,12 +4,13 @@ from typing import Any, Dict, List, Optional, Union
 
 from supervisely._utils import batched, take_with_default
 from supervisely.annotation.tag_meta import (
+    TagMeta,
     TagValueType,
     validate_frame_range_length_limits,
 )
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.imaging.color import random_rgb, rgb2hex
+from supervisely.imaging.color import color2hex
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.task.progress import tqdm_sly
@@ -118,13 +119,6 @@ class TagApi(ModuleApi):
         return {tag_info.name: tag_info.id for tag_info in tags_info}
 
     @staticmethod
-    def _color_to_hex(color: Union[str, List[int]]) -> str:
-        """Accept both a HEX string and an [R, G, B] list, as TagMeta stores RGB."""
-        if isinstance(color, str):
-            return color
-        return rgb2hex(color)
-
-    @staticmethod
     def _frame_range_length_settings(
         min_length: Optional[int],
         max_length: Optional[int],
@@ -146,17 +140,22 @@ class TagApi(ModuleApi):
             settings[ApiField.FRAME_RANGE_MAX_LENGTH] = max_length
         return settings
 
-    def create_metas(self, project_id: int, tags: List[Dict]) -> List[Dict]:
+    def create_bulk(
+        self, project_id: int, tag_metas: Union[TagMeta, List[TagMeta]]
+    ) -> List[Dict]:
         """
         Create tag metas (tag definitions) in a project.
 
-        Each item accepts the same keyword arguments as :func:`create_meta`, except
-        ``project_id``. Tag names must be unique within the project.
+        Tag names must be unique within the project. ``TagMeta.applicable_classes``
+        holds class names, while the endpoint expects class IDs, so the names are
+        resolved against the project's classes - one extra request, and only when at
+        least one tag meta restricts its classes.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
-        :param tags: List of tag meta descriptions.
-        :type tags: List[dict]
+        :param tag_metas: Tag metas to create. A single TagMeta is also accepted.
+        :type tag_metas: TagMeta or List[TagMeta]
+        :raises ValueError: If a TagMeta references a class that the project does not have.
         :returns: List of created tag metas, each with "id" and "title"
         :rtype: List[dict]
 
@@ -168,65 +167,49 @@ class TagApi(ModuleApi):
 
                 api = sly.Api.from_env()
 
-                created = api.video.tag.create_metas(
+                created = api.video.tag.create_bulk(
                     project_id=123,
-                    tags=[
-                        {"name": "running", "target_type": sly.TagTargetType.FRAME_BASED,
-                         "frame_range_min_length": 5, "frame_range_max_length": 30},
-                        {"name": "standing", "target_type": sly.TagTargetType.FRAME_BASED},
+                    tag_metas=[
+                        sly.TagMeta(
+                            "running",
+                            sly.TagValueType.NONE,
+                            target_type=sly.TagTargetType.FRAME_BASED,
+                            frame_range_min_length=5,
+                            frame_range_max_length=30,
+                        ),
+                        sly.TagMeta(
+                            "standing",
+                            sly.TagValueType.NONE,
+                            target_type=sly.TagTargetType.FRAME_BASED,
+                        ),
                     ],
                 )
         """
+        if isinstance(tag_metas, TagMeta):
+            tag_metas = [tag_metas]
+
+        class_name_to_id = None
+        if any(tag_meta.applicable_classes for tag_meta in tag_metas):
+            class_name_to_id = self._api.object_class.get_name_to_id_map(project_id)
+
         payload = {
             ApiField.PROJECT_ID: project_id,
-            ApiField.TAGS: [self._tag_meta_json(**tag) for tag in tags],
+            ApiField.TAGS: [
+                self._tag_meta_json(tag_meta, class_name_to_id) for tag_meta in tag_metas
+            ],
         }
         response = self._api.post("tags.bulk.add", payload)
         return response.json()
 
-    def create_meta(
-        self,
-        project_id: int,
-        name: str,
-        value_type: str = TagValueType.NONE,
-        possible_values: Optional[List[str]] = None,
-        color: Optional[Union[str, List[int]]] = None,
-        hotkey: Optional[str] = None,
-        applicable_to: Optional[str] = None,
-        applicable_class_ids: Optional[List[int]] = None,
-        target_type: Optional[str] = None,
-        frame_range_min_length: Optional[int] = None,
-        frame_range_max_length: Optional[int] = None,
-    ) -> Dict:
+    def create(self, project_id: int, tag_meta: TagMeta) -> Dict:
         """
         Create a single tag meta (tag definition) in a project.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
-        :param name: Tag name, must be unique within the project.
-        :type name: str
-        :param value_type: TagValueType: NONE, ANY_STRING, ANY_NUMBER, ONEOF_STRING, DATE.
-        :type value_type: str, optional
-        :param possible_values: Required for ONEOF_STRING; list of allowed values.
-        :type possible_values: List[str], optional
-        :param color: Color as a HEX string ("#FF7800") or an [R, G, B] list. Random if not provided.
-        :type color: str or List[int], optional
-        :param hotkey: Single-character hotkey in the annotation UI.
-        :type hotkey: str, optional
-        :param applicable_to: TagApplicableTo: ALL, IMAGES_ONLY, OBJECTS_ONLY.
-        :type applicable_to: str, optional
-        :param applicable_class_ids: Class IDs the tag is restricted to. Only for OBJECTS_ONLY.
-                                     Note that this endpoint takes IDs, not class names.
-        :type applicable_class_ids: List[int], optional
-        :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL. Videos and point cloud episodes only.
-        :type target_type: str, optional
-        :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
-            frame range tag. 0 or None means no limit.
-        :type frame_range_min_length: int, optional
-        :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
-            frame range tag. 0 or None means no limit.
-        :type frame_range_max_length: int, optional
-        :raises ValueError: If the frame range limits are negative or min is greater than max.
+        :param tag_meta: Tag meta to create. Its name must be unique within the project.
+        :type tag_meta: TagMeta
+        :raises ValueError: If the TagMeta references a class that the project does not have.
         :returns: Created tag meta with "id" and "title"
         :rtype: dict
 
@@ -239,68 +222,69 @@ class TagApi(ModuleApi):
                 api = sly.Api.from_env()
 
                 # frame range tag that must cover between 5 and 30 frames
-                tag = api.video.tag.create_meta(
+                tag = api.video.tag.create(
                     project_id=123,
-                    name="running",
-                    target_type=sly.TagTargetType.FRAME_BASED,
-                    frame_range_min_length=5,
-                    frame_range_max_length=30,
+                    tag_meta=sly.TagMeta(
+                        "running",
+                        sly.TagValueType.NONE,
+                        target_type=sly.TagTargetType.FRAME_BASED,
+                        frame_range_min_length=5,
+                        frame_range_max_length=30,
+                    ),
                 )
         """
-        created = self.create_metas(
-            project_id,
-            [
-                {
-                    "name": name,
-                    "value_type": value_type,
-                    "possible_values": possible_values,
-                    "color": color,
-                    "hotkey": hotkey,
-                    "applicable_to": applicable_to,
-                    "applicable_class_ids": applicable_class_ids,
-                    "target_type": target_type,
-                    "frame_range_min_length": frame_range_min_length,
-                    "frame_range_max_length": frame_range_max_length,
-                }
-            ],
-        )
-        return created[0]
+        return self.create_bulk(project_id, [tag_meta])[0]
 
     def _tag_meta_json(
-        self,
-        name: str,
-        value_type: str = TagValueType.NONE,
-        possible_values: Optional[List[str]] = None,
-        color: Optional[Union[str, List[int]]] = None,
-        hotkey: Optional[str] = None,
-        applicable_to: Optional[str] = None,
-        applicable_class_ids: Optional[List[int]] = None,
-        target_type: Optional[str] = None,
-        frame_range_min_length: Optional[int] = None,
-        frame_range_max_length: Optional[int] = None,
+        self, tag_meta: TagMeta, class_name_to_id: Optional[Dict[str, int]] = None
     ) -> Dict:
-        """Build a single tag meta item for the "tags.bulk.add" payload."""
-        settings = {ApiField.TYPE: value_type}
-        if possible_values is not None:
-            settings[ApiField.VALUES] = possible_values
-        if applicable_to is not None:
-            settings[ApiField.APPLICABLE_TYPE] = applicable_to
-        if applicable_class_ids is not None:
-            settings[ApiField.CLASSES] = applicable_class_ids
-        if target_type is not None:
-            settings[ApiField.TARGET_TYPE] = target_type
+        """
+        Build a single tag meta item for the "tags.bulk.add" payload.
+
+        The nested shape this endpoint takes differs from the flat one that
+        TagMeta.to_json produces for projects.meta.update: keys are camelCase, most of
+        them live under "settings", and "classes" holds IDs instead of names.
+        """
+        settings = {
+            ApiField.TYPE: tag_meta.value_type,
+            ApiField.APPLICABLE_TYPE: tag_meta.applicable_to,
+            ApiField.TARGET_TYPE: tag_meta.target_type,
+        }
+        if tag_meta.value_type == TagValueType.ONEOF_STRING:
+            settings[ApiField.VALUES] = tag_meta.possible_values
+        if tag_meta.applicable_classes:
+            settings[ApiField.CLASSES] = self._resolve_class_ids(
+                tag_meta, class_name_to_id or {}
+            )
+        # A limit of 0 means "no limit", which is also the server-side default, so it is
+        # left out - same as TagMeta.to_json does for the flat shape.
         settings.update(
-            self._frame_range_length_settings(frame_range_min_length, frame_range_max_length)
+            self._frame_range_length_settings(
+                tag_meta.frame_range_min_length or None,
+                tag_meta.frame_range_max_length or None,
+            )
         )
 
         tag_json = {
-            ApiField.TITLE: name,
-            ApiField.COLOR: self._color_to_hex(take_with_default(color, random_rgb())),
+            ApiField.TITLE: tag_meta.name,
+            ApiField.COLOR: color2hex(tag_meta.color),
             ApiField.SETTINGS: settings,
         }
-        if hotkey is not None:
-            tag_json[ApiField.HOTKEY] = hotkey
+        if tag_meta.hotkey:
+            tag_json[ApiField.HOTKEY] = tag_meta.hotkey
         return tag_json
+
+    @staticmethod
+    def _resolve_class_ids(tag_meta: TagMeta, class_name_to_id: Dict[str, int]) -> List[int]:
+        """"""
+        missing = [name for name in tag_meta.applicable_classes if name not in class_name_to_id]
+        if missing:
+            raise ValueError(
+                "Tag {!r} is restricted to classes that the project does not have: {}".format(
+                    tag_meta.name, ", ".join(missing)
+                )
+            )
+        return [class_name_to_id[name] for name in tag_meta.applicable_classes]
 
     def update_meta(
         self,
@@ -310,7 +294,6 @@ class TagApi(ModuleApi):
         color: Optional[Union[str, List[int]]] = None,
         hotkey: Optional[str] = None,
         applicable_to: Optional[str] = None,
-        applicable_class_ids: Optional[List[int]] = None,
         target_type: Optional[str] = None,
         frame_range_min_length: Optional[int] = None,
         frame_range_max_length: Optional[int] = None,
@@ -325,6 +308,22 @@ class TagApi(ModuleApi):
         The endpoint requires "title" and "color" in every request, so pass either both
         of them or ``project_id``, which lets the current values be read from the server.
 
+        .. warning::
+
+            Two server-side quirks of this endpoint (see supervisely/issues#6077) affect
+            every partial update, including one that only touches a frame range limit:
+
+            - ``applicableType`` and ``classes`` carry schema defaults, so omitting them
+              from ``settings`` reaches the server as a real change to ``"all"`` / ``[]``
+              and resets both. Pass ``applicable_to`` explicitly to keep control of it.
+            - a new class list is applied only while ``applicableType`` changes in the
+              same request, and is ignored otherwise, which is why there is no
+              ``applicable_classes`` argument here.
+
+            Until that is fixed, prefer
+            :func:`~supervisely.api.project_api.ProjectApi.update_meta` when a tag has a
+            non-default applicable type or a class list.
+
         :param id: Tag meta ID in Supervisely.
         :type id: int
         :param project_id: Project the tag belongs to. Only needed to look up the current
@@ -338,9 +337,6 @@ class TagApi(ModuleApi):
         :type hotkey: str, optional
         :param applicable_to: TagApplicableTo: ALL, IMAGES_ONLY, OBJECTS_ONLY.
         :type applicable_to: str, optional
-        :param applicable_class_ids: Class IDs the tag is restricted to. Only for OBJECTS_ONLY.
-                                     Note that this endpoint takes IDs, not class names.
-        :type applicable_class_ids: List[int], optional
         :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL. Videos and point cloud episodes only.
         :type target_type: str, optional
         :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
@@ -374,8 +370,6 @@ class TagApi(ModuleApi):
         settings = {}
         if applicable_to is not None:
             settings[ApiField.APPLICABLE_TYPE] = applicable_to
-        if applicable_class_ids is not None:
-            settings[ApiField.CLASSES] = applicable_class_ids
         if target_type is not None:
             settings[ApiField.TARGET_TYPE] = target_type
         settings.update(
@@ -403,7 +397,7 @@ class TagApi(ModuleApi):
         payload = {
             ApiField.ID: id,
             ApiField.TITLE: name,
-            ApiField.COLOR: self._color_to_hex(color),
+            ApiField.COLOR: color2hex(color),
         }
         if hotkey is not None:
             payload[ApiField.HOTKEY] = hotkey
