@@ -738,6 +738,16 @@ class ApiField:
     WORKSPACES_IDS = "workspacesIds"
     """"""
     IS_FAVORITE = "isFavorite"
+    """"""
+    FRAME_RANGE_MIN_LENGTH = "frameRangeMinLength"
+    """"""
+    FRAME_RANGE_MAX_LENGTH = "frameRangeMaxLength"
+    """"""
+    VALUES = "values"
+    """"""
+    APPLICABLE_TYPE = "applicableType"
+    """"""
+    TARGET_TYPE = "targetType"
 
 
 def _get_single_item(items):
