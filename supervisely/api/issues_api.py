@@ -142,20 +142,32 @@ class IssuesApi(ModuleApiBase):
         """Name of the tuple that represents IssueInfo."""
         return "IssueInfo"
 
-    def get_list(self, team_id: int, filters: List[Dict[str, str]] = None) -> List[IssueInfo]:
+    def get_list(
+        self,
+        team_id: int,
+        filters: List[Dict[str, str]] = None,
+        with_sub_issues: bool = False,
+    ) -> List[IssueInfo]:
         """Get list of issues in the specified team.
 
-        NOTE: this never requests sub-issues (unlike :meth:`get_info_by_id`) — every returned
-        issue's ``sub_issues`` is always ``None`` here, regardless of whether the issue
-        actually has sub-issues. The server documents a ``withSubIssues`` parameter on this
-        same endpoint, but sending it (or any ``filter``) currently makes ``issues.list`` fail
-        with a 500 error, so it's deliberately not exposed here. Use
-        :meth:`get_list_by_dataset` to resolve sub-issues in bulk instead.
+        NOTE on ``with_sub_issues``: has the same partial-resolution behavior as
+        :meth:`get_info_by_id`'s ``with_sub_issues`` — ``imageId`` is only resolved for a
+        sub-issue bound to a specific labeled object (``figureId``); a sub-issue bound directly
+        to a whole image (``imageId``) still comes back with ``imageId: None``. Use
+        :meth:`get_list_by_dataset` if you need that case resolved too.
+
+        NOTE on ``filters``: passing a non-empty ``filters`` list currently makes
+        ``issues.list`` fail with a server 500 error — this is a separate, still-open issue
+        from the one that used to also affect ``with_sub_issues``. Leave ``filters`` unset
+        until that's fixed server-side.
 
         :param team_id: Team ID.
         :type team_id: int
-        :param filters: List of filters to apply to the list of issues.
+        :param filters: List of filters to apply to the list of issues. NOTE: currently broken
+            server-side (500 error) for any non-empty value, see above.
         :type filters: List[Dict[str, str]], optional
+        :param with_sub_issues: Whether to include each issue's sub-issues in the response.
+        :type with_sub_issues: bool, optional
         :returns: List of issues.
         :rtype: List[:class:`~supervisely.api.issues_api.IssueInfo`]
 
@@ -177,16 +189,23 @@ class IssuesApi(ModuleApiBase):
 
                 # Get list of issues in specified team.
                 issues = api.issues.get_list(team_id=1)
+
+                # Get list of issues together with their sub-issues.
+                issues = api.issues.get_list(team_id=1, with_sub_issues=True)
         """
         def _convert(item):
-            # issues.list never includes subIssues in its response — default it explicitly
-            # rather than relaxing skip_missing for every field.
+            # issues.list omits subIssues from its response when with_sub_issues=False —
+            # default it explicitly rather than relaxing skip_missing for every field.
             item.setdefault(ApiField.SUB_ISSUES, None)
             return self._convert_json_info(item)
 
         return self.get_list_all_pages(
             "issues.list",
-            {ApiField.FILTER: filters or [], ApiField.TEAM_ID: team_id},
+            {
+                ApiField.FILTER: filters or [],
+                ApiField.TEAM_ID: team_id,
+                ApiField.WITH_SUB_ISSUES: with_sub_issues,
+            },
             convert_json_info_cb=_convert,
         )
 
