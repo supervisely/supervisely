@@ -23,7 +23,7 @@ COPY . /tmp/supervisely-src
 # Install supervisely package with retry logic for PyPI CDN propagation & cleanup
 RUN set -eu; \
     python -m venv /opt/venv; \
-    /opt/venv/bin/pip install --upgrade pip==26.1.2; \
+    /opt/venv/bin/pip install --upgrade pip==26.2.1; \
     /opt/venv/bin/pip install setuptools==83.0.0 wheel==0.46.2 pillow==12.3.0 requests; \
     if [ "$sdk_install_source" = "local" ]; then \
         echo "Installing Supervisely from checked-out branch as version ${tag_ref_name}..."; \
@@ -51,6 +51,7 @@ RUN set -eu; \
         exit 1; \
     fi; \
     /opt/venv/bin/pip install --no-cache-dir --upgrade --no-deps pillow==12.3.0 python-multipart==0.0.31; \
+    /opt/venv/bin/python -m pip uninstall -y pip; \
     rm -rf \
     /tmp/supervisely-src \
     /opt/venv/lib/python3.14/site-packages/wheel* \
