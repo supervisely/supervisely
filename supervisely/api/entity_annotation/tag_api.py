@@ -294,6 +294,7 @@ class TagApi(ModuleApi):
         color: Optional[Union[str, List[int]]] = None,
         hotkey: Optional[str] = None,
         applicable_to: Optional[str] = None,
+        applicable_classes: Optional[List[str]] = None,
         target_type: Optional[str] = None,
         frame_range_min_length: Optional[int] = None,
         frame_range_max_length: Optional[int] = None,
@@ -308,21 +309,14 @@ class TagApi(ModuleApi):
         The endpoint requires "title" and "color" in every request, so pass either both
         of them or ``project_id``, which lets the current values be read from the server.
 
-        .. warning::
+        .. note::
 
-            Two server-side quirks of this endpoint (see supervisely/issues#6077) affect
-            every partial update, including one that only touches a frame range limit:
-
-            - ``applicableType`` and ``classes`` carry schema defaults, so omitting them
-              from ``settings`` reaches the server as a real change to ``"all"`` / ``[]``
-              and resets both. Pass ``applicable_to`` explicitly to keep control of it.
-            - a new class list is applied only while ``applicableType`` changes in the
-              same request, and is ignored otherwise, which is why there is no
-              ``applicable_classes`` argument here.
-
-            Until that is fixed, prefer
-            :func:`~supervisely.api.project_api.ProjectApi.update_meta` when a tag has a
-            non-default applicable type or a class list.
+            Against instances that predate the fix for supervisely/issues#6077, this
+            endpoint reset ``applicableType`` and erased the class list whenever a
+            partial ``settings`` body omitted them - so even an edit that only touched a
+            frame range limit wiped both, and the class list could not be edited on its
+            own. On such instances pass ``applicable_to`` explicitly, or use
+            :func:`~supervisely.api.project_api.ProjectApi.update_meta` instead.
 
         :param id: Tag meta ID in Supervisely.
         :type id: int
@@ -337,6 +331,12 @@ class TagApi(ModuleApi):
         :type hotkey: str, optional
         :param applicable_to: TagApplicableTo: ALL, IMAGES_ONLY, OBJECTS_ONLY.
         :type applicable_to: str, optional
+        :param applicable_classes: Names of the classes the tag is restricted to, as on
+                                   TagMeta. Only meaningful for OBJECTS_ONLY. Resolved to
+                                   the IDs this endpoint expects, so project_id is
+                                   required alongside. An empty list clears the
+                                   restriction.
+        :type applicable_classes: List[str], optional
         :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL. Videos and point cloud episodes only.
         :type target_type: str, optional
         :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
@@ -370,6 +370,18 @@ class TagApi(ModuleApi):
         settings = {}
         if applicable_to is not None:
             settings[ApiField.APPLICABLE_TYPE] = applicable_to
+        if applicable_classes is not None:
+            if project_id is None:
+                raise ValueError(
+                    "project_id is required to resolve applicable_classes names to class IDs"
+                )
+            class_name_to_id = self._api.object_class.get_name_to_id_map(project_id)
+            missing = [name for name in applicable_classes if name not in class_name_to_id]
+            if missing:
+                raise ValueError(
+                    "Project {} has no such classes: {}".format(project_id, ", ".join(missing))
+                )
+            settings[ApiField.CLASSES] = [class_name_to_id[name] for name in applicable_classes]
         if target_type is not None:
             settings[ApiField.TARGET_TYPE] = target_type
         settings.update(
