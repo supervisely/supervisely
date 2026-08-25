@@ -81,6 +81,44 @@ class IssuesApi(ModuleApiBase):
         """
         super().__init__(api)
 
+    _AVAILABLE_STATUSES = ["open", "closed"]
+
+    @classmethod
+    def _validate_status(cls, status: Optional[str]) -> None:
+        """
+        Check that ``status`` (if given) is one of the statuses the API accepts.
+
+        :param status: Status to validate.
+        :type status: str, optional
+        :raises ValueError: if the status is incorrect. Expected one of ["open", "closed"], got {status}
+        :returns: None
+        :rtype: None
+        """
+        if status is not None and status not in cls._AVAILABLE_STATUSES:
+            raise ValueError(
+                f"Incorrect status, expected one of {cls._AVAILABLE_STATUSES}, got {status}"
+            )
+
+    def _validate_project_and_dataset_id(
+        self, project_id: Optional[int], dataset_id: Optional[int]
+    ) -> None:
+        """
+        Check if only one of 'project_id' and 'dataset_id' is provided.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int, optional
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int, optional
+        :raises ValueError: if both 'project_id' and 'dataset_id' are provided or none of them are provided.
+        :returns: None
+        :rtype: None
+        """
+        if project_id is None and dataset_id is None:
+            raise ValueError("One of 'project_id' or 'dataset_id' should be provided.")
+
+        if project_id is not None and dataset_id is not None:
+            raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
+
     @staticmethod
     def info_sequence():
         """Sequence of fields that are returned by the API to represent IssueInfo."""
@@ -106,6 +144,13 @@ class IssuesApi(ModuleApiBase):
 
     def get_list(self, team_id: int, filters: List[Dict[str, str]] = None) -> List[IssueInfo]:
         """Get list of issues in the specified team.
+
+        NOTE: this never requests sub-issues (unlike :meth:`get_info_by_id`) — every returned
+        issue's ``sub_issues`` is always ``None`` here, regardless of whether the issue
+        actually has sub-issues. The server documents a ``withSubIssues`` parameter on this
+        same endpoint, but sending it (or any ``filter``) currently makes ``issues.list`` fail
+        with a 500 error, so it's deliberately not exposed here. Use
+        :meth:`get_list_by_dataset` to resolve sub-issues in bulk instead.
 
         :param team_id: Team ID.
         :type team_id: int
@@ -184,8 +229,12 @@ class IssuesApi(ModuleApiBase):
                 # Get information about the issue together with its sub-issues.
                 issue_info = api.issues.get_info_by_id(1, with_sub_issues=True)
         """
-        fields = {ApiField.WITH_SUB_ISSUES: True} if with_sub_issues else None
-        response = self._get_response_by_id(id, "issues.info", id_field=ApiField.ID, fields=fields)
+        response = self._get_response_by_id(
+            id,
+            "issues.info",
+            id_field=ApiField.ID,
+            fields={ApiField.WITH_SUB_ISSUES: with_sub_issues},
+        )
         return (
             self._convert_json_info(response.json(), skip_missing=True)
             if (response is not None)
@@ -291,11 +340,7 @@ class IssuesApi(ModuleApiBase):
                 # Update information about the issue.
                 updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")
         """
-        available_statuses = ["open", "closed"]
-        if status is not None and status not in available_statuses:
-            raise ValueError(
-                f"Incorrect status, expected one of {available_statuses}, got {status}"
-            )
+        self._validate_status(status)
         payload = {
             ApiField.ID: issue_id,
             ApiField.NAME: issue_name,
@@ -586,11 +631,7 @@ class IssuesApi(ModuleApiBase):
                 # Close a sub-issue.
                 api.issues.update_subissue(sub_issue_id=1, status="closed")
         """
-        available_statuses = ["open", "closed"]
-        if status is not None and status not in available_statuses:
-            raise ValueError(
-                f"Incorrect status, expected one of {available_statuses}, got {status}"
-            )
+        self._validate_status(status)
         payload = {
             ApiField.ID: sub_issue_id,
             ApiField.STATUS: status,
@@ -599,6 +640,28 @@ class IssuesApi(ModuleApiBase):
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         self._api.post("issues.sub-issue.editInfo", payload)
+
+    @staticmethod
+    def resolve_binding_image_id(record: Dict) -> Optional[int]:
+        """
+        Resolve the image ID a :meth:`get_list_by_dataset` record is bound to, if any.
+
+        :param record: One record from :meth:`get_list_by_dataset`.
+        :type record: dict
+        :returns: The image ID, or ``None`` if the record is a top-level issue container (no
+            ``bindings``), or its binding isn't tied to a single image (``projectId``/``jobId``).
+        :rtype: int, optional
+        """
+        bindings = record.get(ApiField.BINDINGS)
+        if not bindings:
+            return None
+        binding = bindings[0]
+        field = binding.get(ApiField.FIELD)
+        if field == ApiField.IMAGE_ID:
+            return binding.get(ApiField.VALUE)
+        if field == ApiField.FIGURE_ID:
+            return binding.get(ApiField.EXTRA, {}).get(ApiField.FIGURE_IMAGE_ID)
+        return None
 
     def get_list_by_dataset(
         self,
@@ -612,7 +675,13 @@ class IssuesApi(ModuleApiBase):
 
         Unlike :meth:`get_list`, which only returns top-level issue containers (never linked to
         an image), this method is the reliable way to resolve which image (or object) an issue
-        is actually about.
+        is actually about. Use :meth:`resolve_binding_image_id` to read the image ID off each
+        record instead of parsing ``bindings`` by hand.
+
+        NOTE: this endpoint has no per-issue filter and isn't paginated — it always returns
+        every issue and sub-issue in the given dataset/project in one response. Resolving a
+        single issue's image this way costs a full dataset/project-wide fetch; there's no
+        cheaper supported call today for that single-issue case.
 
         The returned list mixes two kinds of records:
 
@@ -656,26 +725,23 @@ class IssuesApi(ModuleApiBase):
                 # Count issues per image.
                 issues_per_image = {}
                 for record in records:
-                    bindings = record.get("bindings")
-                    if not bindings:
-                        continue  # top-level issue container, not tied to one image
-                    binding = bindings[0]
-                    if binding["field"] == "imageId":
-                        image_id = binding["value"]
-                    elif binding["field"] == "figureId":
-                        image_id = binding["extra"]["figureImageId"]
-                    else:
-                        continue
-                    issues_per_image[image_id] = issues_per_image.get(image_id, 0) + 1
+                    image_id = api.issues.resolve_binding_image_id(record)
+                    if image_id is not None:
+                        issues_per_image[image_id] = issues_per_image.get(image_id, 0) + 1
         """
-        if (dataset_id is None) == (project_id is None):
-            raise ValueError("Exactly one of 'dataset_id' or 'project_id' must be specified.")
+        self._validate_project_and_dataset_id(project_id, dataset_id)
 
         payload = {}
         if dataset_id is not None:
             payload[ApiField.DATASET_ID] = dataset_id
         if project_id is not None:
             payload[ApiField.PROJECT_ID] = project_id
+
+        # issues.dataset-issues.list returns a flat, unpaginated array (confirmed against its
+        # server-side handler and by live testing) — unlike issues.list, it has no
+        # entities/total/perPage envelope, so this deliberately bypasses get_list_all_pages.
+        # Same pattern as AdvancedApi.get_object_tags() for another confirmed-unpaginated
+        # endpoint (figures.tags.list).
 
         response = self._api.post("issues.dataset-issues.list", payload)
         return response.json()
