@@ -60,6 +60,7 @@ class IssueInfo(NamedTuple):
     project_id: int
     image_name: str
     name: str
+    sub_issues: Optional[List[Dict]]
 
 
 class IssuesApi(ModuleApiBase):
@@ -95,6 +96,7 @@ class IssuesApi(ModuleApiBase):
             ApiField.PROJECT_ID,
             ApiField.IMAGE_NAME,
             ApiField.NAME,
+            ApiField.SUB_ISSUES,
         ]
 
     @staticmethod
@@ -131,16 +133,32 @@ class IssuesApi(ModuleApiBase):
                 # Get list of issues in specified team.
                 issues = api.issues.get_list(team_id=1)
         """
+        def _convert(item):
+            # issues.list never includes subIssues in its response — default it explicitly
+            # rather than relaxing skip_missing for every field.
+            item.setdefault(ApiField.SUB_ISSUES, None)
+            return self._convert_json_info(item)
+
         return self.get_list_all_pages(
             "issues.list",
             {ApiField.FILTER: filters or [], ApiField.TEAM_ID: team_id},
+            convert_json_info_cb=_convert,
         )
 
-    def get_info_by_id(self, id: int) -> IssueInfo:
+    def get_info_by_id(self, id: int, with_sub_issues: bool = False) -> IssueInfo:
         """Get information about the issue by its ID.
+
+        NOTE: ``with_sub_issues=True`` only resolves the image for a sub-issue that was raised
+        against a specific labeled object (bound to a ``figureId``) — that sub-issue's
+        ``imageId`` will be populated. A sub-issue raised against a whole image (bound directly
+        to an ``imageId``) is **not** resolved by this method: it comes back with ``imageId``
+        set to ``None`` and no way to recover the image from here. To reliably resolve the
+        image for both cases in bulk, use :meth:`get_list_by_dataset` instead.
 
         :param id: Issue ID.
         :type id: int
+        :param with_sub_issues: Whether to include the issue's sub-issues in the response.
+        :type with_sub_issues: bool, optional
         :returns: Information about the issue.
         :rtype: :class:`~supervisely.api.issues_api.IssueInfo`
 
@@ -162,8 +180,12 @@ class IssuesApi(ModuleApiBase):
 
                 # Get information about the issue by its ID.
                 issue_info = api.issues.get_info_by_id(1)
+
+                # Get information about the issue together with its sub-issues.
+                issue_info = api.issues.get_info_by_id(1, with_sub_issues=True)
         """
-        response = self._get_response_by_id(id, "issues.info", id_field=ApiField.ID)
+        fields = {ApiField.WITH_SUB_ISSUES: True} if with_sub_issues else None
+        response = self._get_response_by_id(id, "issues.info", id_field=ApiField.ID, fields=fields)
         return (
             self._convert_json_info(response.json(), skip_missing=True)
             if (response is not None)
@@ -517,3 +539,143 @@ class IssuesApi(ModuleApiBase):
         }
 
         self._api.post("issues.sub-issue.add", payload)
+
+    def update_subissue(
+        self,
+        sub_issue_id: int,
+        status: Optional[Literal["open", "closed"]] = None,
+        parent_id: Optional[int] = None,
+        meta: Optional[Dict] = None,
+    ) -> None:
+        """
+        Update a sub-issue, e.g. to close it or move it under a different parent issue.
+
+        NOTE: unlike :meth:`update` (for top-level issues), this returns ``None`` rather than
+        the updated record — there is no ``issues.sub-issue.info`` endpoint to re-fetch a
+        single sub-issue by id, so this mirrors :meth:`add_subissue`, which has the same
+        limitation.
+
+        :param sub_issue_id: Sub-issue ID.
+        :type sub_issue_id: int
+        :param status: New status of the sub-issue.
+        :type status: str, optional
+        :param parent_id: ID of the issue to move the sub-issue under.
+        :type parent_id: int, optional
+        :param meta: New meta information for the sub-issue (e.g. marker ``position``).
+        :type meta: dict, optional
+        :raises ValueError: if the status is incorrect. Expected one of ["open", "closed"], got {status}
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Close a sub-issue.
+                api.issues.update_subissue(sub_issue_id=1, status="closed")
+        """
+        available_statuses = ["open", "closed"]
+        if status is not None and status not in available_statuses:
+            raise ValueError(
+                f"Incorrect status, expected one of {available_statuses}, got {status}"
+            )
+        payload = {
+            ApiField.ID: sub_issue_id,
+            ApiField.STATUS: status,
+            ApiField.PARENT_ID: parent_id,
+            ApiField.META: meta,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self._api.post("issues.sub-issue.editInfo", payload)
+
+    def get_list_by_dataset(
+        self,
+        dataset_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+    ) -> List[Dict]:
+        """
+        Get all issues bound to entities within the specified dataset or project, including
+        sub-issues and the raw ``bindings`` that link each sub-issue to its image or labeled
+        object.
+
+        Unlike :meth:`get_list`, which only returns top-level issue containers (never linked to
+        an image), this method is the reliable way to resolve which image (or object) an issue
+        is actually about.
+
+        The returned list mixes two kinds of records:
+
+        - Top-level issue containers (no ``bindings`` key) — not bound to any single entity.
+        - Sub-issues (have a ``bindings`` key with exactly one entry:
+          ``{"field": ..., "value": ..., "extra": {...}}``). ``field`` is one of
+          ``"imageId"``, ``"figureId"``, ``"projectId"``, ``"jobId"``. To resolve the image:
+
+          - ``field == "imageId"``: the image ID is ``bindings[0]["value"]``.
+          - ``field == "figureId"``: the bound object's (figure's) ID is
+            ``bindings[0]["value"]``, and its image ID is
+            ``bindings[0]["extra"]["figureImageId"]``.
+          - ``field in ("projectId", "jobId")``: not tied to a single image.
+
+        :param dataset_id: Dataset ID. Exactly one of ``dataset_id``/``project_id`` is required.
+        :type dataset_id: int, optional
+        :param project_id: Project ID. Exactly one of ``dataset_id``/``project_id`` is required.
+        :type project_id: int, optional
+        :raises ValueError: if neither or both of ``dataset_id``/``project_id`` are given.
+        :returns: Raw list of issue and sub-issue records, as described above.
+        :rtype: List[dict]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                records = api.issues.get_list_by_dataset(dataset_id=123)
+
+                # Count issues per image.
+                issues_per_image = {}
+                for record in records:
+                    bindings = record.get("bindings")
+                    if not bindings:
+                        continue  # top-level issue container, not tied to one image
+                    binding = bindings[0]
+                    if binding["field"] == "imageId":
+                        image_id = binding["value"]
+                    elif binding["field"] == "figureId":
+                        image_id = binding["extra"]["figureImageId"]
+                    else:
+                        continue
+                    issues_per_image[image_id] = issues_per_image.get(image_id, 0) + 1
+        """
+        if (dataset_id is None) == (project_id is None):
+            raise ValueError("Exactly one of 'dataset_id' or 'project_id' must be specified.")
+
+        payload = {}
+        if dataset_id is not None:
+            payload[ApiField.DATASET_ID] = dataset_id
+        if project_id is not None:
+            payload[ApiField.PROJECT_ID] = project_id
+
+        response = self._api.post("issues.dataset-issues.list", payload)
+        return response.json()
