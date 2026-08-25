@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from supervisely._utils import take_with_default
 from supervisely.collection.key_indexed_collection import KeyObject
@@ -53,6 +53,10 @@ class TagMetaJsonFields:
     APPLICABLE_CLASSES = "classes"
     """"""
     TARGET_TYPE = "target_type"  # "Scope"
+    """"""
+    FRAME_RANGE_MIN_LENGTH = "frame_range_min_length"
+    """"""
+    FRAME_RANGE_MAX_LENGTH = "frame_range_max_length"
 
 
 class TagApplicableTo:
@@ -100,6 +104,58 @@ SUPPORTED_TARGET_TYPES = [
     TagTargetType.GLOBAL,
 ]
 
+NO_FRAME_RANGE_LENGTH_LIMIT = 0
+"""Frame range length limit value that means "no limit"."""
+
+
+def validate_frame_range_length_limits(
+    min_length: Optional[int], max_length: Optional[int]
+) -> Tuple[int, int]:
+    """
+    Validate a pair of frame range length limits and normalize them to plain ints.
+
+    Limits apply to finished frame range tags (videos and point cloud episodes) and
+    are measured in frames, inclusively: a tag from frame 10 to frame 12 has length 3.
+    There is no separate on/off switch on the server side - a limit is active only
+    while its value differs from :data:`NO_FRAME_RANGE_LENGTH_LIMIT`, so ``0`` (and
+    ``None``, which is normalized to ``0``) disables it.
+
+    :param min_length: Minimum frame range length, 0 or None to disable.
+    :type min_length: int, optional
+    :param max_length: Maximum frame range length, 0 or None to disable.
+    :type max_length: int, optional
+    :raises ValueError: If a limit is not a non-negative integer, or both limits are
+        active and min_length is greater than max_length.
+    :returns: Normalized (min_length, max_length) pair
+    :rtype: Tuple[int, int]
+    """
+    normalized = []
+    for name, value in (("min_length", min_length), ("max_length", max_length)):
+        value = take_with_default(value, NO_FRAME_RANGE_LENGTH_LIMIT)
+        # bool is an int subclass, but True as a frame count is always a mistake
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(
+                "frame range {} = {!r} is invalid, should be a non-negative integer".format(
+                    name, value
+                )
+            )
+        normalized.append(value)
+
+    min_length, max_length = normalized
+
+    if (
+        min_length > NO_FRAME_RANGE_LENGTH_LIMIT
+        and max_length > NO_FRAME_RANGE_LENGTH_LIMIT
+        and min_length > max_length
+    ):
+        raise ValueError(
+            "frame range min_length = {} must be less than or equal to max_length = {}".format(
+                min_length, max_length
+            )
+        )
+
+    return min_length, max_length
+
 
 def _is_valid_iso_datetime(value: str) -> bool:
     if not isinstance(value, str):
@@ -121,8 +177,12 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
-# Pickles predating #1214 have no _target_type.
-@legacy_pickle_defaults(_target_type=TagTargetType.ALL)
+# Pickles predating #1214 have no _target_type, older ones have no frame range limits.
+@legacy_pickle_defaults(
+    _target_type=TagTargetType.ALL,
+    _frame_range_min_length=NO_FRAME_RANGE_LENGTH_LIMIT,
+    _frame_range_max_length=NO_FRAME_RANGE_LENGTH_LIMIT,
+)
 class TagMeta(KeyObject, JsonSerializable):
     """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
 
@@ -137,6 +197,8 @@ class TagMeta(KeyObject, JsonSerializable):
         applicable_to: Optional[str] = None,
         applicable_classes: Optional[List[str]] = None,
         target_type: Optional[str] = None,
+        frame_range_min_length: Optional[int] = None,
+        frame_range_max_length: Optional[int] = None,
     ):
         """
         :param name: Tag name.
@@ -157,7 +219,14 @@ class TagMeta(KeyObject, JsonSerializable):
         :type applicable_classes: List[str], optional
         :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL.
         :type target_type: str, optional
-        :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values.
+        :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
+            frame range tag. 0 or None means no limit.
+        :type frame_range_min_length: int, optional
+        :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
+            frame range tag. 0 or None means no limit.
+        :type frame_range_max_length: int, optional
+        :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values;
+            frame range limits are negative or min is greater than max.
 
         :Usage Example:
 
@@ -169,6 +238,15 @@ class TagMeta(KeyObject, JsonSerializable):
                 meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
                 colors = ["brown", "white", "black"]
                 meta_coat = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, color=[255, 120, 0])
+
+                # frame range tag that must cover between 5 and 30 frames
+                meta_running = sly.TagMeta(
+                    'running',
+                    sly.TagValueType.NONE,
+                    target_type=sly.TagTargetType.FRAME_BASED,
+                    frame_range_min_length=5,
+                    frame_range_max_length=30,
+                )
         """
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
             raise ValueError(
@@ -186,6 +264,9 @@ class TagMeta(KeyObject, JsonSerializable):
         self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
         self._applicable_classes = take_with_default(applicable_classes, [])
         self._target_type = take_with_default(target_type, TagTargetType.ALL)
+        self._frame_range_min_length, self._frame_range_max_length = (
+            validate_frame_range_length_limits(frame_range_min_length, frame_range_max_length)
+        )
         # Instances are pickled into .bin backups: a new attribute here needs an
         # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
@@ -408,6 +489,169 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         return self._target_type
 
+    @property
+    def frame_range_min_length(self) -> int:
+        """
+        Minimum length (in frames, inclusive) of a finished frame range tag.
+        0 means the limit is disabled.
+
+        :returns: Minimum frame range length
+        :rtype: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, frame_range_min_length=5)
+
+                print(meta_dog.frame_range_min_length)
+                # Output: 5
+        """
+        return self._frame_range_min_length
+
+    @property
+    def frame_range_max_length(self) -> int:
+        """
+        Maximum length (in frames, inclusive) of a finished frame range tag.
+        0 means the limit is disabled.
+
+        :returns: Maximum frame range length
+        :rtype: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, frame_range_max_length=30)
+
+                print(meta_dog.frame_range_max_length)
+                # Output: 30
+        """
+        return self._frame_range_max_length
+
+    @property
+    def frame_range_length_limits(self) -> Tuple[int, int]:
+        """
+        Both frame range length limits as a ``(min_length, max_length)`` pair.
+        0 in either position means that limit is disabled.
+
+        :returns: Minimum and maximum frame range length
+        :rtype: Tuple[int, int]
+        """
+        return self._frame_range_min_length, self._frame_range_max_length
+
+    @property
+    def has_frame_range_length_limits(self) -> bool:
+        """
+        Whether at least one frame range length limit is active.
+
+        :returns: True if any limit is set to a non-zero value, otherwise False
+        :rtype: bool
+        """
+        return (
+            self._frame_range_min_length > NO_FRAME_RANGE_LENGTH_LIMIT
+            or self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT
+        )
+
+    def with_frame_range_length_limits(
+        self,
+        min_length: Optional[int] = None,
+        max_length: Optional[int] = None,
+    ) -> TagMeta:
+        """
+        Return a copy of this TagMeta with the given frame range length limits.
+
+        Unlike :func:`clone`, both limits are always replaced, so passing None (or 0)
+        disables the corresponding limit instead of keeping the current value.
+
+        :param min_length: Minimum frame range length, 0 or None to disable.
+        :type min_length: int, optional
+        :param max_length: Maximum frame range length, 0 or None to disable.
+        :type max_length: int, optional
+        :raises ValueError: If a limit is negative, or min_length is greater than max_length
+            while both are active.
+        :returns: New instance of TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_running = sly.TagMeta('running', sly.TagValueType.NONE)
+
+                # tag must cover between 5 and 30 frames
+                meta_running = meta_running.with_frame_range_length_limits(5, 30)
+
+                # drop both limits
+                meta_running = meta_running.with_frame_range_length_limits()
+        """
+        min_length, max_length = validate_frame_range_length_limits(min_length, max_length)
+        return self.clone(
+            frame_range_min_length=min_length,
+            frame_range_max_length=max_length,
+        )
+
+    def is_valid_frame_range_length(self, length: int) -> bool:
+        """
+        Check a frame range length against this TagMeta's limits.
+
+        :param length: Frame range length in frames.
+        :type length: int
+        :returns: True if the length satisfies both active limits, otherwise False
+        :rtype: bool
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_running = sly.TagMeta(
+                    'running', sly.TagValueType.NONE, frame_range_min_length=5, frame_range_max_length=30
+                )
+
+                meta_running.is_valid_frame_range_length(3)   # False
+                meta_running.is_valid_frame_range_length(10)  # True
+        """
+        if (
+            self._frame_range_min_length > NO_FRAME_RANGE_LENGTH_LIMIT
+            and length < self._frame_range_min_length
+        ):
+            return False
+        if (
+            self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT
+            and length > self._frame_range_max_length
+        ):
+            return False
+        return True
+
+    def is_valid_frame_range(self, start_frame: int, end_frame: int) -> bool:
+        """
+        Check a frame range against this TagMeta's length limits.
+
+        The range is inclusive on both ends, matching the server: frames 10 to 12
+        have length 3. Reversed ranges are accepted as-is.
+
+        :param start_frame: First frame of the range.
+        :type start_frame: int
+        :param end_frame: Last frame of the range.
+        :type end_frame: int
+        :returns: True if the range length satisfies both active limits, otherwise False
+        :rtype: bool
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_running = sly.TagMeta(
+                    'running', sly.TagValueType.NONE, frame_range_min_length=5, frame_range_max_length=30
+                )
+
+                meta_running.is_valid_frame_range(10, 12)  # False, length is 3
+                meta_running.is_valid_frame_range(10, 19)  # True, length is 10
+        """
+        return self.is_valid_frame_range_length(abs(end_frame - start_frame) + 1)
+
     def to_json(self) -> Dict:
         """
         Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
@@ -474,6 +718,12 @@ class TagMeta(KeyObject, JsonSerializable):
             jdict[TagMetaJsonFields.APPLICABLE_CLASSES] = self.applicable_classes
         if self._target_type is not None:
             jdict[TagMetaJsonFields.TARGET_TYPE] = self.target_type
+        # Omitted when disabled: the server defaults a missing limit to 0 anyway, and
+        # keeping the keys out leaves existing meta.json files byte-identical.
+        if self._frame_range_min_length > NO_FRAME_RANGE_LENGTH_LIMIT:
+            jdict[TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH] = self.frame_range_min_length
+        if self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT:
+            jdict[TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH] = self.frame_range_max_length
 
         return jdict
 
@@ -531,6 +781,8 @@ class TagMeta(KeyObject, JsonSerializable):
             applicable_to = data.get(TagMetaJsonFields.APPLICABLE_TYPE, TagApplicableTo.ALL)
             applicable_classes = data.get(TagMetaJsonFields.APPLICABLE_CLASSES, [])
             target_type = data.get(TagMetaJsonFields.TARGET_TYPE, TagTargetType.ALL)
+            frame_range_min_length = data.get(TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH)
+            frame_range_max_length = data.get(TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH)
 
             return cls(
                 name=name,
@@ -542,6 +794,8 @@ class TagMeta(KeyObject, JsonSerializable):
                 applicable_to=applicable_to,
                 applicable_classes=applicable_classes,
                 target_type=target_type,
+                frame_range_min_length=frame_range_min_length,
+                frame_range_max_length=frame_range_max_length,
             )
         else:
             raise ValueError("Tags must be dict or str types.")
@@ -726,6 +980,8 @@ class TagMeta(KeyObject, JsonSerializable):
         applicable_to: Optional[str] = None,
         applicable_classes: Optional[List[str]] = None,
         target_type: Optional[str] = None,
+        frame_range_min_length: Optional[int] = None,
+        frame_range_max_length: Optional[int] = None,
     ) -> TagMeta:
         """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
@@ -746,6 +1002,15 @@ class TagMeta(KeyObject, JsonSerializable):
         :type applicable_to: str, optional
         :param applicable_classes: Defines applicability of Tag only to certain classes.
         :type applicable_classes: List[str], optional
+        :param target_type: Defines Tag target type (scope) - entities, frames or both.
+        :type target_type: str, optional
+        :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
+            frame range tag. Pass 0 to disable the limit; None keeps the current value.
+            :func:`with_frame_range_length_limits` sets both limits at once.
+        :type frame_range_min_length: int, optional
+        :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
+            frame range tag. Pass 0 to disable the limit; None keeps the current value.
+        :type frame_range_max_length: int, optional
         :returns: New instance of TagMeta object
         :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
@@ -779,6 +1044,12 @@ class TagMeta(KeyObject, JsonSerializable):
             applicable_to=take_with_default(applicable_to, self.applicable_to),
             applicable_classes=take_with_default(applicable_classes, self.applicable_classes),
             target_type=take_with_default(target_type, self.target_type),
+            frame_range_min_length=take_with_default(
+                frame_range_min_length, self.frame_range_min_length
+            ),
+            frame_range_max_length=take_with_default(
+                frame_range_max_length, self.frame_range_max_length
+            ),
         )
 
     def __str__(self):
@@ -810,6 +1081,8 @@ class TagMeta(KeyObject, JsonSerializable):
             "Applicable to",
             "Applicable classes",
             "Target type",
+            "Frame range min length",
+            "Frame range max length",
         ]
 
     def get_row_ptable(self):
@@ -822,6 +1095,8 @@ class TagMeta(KeyObject, JsonSerializable):
             self.applicable_to,
             self.applicable_classes,
             self.target_type,
+            self.frame_range_min_length,
+            self.frame_range_max_length,
         ]
 
     def _set_id(self, id: int):

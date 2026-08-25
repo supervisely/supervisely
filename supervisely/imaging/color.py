@@ -10,7 +10,7 @@ import json
 import os
 import random
 import re
-from typing import List
+from typing import List, Union
 
 
 def _validate_color(color):
@@ -151,6 +151,37 @@ def rgb2hex(color: List[int, int, int]) -> str:
     """
     _validate_color(color)
     return "#" + "".join("{:02X}".format(component) for component in color)
+
+
+def color2hex(color: Union[str, List[int]]) -> str:
+    """
+    Convert a color in either supported format to a HEX string.
+
+    Accepts a HEX string or an RGB list. Useful on API boundaries, where the server
+    expects HEX while the SDK stores RGB. Both forms are validated, so an invalid
+    color fails here rather than as a server-side 400.
+
+    :param color: HEX RGB string or list of integers in RGB format.
+    :type color: str or List[int, int, int]
+    :raises ValueError: If the string is not a valid HEX RGB color, or a channel of
+        the RGB list is out of range.
+    :returns: HEX RGB string
+    :rtype: str
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            sly.color.color2hex([128, 64, 255])  # '#8040FF'
+            sly.color.color2hex('#8040FF')       # '#8040FF'
+    """
+    if isinstance(color, str):
+        if not _validate_hex_color(color):
+            raise ValueError("Supported only HEX RGB string format!")
+        return color
+    return rgb2hex(color)
 
 
 def _hex2color(hex_value: str) -> list:
