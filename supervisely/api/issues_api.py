@@ -156,15 +156,9 @@ class IssuesApi(ModuleApiBase):
         to a whole image (``imageId``) still comes back with ``imageId: None``. Use
         :meth:`get_list_by_dataset` if you need that case resolved too.
 
-        NOTE on ``filters``: passing a non-empty ``filters`` list currently makes
-        ``issues.list`` fail with a server 500 error — this is a separate, still-open issue
-        from the one that used to also affect ``with_sub_issues``. Leave ``filters`` unset
-        until that's fixed server-side.
-
         :param team_id: Team ID.
         :type team_id: int
-        :param filters: List of filters to apply to the list of issues. NOTE: currently broken
-            server-side (500 error) for any non-empty value, see above.
+        :param filters: List of filters to apply to the list of issues.
         :type filters: List[Dict[str, str]], optional
         :param with_sub_issues: Whether to include each issue's sub-issues in the response.
         :type with_sub_issues: bool, optional
