@@ -2,9 +2,15 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-from supervisely._utils import batched
+from supervisely._utils import batched, take_with_default
+from supervisely.annotation.tag_meta import (
+    TagMeta,
+    TagValueType,
+    validate_frame_range_length_limits,
+)
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.imaging.color import color2hex
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.task.progress import tqdm_sly
@@ -111,6 +117,307 @@ class TagApi(ModuleApi):
 
         tags_info = self.get_list(project_id)
         return {tag_info.name: tag_info.id for tag_info in tags_info}
+
+    @staticmethod
+    def _frame_range_length_settings(
+        min_length: Optional[int],
+        max_length: Optional[int],
+    ) -> Dict:
+        """
+        Build the frame range length part of a tag meta ``settings`` payload.
+
+        The server has no separate on/off switch for these limits: a limit is active
+        only while its value is non-zero, so an explicit 0 is what disables it. A None
+        limit is left out of the payload entirely - on create the server defaults it to
+        0 (no limit), on update it keeps the stored value.
+        """
+        validate_frame_range_length_limits(min_length, max_length)
+
+        settings = {}
+        if min_length is not None:
+            settings[ApiField.FRAME_RANGE_MIN_LENGTH] = min_length
+        if max_length is not None:
+            settings[ApiField.FRAME_RANGE_MAX_LENGTH] = max_length
+        return settings
+
+    def create_bulk(
+        self, project_id: int, tag_metas: Union[TagMeta, List[TagMeta]]
+    ) -> List[Dict]:
+        """
+        Create tag metas (tag definitions) in a project.
+
+        Tag names must be unique within the project. ``TagMeta.applicable_classes``
+        holds class names, while the endpoint expects class IDs, so the names are
+        resolved against the project's classes - one extra request, and only when at
+        least one tag meta restricts its classes.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tag_metas: Tag metas to create. A single TagMeta is also accepted.
+        :type tag_metas: TagMeta or List[TagMeta]
+        :raises ValueError: If a TagMeta references a class that the project does not have.
+        :returns: List of created tag metas, each with "id" and "title"
+        :rtype: List[dict]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                created = api.video.tag.create_bulk(
+                    project_id=123,
+                    tag_metas=[
+                        sly.TagMeta(
+                            "running",
+                            sly.TagValueType.NONE,
+                            target_type=sly.TagTargetType.FRAME_BASED,
+                            frame_range_min_length=5,
+                            frame_range_max_length=30,
+                        ),
+                        sly.TagMeta(
+                            "standing",
+                            sly.TagValueType.NONE,
+                            target_type=sly.TagTargetType.FRAME_BASED,
+                        ),
+                    ],
+                )
+        """
+        if isinstance(tag_metas, TagMeta):
+            tag_metas = [tag_metas]
+
+        class_name_to_id = None
+        if any(tag_meta.applicable_classes for tag_meta in tag_metas):
+            class_name_to_id = self._api.object_class.get_name_to_id_map(project_id)
+
+        payload = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.TAGS: [
+                self._tag_meta_json(tag_meta, class_name_to_id) for tag_meta in tag_metas
+            ],
+        }
+        response = self._api.post("tags.bulk.add", payload)
+        return response.json()
+
+    def create(self, project_id: int, tag_meta: TagMeta) -> Dict:
+        """
+        Create a single tag meta (tag definition) in a project.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tag_meta: Tag meta to create. Its name must be unique within the project.
+        :type tag_meta: TagMeta
+        :raises ValueError: If the TagMeta references a class that the project does not have.
+        :returns: Created tag meta with "id" and "title"
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                # frame range tag that must cover between 5 and 30 frames
+                tag = api.video.tag.create(
+                    project_id=123,
+                    tag_meta=sly.TagMeta(
+                        "running",
+                        sly.TagValueType.NONE,
+                        target_type=sly.TagTargetType.FRAME_BASED,
+                        frame_range_min_length=5,
+                        frame_range_max_length=30,
+                    ),
+                )
+        """
+        return self.create_bulk(project_id, [tag_meta])[0]
+
+    def _tag_meta_json(
+        self, tag_meta: TagMeta, class_name_to_id: Optional[Dict[str, int]] = None
+    ) -> Dict:
+        """
+        Build a single tag meta item for the "tags.bulk.add" payload.
+
+        The nested shape this endpoint takes differs from the flat one that
+        TagMeta.to_json produces for projects.meta.update: keys are camelCase, most of
+        them live under "settings", and "classes" holds IDs instead of names.
+        """
+        settings = {
+            ApiField.TYPE: tag_meta.value_type,
+            ApiField.APPLICABLE_TYPE: tag_meta.applicable_to,
+            ApiField.TARGET_TYPE: tag_meta.target_type,
+        }
+        if tag_meta.value_type == TagValueType.ONEOF_STRING:
+            settings[ApiField.VALUES] = tag_meta.possible_values
+        if tag_meta.applicable_classes:
+            settings[ApiField.CLASSES] = self._resolve_class_ids(
+                tag_meta, class_name_to_id or {}
+            )
+        # A limit of 0 means "no limit", which is also the server-side default, so it is
+        # left out - same as TagMeta.to_json does for the flat shape.
+        settings.update(
+            self._frame_range_length_settings(
+                tag_meta.frame_range_min_length or None,
+                tag_meta.frame_range_max_length or None,
+            )
+        )
+
+        tag_json = {
+            ApiField.TITLE: tag_meta.name,
+            ApiField.COLOR: color2hex(tag_meta.color),
+            ApiField.SETTINGS: settings,
+        }
+        if tag_meta.hotkey:
+            tag_json[ApiField.HOTKEY] = tag_meta.hotkey
+        return tag_json
+
+    @staticmethod
+    def _resolve_class_ids(tag_meta: TagMeta, class_name_to_id: Dict[str, int]) -> List[int]:
+        """"""
+        missing = [name for name in tag_meta.applicable_classes if name not in class_name_to_id]
+        if missing:
+            raise ValueError(
+                "Tag {!r} is restricted to classes that the project does not have: {}".format(
+                    tag_meta.name, ", ".join(missing)
+                )
+            )
+        return [class_name_to_id[name] for name in tag_meta.applicable_classes]
+
+    def update_meta(
+        self,
+        id: int,
+        project_id: Optional[int] = None,
+        name: Optional[str] = None,
+        color: Optional[Union[str, List[int]]] = None,
+        hotkey: Optional[str] = None,
+        applicable_to: Optional[str] = None,
+        applicable_classes: Optional[List[str]] = None,
+        target_type: Optional[str] = None,
+        frame_range_min_length: Optional[int] = None,
+        frame_range_max_length: Optional[int] = None,
+    ) -> Dict:
+        """
+        Update an existing tag meta (tag definition) on the server.
+
+        This is a partial update: only the arguments you pass are changed. Pass 0 to
+        drop a frame range length limit - there is no separate on/off switch on the
+        server side, a limit is active only while its value is non-zero.
+
+        The endpoint requires "title" and "color" in every request, so pass either both
+        of them or ``project_id``, which lets the current values be read from the server.
+
+        .. note::
+
+            Against instances that predate the fix for supervisely/issues#6077, this
+            endpoint reset ``applicableType`` and erased the class list whenever a
+            partial ``settings`` body omitted them - so even an edit that only touched a
+            frame range limit wiped both, and the class list could not be edited on its
+            own. On such instances pass ``applicable_to`` explicitly, or use
+            :func:`~supervisely.api.project_api.ProjectApi.update_meta` instead.
+
+        :param id: Tag meta ID in Supervisely.
+        :type id: int
+        :param project_id: Project the tag belongs to. Only needed to look up the current
+                           name and color when they are not passed explicitly.
+        :type project_id: int, optional
+        :param name: New tag name.
+        :type name: str, optional
+        :param color: New color as a HEX string ("#FF7800") or an [R, G, B] list.
+        :type color: str or List[int], optional
+        :param hotkey: New single-character hotkey.
+        :type hotkey: str, optional
+        :param applicable_to: TagApplicableTo: ALL, IMAGES_ONLY, OBJECTS_ONLY.
+        :type applicable_to: str, optional
+        :param applicable_classes: Names of the classes the tag is restricted to, as on
+                                   TagMeta. Only meaningful for OBJECTS_ONLY. Resolved to
+                                   the IDs this endpoint expects, so project_id is
+                                   required alongside. An empty list clears the
+                                   restriction.
+        :type applicable_classes: List[str], optional
+        :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL. Videos and point cloud episodes only.
+        :type target_type: str, optional
+        :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
+            frame range tag. 0 removes the limit, None keeps the stored value.
+        :type frame_range_min_length: int, optional
+        :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
+            frame range tag. 0 removes the limit, None keeps the stored value.
+        :type frame_range_max_length: int, optional
+        :raises ValueError: If nothing to update is given, the current name and color can
+            neither be derived nor looked up, or the frame range limits are negative or
+            min is greater than max.
+        :returns: Updated tag meta with "id" and "title"
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                # tighten the limits
+                api.video.tag.update_meta(
+                    id=456, project_id=123, frame_range_min_length=10, frame_range_max_length=20
+                )
+
+                # drop the upper limit, keep the lower one
+                api.video.tag.update_meta(id=456, project_id=123, frame_range_max_length=0)
+        """
+        settings = {}
+        if applicable_to is not None:
+            settings[ApiField.APPLICABLE_TYPE] = applicable_to
+        if applicable_classes is not None:
+            if project_id is None:
+                raise ValueError(
+                    "project_id is required to resolve applicable_classes names to class IDs"
+                )
+            class_name_to_id = self._api.object_class.get_name_to_id_map(project_id)
+            missing = [name for name in applicable_classes if name not in class_name_to_id]
+            if missing:
+                raise ValueError(
+                    "Project {} has no such classes: {}".format(project_id, ", ".join(missing))
+                )
+            settings[ApiField.CLASSES] = [class_name_to_id[name] for name in applicable_classes]
+        if target_type is not None:
+            settings[ApiField.TARGET_TYPE] = target_type
+        settings.update(
+            self._frame_range_length_settings(frame_range_min_length, frame_range_max_length)
+        )
+
+        if not settings and name is None and color is None and hotkey is None:
+            raise ValueError(
+                f"To update the tag with ID: {id}, you must specify at least one parameter to "
+                "update; all are currently None"
+            )
+
+        if name is None or color is None:
+            if project_id is None:
+                raise ValueError(
+                    f"To update the tag with ID: {id}, pass either both name and color, or "
+                    "project_id so that the current values can be read from the server"
+                )
+            stored = next((tag for tag in self.get_list(project_id) if tag.id == id), None)
+            if stored is None:
+                raise ValueError(f"Tag with ID: {id} is not found in project {project_id}")
+            name = take_with_default(name, stored.name)
+            color = take_with_default(color, stored.color)
+
+        payload = {
+            ApiField.ID: id,
+            ApiField.TITLE: name,
+            ApiField.COLOR: color2hex(color),
+        }
+        if hotkey is not None:
+            payload[ApiField.HOTKEY] = hotkey
+        if settings:
+            payload[ApiField.SETTINGS] = settings
+
+        response = self._api.post("advanced.tags.editInfo", payload)
+        return response.json()
 
     def _tags_to_json(self, tags: KeyIndexedCollection, tag_name_id_map=None, project_id=None):
         """"""

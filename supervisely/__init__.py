@@ -88,7 +88,13 @@ from supervisely.annotation.annotation import ANN_EXT, Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass, ObjClassJsonFields
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_meta import TagMeta, TagValueType, TagApplicableTo
+from supervisely.annotation.tag_meta import (
+    NO_FRAME_RANGE_LENGTH_LIMIT,
+    TagApplicableTo,
+    TagMeta,
+    TagTargetType,
+    TagValueType,
+)
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
