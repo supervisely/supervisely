@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import List, NamedTuple, Optional, Tuple, Union
 
 import requests
-import zstd
 
 from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
@@ -777,6 +776,8 @@ class DataVersion(ModuleApiBase):
         :returns: Binary IO object with extracted file
         :rtype: io.BytesIO
         """
+        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
+
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
         try:
@@ -844,6 +845,8 @@ class DataVersion(ModuleApiBase):
         :returns: File info
         :rtype: dict
         """
+        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
+
         temp_dir = tempfile.mkdtemp()
         data = None
         version_bin_path = None
