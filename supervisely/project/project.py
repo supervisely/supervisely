@@ -5989,6 +5989,24 @@ def _dataset_descriptions_md(project_info: ProjectInfo, api: Api) -> str:
     return result_md
 
 
+def _is_small_image(image_info: ImageInfo, switch_size: int) -> bool:
+    """
+    Whether an image should be downloaded in a bulk request instead of one by one.
+
+    :param image_info: Image to check.
+    :type image_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>`
+    :param switch_size: Size threshold in bytes.
+    :type switch_size: int
+    :returns: True if the image is smaller than the threshold.
+    :rtype: bool
+    """
+    # the API returns size as a string for some images, which used to raise a TypeError
+    try:
+        return int(image_info.size) < switch_size
+    except (TypeError, ValueError):
+        return False
+
+
 async def _download_project_async(
     api: Api,
     project_id: int,
@@ -6111,7 +6129,7 @@ async def _download_project_async(
                     if download_blob_files and image.related_data_id is not None:
                         blob_files_to_download[image.related_data_id] = image.download_id
                         blob_images.append(image)
-                    elif image.size is not None and image.size < switch_size:
+                    elif _is_small_image(image, switch_size):
                         small_images.append(image)
                     else:
                         large_images.append(image)
