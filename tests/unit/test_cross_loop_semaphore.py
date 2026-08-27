@@ -71,9 +71,6 @@ def make_contended_batch(semaphore, tasks=12, work=0.005):
     return batch
 
 
-# --------------------------------------------------------------------------------------
-# the bug being fixed
-# --------------------------------------------------------------------------------------
 def test_stock_asyncio_semaphore_breaks_across_loops():
     """Regression guard: documents why the custom primitive exists.
 
@@ -118,9 +115,6 @@ def test_awaited_from_the_same_loop_twice():
     assert semaphore._state()["value"] == 3, semaphore._state()
 
 
-# --------------------------------------------------------------------------------------
-# the global limit
-# --------------------------------------------------------------------------------------
 def test_global_limit_is_shared_by_concurrent_loops():
     """Three loops running at once must not get three independent limits."""
     limit = 3
@@ -219,9 +213,6 @@ def test_works_with_mixed_uvloop_and_asyncio_loops():
     assert semaphore._state()["consistent"], semaphore._state()
 
 
-# --------------------------------------------------------------------------------------
-# cancellation
-# --------------------------------------------------------------------------------------
 def test_cancelled_waiters_do_not_lose_permits():
     semaphore = CrossLoopSemaphore(2)
 
@@ -283,9 +274,6 @@ def test_wait_for_timeout_returns_the_permit():
     assert semaphore._state()["value"] == 1, semaphore._state()
 
 
-# --------------------------------------------------------------------------------------
-# reclaiming permits of abandoned tasks
-# --------------------------------------------------------------------------------------
 def _abandon_permits(semaphore, holders=3, daemon=True):
     """Emulate ``download_async_or_sync()``: an exception inside gather aborts the run
     while sibling tasks still hold their permits, and those tasks are never resumed."""
@@ -403,9 +391,6 @@ def test_resurrected_release_is_dropped():
     assert state["consistent"], state
 
 
-# --------------------------------------------------------------------------------------
-# resizing and misc api
-# --------------------------------------------------------------------------------------
 def test_resize_grow_wakes_queued_waiters():
     semaphore = CrossLoopSemaphore(2)
 

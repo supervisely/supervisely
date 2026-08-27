@@ -686,7 +686,6 @@ class CrossLoopSemaphore:
         self._holders: Dict[int, _SemaphorePermitHolder] = {}
         self.reclaimed_total = 0
 
-    # ------------------------------------------------------------------ internals
     # every _*_locked() helper must be called with self._lock held
 
     def _holder_locked(self, loop: asyncio.AbstractEventLoop) -> _SemaphorePermitHolder:
@@ -767,7 +766,6 @@ class CrossLoopSemaphore:
             return True
         return False
 
-    # -------------------------------------------------------------------- public
     async def acquire(self) -> bool:
         """
         Acquire a permit, waiting until one is available. Can be awaited from any loop.
@@ -828,8 +826,7 @@ class CrossLoopSemaphore:
                 self._debt -= 1
                 return
             if self._value + self._held_locked() >= self._limit + self._debt:
-                # this permit was already reclaimed by _reap_locked(), or this is an
-                # over-release: dropping it keeps the limit intact
+                # already reclaimed by _reap_locked(), or an over-release: drop it
                 return
             if not self._wake_one_locked():
                 self._value += 1

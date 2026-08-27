@@ -315,9 +315,6 @@ def run_in_own_loop(coro_factory):
     return box["result"]
 
 
-# --------------------------------------------------------------------------------------
-# one limit per (server address, token), not per Api object
-# --------------------------------------------------------------------------------------
 def test_semaphore_is_shared_by_api_objects_with_the_same_key(api, server):
     """app/fastapi/request.py builds a new Api per HTTP request, so the limit cannot live
     on the object: it belongs to the instance the requests go to."""

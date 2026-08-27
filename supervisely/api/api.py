@@ -274,10 +274,7 @@ class Api:
 
     _checked_servers = set()
 
-    # The request throttle belongs to the instance the requests go to, not to a python
-    # object: a process routinely holds several Api objects for the same server and token
-    # (app/fastapi/request.py builds a new one per HTTP request), and one semaphore per
-    # object would multiply the effective limit by the number of objects.
+    # one throttle per server and token: a process holds many Api objects per instance
     _semaphores: Dict[Tuple[str, Optional[str]], CrossLoopSemaphore] = {}
     _semaphores_lock = threading.Lock()
 
@@ -424,10 +421,7 @@ class Api:
             else not self.server_address.startswith("https://")
         )
 
-        # One httpx.AsyncClient per event loop: a client (its connection pool and the
-        # anyio primitives inside it) is bound to the loop that created it, so sharing
-        # one client between loops fails with "bound to a different event loop" or
-        # stalls with PoolTimeout. Keyed by id(loop), the loop is kept as a weakref.
+        # one client per event loop: httpx binds a client to the loop that created it
         self._async_clients: Dict[
             Optional[int], Tuple[Optional[Any], httpx.AsyncClient]
         ] = {}
@@ -436,8 +430,7 @@ class Api:
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
-        # plain threading.Lock: nothing is awaited while it is held, and unlike
-        # asyncio.Lock it is neither event loop bound nor thread unsafe
+        # threading.Lock: nothing is awaited under it, and asyncio.Lock is loop bound
         self._client_recreation_lock = threading.Lock()
         self._last_client_recreation_time = None  # timestamp of last client recreation
         self._client_recreation_cooldown = 30  # seconds between client recreations
@@ -1802,8 +1795,7 @@ class Api:
         key, _ = self._current_loop()
         entry = self._async_clients.get(key)
         if entry is None and key is not None:
-            # a client assigned outside of a running loop (e.g. injected by tests or by
-            # app code) has no loop of its own and stays shared, as it was before
+            # a client assigned outside of a running loop has no loop and stays shared
             entry = self._async_clients.get(None)
         return entry[1] if entry is not None else None
 
@@ -1953,8 +1945,7 @@ class Api:
             - If server supports HTTPS, create a semaphore with value 10.
             - If server supports HTTP, create a semaphore with value 5.
         """
-        # resolves the http -> https redirect first, so the size and the key below are
-        # computed for the final server address
+        # resolves the http -> https redirect first: the key needs the final address
         size = self._default_semaphore_size()
         key = (self.server_address, self.token)
         with Api._semaphores_lock:
