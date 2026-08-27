@@ -274,6 +274,13 @@ class Api:
 
     _checked_servers = set()
 
+    # The request throttle belongs to the instance the requests go to, not to a python
+    # object: a process routinely holds several Api objects for the same server and token
+    # (app/fastapi/request.py builds a new one per HTTP request), and one semaphore per
+    # object would multiply the effective limit by the number of objects.
+    _semaphores: Dict[Tuple[str, Optional[str]], CrossLoopSemaphore] = {}
+    _semaphores_lock = threading.Lock()
+
     def __init__(
         self,
         server_address: Optional[str] = None,
@@ -426,7 +433,6 @@ class Api:
         ] = {}
         self.httpx_client: httpx.Client = None
         self._semaphore = None
-        self._semaphore_size = None  # configured size of the global semaphore
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
@@ -1921,6 +1927,10 @@ class Api:
         Get default global API semaphore for async requests.
         If the semaphore is not set, it will be initialized.
 
+        The semaphore is shared by every Api object of this process with the same server
+        address and token: the limit belongs to the Supervisely instance the requests go
+        to, and a process usually holds several Api objects for the same instance.
+
         During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, the default value will be set based on the server address.
         Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
@@ -1934,14 +1944,32 @@ class Api:
 
     def _initialize_semaphore(self):
         """
-        Initialize the semaphore for async requests.
+        Get or create the semaphore shared by every Api object with the same server
+        address and token.
 
-        If the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set, create a semaphore with the given value.
-
-        Otherwise, create a semaphore with a default value:
+        The size of a freshly created semaphore comes from the environment variable
+        SUPERVISELY_ASYNC_SEMAPHORE, and if it is not set, from the server address:
 
             - If server supports HTTPS, create a semaphore with value 10.
             - If server supports HTTP, create a semaphore with value 5.
+        """
+        # resolves the http -> https redirect first, so the size and the key below are
+        # computed for the final server address
+        size = self._default_semaphore_size()
+        key = (self.server_address, self.token)
+        with Api._semaphores_lock:
+            semaphore = Api._semaphores.get(key)
+            if semaphore is None:
+                semaphore = CrossLoopSemaphore(size)
+                Api._semaphores[key] = semaphore
+        self._semaphore = semaphore
+
+    def _default_semaphore_size(self) -> int:
+        """
+        Default number of concurrent async requests for this server address.
+
+        :returns: Semaphore size.
+        :rtype: int
         """
         semaphore_size = sly_env.semaphore_size()
         if semaphore_size is not None:
@@ -1960,27 +1988,27 @@ class Api:
             else:
                 size = 5
                 logger.debug(f"Setting global API semaphore size to {size} for HTTP")
-        self._semaphore = CrossLoopSemaphore(size)
-        self._semaphore_size = size
+        return size
 
     def set_semaphore_size(self, size: int = None):
         """
-        Set the global API semaphore with the given size. Will replace the existing semaphore.
+        Set the size of the global API semaphore.
         If the size is not set, will set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, will set the default value.
+
+        The semaphore is shared by every Api object with the same server address and token,
+        because the limit it enforces belongs to the Supervisely instance and not to a
+        python object. Changing the size therefore affects all of them, in this process.
 
         :param size: Size of the semaphore.
         :type size: int, optional
         """
-        if size is not None:
-            if isinstance(self._semaphore, CrossLoopSemaphore):
-                # resize in place to keep current holders and waiters valid
-                self._semaphore.resize(size)
-            else:
-                self._semaphore = CrossLoopSemaphore(size)
-            self._semaphore_size = size
-        else:
+        if self._semaphore is None:
             self._initialize_semaphore()
+        if size is None:
+            size = self._default_semaphore_size()
+        # resize in place to keep current holders and waiters valid
+        self._semaphore.resize(size)
 
     def get_default_semaphore_size(self) -> int:
         """
@@ -1988,14 +2016,15 @@ class Api:
         created with), as opposed to ``get_default_semaphore()._value`` which reflects the
         currently available permits and may be lower while requests are in-flight.
 
-        Initializes the semaphore if it has not been created yet.
+        Initializes the semaphore if it has not been created yet. The value is read from
+        the shared semaphore, so it cannot drift apart from it.
 
         :returns: Configured semaphore size.
         :rtype: int
         """
         if self._semaphore is None:
             self._initialize_semaphore()
-        return self._semaphore_size
+        return self._semaphore.limit
 
     @property
     def semaphore(self) -> CrossLoopSemaphore:

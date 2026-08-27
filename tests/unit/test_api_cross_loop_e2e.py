@@ -99,10 +99,10 @@ def server():
         thread.join(JOIN_TIMEOUT)
 
 
-@pytest.fixture
-def api(server):
+def build_api(server, token="t" * 128):
+    """A new Api object for the stub server, like app code does per request."""
     address = f"http://127.0.0.1:{server.server_address[1]}"
-    instance = Api(address, "t" * 128, retry_count=1)
+    instance = Api(address, token, retry_count=1)
     # do not touch the network for anything but the requests under test
     instance._skip_https_redirect_check = True
     instance._require_https_redirect_check = False
@@ -110,6 +110,17 @@ def api(server):
     instance.retry_sleep_sec = 0
     instance.set_semaphore_size(SEMAPHORE_SIZE)
     return instance
+
+
+@pytest.fixture
+def api(server):
+    known = set(Api._semaphores)
+    try:
+        yield build_api(server)
+    finally:
+        # the registry of shared semaphores is class level state
+        for key in set(Api._semaphores) - known:
+            del Api._semaphores[key]
 
 
 def _batch(api, requests=12):
@@ -302,3 +313,49 @@ def run_in_own_loop(coro_factory):
     assert not thread.is_alive(), "run did not finish: deadlock"
     assert "error" not in box, f"run failed: {box['error']!r}"
     return box["result"]
+
+
+# --------------------------------------------------------------------------------------
+# one limit per (server address, token), not per Api object
+# --------------------------------------------------------------------------------------
+def test_semaphore_is_shared_by_api_objects_with_the_same_key(api, server):
+    """app/fastapi/request.py builds a new Api per HTTP request, so the limit cannot live
+    on the object: it belongs to the instance the requests go to."""
+    twin = build_api(server)
+    assert twin.get_default_semaphore() is api.get_default_semaphore()
+    assert twin.get_default_semaphore_size() == SEMAPHORE_SIZE
+
+
+def test_semaphore_is_not_shared_across_tokens(api, server):
+    """Different users are throttled separately."""
+    other_user = build_api(server, token="u" * 128)
+    assert other_user.get_default_semaphore() is not api.get_default_semaphore()
+
+
+def test_size_change_is_visible_to_every_api_with_the_same_key(api, server):
+    twin = build_api(server)
+    api.set_semaphore_size(SEMAPHORE_SIZE + 5)
+
+    assert twin.get_default_semaphore().limit == SEMAPHORE_SIZE + 5
+    assert twin.get_default_semaphore_size() == SEMAPHORE_SIZE + 5
+    assert api.get_default_semaphore_size() == SEMAPHORE_SIZE + 5
+
+
+def test_request_concurrency_capped_across_several_api_objects(api, server):
+    """Three Api objects (three "requests" to the app), three event loops, one instance:
+    the server must still never see more than the limit."""
+    instances = [api, build_api(server), build_api(server)]
+    assert len({id(instance.get_default_semaphore()) for instance in instances}) == 1
+
+    server.delay = 0.05
+    runs = [_Run(instance, requests=8) for instance in instances]
+    for run in runs:
+        run.start()
+    for run in runs:
+        run.check()
+
+    assert server.stats.peak <= SEMAPHORE_SIZE, (
+        f"the server saw {server.stats.peak} concurrent requests from "
+        f"{len(instances)} Api objects with a limit of {SEMAPHORE_SIZE}"
+    )
+    assert server.stats.peak == SEMAPHORE_SIZE, "the limit was never reached"
