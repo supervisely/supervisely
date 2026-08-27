@@ -10,12 +10,15 @@ import os
 import random
 import re
 import string
+import threading
 import time
 import urllib
+import weakref
+from collections import deque
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Deque, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 import requests
@@ -596,6 +599,315 @@ def is_event_loop_running() -> bool:
         return True
     except RuntimeError:
         return False
+
+
+class _SemaphorePermitHolder:
+    """
+    Bookkeeping for permits of :class:`CrossLoopSemaphore` held by tasks of a single event loop.
+    """
+
+    __slots__ = ("_loop_ref", "count")
+
+    def __init__(self, loop: asyncio.AbstractEventLoop):
+        try:
+            self._loop_ref = weakref.ref(loop)
+        except TypeError:  # pragma: no cover - exotic loop implementations
+            self._loop_ref = lambda bound=loop: bound
+        self.count = 0
+
+    @property
+    def loop(self) -> Optional[asyncio.AbstractEventLoop]:
+        return self._loop_ref()
+
+    def is_dead(self) -> bool:
+        """
+        Whether the permits of this holder can never be released by their owner.
+
+        A permit is released from a coroutine, so it requires a running event loop.
+        If the loop is gone, closed or stopped, its tasks are frozen forever and
+        the permits they hold are lost unless reclaimed.
+
+        :returns: True if the permits are unreachable, False otherwise.
+        :rtype: bool
+        """
+        loop = self._loop_ref()
+        if loop is None or loop.is_closed():
+            return True
+        return not loop.is_running()
+
+
+class CrossLoopSemaphore:
+    """
+    Counting semaphore that is not bound to a single asyncio event loop.
+
+    ``asyncio.Semaphore`` binds itself to the event loop that first suspends on it and
+    raises ``RuntimeError: ... is bound to a different event loop`` when awaited from
+    another one. This makes it unusable as a process-wide request throttle: apps keep one
+    long-lived :class:`~supervisely.api.api.Api` object but run work in freshly spawned
+    threads (each thread gets its own event loop), so every run after the first fails.
+
+    This implementation keeps the counter in plain Python guarded by a ``threading.Lock``
+    and wakes waiters through ``loop.call_soon_threadsafe()`` on their own loop, so a
+    single instance can be shared by any number of event loops and threads while still
+    enforcing one global limit. The public interface matches ``asyncio.Semaphore``
+    (``acquire()``, ``release()``, ``locked()``, ``async with``), so it is a drop-in
+    replacement.
+
+    Permits held by tasks of a loop that is closed or no longer running can never be
+    released (the tasks are frozen), so they are reclaimed automatically when another
+    acquirer would otherwise block forever. If such a task is resumed later and releases
+    its permit, the release is dropped to keep the limit intact.
+
+    :param value: Number of permits, i.e. the maximum number of concurrent holders.
+    :type value: int
+
+    :Usage Example:
+
+     .. code-block:: python
+
+        from supervisely._utils import CrossLoopSemaphore
+
+        semaphore = CrossLoopSemaphore(5)
+
+        async def download(url):
+            async with semaphore:
+                ...
+    """
+
+    def __init__(self, value: int = 1):
+        if value < 0:
+            raise ValueError("CrossLoopSemaphore initial value must be >= 0")
+        self._limit = value
+        self._value = value
+        # permits that a shrinking resize() must swallow when they are returned
+        self._debt = 0
+        self._lock = threading.Lock()
+        self._waiters: Deque[Tuple[asyncio.AbstractEventLoop, asyncio.Future]] = deque()
+        self._holders: Dict[int, _SemaphorePermitHolder] = {}
+        self.reclaimed_total = 0
+
+    # ------------------------------------------------------------------ internals
+    # every _*_locked() helper must be called with self._lock held
+
+    def _holder_locked(self, loop: asyncio.AbstractEventLoop) -> _SemaphorePermitHolder:
+        holder = self._holders.get(id(loop))
+        if holder is None:
+            holder = _SemaphorePermitHolder(loop)
+            self._holders[id(loop)] = holder
+        return holder
+
+    def _held_locked(self) -> int:
+        return sum(holder.count for holder in self._holders.values())
+
+    def _return_permits_locked(self, count: int) -> None:
+        paid = min(self._debt, count)
+        self._debt -= paid
+        self._value += count - paid
+
+    def _reap_locked(self) -> int:
+        """
+        Reclaim permits held by frozen tasks. Returns the number of permits reclaimed.
+        """
+        reclaimed = 0
+        for key, holder in list(self._holders.items()):
+            if holder.is_dead():
+                if holder.count > 0:
+                    reclaimed += holder.count
+                    self._return_permits_locked(holder.count)
+                del self._holders[key]
+        if reclaimed > 0:
+            self.reclaimed_total += reclaimed
+            logger.warning(
+                f"Reclaimed {reclaimed} API semaphore permit(s) from tasks of an event loop "
+                "that is no longer running. This means an async batch was abandoned "
+                "(usually an exception in a gather) and its requests were never finished.",
+                extra={"reclaimed_total": self.reclaimed_total, "semaphore_size": self._limit},
+            )
+            self._dispatch_locked()
+        return reclaimed
+
+    def _dispatch_locked(self) -> None:
+        """
+        Hand free permits to queued waiters: nothing else wakes them up.
+        """
+        while self._value > 0 and self._wake_one_locked():
+            self._value -= 1
+
+    def _drop_dead_waiters_locked(self) -> None:
+        alive = deque()
+        for loop, future in self._waiters:
+            if loop.is_closed() or future.cancelled():
+                continue
+            alive.append((loop, future))
+        self._waiters = alive
+
+    @staticmethod
+    def _grant(future: asyncio.Future) -> None:
+        if not future.done():
+            future.set_result(True)
+
+    def _wake_one_locked(self) -> bool:
+        """
+        Hand one permit to the first live waiter. The permit stays accounted as held.
+        """
+        while self._waiters:
+            loop, future = self._waiters.popleft()
+            if future.cancelled() or loop.is_closed():
+                continue
+            holder = self._holder_locked(loop)
+            holder.count += 1
+            try:
+                loop.call_soon_threadsafe(self._grant, future)
+            except RuntimeError:
+                # the loop was closed between the check above and this call
+                holder.count -= 1
+                if holder.count == 0:
+                    self._holders.pop(id(loop), None)
+                continue
+            return True
+        return False
+
+    # -------------------------------------------------------------------- public
+    async def acquire(self) -> bool:
+        """
+        Acquire a permit, waiting until one is available. Can be awaited from any loop.
+
+        :returns: True when the permit is acquired.
+        :rtype: bool
+        """
+        loop = asyncio.get_running_loop()
+        with self._lock:
+            if self._value <= 0:
+                self._drop_dead_waiters_locked()
+                self._reap_locked()
+            # do not overtake waiters that are already queued
+            if self._value > 0 and not self._waiters:
+                self._value -= 1
+                self._holder_locked(loop).count += 1
+                return True
+            future = loop.create_future()
+            self._waiters.append((loop, future))
+        try:
+            await future
+        except asyncio.CancelledError:
+            with self._lock:
+                for idx, (_, queued) in enumerate(self._waiters):
+                    if queued is future:
+                        del self._waiters[idx]
+                        raise  # the permit was never granted, nothing to give back
+            if future.done() and not future.cancelled():
+                # cancelled after the permit was granted: hand it to the next waiter
+                self.release()
+            raise
+        return True
+
+    def release(self) -> None:
+        """
+        Release a permit, waking up the next waiter if there is one.
+
+        Should be called from the same event loop that acquired the permit, which
+        ``async with`` guarantees.
+        """
+        with self._lock:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            key = id(loop) if loop is not None else None
+            holder = self._holders.get(key) if key is not None else None
+            if holder is None:
+                # release() from a sync context: attribute it only when unambiguous
+                busy = [item for item in self._holders.items() if item[1].count > 0]
+                if len(busy) == 1:
+                    key, holder = busy[0]
+            if holder is not None and holder.count > 0:
+                holder.count -= 1
+                if holder.count == 0:
+                    del self._holders[key]
+            if self._debt > 0:
+                self._debt -= 1
+                return
+            if self._value + self._held_locked() >= self._limit + self._debt:
+                # this permit was already reclaimed by _reap_locked(), or this is an
+                # over-release: dropping it keeps the limit intact
+                return
+            if not self._wake_one_locked():
+                self._value += 1
+
+    def locked(self) -> bool:
+        """
+        Whether a permit cannot be acquired immediately.
+
+        :returns: True if the semaphore cannot be acquired without waiting.
+        :rtype: bool
+        """
+        with self._lock:
+            return self._value <= 0 or bool(self._waiters)
+
+    def resize(self, value: int) -> None:
+        """
+        Change the number of permits in place, keeping current holders and waiters.
+
+        Growing releases queued waiters immediately. Shrinking takes effect as permits
+        that are currently held are returned.
+
+        :param value: New number of permits.
+        :type value: int
+        """
+        if value < 0:
+            raise ValueError("CrossLoopSemaphore size must be >= 0")
+        with self._lock:
+            diff = value - self._limit
+            self._limit = value
+            if diff > 0:
+                paid = min(self._debt, diff)
+                self._debt -= paid
+                self._value += diff - paid
+                self._dispatch_locked()
+            elif diff < 0:
+                taken = min(self._value, -diff)
+                self._value -= taken
+                self._debt += -diff - taken
+
+    @property
+    def limit(self) -> int:
+        """
+        Configured number of permits.
+
+        :returns: Number of permits.
+        :rtype: int
+        """
+        return self._limit
+
+    def _state(self) -> Dict[str, int]:
+        """
+        Snapshot of the internal counters. For tests and debugging only.
+        """
+        with self._lock:
+            held = self._held_locked()
+            return {
+                "limit": self._limit,
+                "value": self._value,
+                "held": held,
+                "debt": self._debt,
+                "waiters": len(self._waiters),
+                "reclaimed": self.reclaimed_total,
+                "consistent": self._value + held == self._limit + self._debt,
+            }
+
+    async def __aenter__(self) -> "CrossLoopSemaphore":
+        await self.acquire()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        self.release()
+
+    def __repr__(self) -> str:
+        state = self._state()
+        return (
+            f"<CrossLoopSemaphore limit={state['limit']} free={state['value']} "
+            f"held={state['held']} waiters={state['waiters']}>"
+        )
 
 
 def run_coroutine(coroutine):
