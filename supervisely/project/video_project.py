@@ -11,7 +11,6 @@ import tempfile
 from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
-import zstd
 from tqdm import tqdm
 
 from supervisely._utils import batched, logger
@@ -1531,6 +1530,8 @@ class VideoProject(Project):
         :returns: In-memory snapshot stream (io.BytesIO).
         :rtype: io.BytesIO
         """
+        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
+
         try:
             import pyarrow  # pylint: disable=import-error
             import pyarrow.parquet as parquet  # pylint: disable=import-error
@@ -1767,6 +1768,8 @@ class VideoProject(Project):
         """
         Restore a video project from a snapshot and return ProjectInfo.
         """
+        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
+
         try:
             import pyarrow  # pylint: disable=import-error
             import pyarrow.parquet as parquet  # pylint: disable=import-error
