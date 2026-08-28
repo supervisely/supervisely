@@ -1,12 +1,14 @@
-"""Tests for the small/large split of the async project download.
+"""Tests for image sizes that the API returns as strings.
 
-A single image whose size comes back from the API as a string used to raise
-``TypeError: '<' not supported between instances of 'str' and 'int'`` and send the whole
-project download into the synchronous fallback.
+A single such image used to raise ``TypeError: '<' not supported between instances of 'str'
+and 'int'`` in the small/large split and send the whole project download into the
+synchronous fallback, and later the same value broke the streaming threshold with ``'>'``.
+``ImageInfo.size`` is declared an int, so the value is normalized on conversion.
 """
 
 import pytest
 
+from supervisely.api.api import Api
 from supervisely.project.project import _is_small_image
 
 SWITCH_SIZE = 512 * 1024
@@ -39,3 +41,29 @@ def test_string_size_does_not_raise():
     images = [_Image(1024), _Image("2361250"), _Image(None)]
     small = [image for image in images if _is_small_image(image, SWITCH_SIZE)]
     assert len(small) == 1
+
+
+@pytest.fixture
+def api():
+    return Api("https://example.com", "fake-token")
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("2361250", 2361250),
+        (576595, 576595),
+        (None, None),
+        ("", None),
+        ("not a number", None),
+    ],
+)
+def test_image_info_size_is_normalized(api, raw, expected):
+    info = api.image._convert_json_info({"id": 1, "name": "a.png", "size": raw})
+    assert info.size == expected
+
+
+def test_streaming_threshold_survives_a_string_size(api):
+    """The second site that broke: `estimated_size > size_threshold_for_streaming`."""
+    info = api.image._convert_json_info({"id": 1, "name": "a.png", "size": "6291456"})
+    assert info.size > 5 * 1024 * 1024
