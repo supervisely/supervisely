@@ -420,6 +420,83 @@ class SlyWrapFile:
         logger.info(msg)
 
 
+class UploadProgressDelta(int):
+    """
+    Byte increment handed to an upload ``progress_cb``.
+
+    Delta style callbacks (``tqdm.update``, ``Progress.iters_done_report``, a plain
+    ``lambda count: ...``) see a number. Callbacks written back when the SDK passed the
+    multipart encoder monitor itself still find ``bytes_read``, ``len`` and every other
+    attribute of that monitor on this value, so both conventions keep working.
+    """
+
+    def __new__(cls, delta: int, monitor):
+        obj = super().__new__(cls, delta)
+        obj._monitor = monitor
+        return obj
+
+    def __getattr__(self, name: str):
+        # reached only for names int itself does not define
+        if name.startswith("__") or name == "_monitor":
+            raise AttributeError(name)
+        return getattr(self._monitor, name)
+
+    @property
+    def monitor(self):
+        """
+        The multipart encoder monitor this increment came from.
+
+        :returns: Monitor object.
+        :rtype: :class:`MultipartEncoderMonitor<requests_toolbelt.multipart.encoder.MultipartEncoderMonitor>`
+        """
+        return self._monitor
+
+
+def build_multipart_monitor_callback(progress_cb):
+    """
+    Adapt any supported ``progress_cb`` to a ``MultipartEncoderMonitor`` callback.
+
+    Accepts a bare ``tqdm``, anything callable (delta style or monitor style), and objects
+    exposing ``get_partial()`` such as :class:`tqdm_sly` and the ``SlyTqdm`` widget, which
+    report from the monitor on their own.
+
+    :param progress_cb: Progress callback of any supported shape, or None.
+    :type progress_cb: Optional[Union[tqdm, Callable]]
+    :returns: Callback for the monitor, or None if there is nothing to report to.
+    :rtype: Optional[Callable]
+    :raises TypeError: if progress_cb is neither callable, nor a tqdm, nor monitor aware.
+    """
+    if progress_cb is None:
+        return None
+
+    get_partial = getattr(progress_cb, "get_partial", None)
+    if callable(get_partial):
+        return get_partial()
+
+    if not callable(progress_cb):
+        # a bare tqdm and a bare Progress are not callable, but both take an increment
+        for attr in ("update", "iters_done_report"):
+            method = getattr(progress_cb, attr, None)
+            if callable(method):
+                progress_cb = method
+                break
+        else:
+            raise TypeError(
+                "progress_cb must be callable, a tqdm or Progress instance, or expose "
+                f"get_partial(), got {type(progress_cb).__name__}"
+            )
+
+    reported = 0
+
+    def _report(monitor):
+        nonlocal reported
+        delta = monitor.bytes_read - reported
+        reported = monitor.bytes_read
+        progress_cb(UploadProgressDelta(delta, monitor))
+
+    return _report
+
+
 class tqdm_sly(tqdm, Progress):
     """tqdm-compatible progress bar that also reports progress via :class:`~supervisely.task.progress.Progress`."""
 

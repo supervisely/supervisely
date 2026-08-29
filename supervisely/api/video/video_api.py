@@ -61,7 +61,7 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, build_multipart_monitor_callback
 from supervisely.video.video import (
     gen_video_stream_name,
     get_info,
@@ -1843,16 +1843,9 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         encoder = MultipartEncoder(fields=content_dict)
 
-        if progress_cb is not None:
-
-            def _callback(monitor, progress):
-                progress(monitor.bytes_read)
-
-            if isinstance(progress_cb, tqdm):
-                callback = partial(_callback, progress=progress_cb.update)
-            else:
-                callback = partial(_callback, progress=progress_cb)
-            monitor = MultipartEncoderMonitor(encoder, callback)
+        monitor_cb = build_multipart_monitor_callback(progress_cb)
+        if monitor_cb is not None:
+            monitor = MultipartEncoderMonitor(encoder, monitor_cb)
             resp = self._api.post("videos.bulk.upload", monitor)
         else:
             resp = self._api.post("videos.bulk.upload", encoder)
