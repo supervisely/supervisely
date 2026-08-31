@@ -436,7 +436,10 @@ class Api:
         self._version_check_lock = threading.Lock()
         # threading.Lock: nothing is awaited under it, and asyncio.Lock is loop bound
         self._client_recreation_lock = threading.Lock()
-        self._last_client_recreation_time = None  # timestamp of last client recreation
+        self._last_client_recreation_time = None  # honored as a global cooldown if set
+        # clients are per event loop, so the cooldown is too: one loop healing its pool must
+        # not stop another loop from healing its own
+        self._client_recreation_times: Dict[Optional[int], float] = {}
         self._client_recreation_cooldown = 30  # seconds between client recreations
 
         if check_instance_version:
@@ -1790,6 +1793,7 @@ class Api:
                 loop = loop_ref()
                 if loop is None or loop.is_closed():
                     self._async_clients.pop(key, None)
+                    self._client_recreation_times.pop(key, None)
 
     @property
     def async_httpx_client(self) -> Optional[httpx.AsyncClient]:
@@ -1910,8 +1914,12 @@ class Api:
         with self._client_recreation_lock:
             # Check cooldown period - don't recreate if recently recreated
             current_time = time.time()
+            key, _ = self._current_loop()
+            last_recreation = self._client_recreation_times.get(key)
             if self._last_client_recreation_time is not None:
-                time_since_last_recreation = current_time - self._last_client_recreation_time
+                last_recreation = max(last_recreation or 0, self._last_client_recreation_time)
+            if last_recreation is not None:
+                time_since_last_recreation = current_time - last_recreation
                 if time_since_last_recreation < self._client_recreation_cooldown:
                     self.logger.debug(
                         f"Skipping client recreation (cooldown: {time_since_last_recreation:.1f}s / {self._client_recreation_cooldown}s)"
@@ -1924,7 +1932,7 @@ class Api:
                 old_client = self.async_httpx_client
                 self.async_httpx_client = None
                 self._set_async_client()
-                self._last_client_recreation_time = current_time
+                self._client_recreation_times[key] = current_time
 
                 # Schedule old client closure in background to avoid blocking
                 # This allows active requests to finish gracefully while preventing memory leaks
@@ -1963,7 +1971,10 @@ class Api:
             - If server supports HTTPS, create a semaphore with value 10.
             - If server supports HTTP, create a semaphore with value 5.
         """
-        # resolves the http -> https redirect first: the key needs the final address
+        # the redirect rewrites server_address, which is part of the key, so resolve it here
+        # and not only on the branch of _default_semaphore_size() that needs the address
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
         size = self._default_semaphore_size()
         key = (self.server_address, self.token)
         with Api._semaphores_lock:

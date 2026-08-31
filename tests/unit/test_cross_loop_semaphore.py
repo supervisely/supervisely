@@ -797,3 +797,107 @@ def test_a_logging_handler_that_reenters_does_not_deadlock():
 
     assert seen, "the reclaim warning never reached the handler"
     assert semaphore._state()["value"] == 1, semaphore._state()
+
+
+def test_a_waiter_on_a_stopped_loop_does_not_stall_the_others():
+    """The permit must not be handed to a waiter that cannot take it.
+
+    A waiter whose loop stopped keeps its place in the queue, so handing it the permit
+    parks it until the next reclaim and everyone behind waits a full stall_check_sec.
+    """
+    semaphore = CrossLoopSemaphore(1)
+    semaphore.stall_check_sec = 5  # a stall would be plainly visible
+    hog_took = threading.Event()
+    release_hog = threading.Event()
+    orphan_queued = threading.Event()
+    timings = {}
+
+    def orphan_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def scenario():
+            asyncio.ensure_future(semaphore.acquire())  # queued, then abandoned
+            await asyncio.sleep(0.2)
+            orphan_queued.set()
+            raise ValueError("abandoned")
+
+        try:
+            loop.run_until_complete(scenario())
+        except ValueError:
+            pass  # the loop stays open but stops running, the waiter stays queued
+
+    def hog_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def hold():
+            async with semaphore:
+                hog_took.set()
+                while not release_hog.is_set():
+                    await asyncio.sleep(0.01)
+
+        loop.run_until_complete(hold())
+
+    def live_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def take():
+            started = time.monotonic()
+            async with semaphore:
+                timings["waited"] = time.monotonic() - started
+
+        loop.run_until_complete(take())
+
+    hog = threading.Thread(target=hog_thread, daemon=True)
+    hog.start()
+    assert hog_took.wait(JOIN_TIMEOUT)
+
+    orphan = threading.Thread(target=orphan_thread, daemon=True)
+    orphan.start()
+    assert orphan_queued.wait(JOIN_TIMEOUT)
+    orphan.join(JOIN_TIMEOUT)
+    assert semaphore._state()["waiters"] == 1, semaphore._state()
+
+    live = threading.Thread(target=live_thread, daemon=True)
+    live.start()
+    time.sleep(0.3)  # let it queue behind the orphan
+    release_hog.set()
+    hog.join(JOIN_TIMEOUT)
+    live.join(JOIN_TIMEOUT)
+
+    assert not live.is_alive(), "the live waiter never got the permit"
+    assert timings["waited"] < semaphore.stall_check_sec, (
+        f"waited {timings['waited']:.1f}s, the permit went to the stopped loop first"
+    )
+    # the orphan keeps its place: a later run_until_complete() on that loop may resume it
+    assert semaphore._state()["waiters"] == 1, semaphore._state()
+
+
+def test_a_waiter_paused_between_two_runs_is_still_served():
+    """Skipping is not dropping: `run_coroutine()` reuses one loop per thread, and a task
+    suspended between two run_until_complete() calls has to survive the gap."""
+    semaphore = CrossLoopSemaphore(1)
+    semaphore.stall_check_sec = 0.2
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(semaphore.acquire())  # this loop holds the only permit
+        waiter = asyncio.ensure_future(semaphore.acquire(), loop=loop)
+        loop.run_until_complete(asyncio.sleep(0.05))  # queue it, then leave the loop stopped
+
+        assert semaphore._state()["waiters"] == 1, semaphore._state()
+        time.sleep(0.5)  # the loop is stopped, nothing must drop the waiter
+        assert semaphore._state()["waiters"] == 1, semaphore._state()
+
+        loop.run_until_complete(_release_and_wait(semaphore, waiter))
+        assert waiter.result() is True
+    finally:
+        asyncio.set_event_loop(None)
+        loop.close()
+
+
+async def _release_and_wait(semaphore, waiter):
+    semaphore.release()
+    await asyncio.wait_for(waiter, timeout=5)

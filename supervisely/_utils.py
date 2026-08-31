@@ -781,24 +781,35 @@ class CrossLoopSemaphore:
 
     def _wake_one_locked(self) -> bool:
         """
-        Hand one permit to the first live waiter. The permit stays accounted as held.
+        Hand one permit to the first waiter that can actually take it.
+
+        A waiter on a loop that stopped running would sit on the permit until the next
+        reclaim, stalling everyone behind it, so it is skipped. It stays queued: a later
+        ``run_until_complete()`` on that loop may still resume it.
         """
-        while self._waiters:
-            loop, future = self._waiters.popleft()
-            if future.cancelled() or loop.is_closed():
-                continue
-            holder = self._holder_locked(loop)
-            holder.count += 1
-            try:
-                loop.call_soon_threadsafe(self._grant, future)
-            except RuntimeError:
-                # the loop was closed between the check above and this call
-                holder.count -= 1
-                if holder.count == 0:
-                    self._holders.pop(id(loop), None)
-                continue
-            return True
-        return False
+        skipped = deque()
+        try:
+            while self._waiters:
+                loop, future = self._waiters.popleft()
+                if future.cancelled() or loop.is_closed():
+                    continue
+                if not loop.is_running():
+                    skipped.append((loop, future))
+                    continue
+                holder = self._holder_locked(loop)
+                holder.count += 1
+                try:
+                    loop.call_soon_threadsafe(self._grant, future)
+                except RuntimeError:
+                    # the loop was closed between the check above and this call
+                    holder.count -= 1
+                    if holder.count == 0:
+                        self._holders.pop(id(loop), None)
+                    continue
+                return True
+            return False
+        finally:
+            self._waiters.extendleft(reversed(skipped))
 
     async def acquire(self) -> bool:
         """
@@ -865,6 +876,12 @@ class CrossLoopSemaphore:
             holder = self._holders.get(key) if key is not None else None
             if holder is not None and holder.loop is not loop:
                 holder = None  # the id belongs to a collected loop, not to this one
+            if holder is None and loop is not None:
+                self._warn_later_locked(
+                    "release() found no permit of this event loop, so it is dropped. Either "
+                    "the permit was already reclaimed because the loop stopped, or it was "
+                    "acquired by another loop and has to be released there."
+                )
             if holder is None and loop is None:
                 # release() from a sync context: attribute it only when unambiguous
                 busy = [item for item in self._holders.items() if item[1].count > 0]
