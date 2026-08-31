@@ -6000,7 +6000,8 @@ def _is_small_image(image_info: ImageInfo, switch_size: int) -> bool:
     :returns: True if the image is smaller than the threshold.
     :rtype: bool
     """
-    # the API returns size as a string for some images, which used to raise a TypeError
+    # None means the size is unknown; a string can still arrive from an img_info.json that
+    # was written before ImageInfo started normalizing it
     try:
         return int(image_info.size) < switch_size
     except TypeError:
