@@ -674,6 +674,9 @@ class CrossLoopSemaphore:
                 ...
     """
 
+    # how often a queued waiter re-checks for permits stuck on loops that stopped running
+    stall_check_sec = 30
+
     def __init__(self, value: int = 1):
         if value < 0:
             raise ValueError("CrossLoopSemaphore initial value must be >= 0")
@@ -684,6 +687,7 @@ class CrossLoopSemaphore:
         self._lock = threading.Lock()
         self._waiters: Deque[Tuple[asyncio.AbstractEventLoop, asyncio.Future]] = deque()
         self._holders: Dict[int, _SemaphorePermitHolder] = {}
+        self._deferred_warnings = deque()
         self.reclaimed_total = 0
 
     # every _*_locked() helper must be called with self._lock held
@@ -691,7 +695,8 @@ class CrossLoopSemaphore:
     def _holder_locked(self, loop: asyncio.AbstractEventLoop) -> _SemaphorePermitHolder:
         holder = self._holders.get(id(loop))
         if holder is not None and holder.loop is not loop:
-            holder = self._drop_stale_holder_locked(id(loop), holder)
+            self._drop_stale_holder_locked(id(loop), holder)
+            holder = None
         if holder is None:
             holder = _SemaphorePermitHolder(loop)
             self._holders[id(loop)] = holder
@@ -704,15 +709,27 @@ class CrossLoopSemaphore:
         if holder.count > 0:
             self.reclaimed_total += holder.count
             self._return_permits_locked(holder.count)
-            logger.warning(
-                f"Reclaimed {holder.count} API semaphore permit(s) from a collected event loop.",
-                extra={"reclaimed_total": self.reclaimed_total, "semaphore_size": self._limit},
+            self._warn_later_locked(
+                f"Reclaimed {holder.count} API semaphore permit(s) from a collected event loop."
             )
         self._holders.pop(key, None)
-        return None
 
     def _held_locked(self) -> int:
         return sum(holder.count for holder in self._holders.values())
+
+    def _warn_later_locked(self, message: str) -> None:
+        self._deferred_warnings.append(message)
+
+    def _flush_warnings(self) -> None:
+        """
+        Emit queued warnings with the lock released: a logging handler is arbitrary code
+        and may well end up calling back into the API.
+        """
+        while self._deferred_warnings:
+            logger.warning(
+                self._deferred_warnings.popleft(),
+                extra={"reclaimed_total": self.reclaimed_total, "semaphore_size": self._limit},
+            )
 
     def _return_permits_locked(self, count: int) -> None:
         paid = min(self._debt, count)
@@ -732,10 +749,9 @@ class CrossLoopSemaphore:
                 del self._holders[key]
         if reclaimed > 0:
             self.reclaimed_total += reclaimed
-            logger.warning(
+            self._warn_later_locked(
                 f"Reclaimed {reclaimed} API semaphore permit(s) held by tasks of an event "
-                "loop that is no longer running.",
-                extra={"reclaimed_total": self.reclaimed_total, "semaphore_size": self._limit},
+                "loop that is no longer running."
             )
             self._dispatch_locked()
         return reclaimed
@@ -797,22 +813,37 @@ class CrossLoopSemaphore:
                 self._drop_dead_waiters_locked()
                 self._reap_locked()
             # do not overtake waiters that are already queued
-            if self._value > 0 and not self._waiters:
+            granted = self._value > 0 and not self._waiters
+            if granted:
                 self._value -= 1
                 self._holder_locked(loop).count += 1
-                return True
-            future = loop.create_future()
-            self._waiters.append((loop, future))
+            else:
+                future = loop.create_future()
+                self._waiters.append((loop, future))
+        self._flush_warnings()
+        if granted:
+            return True
         try:
-            await future
+            while True:
+                try:
+                    await asyncio.wait_for(asyncio.shield(future), self.stall_check_sec)
+                    break
+                except asyncio.TimeoutError:
+                    # nobody else may come to acquire and trigger the recovery
+                    with self._lock:
+                        self._drop_dead_waiters_locked()
+                        self._reap_locked()
+                    self._flush_warnings()
         except asyncio.CancelledError:
             with self._lock:
                 for idx, (_, queued) in enumerate(self._waiters):
                     if queued is future:
                         del self._waiters[idx]
                         raise  # the permit was never granted, nothing to give back
+            # the permit was handed to us while we waited: cancelling the future makes the
+            # pending _grant() give it back, and if that callback already ran we do it here
+            future.cancel()
             if future.done() and not future.cancelled():
-                # cancelled after the permit was granted: hand it to the next waiter
                 self.release()
             raise
         return True
@@ -840,24 +871,25 @@ class CrossLoopSemaphore:
                 if len(busy) == 1:
                     key, holder = busy[0]
                 elif len(busy) > 1:
-                    logger.warning(
+                    self._warn_later_locked(
                         "release() called outside of an event loop while "
                         f"{len(busy)} loops hold permits, so it cannot be attributed and is "
-                        "dropped. Release the permit from the loop that acquired it.",
-                        extra={"semaphore_size": self._limit},
+                        "dropped. Release the permit from the loop that acquired it."
                     )
             if holder is not None and holder.count > 0:
                 holder.count -= 1
                 if holder.count == 0:
                     del self._holders[key]
+
             if self._debt > 0:
-                self._debt -= 1
-                return
-            if self._value + self._held_locked() >= self._limit + self._debt:
-                # already reclaimed by _reap_locked(), or an over-release: drop it
-                return
-            if not self._wake_one_locked():
-                self._value += 1
+                self._debt -= 1  # a shrinking resize() swallows this permit
+            elif self._value + self._held_locked() >= self._limit + self._debt:
+                pass  # already reclaimed by _reap_locked(), or an over-release: drop it
+            else:
+                if not self._wake_one_locked():
+                    self._value += 1
+                self._dispatch_locked()
+        self._flush_warnings()
 
     def locked(self) -> bool:
         """
@@ -893,6 +925,7 @@ class CrossLoopSemaphore:
                 taken = min(self._value, -diff)
                 self._value -= taken
                 self._debt += -diff - taken
+        self._flush_warnings()
 
     @property
     def limit(self) -> int:

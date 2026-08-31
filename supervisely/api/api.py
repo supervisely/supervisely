@@ -428,6 +428,7 @@ class Api:
             Optional[int], Tuple[Optional[Any], httpx.AsyncClient]
         ] = {}
         self._async_clients_lock = threading.Lock()
+        self._warned_about_shared_client = False
         self.httpx_client: httpx.Client = None
         self._semaphore = None
         self._instance_version = None
@@ -1806,6 +1807,13 @@ class Api:
                 # shared. _set_async_client() never creates such an entry, it only appears
                 # when app or test code assigns api.async_httpx_client directly
                 entry = self._async_clients.get(None)
+                if entry is not None and not self._warned_about_shared_client:
+                    self._warned_about_shared_client = True
+                    self.logger.warning(
+                        "Using an httpx client that was assigned outside of an event loop. "
+                        "It is shared by every loop of this process, which is exactly what "
+                        "binds a client to a foreign loop: assign it from the loop that uses it."
+                    )
         return entry[1] if entry is not None else None
 
     @async_httpx_client.setter

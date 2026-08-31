@@ -692,3 +692,108 @@ def test_ambiguous_sync_release_is_dropped_with_a_warning(caplog):
     for thread in holders:
         thread.join(JOIN_TIMEOUT)
     assert semaphore._state()["value"] == 3, semaphore._state()
+
+
+def test_queued_waiter_recovers_permits_frozen_after_it_queued():
+    """A waiter that is already queued has to recover the semaphore on its own.
+
+    Reaping happens when someone calls acquire(), so if the holder's loop freezes *after*
+    the waiter queued and nothing else acquires, there is nobody left to trigger it. The
+    waiter re-checks on a timer instead of waiting forever.
+    """
+    semaphore = CrossLoopSemaphore(1)
+    semaphore.stall_check_sec = 0.2
+    holder_took = threading.Event()
+    freeze_now = threading.Event()
+    outcome = {}
+
+    def holder_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def hold():
+            async with semaphore:
+                holder_took.set()
+                while not freeze_now.is_set():
+                    await asyncio.sleep(0.01)
+                await asyncio.sleep(3600)  # frozen together with the loop
+
+        async def boom():
+            while not freeze_now.is_set():
+                await asyncio.sleep(0.01)
+            await asyncio.sleep(0.05)
+            raise ValueError("gather aborted")
+
+        try:
+            loop.run_until_complete(asyncio.gather(hold(), boom()))
+        except ValueError:
+            pass  # the loop stays open but stops running, with the permit still accounted
+
+    def waiter_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def wait_once():
+            async with semaphore:
+                return "acquired"
+
+        try:
+            outcome["result"] = loop.run_until_complete(wait_once())
+        except BaseException as exc:  # noqa: BLE001
+            outcome["result"] = f"{type(exc).__name__}: {exc}"
+
+    holder = threading.Thread(target=holder_thread, daemon=True)
+    holder.start()
+    assert holder_took.wait(JOIN_TIMEOUT)
+
+    waiter = threading.Thread(target=waiter_thread, daemon=True)
+    waiter.start()
+    for _ in range(500):  # the waiter must be queued before the loop freezes
+        if semaphore._state()["waiters"] == 1:
+            break
+        time.sleep(0.01)
+    assert semaphore._state()["waiters"] == 1, semaphore._state()
+
+    freeze_now.set()
+    holder.join(JOIN_TIMEOUT)
+    waiter.join(JOIN_TIMEOUT)
+    assert not waiter.is_alive(), (
+        f"the queued waiter never recovered the frozen permit: {semaphore._state()}"
+    )
+    assert outcome["result"] == "acquired", outcome
+    assert semaphore._state()["consistent"], semaphore._state()
+
+
+def test_a_logging_handler_that_reenters_does_not_deadlock():
+    """Warnings are emitted with the lock released.
+
+    A logging handler is arbitrary code — the SDK's own handlers report to the platform —
+    so emitting the reclaim warning while holding the counter lock deadlocked every thread
+    that touched the semaphore.
+    """
+    import logging
+
+    from supervisely.sly_logger import logger as sly_logger
+
+    semaphore = CrossLoopSemaphore(1)
+    semaphore.stall_check_sec = 0.2
+    seen = []
+
+    class ReentrantHandler(logging.Handler):
+        def emit(self, record):
+            seen.append(semaphore._state())  # takes the lock from inside the handler
+            semaphore.locked()
+
+    handler = ReentrantHandler()
+    sly_logger.addHandler(handler)
+    try:
+        _abandon_permits(semaphore, holders=1)  # a permit frozen on a stopped loop
+        assert semaphore._state()["held"] == 1, semaphore._state()
+
+        # the next acquirer reclaims it, which logs a warning while the handler re-enters
+        assert run_in_fresh_loop(make_contended_batch(semaphore, tasks=3)) is True
+    finally:
+        sly_logger.removeHandler(handler)
+
+    assert seen, "the reclaim warning never reached the handler"
+    assert semaphore._state()["value"] == 1, semaphore._state()
