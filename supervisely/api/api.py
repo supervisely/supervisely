@@ -1777,6 +1777,29 @@ class Api:
             return None, None
         return id(loop), loop
 
+    def _forget_client_of_a_foreign_loop(self, key: Optional[int], loop) -> None:
+        """
+        Drop the entry when a new loop got the id of a collected one.
+
+        Python reuses the id of a collected loop readily, and the entry of the old loop
+        would hand its client, and its recreation cooldown, to a loop it is not bound to.
+
+        :param key: Registry key of the current loop.
+        :type key: Optional[int]
+        :param loop: Event loop running in this thread.
+        :type loop: Optional[asyncio.AbstractEventLoop]
+        """
+        if key is None:
+            return
+        with self._async_clients_lock:
+            entry = self._async_clients.get(key)
+            if entry is None:
+                return
+            loop_ref, _ = entry
+            if loop_ref is not None and loop_ref() is not loop:
+                self._async_clients.pop(key, None)
+                self._client_recreation_times.pop(key, None)
+
     def _drop_stale_async_clients(self) -> None:
         """
         Forget clients whose event loop is gone or closed.
@@ -1803,7 +1826,8 @@ class Api:
         :returns: Client of the current event loop or None if it is not created yet.
         :rtype: Optional[httpx.AsyncClient]
         """
-        key, _ = self._current_loop()
+        key, loop = self._current_loop()
+        self._forget_client_of_a_foreign_loop(key, loop)
         with self._async_clients_lock:
             entry = self._async_clients.get(key)
             if entry is None and key is not None:
@@ -1914,7 +1938,8 @@ class Api:
         with self._client_recreation_lock:
             # Check cooldown period - don't recreate if recently recreated
             current_time = time.time()
-            key, _ = self._current_loop()
+            key, loop = self._current_loop()
+            self._forget_client_of_a_foreign_loop(key, loop)
             last_recreation = self._client_recreation_times.get(key)
             if self._last_client_recreation_time is not None:
                 last_recreation = max(last_recreation or 0, self._last_client_recreation_time)

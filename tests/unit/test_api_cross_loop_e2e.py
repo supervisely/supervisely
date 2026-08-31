@@ -236,6 +236,27 @@ def test_stale_clients_are_dropped_when_their_loop_is_closed(api):
     assert len(api._async_clients) == 1, api._async_clients
 
 
+def test_reused_loop_id_does_not_return_the_previous_loops_client(api, monkeypatch):
+    first_loop = asyncio.new_event_loop()
+    second_loop = asyncio.new_event_loop()
+    reused_key = id(first_loop)
+    old_client = object()
+    try:
+        monkeypatch.setattr(api, "_current_loop", lambda: (reused_key, first_loop))
+        api.async_httpx_client = old_client
+        api._client_recreation_times[reused_key] = 1.0
+
+        # Reproduce Python assigning the collected loop's id to a different loop without
+        # depending on the allocator to do it during this test.
+        monkeypatch.setattr(api, "_current_loop", lambda: (reused_key, second_loop))
+        assert api.async_httpx_client is None
+        assert reused_key not in api._async_clients
+        assert reused_key not in api._client_recreation_times
+    finally:
+        first_loop.close()
+        second_loop.close()
+
+
 def test_semaphore_is_cross_loop_and_resized_in_place(api):
     semaphore = api.get_default_semaphore()
     assert isinstance(semaphore, CrossLoopSemaphore)
