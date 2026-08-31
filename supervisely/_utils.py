@@ -618,10 +618,14 @@ class CrossLoopSemaphore:
 
     The throttle never blocks progress. A permit whose task can no longer release it (an
     abandoned batch, a loop that stopped) is simply missing from the counter, and two rules
-    put it back: a waiter that sees no release at all for ``stall_check_sec`` issues one
+    put it back: a waiter that sees no progress at all for ``stall_check_sec`` issues one
     permit to itself and says so, and every release is clamped to the limit, so the counter
     heals as those permits come back. The limit can therefore be exceeded for a while after
     an incident, which is the deliberate trade: a looser throttle instead of a deadlock.
+
+    Issuing such a permit counts as progress, so a queue of a hundred waiters cannot walk
+    through the same hole at once: at most one extra permit is granted per
+    ``stall_check_sec`` while nothing is being released.
 
     :param value: Number of permits, i.e. the maximum number of concurrent holders.
     :type value: int
@@ -649,7 +653,9 @@ class CrossLoopSemaphore:
         self._value = value
         self._lock = threading.Lock()
         self._waiters: Deque[Tuple[asyncio.AbstractEventLoop, asyncio.Future]] = deque()
-        self._releases = 0  # only ever grows, a waiter uses it to tell progress from a stall
+        # grows on every release and on every emergency permit; a waiter compares it with
+        # what it saw last to tell a stalled semaphore from a busy one
+        self._progress = 0
         self._deferred_warnings = deque()
         self.over_issued_total = 0
 
@@ -733,7 +739,7 @@ class CrossLoopSemaphore:
                 return True
             future = loop.create_future()
             self._waiters.append((loop, future))
-            seen_releases = self._releases
+            seen_progress = self._progress
 
         try:
             while True:
@@ -742,18 +748,21 @@ class CrossLoopSemaphore:
                     return True
                 except asyncio.TimeoutError:
                     with self._lock:
-                        if self._releases != seen_releases:
-                            seen_releases = self._releases
+                        if self._progress != seen_progress:
+                            seen_progress = self._progress
                             continue  # permits are moving, our turn will come
                         if not self._drop_waiter_locked(future):
                             continue  # granted while we were timing out
-                        # nothing has been released at all: a permit is stuck on a task that
-                        # cannot release it, so take one and let the clamp in release() heal
-                        # the counter as the remaining permits come back
+                        # nothing moved at all: a permit is stuck on a task that cannot
+                        # release it, so take one and let the clamp in release() heal the
+                        # counter as the remaining permits come back. This counts as
+                        # progress, so the rest of the queue waits another interval instead
+                        # of pouring through behind us
+                        self._progress += 1
                         self.over_issued_total += 1
                         self._warn_later_locked(
-                            f"No API semaphore permit was released for {self.stall_check_sec}s, "
-                            "so this request proceeds without one. An async batch was most "
+                            f"No API semaphore permit moved for {self.stall_check_sec}s, so "
+                            "this request proceeds without one. An async batch was most "
                             "likely abandoned while holding permits."
                         )
                     self._flush_warnings()
@@ -777,7 +786,7 @@ class CrossLoopSemaphore:
         push the counter above the limit.
         """
         with self._lock:
-            self._releases += 1
+            self._progress += 1
             if not self._wake_one_locked():
                 self._value = min(self._value + 1, self._limit)
         self._flush_warnings()
