@@ -98,7 +98,7 @@ def test_reused_by_fresh_event_loops():
     state = semaphore._state()
     assert state["value"] == 2, state
     assert state["consistent"], state
-    assert state["reclaimed"] == 0, state
+    assert state["over_issued"] == 0, state  # a healthy run never has to issue itself one
 
 
 def test_awaited_from_the_same_loop_twice():
@@ -299,22 +299,26 @@ def _abandon_permits(semaphore, holders=3, daemon=True):
     return run
 
 
-def test_permits_of_a_dead_loop_are_reclaimed():
+def test_permits_lost_by_a_dead_loop_do_not_block_the_next_run():
     semaphore = CrossLoopSemaphore(3)
-    _abandon_permits(semaphore, holders=3)
+    semaphore.stall_check_sec = 0.2  # 30s in production, the recovery is the same
+    abandoned = _abandon_permits(semaphore, holders=3)  # keep it, see the comment below
 
     leaked = semaphore._state()
     assert leaked["held"] == 3 and leaked["value"] == 0, leaked
+    # collecting the abandoned loop would close the coroutines and release the permits, so
+    # the run stays referenced to keep them genuinely lost
+    assert abandoned is not None
 
-    # the next run must not deadlock behind the leaked permits
+    # every permit is stuck on a task that will never release it
     assert run_in_fresh_loop(make_contended_batch(semaphore, tasks=9)) is True
     state = semaphore._state()
-    assert state["value"] == 3, state
-    assert state["reclaimed"] == 3, state
+    assert state["value"] == 3, state  # the counter healed as the batch released
+    assert state["over_issued"] > 0, state
     assert state["consistent"], state
 
 
-def test_permits_of_a_stopped_loop_with_a_live_thread_are_reclaimed():
+def test_permits_of_a_stopped_loop_with_a_live_thread_do_not_block():
     """The thread survives the failed async batch and keeps running (sync fallback),
     so liveness of the thread cannot be used to detect the leak."""
     semaphore = CrossLoopSemaphore(2)
@@ -347,15 +351,18 @@ def test_permits_of_a_stopped_loop_with_a_live_thread_are_reclaimed():
     assert stopped.wait(JOIN_TIMEOUT)
     try:
         assert semaphore._state()["held"] == 2, semaphore._state()
+        semaphore.stall_check_sec = 0.2
         assert run_in_fresh_loop(make_contended_batch(semaphore, tasks=4)) is True
+        assert semaphore._state()["consistent"], semaphore._state()
     finally:
         keep_alive.set()
         thread.join(JOIN_TIMEOUT)
 
 
-def test_resurrected_release_is_dropped():
+def test_a_resurrected_task_cannot_overfill_the_counter():
     """A frozen task resumed later must not push the counter above the limit."""
     semaphore = CrossLoopSemaphore(2)
+    semaphore.stall_check_sec = 0.2  # recovery costs one interval now, not zero
     resumed = threading.Event()
 
     async def scenario():
@@ -439,7 +446,6 @@ def test_resize_shrink_applies_as_permits_are_returned():
     state = semaphore._state()
     assert state["limit"] == 2, state
     assert state["value"] == 2, state
-    assert state["debt"] == 0, state
     assert state["consistent"], state
 
     # the shrunk limit is actually enforced afterwards
@@ -600,34 +606,7 @@ def test_permit_survives_a_cancel_racing_the_handoff_from_another_thread():
     assert state["consistent"], state
 
 
-def test_stale_holder_from_a_collected_loop_is_replaced():
-    """id(loop) is reused once a loop is collected, so a bucket may hold a dead loop's entry."""
-    from supervisely._utils import _SemaphorePermitHolder
-
-    semaphore = CrossLoopSemaphore(2)
-    collected = asyncio.new_event_loop()
-    collected.close()
-
-    async def scenario():
-        live = asyncio.get_running_loop()
-        stale = _SemaphorePermitHolder(collected)
-        stale.count = 1
-        semaphore._holders[id(live)] = stale  # the new loop got the old id
-        semaphore._value -= 1  # the stale permit is accounted as held
-
-        async with semaphore:
-            state = semaphore._state()
-            assert state["held"] == 1, state  # only ours, the stale one was reclaimed
-        return semaphore._state()
-
-    state = run_in_fresh_loop(scenario)
-    assert state["value"] == 2, state
-    assert state["held"] == 0, state
-    assert state["consistent"], state
-    assert state["reclaimed"] == 1, state
-
-
-def test_release_inside_a_loop_never_touches_another_loops_holder():
+def test_a_stray_release_cannot_push_the_counter_above_the_limit():
     semaphore = CrossLoopSemaphore(2)
     taken = threading.Event()
     give_back = threading.Event()
@@ -649,19 +628,21 @@ def test_release_inside_a_loop_never_touches_another_loops_holder():
     assert taken.wait(JOIN_TIMEOUT)
 
     async def stray_release():
-        semaphore.release()  # this loop holds nothing
+        for _ in range(5):
+            semaphore.release()  # this loop holds nothing, and never did
         return semaphore._state()
 
     state = run_in_fresh_loop(stray_release)
-    assert state["held"] == 1, state  # the other loop still owns its permit
-    assert state["value"] == 1, state
+    assert state["value"] <= state["limit"], state
+    assert state["consistent"], state
 
     give_back.set()
     holder.join(JOIN_TIMEOUT)
-    assert semaphore._state()["value"] == 2, semaphore._state()
+    final = semaphore._state()
+    assert final["value"] == 2, final
 
 
-def test_ambiguous_sync_release_is_dropped_with_a_warning(caplog):
+def test_release_from_a_sync_context_is_clamped():
     semaphore = CrossLoopSemaphore(3)
     taken = threading.Barrier(3)
     give_back = threading.Event()
@@ -683,15 +664,17 @@ def test_ambiguous_sync_release_is_dropped_with_a_warning(caplog):
         thread.start()
     taken.wait(JOIN_TIMEOUT)
 
-    before = semaphore._state()
-    semaphore.release()  # no running loop here and two loops hold permits
+    for _ in range(5):
+        semaphore.release()  # no running loop here, and two loops hold permits
     after = semaphore._state()
-    assert after == before, (before, after)
+    assert after["value"] <= after["limit"], after
+    assert after["consistent"], after
 
     give_back.set()
     for thread in holders:
         thread.join(JOIN_TIMEOUT)
-    assert semaphore._state()["value"] == 3, semaphore._state()
+    final = semaphore._state()
+    assert final["value"] == 3, final
 
 
 def test_queued_waiter_recovers_permits_frozen_after_it_queued():
@@ -787,7 +770,10 @@ def test_a_logging_handler_that_reenters_does_not_deadlock():
     handler = ReentrantHandler()
     sly_logger.addHandler(handler)
     try:
-        _abandon_permits(semaphore, holders=1)  # a permit frozen on a stopped loop
+        # the reference matters: collecting the abandoned loop closes the suspended
+        # coroutine, its `async with` runs the release, and the permit stops being lost
+        abandoned = _abandon_permits(semaphore, holders=1)
+        assert abandoned is not None
         assert semaphore._state()["held"] == 1, semaphore._state()
 
         # the next acquirer reclaims it, which logs a warning while the handler re-enters
@@ -795,7 +781,7 @@ def test_a_logging_handler_that_reenters_does_not_deadlock():
     finally:
         sly_logger.removeHandler(handler)
 
-    assert seen, "the reclaim warning never reached the handler"
+    assert seen, "the stall warning never reached the handler"
     assert semaphore._state()["value"] == 1, semaphore._state()
 
 
