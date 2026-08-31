@@ -690,10 +690,26 @@ class CrossLoopSemaphore:
 
     def _holder_locked(self, loop: asyncio.AbstractEventLoop) -> _SemaphorePermitHolder:
         holder = self._holders.get(id(loop))
+        if holder is not None and holder.loop is not loop:
+            holder = self._drop_stale_holder_locked(id(loop), holder)
         if holder is None:
             holder = _SemaphorePermitHolder(loop)
             self._holders[id(loop)] = holder
         return holder
+
+    def _drop_stale_holder_locked(self, key: int, holder: _SemaphorePermitHolder) -> None:
+        """
+        Forget a holder whose loop is gone and a new one took over its id().
+        """
+        if holder.count > 0:
+            self.reclaimed_total += holder.count
+            self._return_permits_locked(holder.count)
+            logger.warning(
+                f"Reclaimed {holder.count} API semaphore permit(s) from a collected event loop.",
+                extra={"reclaimed_total": self.reclaimed_total, "semaphore_size": self._limit},
+            )
+        self._holders.pop(key, None)
+        return None
 
     def _held_locked(self) -> int:
         return sum(holder.count for holder in self._holders.values())
@@ -717,9 +733,8 @@ class CrossLoopSemaphore:
         if reclaimed > 0:
             self.reclaimed_total += reclaimed
             logger.warning(
-                f"Reclaimed {reclaimed} API semaphore permit(s) from tasks of an event loop "
-                "that is no longer running. This means an async batch was abandoned "
-                "(usually an exception in a gather) and its requests were never finished.",
+                f"Reclaimed {reclaimed} API semaphore permit(s) held by tasks of an event "
+                "loop that is no longer running.",
                 extra={"reclaimed_total": self.reclaimed_total, "semaphore_size": self._limit},
             )
             self._dispatch_locked()
@@ -740,10 +755,13 @@ class CrossLoopSemaphore:
             alive.append((loop, future))
         self._waiters = alive
 
-    @staticmethod
-    def _grant(future: asyncio.Future) -> None:
-        if not future.done():
-            future.set_result(True)
+    def _grant(self, future: asyncio.Future) -> None:
+        if future.done():
+            # the waiter was cancelled between the handoff and this callback; this runs on
+            # its loop, so release() gives the permit back to the right holder
+            self.release()
+            return
+        future.set_result(True)
 
     def _wake_one_locked(self) -> bool:
         """
@@ -804,7 +822,8 @@ class CrossLoopSemaphore:
         Release a permit, waking up the next waiter if there is one.
 
         Should be called from the same event loop that acquired the permit, which
-        ``async with`` guarantees.
+        ``async with`` guarantees. Calling it outside of a loop only works while a single
+        loop holds permits, otherwise the call cannot be attributed and is dropped.
         """
         with self._lock:
             try:
@@ -813,11 +832,20 @@ class CrossLoopSemaphore:
                 loop = None
             key = id(loop) if loop is not None else None
             holder = self._holders.get(key) if key is not None else None
-            if holder is None:
+            if holder is not None and holder.loop is not loop:
+                holder = None  # the id belongs to a collected loop, not to this one
+            if holder is None and loop is None:
                 # release() from a sync context: attribute it only when unambiguous
                 busy = [item for item in self._holders.items() if item[1].count > 0]
                 if len(busy) == 1:
                     key, holder = busy[0]
+                elif len(busy) > 1:
+                    logger.warning(
+                        "release() called outside of an event loop while "
+                        f"{len(busy)} loops hold permits, so it cannot be attributed and is "
+                        "dropped. Release the permit from the loop that acquired it.",
+                        extra={"semaphore_size": self._limit},
+                    )
             if holder is not None and holder.count > 0:
                 holder.count -= 1
                 if holder.count == 0:

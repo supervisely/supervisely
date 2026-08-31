@@ -6003,7 +6003,13 @@ def _is_small_image(image_info: ImageInfo, switch_size: int) -> bool:
     # the API returns size as a string for some images, which used to raise a TypeError
     try:
         return int(image_info.size) < switch_size
-    except (TypeError, ValueError):
+    except TypeError:
+        return False
+    except ValueError:
+        logger.debug(
+            f"Image {image_info.id} has an unusable size {image_info.size!r}, "
+            "downloading it one by one"
+        )
         return False
 
 
@@ -6446,7 +6452,7 @@ async def _download_project_item_async(
         if estimated_size > size_threshold_for_streaming:
             # Use streaming for large images only
             sly.logger.trace(
-                f"Downloading large image in streaming mode: {img_info.size / 1024 / 1024:.1f}MB"
+                f"Downloading large image in streaming mode: {estimated_size / 1024 / 1024:.1f}MB"
             )
 
             # Clean up existing item first
@@ -6481,7 +6487,7 @@ async def _download_project_item_async(
                 img_info=img_info if save_image_info is True else None,
             )
         else:
-            sly.logger.trace(f"Downloading large image: {img_info.size / 1024 / 1024:.1f}MB")
+            sly.logger.trace(f"Downloading large image: {estimated_size / 1024 / 1024:.1f}MB")
             # Use fast in-memory download for small images
             img_bytes = await api.image.download_bytes_single_async(
                 img_info.id, semaphore=semaphore, check_hash=True

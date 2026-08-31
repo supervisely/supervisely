@@ -15,8 +15,9 @@ SWITCH_SIZE = 512 * 1024
 
 
 class _Image:
-    def __init__(self, size):
+    def __init__(self, size, id=7):  # noqa: A002 - mirrors ImageInfo
         self.size = size
+        self.id = id
 
 
 @pytest.mark.parametrize(

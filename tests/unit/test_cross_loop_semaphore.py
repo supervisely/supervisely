@@ -10,6 +10,7 @@ of hanging the suite.
 
 import asyncio
 import threading
+import time
 
 import pytest
 
@@ -526,3 +527,168 @@ def test_negative_values_rejected():
         CrossLoopSemaphore(-1)
     with pytest.raises(ValueError):
         CrossLoopSemaphore(1).resize(-1)
+
+
+def test_permit_survives_a_cancel_racing_the_handoff_from_another_thread():
+    """The handoff and the cancellation happen on different threads.
+
+    ``_wake_one_locked()`` accounts the permit to the waiter and schedules the grant on the
+    waiter's loop. If the waiting task is cancelled before that callback runs, nobody used to
+    give the permit back: the acquirer sees a cancelled future and the grant sees a finished
+    one. A single loop cannot reproduce it, both sides are serialized on one thread there.
+    """
+    semaphore = CrossLoopSemaphore(1)
+    holder_ready = threading.Event()
+    release_now = threading.Event()
+    released = threading.Event()
+    unblock_waiter_loop = threading.Event()
+    box = {}
+
+    def holder_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def hold():
+            async with semaphore:
+                holder_ready.set()
+                while not release_now.is_set():
+                    await asyncio.sleep(0.005)
+            released.set()
+
+        loop.run_until_complete(hold())
+
+    def waiter_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        box["loop"] = loop
+
+        async def scenario():
+            task = asyncio.ensure_future(semaphore.acquire())
+            box["task"] = task
+            await asyncio.sleep(0.05)  # let it queue behind the holder
+            # block the loop so the cancel and the grant queue up behind this callback
+            loop.call_soon(unblock_waiter_loop.wait)
+            await asyncio.gather(task, return_exceptions=True)
+
+        loop.run_until_complete(scenario())
+
+    holder = threading.Thread(target=holder_thread, daemon=True)
+    waiter = threading.Thread(target=waiter_thread, daemon=True)
+    holder.start()
+    assert holder_ready.wait(JOIN_TIMEOUT)
+    waiter.start()
+
+    for _ in range(200):  # wait until the acquire is really queued
+        if semaphore._state()["waiters"] == 1:
+            break
+        time.sleep(0.01)
+    assert semaphore._state()["waiters"] == 1
+
+    time.sleep(0.2)  # the waiter loop is now sitting in the blocking callback
+    box["loop"].call_soon_threadsafe(box["task"].cancel)  # queued first
+    release_now.set()  # the holder releases, so the grant queues second
+    assert released.wait(JOIN_TIMEOUT)
+    unblock_waiter_loop.set()
+
+    holder.join(JOIN_TIMEOUT)
+    waiter.join(JOIN_TIMEOUT)
+    assert not holder.is_alive() and not waiter.is_alive()
+
+    state = semaphore._state()
+    assert state["value"] == 1, state
+    assert state["held"] == 0, state
+    assert state["consistent"], state
+
+
+def test_stale_holder_from_a_collected_loop_is_replaced():
+    """id(loop) is reused once a loop is collected, so a bucket may hold a dead loop's entry."""
+    from supervisely._utils import _SemaphorePermitHolder
+
+    semaphore = CrossLoopSemaphore(2)
+    collected = asyncio.new_event_loop()
+    collected.close()
+
+    async def scenario():
+        live = asyncio.get_running_loop()
+        stale = _SemaphorePermitHolder(collected)
+        stale.count = 1
+        semaphore._holders[id(live)] = stale  # the new loop got the old id
+        semaphore._value -= 1  # the stale permit is accounted as held
+
+        async with semaphore:
+            state = semaphore._state()
+            assert state["held"] == 1, state  # only ours, the stale one was reclaimed
+        return semaphore._state()
+
+    state = run_in_fresh_loop(scenario)
+    assert state["value"] == 2, state
+    assert state["held"] == 0, state
+    assert state["consistent"], state
+    assert state["reclaimed"] == 1, state
+
+
+def test_release_inside_a_loop_never_touches_another_loops_holder():
+    semaphore = CrossLoopSemaphore(2)
+    taken = threading.Event()
+    give_back = threading.Event()
+
+    def holder_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def hold():
+            async with semaphore:
+                taken.set()
+                while not give_back.is_set():
+                    await asyncio.sleep(0.005)
+
+        loop.run_until_complete(hold())
+
+    holder = threading.Thread(target=holder_thread, daemon=True)
+    holder.start()
+    assert taken.wait(JOIN_TIMEOUT)
+
+    async def stray_release():
+        semaphore.release()  # this loop holds nothing
+        return semaphore._state()
+
+    state = run_in_fresh_loop(stray_release)
+    assert state["held"] == 1, state  # the other loop still owns its permit
+    assert state["value"] == 1, state
+
+    give_back.set()
+    holder.join(JOIN_TIMEOUT)
+    assert semaphore._state()["value"] == 2, semaphore._state()
+
+
+def test_ambiguous_sync_release_is_dropped_with_a_warning(caplog):
+    semaphore = CrossLoopSemaphore(3)
+    taken = threading.Barrier(3)
+    give_back = threading.Event()
+
+    def holder_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def hold():
+            async with semaphore:
+                taken.wait(JOIN_TIMEOUT)
+                while not give_back.is_set():
+                    await asyncio.sleep(0.005)
+
+        loop.run_until_complete(hold())
+
+    holders = [threading.Thread(target=holder_thread, daemon=True) for _ in range(2)]
+    for thread in holders:
+        thread.start()
+    taken.wait(JOIN_TIMEOUT)
+
+    before = semaphore._state()
+    semaphore.release()  # no running loop here and two loops hold permits
+    after = semaphore._state()
+    assert after == before, (before, after)
+
+    give_back.set()
+    for thread in holders:
+        thread.join(JOIN_TIMEOUT)
+    assert semaphore._state()["value"] == 3, semaphore._state()

@@ -275,7 +275,9 @@ class Api:
     _checked_servers = set()
 
     # one throttle per server and token: a process holds many Api objects per instance
-    _semaphores: Dict[Tuple[str, Optional[str]], CrossLoopSemaphore] = {}
+    _semaphores: "weakref.WeakValueDictionary[Tuple[str, Optional[str]], CrossLoopSemaphore]" = (
+        weakref.WeakValueDictionary()
+    )
     _semaphores_lock = threading.Lock()
 
     def __init__(
@@ -425,6 +427,7 @@ class Api:
         self._async_clients: Dict[
             Optional[int], Tuple[Optional[Any], httpx.AsyncClient]
         ] = {}
+        self._async_clients_lock = threading.Lock()
         self.httpx_client: httpx.Client = None
         self._semaphore = None
         self._instance_version = None
@@ -1774,15 +1777,18 @@ class Api:
         """
         Forget clients whose event loop is gone or closed.
 
-        Their sockets cannot be closed from another loop, so they are left to the garbage
-        collector, which closes the underlying transports when the loop is collected.
+        A client can only be closed from its own loop, and a loop that is merely stopped may
+        still hold suspended tasks, so driving it from here would resume them on this thread.
+        Their sockets are left to the garbage collector, which finalizes the transports once
+        the loop is collected.
         """
-        for key, (loop_ref, _) in list(self._async_clients.items()):
-            if loop_ref is None:
-                continue
-            loop = loop_ref()
-            if loop is None or loop.is_closed():
-                del self._async_clients[key]
+        with self._async_clients_lock:
+            for key, (loop_ref, _) in list(self._async_clients.items()):
+                if loop_ref is None:
+                    continue  # assigned outside of a loop, it is not bound to one
+                loop = loop_ref()
+                if loop is None or loop.is_closed():
+                    self._async_clients.pop(key, None)
 
     @property
     def async_httpx_client(self) -> Optional[httpx.AsyncClient]:
@@ -1793,28 +1799,32 @@ class Api:
         :rtype: Optional[httpx.AsyncClient]
         """
         key, _ = self._current_loop()
-        entry = self._async_clients.get(key)
-        if entry is None and key is not None:
-            # a client assigned outside of a running loop has no loop and stays shared
-            entry = self._async_clients.get(None)
+        with self._async_clients_lock:
+            entry = self._async_clients.get(key)
+            if entry is None and key is not None:
+                # a client assigned outside of a running loop is not bound to one and stays
+                # shared. _set_async_client() never creates such an entry, it only appears
+                # when app or test code assigns api.async_httpx_client directly
+                entry = self._async_clients.get(None)
         return entry[1] if entry is not None else None
 
     @async_httpx_client.setter
     def async_httpx_client(self, client: Optional[httpx.AsyncClient]) -> None:
         key, loop = self._current_loop()
-        if client is None:
-            self._async_clients.pop(key, None)
-            if key is not None:
-                # also drop a shared client assigned outside of a loop
-                self._async_clients.pop(None, None)
-            return
-        loop_ref = None
-        if loop is not None:
-            try:
-                loop_ref = weakref.ref(loop)
-            except TypeError:  # pragma: no cover - exotic loop implementations
-                loop_ref = lambda bound=loop: bound
-        self._async_clients[key] = (loop_ref, client)
+        with self._async_clients_lock:
+            if client is None:
+                self._async_clients.pop(key, None)
+                if key is not None:
+                    # also drop a shared client assigned outside of a loop
+                    self._async_clients.pop(None, None)
+                return
+            loop_ref = None
+            if loop is not None:
+                try:
+                    loop_ref = weakref.ref(loop)
+                except TypeError:  # pragma: no cover - exotic loop implementations
+                    loop_ref = lambda bound=loop: bound
+            self._async_clients[key] = (loop_ref, client)
 
     def _set_async_client(self):
         """
