@@ -425,6 +425,17 @@ def test_progress_set_current_value_keeps_getting_the_running_total():
     assert progress.current == total
 
 
+def test_set_current_value_adds_up_across_requests():
+    """A bulk upload sends several requests and every request starts its monitor at zero, so
+    handing the setter the running total of one monitor rewound the bar on the next request."""
+    progress = Progress("uploading", total_cnt=len(PAYLOAD) * 8, is_size=True)
+
+    # a fresh adapter per request, the way the upload paths build it
+    sent = sum(drain(make_monitor(progress.set_current_value)) for _ in range(2))
+
+    assert progress.current == sent, f"{progress.current} on the bar, {sent} bytes sent"
+
+
 def test_set_current_value_of_a_subclass_is_recognised():
     """The check is on the function, not on the name, so subclasses are served too."""
 

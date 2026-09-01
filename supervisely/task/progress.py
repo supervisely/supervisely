@@ -500,9 +500,10 @@ def build_multipart_monitor_callback(progress_cb):
     report from the monitor on their own.
 
     Callables are handed a byte increment, with one exception:
-    :meth:`Progress.set_current_value` sets an absolute value, so it keeps receiving the
-    running total. The exception is on the function itself, so subclasses are served too
-    and a foreign method of the same name stays on the increment contract.
+    :meth:`Progress.set_current_value` sets an absolute value, so it is told where the bar
+    should stand, which adds up across the several requests of a bulk upload. The exception
+    is on the function itself, so subclasses are served too and a foreign method of the same
+    name stays on the increment contract.
 
     :param progress_cb: Progress callback of any supported shape, or None.
     :type progress_cb: Optional[Union[tqdm, Callable]]
@@ -530,14 +531,11 @@ def build_multipart_monitor_callback(progress_cb):
                 f"get_partial(), got {type(progress_cb).__name__}"
             )
 
-    if getattr(progress_cb, "__func__", None) is Progress.set_current_value:
-        # an absolute setter: it advances by the value minus what is already done, so it
-        # needs the running total. Kept working the way it did before uploads reported
-        # increments, since callers pass Progress.set_current_value directly.
-        def _report_total(monitor):
-            progress_cb(monitor.bytes_read)
-
-        return _report_total
+    # Progress.set_current_value sets an absolute value, so it is told where the bar should
+    # stand rather than handed an increment. bytes_read of the current monitor would not do:
+    # a bulk upload sends several requests, and every request starts its monitor at zero.
+    sets_absolute = getattr(progress_cb, "__func__", None) is Progress.set_current_value
+    progress = getattr(progress_cb, "__self__", None)
 
     reported = 0
 
@@ -545,7 +543,10 @@ def build_multipart_monitor_callback(progress_cb):
         nonlocal reported
         delta = monitor.bytes_read - reported
         reported = monitor.bytes_read
-        progress_cb(UploadProgressDelta(delta, monitor))
+        if sets_absolute:
+            progress_cb(progress.current + delta)
+        else:
+            progress_cb(UploadProgressDelta(delta, monitor))
 
     return _report
 
