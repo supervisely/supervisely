@@ -8,7 +8,6 @@ import json
 import os
 import re
 import urllib.parse
-from functools import partial
 from itertools import zip_longest
 from typing import (
     AsyncGenerator,

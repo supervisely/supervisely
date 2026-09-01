@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import math
 import re
+import weakref
 from functools import partial, wraps
 from typing import Dict, Optional, Union
 
@@ -420,6 +421,16 @@ class SlyWrapFile:
         logger.info(msg)
 
 
+class _StrongRef:
+    """Stand-in for weakref.ref, for the rare object that forbids weak references."""
+
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __call__(self):
+        return self._obj
+
+
 class UploadProgressDelta(int):
     """
     Byte increment handed to an upload ``progress_cb``.
@@ -428,28 +439,51 @@ class UploadProgressDelta(int):
     ``lambda count: ...``) see a number. Callbacks written back when the SDK passed the
     multipart encoder monitor itself still find ``bytes_read``, ``len`` and every other
     attribute of that monitor on this value, so both conventions keep working.
+
+    ``bytes_read`` and ``len`` are copied onto the value and stay readable for good. The
+    monitor itself is held weakly, so a callback that keeps the numbers it was handed does
+    not keep the encoder and its open files alive with them; attributes that only the
+    monitor has are therefore readable while the upload runs. Pickling and copying give a
+    plain ``int``, the way a delta style callback saw the value before this type existed.
     """
 
     def __new__(cls, delta: int, monitor):
         obj = super().__new__(cls, delta)
-        obj._monitor = monitor
+        obj.bytes_read = monitor.bytes_read
+        obj.len = monitor.len
+        try:
+            obj._monitor_ref = weakref.ref(monitor)
+        except TypeError:
+            obj._monitor_ref = _StrongRef(monitor)
         return obj
 
+    def __reduce__(self):
+        # a monitor crosses neither a pickle nor a process boundary: hand over the number
+        return (int, (int(self),))
+
     def __getattr__(self, name: str):
-        # reached only for names int itself does not define
-        if name.startswith("__") or name == "_monitor":
+        # reached only for names neither int nor __new__ above defines
+        if name.startswith("_"):
             raise AttributeError(name)
-        return getattr(self._monitor, name)
+        monitor = self._monitor_ref()
+        if monitor is None:
+            raise AttributeError(
+                f"{name!r} is readable only while the upload is running, and this "
+                f"increment outlived its monitor; bytes_read and len are always kept"
+            )
+        return getattr(monitor, name)
 
     @property
     def monitor(self):
         """
         The multipart encoder monitor this increment came from.
 
-        :returns: Monitor object.
-        :rtype: :class:`MultipartEncoderMonitor<requests_toolbelt.multipart.encoder.MultipartEncoderMonitor>`
+        Held weakly, so it is None once the upload is over.
+
+        :returns: Monitor object, or None.
+        :rtype: Optional[:class:`MultipartEncoderMonitor<requests_toolbelt.multipart.encoder.MultipartEncoderMonitor>`]
         """
-        return self._monitor
+        return self._monitor_ref()
 
 
 def build_multipart_monitor_callback(progress_cb):

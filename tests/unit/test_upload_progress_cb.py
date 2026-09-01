@@ -10,7 +10,11 @@ The tests drive a real ``MultipartEncoder`` and never touch the network.
 """
 
 import ast
+import copy
+import gc
 import io
+import pickle
+import weakref
 from functools import partial
 from pathlib import Path
 
@@ -225,16 +229,80 @@ def test_non_callable_get_partial_is_ignored():
 # --------------------------------------------------------------------------------------
 def test_value_is_an_int_carrying_the_monitor():
     values = []
-    total = drain(make_monitor(values.append))
+    monitor = make_monitor(values.append)
+    total = drain(monitor)
 
     assert all(isinstance(value, int) for value in values)
     assert all(isinstance(value, UploadProgressDelta) for value in values)
     assert sum(values) == total
     assert values[-1].bytes_read == total
     assert values[-1].len == total
-    assert values[-1].monitor.bytes_read == total
-    # arbitrary monitor attributes are forwarded too
-    assert values[-1].encoder is values[-1].monitor.encoder
+    assert values[-1].monitor is monitor
+    # arbitrary monitor attributes are forwarded while the upload is running
+    assert values[-1].encoder is monitor.encoder
+
+
+def test_stored_increments_do_not_pin_the_monitor():
+    """A callback that keeps what it was handed must not keep the encoder alive with it."""
+    values = []
+    monitor = make_monitor(values.append)
+    drain(monitor)
+    monitor_ref = weakref.ref(monitor)
+
+    del monitor
+    gc.collect()
+    assert monitor_ref() is None, "stored increments pinned the multipart monitor"
+    assert values[-1].monitor is None
+
+
+def test_stored_increments_do_not_pin_the_uploaded_file(tmp_path):
+    """The team files upload never closes its streams explicitly, so nothing the callback
+    keeps may hold them open."""
+    path = tmp_path / "payload.bin"
+    path.write_bytes(PAYLOAD)
+    handle = open(path, "rb")
+    handle_ref = weakref.ref(handle)
+
+    values = []
+    encoder = MultipartEncoder(
+        fields=[("file", ("payload.bin", handle, "application/octet-stream"))]
+    )
+    monitor = MultipartEncoderMonitor(encoder, build_multipart_monitor_callback(values.append))
+    drain(monitor)
+
+    del encoder, monitor, handle
+    gc.collect()
+    assert values, "no progress was reported"
+    assert handle_ref() is None, "stored increments held the uploaded file open"
+
+
+def test_numbers_outlive_the_monitor():
+    values = []
+    monitor = make_monitor(values.append)
+    total = drain(monitor)
+
+    del monitor
+    gc.collect()
+    assert values[-1].bytes_read == total
+    assert values[-1].len == total
+    with pytest.raises(AttributeError, match="only while the upload is running"):
+        values[-1].encoder
+
+
+@pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+def test_value_pickles_as_a_plain_int(protocol):
+    """A monitor cannot cross a process boundary, but the increment used to be a plain int
+    and code that puts it on a multiprocessing queue must keep working."""
+    value = UploadProgressDelta(7, _FakeMonitor(bytes_read=7, len=10))
+    restored = pickle.loads(pickle.dumps(value, protocol=protocol))
+    assert restored == 7
+    assert type(restored) is int
+
+
+def test_value_copies_as_a_plain_int():
+    value = UploadProgressDelta(7, _FakeMonitor(bytes_read=7, len=10))
+    assert copy.copy(value) == 7
+    assert copy.deepcopy(value) == 7
 
 
 def test_value_behaves_like_a_number():
