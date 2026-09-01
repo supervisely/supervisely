@@ -5989,6 +5989,31 @@ def _dataset_descriptions_md(project_info: ProjectInfo, api: Api) -> str:
     return result_md
 
 
+def _is_small_image(image_info: ImageInfo, switch_size: int) -> bool:
+    """
+    Whether an image should be downloaded in a bulk request instead of one by one.
+
+    :param image_info: Image to check.
+    :type image_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>`
+    :param switch_size: Size threshold in bytes.
+    :type switch_size: int
+    :returns: True if the image is smaller than the threshold.
+    :rtype: bool
+    """
+    # None means the size is unknown; a string can still arrive from an img_info.json that
+    # was written before ImageInfo started normalizing it
+    try:
+        return int(image_info.size) < switch_size
+    except TypeError:
+        return False
+    except ValueError:
+        logger.debug(
+            f"Image {image_info.id} has an unusable size {image_info.size!r}, "
+            "downloading it one by one"
+        )
+        return False
+
+
 async def _download_project_async(
     api: Api,
     project_id: int,
@@ -6111,7 +6136,7 @@ async def _download_project_async(
                     if download_blob_files and image.related_data_id is not None:
                         blob_files_to_download[image.related_data_id] = image.download_id
                         blob_images.append(image)
-                    elif image.size is not None and image.size < switch_size:
+                    elif _is_small_image(image, switch_size):
                         small_images.append(image)
                     else:
                         large_images.append(image)
@@ -6428,7 +6453,7 @@ async def _download_project_item_async(
         if estimated_size > size_threshold_for_streaming:
             # Use streaming for large images only
             sly.logger.trace(
-                f"Downloading large image in streaming mode: {img_info.size / 1024 / 1024:.1f}MB"
+                f"Downloading large image in streaming mode: {estimated_size / 1024 / 1024:.1f}MB"
             )
 
             # Clean up existing item first
@@ -6463,7 +6488,7 @@ async def _download_project_item_async(
                 img_info=img_info if save_image_info is True else None,
             )
         else:
-            sly.logger.trace(f"Downloading large image: {img_info.size / 1024 / 1024:.1f}MB")
+            sly.logger.trace(f"Downloading large image: {estimated_size / 1024 / 1024:.1f}MB")
             # Use fast in-memory download for small images
             img_bytes = await api.image.download_bytes_single_async(
                 img_info.id, semaphore=semaphore, check_hash=True

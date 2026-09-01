@@ -11,6 +11,7 @@ import os
 import shutil
 import threading
 import time
+import weakref
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -23,6 +24,7 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Tuple,
     Union,
 )
 from urllib.parse import urljoin, urlparse
@@ -69,7 +71,12 @@ import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.webhook_api as webhook_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely._utils import (
+    CrossLoopSemaphore,
+    camel_to_snake,
+    is_community,
+    is_development,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     CONNECTION_ERROR_PATTERNS,
@@ -267,6 +274,12 @@ class Api:
 
     _checked_servers = set()
 
+    # one throttle per server and token: a process holds many Api objects per instance
+    _semaphores: "weakref.WeakValueDictionary[Tuple[str, Optional[str]], CrossLoopSemaphore]" = (
+        weakref.WeakValueDictionary()
+    )
+    _semaphores_lock = threading.Lock()
+
     def __init__(
         self,
         server_address: Optional[str] = None,
@@ -410,15 +423,23 @@ class Api:
             else not self.server_address.startswith("https://")
         )
 
-        self.async_httpx_client: httpx.AsyncClient = None
+        # one client per event loop: httpx binds a client to the loop that created it
+        self._async_clients: Dict[
+            Optional[int], Tuple[Optional[Any], httpx.AsyncClient]
+        ] = {}
+        self._async_clients_lock = threading.Lock()
+        self._warned_about_shared_client = False
         self.httpx_client: httpx.Client = None
         self._semaphore = None
-        self._semaphore_size = None  # configured size of the global semaphore
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
-        self._client_recreation_lock = None  # asyncio.Lock, created on first use
-        self._last_client_recreation_time = None  # timestamp of last client recreation
+        # threading.Lock: nothing is awaited under it, and asyncio.Lock is loop bound
+        self._client_recreation_lock = threading.Lock()
+        self._last_client_recreation_time = None  # honored as a global cooldown if set
+        # clients are per event loop, so the cooldown is too: one loop healing its pool must
+        # not stop another loop from healing its own
+        self._client_recreation_times: Dict[Optional[int], float] = {}
         self._client_recreation_cooldown = 30  # seconds between client recreations
 
         if check_instance_version:
@@ -1745,11 +1766,108 @@ class Api:
             request=resp.request if locals().get("resp") else None,
         )
 
+    @staticmethod
+    def _current_loop() -> Tuple[Optional[int], Optional[asyncio.AbstractEventLoop]]:
+        """
+        Key of the event loop running in this thread, or (None, None) in a sync context.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return None, None
+        return id(loop), loop
+
+    def _forget_client_of_a_foreign_loop(self, key: Optional[int], loop) -> None:
+        """
+        Drop the entry when a new loop got the id of a collected one.
+
+        Python reuses the id of a collected loop readily, and the entry of the old loop
+        would hand its client, and its recreation cooldown, to a loop it is not bound to.
+
+        :param key: Registry key of the current loop.
+        :type key: Optional[int]
+        :param loop: Event loop running in this thread.
+        :type loop: Optional[asyncio.AbstractEventLoop]
+        """
+        if key is None:
+            return
+        with self._async_clients_lock:
+            entry = self._async_clients.get(key)
+            if entry is None:
+                return
+            loop_ref, _ = entry
+            if loop_ref is not None and loop_ref() is not loop:
+                self._async_clients.pop(key, None)
+                self._client_recreation_times.pop(key, None)
+
+    def _drop_stale_async_clients(self) -> None:
+        """
+        Forget clients whose event loop is gone or closed.
+
+        A client can only be closed from its own loop, and a loop that is merely stopped may
+        still hold suspended tasks, so driving it from here would resume them on this thread.
+        Their sockets are left to the garbage collector, which finalizes the transports once
+        the loop is collected.
+        """
+        with self._async_clients_lock:
+            for key, (loop_ref, _) in list(self._async_clients.items()):
+                if loop_ref is None:
+                    continue  # assigned outside of a loop, it is not bound to one
+                loop = loop_ref()
+                if loop is None or loop.is_closed():
+                    self._async_clients.pop(key, None)
+                    self._client_recreation_times.pop(key, None)
+
+    @property
+    def async_httpx_client(self) -> Optional[httpx.AsyncClient]:
+        """
+        Async httpx client of the event loop running in the current thread.
+
+        :returns: Client of the current event loop or None if it is not created yet.
+        :rtype: Optional[httpx.AsyncClient]
+        """
+        key, loop = self._current_loop()
+        self._forget_client_of_a_foreign_loop(key, loop)
+        with self._async_clients_lock:
+            entry = self._async_clients.get(key)
+            if entry is None and key is not None:
+                # a client assigned outside of a running loop is not bound to one and stays
+                # shared. _set_async_client() never creates such an entry, it only appears
+                # when app or test code assigns api.async_httpx_client directly
+                entry = self._async_clients.get(None)
+                if entry is not None and not self._warned_about_shared_client:
+                    self._warned_about_shared_client = True
+                    self.logger.warning(
+                        "Using an httpx client that was assigned outside of an event loop. "
+                        "It is shared by every loop of this process, which is exactly what "
+                        "binds a client to a foreign loop: assign it from the loop that uses it."
+                    )
+        return entry[1] if entry is not None else None
+
+    @async_httpx_client.setter
+    def async_httpx_client(self, client: Optional[httpx.AsyncClient]) -> None:
+        key, loop = self._current_loop()
+        with self._async_clients_lock:
+            if client is None:
+                self._async_clients.pop(key, None)
+                if key is not None:
+                    # also drop a shared client assigned outside of a loop
+                    self._async_clients.pop(None, None)
+                return
+            loop_ref = None
+            if loop is not None:
+                try:
+                    loop_ref = weakref.ref(loop)
+                except TypeError:  # pragma: no cover - exotic loop implementations
+                    loop_ref = lambda bound=loop: bound
+            self._async_clients[key] = (loop_ref, client)
+
     def _set_async_client(self):
         """
-        Set async httpx client with HTTP/2 if it is not set yet.
+        Set async httpx client with HTTP/2 for the current event loop if it is not set yet.
         """
         if self.async_httpx_client is None:
+            self._drop_stale_async_clients()
             semaphore_size = self.get_default_semaphore_size()
             limits = httpx.Limits(
                 max_connections=semaphore_size + 2,
@@ -1816,16 +1934,17 @@ class Api:
         if not should_recreate:
             return False
 
-        # Initialize lock on first use (can't create in __init__ as event loop may not exist)
-        if self._client_recreation_lock is None:
-            self._client_recreation_lock = asyncio.Lock()
-
         # Use lock to prevent concurrent recreation by parallel requests
-        async with self._client_recreation_lock:
+        with self._client_recreation_lock:
             # Check cooldown period - don't recreate if recently recreated
             current_time = time.time()
+            key, loop = self._current_loop()
+            self._forget_client_of_a_foreign_loop(key, loop)
+            last_recreation = self._client_recreation_times.get(key)
             if self._last_client_recreation_time is not None:
-                time_since_last_recreation = current_time - self._last_client_recreation_time
+                last_recreation = max(last_recreation or 0, self._last_client_recreation_time)
+            if last_recreation is not None:
+                time_since_last_recreation = current_time - last_recreation
                 if time_since_last_recreation < self._client_recreation_cooldown:
                     self.logger.debug(
                         f"Skipping client recreation (cooldown: {time_since_last_recreation:.1f}s / {self._client_recreation_cooldown}s)"
@@ -1838,7 +1957,7 @@ class Api:
                 old_client = self.async_httpx_client
                 self.async_httpx_client = None
                 self._set_async_client()
-                self._last_client_recreation_time = current_time
+                self._client_recreation_times[key] = current_time
 
                 # Schedule old client closure in background to avoid blocking
                 # This allows active requests to finish gracefully while preventing memory leaks
@@ -1846,17 +1965,21 @@ class Api:
                 return True
             return False
 
-    def get_default_semaphore(self) -> asyncio.Semaphore:
+    def get_default_semaphore(self) -> CrossLoopSemaphore:
         """
         Get default global API semaphore for async requests.
         If the semaphore is not set, it will be initialized.
+
+        The semaphore is shared by every Api object of this process with the same server
+        address and token: the limit belongs to the Supervisely instance the requests go
+        to, and a process usually holds several Api objects for the same instance.
 
         During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, the default value will be set based on the server address.
         Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
 
         :returns: Semaphore object.
-        :rtype: :class:`asyncio.Semaphore`
+        :rtype: :class:`~supervisely._utils.CrossLoopSemaphore`
         """
         if self._semaphore is None:
             self._initialize_semaphore()
@@ -1864,14 +1987,34 @@ class Api:
 
     def _initialize_semaphore(self):
         """
-        Initialize the semaphore for async requests.
+        Get or create the semaphore shared by every Api object with the same server
+        address and token.
 
-        If the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set, create a semaphore with the given value.
-
-        Otherwise, create a semaphore with a default value:
+        The size of a freshly created semaphore comes from the environment variable
+        SUPERVISELY_ASYNC_SEMAPHORE, and if it is not set, from the server address:
 
             - If server supports HTTPS, create a semaphore with value 10.
             - If server supports HTTP, create a semaphore with value 5.
+        """
+        # the redirect rewrites server_address, which is part of the key, so resolve it here
+        # and not only on the branch of _default_semaphore_size() that needs the address
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
+        size = self._default_semaphore_size()
+        key = (self.server_address, self.token)
+        with Api._semaphores_lock:
+            semaphore = Api._semaphores.get(key)
+            if semaphore is None:
+                semaphore = CrossLoopSemaphore(size)
+                Api._semaphores[key] = semaphore
+        self._semaphore = semaphore
+
+    def _default_semaphore_size(self) -> int:
+        """
+        Default number of concurrent async requests for this server address.
+
+        :returns: Semaphore size.
+        :rtype: int
         """
         semaphore_size = sly_env.semaphore_size()
         if semaphore_size is not None:
@@ -1890,23 +2033,27 @@ class Api:
             else:
                 size = 5
                 logger.debug(f"Setting global API semaphore size to {size} for HTTP")
-        self._semaphore = asyncio.Semaphore(size)
-        self._semaphore_size = size
+        return size
 
     def set_semaphore_size(self, size: int = None):
         """
-        Set the global API semaphore with the given size. Will replace the existing semaphore.
+        Set the size of the global API semaphore.
         If the size is not set, will set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, will set the default value.
+
+        The semaphore is shared by every Api object with the same server address and token,
+        because the limit it enforces belongs to the Supervisely instance and not to a
+        python object. Changing the size therefore affects all of them, in this process.
 
         :param size: Size of the semaphore.
         :type size: int, optional
         """
-        if size is not None:
-            self._semaphore = asyncio.Semaphore(size)
-            self._semaphore_size = size
-        else:
+        if self._semaphore is None:
             self._initialize_semaphore()
+        if size is None:
+            size = self._default_semaphore_size()
+        # resize in place to keep current holders and waiters valid
+        self._semaphore.resize(size)
 
     def get_default_semaphore_size(self) -> int:
         """
@@ -1914,21 +2061,22 @@ class Api:
         created with), as opposed to ``get_default_semaphore()._value`` which reflects the
         currently available permits and may be lower while requests are in-flight.
 
-        Initializes the semaphore if it has not been created yet.
+        Initializes the semaphore if it has not been created yet. The value is read from
+        the shared semaphore, so it cannot drift apart from it.
 
         :returns: Configured semaphore size.
         :rtype: int
         """
         if self._semaphore is None:
             self._initialize_semaphore()
-        return self._semaphore_size
+        return self._semaphore.limit
 
     @property
-    def semaphore(self) -> asyncio.Semaphore:
+    def semaphore(self) -> CrossLoopSemaphore:
         """
         Get the global API semaphore for async requests.
 
         :returns: Semaphore object.
-        :rtype: :class:`asyncio.Semaphore`
+        :rtype: :class:`~supervisely._utils.CrossLoopSemaphore`
         """
         return self._semaphore
