@@ -499,6 +499,11 @@ def build_multipart_monitor_callback(progress_cb):
     exposing ``get_partial()`` such as :class:`tqdm_sly` and the ``SlyTqdm`` widget, which
     report from the monitor on their own.
 
+    Callables are handed a byte increment, with one exception:
+    :meth:`Progress.set_current_value` sets an absolute value, so it keeps receiving the
+    running total. The exception is on the function itself, so subclasses are served too
+    and a foreign method of the same name stays on the increment contract.
+
     :param progress_cb: Progress callback of any supported shape, or None.
     :type progress_cb: Optional[Union[tqdm, Callable]]
     :returns: Callback for the monitor, or None if there is nothing to report to.
