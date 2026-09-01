@@ -9,14 +9,17 @@ used inside the SDK itself, so the adapter has to serve both.
 The tests drive a real ``MultipartEncoder`` and never touch the network.
 """
 
+import ast
 import io
 from functools import partial
+from pathlib import Path
 
 import pytest
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm  # importing supervisely rebinds this name to tqdm_sly
 from tqdm.std import tqdm as vanilla_tqdm
 
+from supervisely.api.video import video_api
 from supervisely.task.progress import (
     Progress,
     UploadProgressDelta,
@@ -320,3 +323,31 @@ def test_widget_progress_shape_is_the_get_partial_one():
 
     assert callable(getattr(CustomTqdm, "get_partial", None))
     assert callable(getattr(CustomTqdm, "_progress_monitor", None))
+
+
+def test_absolute_setter_stalls_on_increments():
+    """`Progress.set_current_value` advances by `value - current`, so feeding it increments
+    leaves it stuck near the first chunk. Nothing inside the SDK may hand it to the adapter."""
+    progress = Progress("uploading", total_cnt=len(PAYLOAD) * 4, is_size=True)
+    total = drain(make_monitor(progress.set_current_value))
+    assert progress.current < total / 4, "an absolute setter must not be fed increments"
+
+
+def test_video_upload_path_reports_increments():
+    """VideoApi.upload_path(item_progress=True) used to bind the absolute setter, which was
+    right while the upload fed it monitor.bytes_read and wrong once it fed increments."""
+    source = Path(video_api.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=video_api.__file__)
+    handler = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "upload_path"
+    )
+    bound = {
+        node.value.attr
+        for node in ast.walk(handler)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Attribute)
+        and any(isinstance(t, ast.Name) and t.id == "progress_cb" for t in node.targets)
+    }
+    assert bound == {"iters_done_report"}, f"progress_cb is bound to {bound}"
