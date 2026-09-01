@@ -179,8 +179,7 @@ class VideoConverter(BaseConverter):
                     [self._check_video_file_size(file_size) for file_size in file_sizes]
                 )
                 if has_large_files:
-                    upload_progress = []
-                    size_progress_cb = self._get_video_upload_progress(upload_progress)
+                    size_progress_cb = self._get_video_upload_progress()
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
@@ -337,10 +336,11 @@ class VideoConverter(BaseConverter):
     def _check_video_file_size(self, file_size):
         return file_size > 20 * 1024 * 1024  # 20 MB
 
-    def _get_video_upload_progress(self, upload_progress):
+    def _get_video_upload_progress(self):
+        """Byte progress bar shared by every video of the upload, for large files."""
         upload_progress = []
 
-        def _print_progress(monitor, upload_progress):
+        def _print_progress(delta, upload_progress):
             if len(upload_progress) == 0:
                 upload_progress.append(
                     Progress(
@@ -349,6 +349,8 @@ class VideoConverter(BaseConverter):
                         is_size=True,
                     )
                 )
-            upload_progress[0].set_current_value(monitor)
+            # increments add up across videos; a large upload sends one video per request,
+            # and every request brings its own monitor whose bytes_read starts at zero
+            upload_progress[0].iters_done_report(int(delta))
 
         return lambda m: _print_progress(m, upload_progress)

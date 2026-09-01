@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import math
 import re
+import weakref
 from functools import partial, wraps
 from typing import Dict, Optional, Union
 
@@ -418,6 +419,136 @@ class SlyWrapFile:
         if match:
             msg = match.group(1) + "..."
         logger.info(msg)
+
+
+class _StrongRef:
+    """
+    Stand-in for weakref.ref, for the rare object that forbids weak references.
+
+    Every monitor the SDK builds is weak referenceable; this is here for a caller supplying
+    a monitor of its own, for instance one with __slots__ and no __weakref__.
+    """
+
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __call__(self):
+        return self._obj
+
+
+class UploadProgressDelta(int):
+    """
+    Byte increment handed to an upload ``progress_cb``.
+
+    Delta style callbacks (``tqdm.update``, ``Progress.iters_done_report``, a plain
+    ``lambda count: ...``) see a number. Callbacks written back when the SDK passed the
+    multipart encoder monitor itself still find ``bytes_read``, ``len`` and every other
+    attribute of that monitor on this value, so both conventions keep working.
+
+    ``bytes_read`` and ``len`` are copied onto the value and stay readable for good. The
+    monitor itself is held weakly, so a callback that keeps the numbers it was handed does
+    not keep the encoder and its open files alive with them; attributes that only the
+    monitor has are therefore readable while the upload runs. Pickling and copying give a
+    plain ``int``, the way a delta style callback saw the value before this type existed.
+    """
+
+    def __new__(cls, delta: int, monitor):
+        obj = super().__new__(cls, delta)
+        obj.bytes_read = monitor.bytes_read
+        obj.len = monitor.len
+        try:
+            obj._monitor_ref = weakref.ref(monitor)
+        except TypeError:
+            obj._monitor_ref = _StrongRef(monitor)
+        return obj
+
+    def __reduce__(self):
+        # a monitor crosses neither a pickle nor a process boundary: hand over the number
+        return (int, (int(self),))
+
+    def __getattr__(self, name: str):
+        # reached only for names neither int nor __new__ above defines
+        if name.startswith("_"):
+            raise AttributeError(name)
+        monitor = self._monitor_ref()
+        if monitor is None:
+            raise AttributeError(
+                f"{name!r} is readable only while the upload is running, and this "
+                f"increment outlived its monitor; bytes_read and len are always kept"
+            )
+        return getattr(monitor, name)
+
+    @property
+    def monitor(self):
+        """
+        The multipart encoder monitor this increment came from.
+
+        Held weakly, so it is None once the upload is over.
+
+        :returns: Monitor object, or None.
+        :rtype: Optional[:class:`MultipartEncoderMonitor<requests_toolbelt.multipart.encoder.MultipartEncoderMonitor>`]
+        """
+        return self._monitor_ref()
+
+
+def build_multipart_monitor_callback(progress_cb):
+    """
+    Adapt any supported ``progress_cb`` to a ``MultipartEncoderMonitor`` callback.
+
+    Accepts a bare ``tqdm``, anything callable (delta style or monitor style), and objects
+    exposing ``get_partial()`` such as :class:`tqdm_sly` and the ``SlyTqdm`` widget, which
+    report from the monitor on their own.
+
+    Callables are handed a byte increment, with one exception:
+    :meth:`Progress.set_current_value` sets an absolute value, so it is told where the bar
+    should stand, which adds up across the several requests of a bulk upload. The exception
+    is on the function itself, so subclasses are served too and a foreign method of the same
+    name stays on the increment contract.
+
+    :param progress_cb: Progress callback of any supported shape, or None.
+    :type progress_cb: Optional[Union[tqdm, Callable]]
+    :returns: Callback for the monitor, or None if there is nothing to report to.
+    :rtype: Optional[Callable]
+    :raises TypeError: if progress_cb is neither callable, nor a tqdm, nor monitor aware.
+    """
+    if progress_cb is None:
+        return None
+
+    get_partial = getattr(progress_cb, "get_partial", None)
+    if callable(get_partial):
+        return get_partial()
+
+    if not callable(progress_cb):
+        # a bare tqdm and a bare Progress are not callable, but both take an increment
+        for attr in ("update", "iters_done_report"):
+            method = getattr(progress_cb, attr, None)
+            if callable(method):
+                progress_cb = method
+                break
+        else:
+            raise TypeError(
+                "progress_cb must be callable, a tqdm or Progress instance, or expose "
+                f"get_partial(), got {type(progress_cb).__name__}"
+            )
+
+    # Progress.set_current_value sets an absolute value, so it is told where the bar should
+    # stand rather than handed an increment. bytes_read of the current monitor would not do:
+    # a bulk upload sends several requests, and every request starts its monitor at zero.
+    sets_absolute = getattr(progress_cb, "__func__", None) is Progress.set_current_value
+    bar = progress_cb.__self__ if sets_absolute else None
+
+    reported = 0
+
+    def _report(monitor):
+        nonlocal reported
+        delta = monitor.bytes_read - reported
+        reported = monitor.bytes_read
+        if sets_absolute:
+            progress_cb(bar.current + delta)
+        else:
+            progress_cb(UploadProgressDelta(delta, monitor))
+
+    return _report
 
 
 class tqdm_sly(tqdm, Progress):

@@ -448,8 +448,7 @@ class MultiViewVideoConverter(VideoConverter):
                     [self._check_video_file_size(file_size) for file_size in file_sizes]
                 )
                 if has_large_files:
-                    upload_progress = []
-                    size_progress_cb = self._get_video_upload_progress(upload_progress)
+                    size_progress_cb = self._get_video_upload_progress()
 
         key_id_map = KeyIdMap()
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size

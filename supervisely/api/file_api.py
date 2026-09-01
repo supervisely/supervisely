@@ -44,7 +44,11 @@ from supervisely.io.fs import (
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import load_json_file
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import (
+    Progress,
+    build_multipart_monitor_callback,
+    tqdm_sly,
+)
 
 
 class FileInfo(NamedTuple):
@@ -954,27 +958,8 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
-        if progress_cb is None:
-            data = encoder
-        else:
-            get_partial = getattr(progress_cb, "get_partial", None)
-            if callable(get_partial):
-                # tqdm_sly / CustomTqdm: monitor-aware (checked first; they subclass tqdm)
-                data = MultipartEncoderMonitor(encoder, get_partial())
-            else:
-                if isinstance(progress_cb, tqdm):
-                    progress_cb = progress_cb.update  # bare tqdm isn't callable
-                elif not callable(progress_cb):
-                    raise TypeError("progress_cb must be callable, tqdm, or have get_partial()")
-                # delta-int callable: monitor gives cumulative bytes_read, feed increments
-                reported = 0
-
-                def _monitor_cb(monitor):
-                    nonlocal reported
-                    progress_cb(monitor.bytes_read - reported)
-                    reported = monitor.bytes_read
-
-                data = MultipartEncoderMonitor(encoder, _monitor_cb)
+        monitor_cb = build_multipart_monitor_callback(progress_cb)
+        data = encoder if monitor_cb is None else MultipartEncoderMonitor(encoder, monitor_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
@@ -2348,7 +2333,12 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]],
         value: int,
     ) -> None:
-        """Report progress to either a tqdm-like object or a plain callable."""
+        """
+        Report progress to either a tqdm-like object or a plain callable.
+
+        This is the item count path, not the byte path: it reports how many files are done.
+        Byte progress of a single upload goes through build_multipart_monitor_callback().
+        """
         if progress_cb is None:
             return
         if hasattr(progress_cb, "update"):

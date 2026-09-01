@@ -8,7 +8,6 @@ import json
 import os
 import re
 import urllib.parse
-from functools import partial
 from itertools import zip_longest
 from typing import (
     AsyncGenerator,
@@ -61,7 +60,7 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, build_multipart_monitor_callback
 from supervisely.video.video import (
     gen_video_stream_name,
     get_info,
@@ -1764,7 +1763,7 @@ class VideoApi(RemoveableBulkModuleApi):
         name: str,
         path: str,
         meta: Dict = None,
-        item_progress: Optional[Progress] = None,
+        item_progress: Optional[Union[bool, Progress, Callable]] = None,
     ) -> VideoInfo:
         """
         Uploads Video with given name from given local path to Dataset.
@@ -1812,8 +1811,9 @@ class VideoApi(RemoveableBulkModuleApi):
         p = None
         if item_progress is not None and type(item_progress) is bool:
             p = Progress(f"Uploading {name}", total_cnt=get_file_size(path), is_size=True)
-            # progress_cb = p.iters_done_report
-            progress_cb = p.set_current_value
+            # the upload reports increments, so an absolute setter would stall after the
+            # first chunk: set_current_value(delta) advances by delta minus what is done
+            progress_cb = p.iters_done_report
 
         results = self.upload_paths(
             dataset_id=dataset_id,
@@ -1843,16 +1843,9 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         encoder = MultipartEncoder(fields=content_dict)
 
-        if progress_cb is not None:
-
-            def _callback(monitor, progress):
-                progress(monitor.bytes_read)
-
-            if isinstance(progress_cb, tqdm):
-                callback = partial(_callback, progress=progress_cb.update)
-            else:
-                callback = partial(_callback, progress=progress_cb)
-            monitor = MultipartEncoderMonitor(encoder, callback)
+        monitor_cb = build_multipart_monitor_callback(progress_cb)
+        if monitor_cb is not None:
+            monitor = MultipartEncoderMonitor(encoder, monitor_cb)
             resp = self._api.post("videos.bulk.upload", monitor)
         else:
             resp = self._api.post("videos.bulk.upload", encoder)
