@@ -23,7 +23,6 @@ from tqdm import tqdm  # importing supervisely rebinds this name to tqdm_sly
 from tqdm.std import tqdm as vanilla_tqdm
 
 from supervisely.api.video.video_api import VideoApi
-from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.task.progress import (
     Progress,
     UploadProgressDelta,
