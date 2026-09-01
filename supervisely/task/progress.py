@@ -535,7 +535,7 @@ def build_multipart_monitor_callback(progress_cb):
     # stand rather than handed an increment. bytes_read of the current monitor would not do:
     # a bulk upload sends several requests, and every request starts its monitor at zero.
     sets_absolute = getattr(progress_cb, "__func__", None) is Progress.set_current_value
-    progress = getattr(progress_cb, "__self__", None)
+    bar = progress_cb.__self__ if sets_absolute else None
 
     reported = 0
 
@@ -544,7 +544,7 @@ def build_multipart_monitor_callback(progress_cb):
         delta = monitor.bytes_read - reported
         reported = monitor.bytes_read
         if sets_absolute:
-            progress_cb(progress.current + delta)
+            progress_cb(bar.current + delta)
         else:
             progress_cb(UploadProgressDelta(delta, monitor))
 
