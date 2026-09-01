@@ -9,21 +9,21 @@ used inside the SDK itself, so the adapter has to serve both.
 The tests drive a real ``MultipartEncoder`` and never touch the network.
 """
 
-import ast
 import copy
 import gc
 import io
 import pickle
 import weakref
 from functools import partial
-from pathlib import Path
+from unittest import mock
 
 import pytest
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm  # importing supervisely rebinds this name to tqdm_sly
 from tqdm.std import tqdm as vanilla_tqdm
 
-from supervisely.api.video import video_api
+from supervisely.api.video.video_api import VideoApi
+from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.task.progress import (
     Progress,
     UploadProgressDelta,
@@ -394,9 +394,8 @@ def test_widget_progress_shape_is_the_get_partial_one():
 
 
 def test_video_converter_progress_follows_the_upload():
-    """The converters' shared callback hands its argument straight to Progress.set_current_value,
-    an absolute setter, so it has to pass the running total rather than the increment. Feeding
-    it increments left the bar at zero once the upload finished."""
+    """The converters share one byte progress bar for the whole upload, and the callback is
+    handed an increment, so it has to report increments rather than set an absolute value."""
     from supervisely.convert.video import video_converter
 
     created = []
@@ -410,7 +409,7 @@ def test_video_converter_progress_follows_the_upload():
     video_converter.Progress = SpyProgress
     try:
         # self is unused by the helper, and building a converter needs a real dataset
-        callback = video_converter.VideoConverter._get_video_upload_progress(None, [])
+        callback = video_converter.VideoConverter._get_video_upload_progress(None)
         total = drain(make_monitor(callback))
     finally:
         video_converter.Progress = original
@@ -427,21 +426,48 @@ def test_absolute_setter_stalls_on_increments():
     assert progress.current < total / 4, "an absolute setter must not be fed increments"
 
 
-def test_video_upload_path_reports_increments():
-    """VideoApi.upload_path(item_progress=True) used to bind the absolute setter, which was
-    right while the upload fed it monitor.bytes_read and wrong once it fed increments."""
-    source = Path(video_api.__file__).read_text(encoding="utf-8")
-    tree = ast.parse(source, filename=video_api.__file__)
-    handler = next(
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "upload_path"
+def test_video_upload_path_bar_follows_the_upload():
+    """VideoApi.upload_path(item_progress=True) used to bind Progress.set_current_value, which was
+    right while the upload fed it monitor.bytes_read and wrong once it fed increments. Checked
+    while the upload runs: the handler tops the bar up to total when it returns, either way."""
+    seen = {}
+
+    def fake_upload_paths(self, dataset_id, names, paths, item_progress=None, **kwargs):
+        seen["uploaded"] = drain(make_monitor(item_progress))
+        seen["on_the_bar"] = item_progress.__self__.current
+        return [object()]
+
+    api = VideoApi.__new__(VideoApi)
+    with mock.patch.object(VideoApi, "upload_paths", fake_upload_paths), mock.patch(
+        "supervisely.api.video.video_api.get_file_size", return_value=len(PAYLOAD) * 4
+    ):
+        api.upload_path(dataset_id=1, name="a.mp4", path="/tmp/a.mp4", item_progress=True)
+
+    assert seen["on_the_bar"] == seen["uploaded"], (
+        f"{seen['on_the_bar']} on the bar while {seen['uploaded']} bytes were uploaded"
     )
-    bound = {
-        node.value.attr
-        for node in ast.walk(handler)
-        if isinstance(node, ast.Assign)
-        and isinstance(node.value, ast.Attribute)
-        and any(isinstance(t, ast.Name) and t.id == "progress_cb" for t in node.targets)
-    }
-    assert bound == {"iters_done_report"}, f"progress_cb is bound to {bound}"
+
+
+def test_video_converter_bar_adds_up_across_videos():
+    """A large upload sends one video per request, so every request brings its own monitor whose
+    bytes_read starts at zero. Reporting the running total left the bar stuck on the first video."""
+    from supervisely.convert.video import video_converter
+
+    created = []
+
+    class SpyProgress(video_converter.Progress):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
+    original = video_converter.Progress
+    video_converter.Progress = SpyProgress
+    try:
+        callback = video_converter.VideoConverter._get_video_upload_progress(None)
+        # a fresh adapter per request, the way _upload_uniq_videos_single_req builds it
+        uploaded = sum(drain(make_monitor(callback)) for _ in range(2))
+    finally:
+        video_converter.Progress = original
+
+    assert len(created) == 1, "the bar must be shared by every video of the upload"
+    assert created[0].current == uploaded, f"{created[0].current} on the bar, {uploaded} uploaded"

@@ -1763,7 +1763,7 @@ class VideoApi(RemoveableBulkModuleApi):
         name: str,
         path: str,
         meta: Dict = None,
-        item_progress: Optional[Progress] = None,
+        item_progress: Optional[Union[bool, Progress, Callable]] = None,
     ) -> VideoInfo:
         """
         Uploads Video with given name from given local path to Dataset.

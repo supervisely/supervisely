@@ -2333,7 +2333,12 @@ class FileApi(ModuleApiBase):
         progress_cb: Optional[Union[tqdm, Callable]],
         value: int,
     ) -> None:
-        """Report progress to either a tqdm-like object or a plain callable."""
+        """
+        Report progress to either a tqdm-like object or a plain callable.
+
+        This is the item count path, not the byte path: it reports how many files are done.
+        Byte progress of a single upload goes through build_multipart_monitor_callback().
+        """
         if progress_cb is None:
             return
         if hasattr(progress_cb, "update"):

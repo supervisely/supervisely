@@ -422,7 +422,12 @@ class SlyWrapFile:
 
 
 class _StrongRef:
-    """Stand-in for weakref.ref, for the rare object that forbids weak references."""
+    """
+    Stand-in for weakref.ref, for the rare object that forbids weak references.
+
+    Every monitor the SDK builds is weak referenceable; this is here for a caller supplying
+    a monitor of its own, for instance one with __slots__ and no __weakref__.
+    """
 
     def __init__(self, obj):
         self._obj = obj
