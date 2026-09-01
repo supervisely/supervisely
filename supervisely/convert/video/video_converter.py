@@ -349,6 +349,7 @@ class VideoConverter(BaseConverter):
                         is_size=True,
                     )
                 )
-            upload_progress[0].set_current_value(monitor)
+            # set_current_value is absolute, so it needs the running total, not the increment
+            upload_progress[0].set_current_value(monitor.bytes_read)
 
         return lambda m: _print_progress(m, upload_progress)

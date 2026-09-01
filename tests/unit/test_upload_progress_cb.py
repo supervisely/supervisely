@@ -325,6 +325,32 @@ def test_widget_progress_shape_is_the_get_partial_one():
     assert callable(getattr(CustomTqdm, "_progress_monitor", None))
 
 
+def test_video_converter_progress_follows_the_upload():
+    """The converters' shared callback hands its argument straight to Progress.set_current_value,
+    an absolute setter, so it has to pass the running total rather than the increment. Feeding
+    it increments left the bar at zero once the upload finished."""
+    from supervisely.convert.video import video_converter
+
+    created = []
+
+    class SpyProgress(video_converter.Progress):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
+    original = video_converter.Progress
+    video_converter.Progress = SpyProgress
+    try:
+        # self is unused by the helper, and building a converter needs a real dataset
+        callback = video_converter.VideoConverter._get_video_upload_progress(None, [])
+        total = drain(make_monitor(callback))
+    finally:
+        video_converter.Progress = original
+
+    assert created, "no Progress was created"
+    assert created[0].current == total
+
+
 def test_absolute_setter_stalls_on_increments():
     """`Progress.set_current_value` advances by `value - current`, so feeding it increments
     leaves it stuck near the first chunk. Nothing inside the SDK may hand it to the adapter."""
