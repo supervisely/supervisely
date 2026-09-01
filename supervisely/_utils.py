@@ -669,10 +669,17 @@ class CrossLoopSemaphore:
         """
         Emit queued warnings with the lock released: a logging handler is arbitrary code
         and may well end up calling back into the API.
+
+        Another thread may drain the queue at the same time, so the pop itself is the
+        emptiness check: deque.popleft() is atomic, "not empty" followed by a pop is not.
         """
-        while self._deferred_warnings:
+        while True:
+            try:
+                message = self._deferred_warnings.popleft()
+            except IndexError:
+                return
             logger.warning(
-                self._deferred_warnings.popleft(),
+                message,
                 extra={"over_issued_total": self.over_issued_total, "semaphore_size": self._limit},
             )
 

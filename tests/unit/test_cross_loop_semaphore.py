@@ -11,6 +11,7 @@ of hanging the suite.
 import asyncio
 import threading
 import time
+from collections import deque
 
 import pytest
 
@@ -944,3 +945,26 @@ def test_a_stalled_queue_does_not_pour_through_at_once():
     state = semaphore._state()
     assert state["value"] == limit, state
     assert state["consistent"], state
+
+
+def test_two_threads_flushing_warnings_at_once_do_not_raise():
+    """release() flushes on every call, so two threads can be inside _flush_warnings() with
+    one queued warning between them. Popping after a separate "not empty" check raised
+    IndexError out of release(), i.e. out of `async with` in the caller."""
+    semaphore = CrossLoopSemaphore(1)
+
+    class _DrainedByTheOtherThread(deque):
+        """The queue the losing thread sees: whatever it inspects is already gone."""
+
+        def __bool__(self):
+            emptied = len(self) > 0
+            if emptied:
+                deque.popleft(self)  # the other flusher got there first
+            return emptied
+
+        def __len__(self):
+            return deque.__len__(self)
+
+    semaphore._deferred_warnings = _DrainedByTheOtherThread(["a warning nobody will see"])
+    semaphore._flush_warnings()  # must not raise IndexError
+    assert not semaphore._deferred_warnings
