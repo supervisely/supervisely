@@ -525,6 +525,15 @@ def build_multipart_monitor_callback(progress_cb):
                 f"get_partial(), got {type(progress_cb).__name__}"
             )
 
+    if getattr(progress_cb, "__func__", None) is Progress.set_current_value:
+        # an absolute setter: it advances by the value minus what is already done, so it
+        # needs the running total. Kept working the way it did before uploads reported
+        # increments, since callers pass Progress.set_current_value directly.
+        def _report_total(monitor):
+            progress_cb(monitor.bytes_read)
+
+        return _report_total
+
     reported = 0
 
     def _report(monitor):

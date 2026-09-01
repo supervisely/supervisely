@@ -417,12 +417,36 @@ def test_video_converter_progress_follows_the_upload():
     assert created[0].current == total
 
 
-def test_absolute_setter_stalls_on_increments():
-    """`Progress.set_current_value` advances by `value - current`, so feeding it increments
-    leaves it stuck near the first chunk. Nothing inside the SDK may hand it to the adapter."""
+def test_progress_set_current_value_keeps_getting_the_running_total():
+    """`Progress.set_current_value` advances by `value - current`, so increments would leave it
+    stuck near the first chunk. Callers hand it to uploads directly, so it keeps the totals."""
     progress = Progress("uploading", total_cnt=len(PAYLOAD) * 4, is_size=True)
     total = drain(make_monitor(progress.set_current_value))
-    assert progress.current < total / 4, "an absolute setter must not be fed increments"
+    assert progress.current == total
+
+
+def test_set_current_value_of_a_subclass_is_recognised():
+    """The check is on the function, not on the name, so subclasses are served too."""
+
+    class MyProgress(Progress):
+        pass
+
+    progress = MyProgress("uploading", total_cnt=len(PAYLOAD) * 4, is_size=True)
+    total = drain(make_monitor(progress.set_current_value))
+    assert progress.current == total
+
+
+def test_a_foreign_set_current_value_still_gets_increments():
+    """Only Progress.set_current_value is special cased; a method that merely shares the name
+    belongs to the delta contract like every other callable."""
+    seen = []
+
+    class Own:
+        def set_current_value(self, value):
+            seen.append(value)
+
+    total = drain(make_monitor(Own().set_current_value))
+    assert sum(seen) == total, "a foreign callback must keep receiving increments"
 
 
 def test_video_upload_path_bar_follows_the_upload():
