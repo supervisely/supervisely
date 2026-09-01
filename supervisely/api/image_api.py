@@ -3007,6 +3007,12 @@ class ImageApi(RemoveableBulkModuleApi):
 
         res = self.InfoType(*field_values)
         d = res._asdict()
+        # the API returns size as a string for some images, and ImageInfo declares it an int
+        if isinstance(d.get(ApiField.SIZE), str):
+            try:
+                d[ApiField.SIZE] = int(d[ApiField.SIZE])
+            except ValueError:
+                d[ApiField.SIZE] = None
 
         return ImageInfo(**d)
 

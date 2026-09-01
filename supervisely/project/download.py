@@ -269,7 +269,10 @@ def download_async_or_sync(
         except Exception as e:
             if kwargs.get("resume_download", False) is False:
                 remove_dir(dest_dir)
-            logger.error(f"Failed to download project {project_id} asynchronously: {e}")
+            logger.error(
+                f"Failed to download project {project_id} asynchronously: {e}",
+                exc_info=True,
+            )
             logger.warning("Switching to synchronous download")
             switch_to_sync = True
     else:
