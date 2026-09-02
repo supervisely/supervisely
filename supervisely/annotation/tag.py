@@ -4,6 +4,7 @@
 # docs
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Dict, List, Optional, Union
 
 from supervisely._utils import take_with_default
@@ -27,6 +28,8 @@ class TagJsonFields:
     """"""
     ID = "id"
     """"""
+    CUSTOM_DATA = "customData"
+    """"""
     # TAG_META_ID = 'tagId'
     # """"""
 
@@ -44,6 +47,7 @@ class Tag(KeyObject):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[Dict] = None,
     ):
         """
         :param meta: :class:`~supervisely.annotation.tag_meta.TagMeta` object with tag metadata (name, value type).
@@ -59,6 +63,9 @@ class Tag(KeyObject):
         :type updated_at: str, optional
         :param created_at: Creation timestamp (ISO format).
         :type created_at: str, optional
+        :param custom_data: Arbitrary user JSON attached to this tag assignment. Independent of
+            the tag definition and of the tag value. Keys are never renamed or stripped.
+        :type custom_data: dict, optional
         :raises ValueError: If meta is None or value is incompatible with :class:`~supervisely.annotation.tag_meta.TagMeta`.value_type.
 
         :Usage Example:
@@ -91,6 +98,11 @@ class Tag(KeyObject):
         self.updated_at = updated_at
         self.created_at = created_at
         self.sly_id = sly_id
+        if custom_data is not None and not isinstance(custom_data, dict):
+            raise TypeError(
+                f"Tag custom_data must be a dict, not {type(custom_data).__name__}"
+            )
+        self._custom_data = deepcopy(custom_data) if custom_data else {}
 
     @property
     def meta(self) -> TagMeta:
@@ -166,6 +178,29 @@ class Tag(KeyObject):
         """
         return self._meta.name
 
+    @property
+    def custom_data(self) -> Dict:
+        """
+        Arbitrary user JSON attached to this tag assignment, independent of the tag definition
+        and of the tag value. Empty dict when the assignment carries none.
+
+        :returns: Custom data of the Tag
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(meta_dog, value="Husky", custom_data={"confidence": 0.92})
+
+                print(tag_dog.custom_data)
+                # Output: {'confidence': 0.92}
+        """
+        return deepcopy(self._custom_data)
+
     def key(self):
         """
         Get TagMeta key value.
@@ -233,6 +268,8 @@ class Tag(KeyObject):
             res[TagJsonFields.UPDATED_AT] = self.updated_at
         if self.created_at is not None:
             res[TagJsonFields.CREATED_AT] = self.created_at
+        if self._custom_data:
+            res[TagJsonFields.CUSTOM_DATA] = deepcopy(self._custom_data)
         return res
 
     @classmethod
@@ -273,6 +310,7 @@ class Tag(KeyObject):
             updated_at = None
             created_at = None
             sly_id = None
+            custom_data = None
         else:
             tag_name = data[TagJsonFields.TAG_NAME]
             value = data.get(TagJsonFields.VALUE, None)
@@ -280,6 +318,7 @@ class Tag(KeyObject):
             updated_at = data.get(TagJsonFields.UPDATED_AT, None)
             created_at = data.get(TagJsonFields.CREATED_AT, None)
             sly_id = data.get(TagJsonFields.ID, None)
+            custom_data = data.get(TagJsonFields.CUSTOM_DATA, None)
         meta = tag_meta_collection.get(tag_name)
         return cls(
             meta=meta,
@@ -288,6 +327,7 @@ class Tag(KeyObject):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def get_compact_str(self) -> str:
@@ -345,7 +385,12 @@ class Tag(KeyObject):
                 # Compare unidentical Tags
                 tag_lemon_1 == tag_cucumber     # False
         """
-        return isinstance(other, Tag) and self.meta == other.meta and self.value == other.value
+        return (
+            isinstance(other, Tag)
+            and self.meta == other.meta
+            and self.value == other.value
+            and self._custom_data == other._custom_data
+        )
 
     def __ne__(self, other: Tag) -> bool:
         """
@@ -389,6 +434,7 @@ class Tag(KeyObject):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[Dict] = None,
     ) -> Tag:
         """
         Clone makes a copy of Tag with new fields, if fields are given, otherwise it will use original Tag fields.
@@ -404,6 +450,8 @@ class Tag(KeyObject):
         :type updated_at: str, optional
         :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param custom_data: Arbitrary user JSON attached to the tag assignment.
+        :type custom_data: dict, optional
         :returns: New instance of Tag object
         :rtype: :class:`~supervisely.annotation.tag.Tag`
 
@@ -434,6 +482,7 @@ class Tag(KeyObject):
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            custom_data=take_with_default(custom_data, self._custom_data),
         )
 
     def __str__(self):
