@@ -17,6 +17,15 @@ from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
+class TagCustomDataUpdateStrategy:
+    """Strategies accepted by the tag custom data update methods."""
+
+    MERGE = "merge"
+    """Deep-merge the given object into the stored one. Server default."""
+    REPLACE = "replace"
+    """Overwrite the stored object wholesale. Required to remove a key."""
+
+
 class TagApi(ModuleApi):
     """Base API module for working with tag metas and appending tags to entities/objects."""
 
@@ -477,6 +486,142 @@ class TagApi(ModuleApi):
         )
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
+
+    def _update_custom_data(
+        self,
+        method: str,
+        tag_id: int,
+        custom_data: Dict,
+        update_strategy: Optional[str] = None,
+    ) -> Dict:
+        """"""
+        if not isinstance(custom_data, dict):
+            raise TypeError(
+                f"custom_data must be a dict, not {type(custom_data).__name__}"
+            )
+        allowed = (
+            TagCustomDataUpdateStrategy.MERGE,
+            TagCustomDataUpdateStrategy.REPLACE,
+        )
+        if update_strategy is not None and update_strategy not in allowed:
+            raise ValueError(
+                f"update_strategy must be one of {allowed}, not {update_strategy!r}"
+            )
+        body = {ApiField.ID: tag_id, ApiField.CUSTOM_DATA: custom_data}
+        if update_strategy is not None:
+            body[ApiField.UPDATE_STRATEGY] = update_strategy
+        response = self._api.post(method, body)
+        return response.json().get(ApiField.CUSTOM_DATA, {})
+
+    def update_custom_data(
+        self,
+        tag_id: int,
+        custom_data: Dict,
+        update_strategy: Optional[str] = None,
+    ) -> Dict:
+        """
+        Update custom data of an entity tag assignment - an image, video, volume or
+        point cloud tag.
+
+        :param tag_id: ID of the tag assignment, not of the project tag meta.
+        :type tag_id: int
+        :param custom_data: Arbitrary JSON. Nested objects and arrays are allowed; keys are
+            never renamed or stripped.
+        :type custom_data: dict
+        :param update_strategy: :class:`TagCustomDataUpdateStrategy` value. ``merge``
+            (the server default) deep-merges into the stored object; ``replace`` overwrites it
+            wholesale and is what removes a key. ``None`` leaves the choice to the server.
+        :type update_strategy: str, optional
+        :returns: The stored custom data after the update
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.api.entity_annotation.tag_api import (
+                    TagCustomDataUpdateStrategy,
+                )
+
+                api = sly.Api.from_env()
+
+                stored = api.image.tag.update_custom_data(
+                    tag_id=1024,
+                    custom_data={"confidence": 0.92, "source": "model_v3"},
+                    update_strategy=TagCustomDataUpdateStrategy.REPLACE,
+                )
+                print(stored)
+                # Output: {'confidence': 0.92, 'source': 'model_v3'}
+        """
+        return self._update_custom_data(
+            "image-tags.custom-data.update", tag_id, custom_data, update_strategy
+        )
+
+    def update_figure_custom_data(
+        self,
+        tag_id: int,
+        custom_data: Dict,
+        update_strategy: Optional[str] = None,
+    ) -> Dict:
+        """
+        Update custom data of a figure (object) tag assignment.
+
+        :param tag_id: ID of the figure tag assignment.
+        :type tag_id: int
+        :param custom_data: Arbitrary JSON. See :func:`update_custom_data`.
+        :type custom_data: dict
+        :param update_strategy: :class:`TagCustomDataUpdateStrategy` value, or None.
+        :type update_strategy: str, optional
+        :returns: The stored custom data after the update
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                stored = api.image.tag.update_figure_custom_data(
+                    tag_id=5077,
+                    custom_data={"occluded": True, "verified_by": "qa_team"},
+                )
+        """
+        return self._update_custom_data(
+            "object-tags.custom-data.update", tag_id, custom_data, update_strategy
+        )
+
+    def update_annotation_object_custom_data(
+        self,
+        tag_id: int,
+        custom_data: Dict,
+        update_strategy: Optional[str] = None,
+    ) -> Dict:
+        """
+        Update custom data of an annotation object tag assignment.
+
+        :param tag_id: ID of the annotation object tag assignment.
+        :type tag_id: int
+        :param custom_data: Arbitrary JSON. See :func:`update_custom_data`.
+        :type custom_data: dict
+        :param update_strategy: :class:`TagCustomDataUpdateStrategy` value, or None.
+        :type update_strategy: str, optional
+        :returns: The stored custom data after the update
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                stored = api.video.tag.update_annotation_object_custom_data(
+                    tag_id=311,
+                    custom_data={"track_quality": "good", "frames_checked": [0, 120]},
+                )
+        """
+        return self._update_custom_data(
+            "annotation-objects.tags.custom-data.update",
+            tag_id,
+            custom_data,
+            update_strategy,
+        )
 
     def append_to_objects(
         self,

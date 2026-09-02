@@ -33,6 +33,7 @@ class VideoTag(Tag):
         created_at: Optional[str] = None,
         is_finished: Optional[bool] = None,
         non_final_value: Optional[bool] = None,
+        custom_data: Optional[Dict] = None,
     ):
         """
         Tag applied to video or frame range.
@@ -81,6 +82,7 @@ class VideoTag(Tag):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
         self._frame_range = None
@@ -269,6 +271,7 @@ class VideoTag(Tag):
             created_at=temp.created_at,
             is_finished=is_finished,
             non_final_value=non_final_value,
+            custom_data=temp.custom_data,
         )
 
     def get_compact_str(self) -> str:
@@ -342,6 +345,7 @@ class VideoTag(Tag):
             and self.meta == other.meta
             and self.value == other.value
             and self.frame_range == other.frame_range
+            and self.custom_data == other.custom_data
             and unfinished_tag_comparison
         )
 
@@ -357,6 +361,7 @@ class VideoTag(Tag):
         created_at: Optional[str] = None,
         is_finished: Optional[bool] = None,
         non_final_value: Optional[bool] = None,
+        custom_data: Optional[Dict] = None,
     ) -> VideoTag:
         """
         Makes a copy of VideoTag with new fields, if fields are given, otherwise it will use fields of the original VideoTag.
@@ -417,6 +422,7 @@ class VideoTag(Tag):
             created_at=take_with_default(created_at, self.created_at),
             is_finished=take_with_default(is_finished, self.is_finished),
             non_final_value=take_with_default(non_final_value, self.non_final_value),
+            custom_data=take_with_default(custom_data, self.custom_data),
         )
 
     def __str__(self):
