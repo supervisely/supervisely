@@ -48,7 +48,7 @@ from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
-from supervisely.app.widgets import Progress
+from supervisely.app.widgets import Progress, SplitMethod
 from supervisely.decorators.profile import timeit_with_result
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
@@ -1436,7 +1436,7 @@ class TrainApp:
         """
         dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
         if self.gui.train_val_splits_selector is not None:
-            if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
+            if self.gui.train_val_splits_selector.get_split_method() == SplitMethod.DATASETS:
                 selected_ds_ids = (
                     self.gui.train_val_splits_selector.get_train_dataset_ids()
                     + self.gui.train_val_splits_selector.get_val_dataset_ids()
@@ -1964,7 +1964,7 @@ class TrainApp:
 
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_set, val_set = self._train_split, self._val_split
-        if split_method == "Based on datasets":
+        if split_method == SplitMethod.DATASETS:
             if project_id is None:
                 val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
                 train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
@@ -2486,15 +2486,15 @@ class TrainApp:
             return {}  # splits disabled in options
 
         split_method = self.gui.train_val_splits_selector.get_split_method()
-        train_val_splits = {"method": split_method.lower()}
-        if split_method == "Random":
+        train_val_splits = {"method": SplitMethod.to_short(split_method)}
+        if split_method == SplitMethod.RANDOM:
             train_val_splits.update(
                 {
                     "split": "train",
                     "percent": self.gui.train_val_splits_selector.train_val_splits.get_train_split_percent(),
                 }
             )
-        elif split_method == "Based on tags":
+        elif split_method == SplitMethod.TAGS:
             train_val_splits.update(
                 {
                     "train_tag": self.gui.train_val_splits_selector.train_val_splits.get_train_tag(),
@@ -2502,14 +2502,14 @@ class TrainApp:
                     "untagged_action": self.gui.train_val_splits_selector.train_val_splits.get_untagged_action(),
                 }
             )
-        elif split_method == "Based on datasets":
+        elif split_method == SplitMethod.DATASETS:
             train_val_splits.update(
                 {
                     "train_datasets": self.gui.train_val_splits_selector.train_val_splits.get_train_dataset_ids(),
                     "val_datasets": self.gui.train_val_splits_selector.train_val_splits.get_val_dataset_ids(),
                 }
             )
-        elif split_method == "Based on collections":
+        elif split_method == SplitMethod.COLLECTIONS:
             train_val_splits.update(
                 {
                     "train_collections": self.gui.train_val_splits_selector.get_train_collection_ids(),
@@ -2924,7 +2924,7 @@ class TrainApp:
                 app_session_id = self.task_id
                 if app_session_id == -1:
                     app_session_id = None
-                if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
+                if self.gui.train_val_splits_selector.get_split_method() == SplitMethod.DATASETS:
                     train_info = {
                         "app_session_id": app_session_id,
                         "train_dataset_ids": train_dataset_ids,
@@ -3708,7 +3708,7 @@ class TrainApp:
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
         latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
         latest_val_collection = self.gui.train_val_splits_selector.latest_val_collection
-        if split_method == "Based on collections":
+        if split_method == SplitMethod.COLLECTIONS:
             current_selected_train_collection_ids = (
                 self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
             )

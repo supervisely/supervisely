@@ -19,6 +19,7 @@ from supervisely.app.widgets.random_splits_table.random_splits_table import (
     RandomSplitsTable,
 )
 from supervisely.app.widgets.select_collection.select_collection import SelectCollection
+from supervisely.app.widgets.train_val_splits.split_method import SplitMethod
 from supervisely.app.widgets.select_dataset_tree.select_dataset_tree import (
     SelectDatasetTree,
 )
@@ -95,21 +96,21 @@ class TrainValSplits(Widget):
         contents = []
         tabs_descriptions = []
         if random_splits:
-            self._split_methods.append("Random")
+            self._split_methods.append(SplitMethod.RANDOM)
             tabs_descriptions.append("Shuffle data and split with defined probability")
             contents.append(self._get_random_content())
         if tags_splits:
-            self._split_methods.append("Based on item tags")
+            self._split_methods.append(SplitMethod.TAGS)
             tabs_descriptions.append(
                 f"{self._project_type.capitalize()} should have assigned train or val tag"
             )
             contents.append(self._get_tags_content())
         if datasets_splits:
-            self._split_methods.append("Based on datasets")
+            self._split_methods.append(SplitMethod.DATASETS)
             tabs_descriptions.append("Select one or several datasets for every split")
             contents.append(self._get_datasets_content())
         if collections_splits:
-            self._split_methods.append("Based on collections")
+            self._split_methods.append(SplitMethod.COLLECTIONS)
             tabs_descriptions.append("Select one or several collections for every split")
             contents.append(self._get_collections_content())
         if not self._split_methods:
@@ -286,7 +287,7 @@ class TrainValSplits(Widget):
 
         project_dir = tmp_project_dir if tmp_project_dir is not None else self._project_fs.directory
 
-        if split_method == "Random":
+        if split_method == SplitMethod.RANDOM:
             splits_counts = self._random_splits_table.get_splits_counts()
             train_count = splits_counts["train"]
             val_count = splits_counts["val"]
@@ -300,7 +301,7 @@ class TrainValSplits(Widget):
                 project_dir, new_train_count, new_val_count
             )
 
-        elif split_method == "Based on item tags":
+        elif split_method == SplitMethod.TAGS:
             train_tag_name = self._train_tag_select.get_selected_name()
             val_tag_name = self._val_tag_select.get_selected_name()
             add_untagged_to = self._untagged_select.get_value()
@@ -308,7 +309,7 @@ class TrainValSplits(Widget):
                 project_dir, train_tag_name, val_tag_name, add_untagged_to
             )
 
-        elif split_method == "Based on datasets":
+        elif split_method == SplitMethod.DATASETS:
             if self._project_id is not None:
                 self._train_ds_select: SelectDatasetTree
                 self._val_ds_select: SelectDatasetTree
@@ -336,7 +337,7 @@ class TrainValSplits(Widget):
             train_set, val_set = self._project_class.get_train_val_splits_by_dataset(
                 project_dir, train_ds_names, val_ds_names
             )
-        elif split_method == "Based on collections":
+        elif split_method == SplitMethod.COLLECTIONS:
             if self._project_id is None:
                 raise ValueError(
                     "You can not use collections_splits parameter without project_id parameter."
@@ -357,25 +358,18 @@ class TrainValSplits(Widget):
         return train_set, val_set
 
     def set_split_method(self, split_method: Literal["random", "tags", "datasets", "collections"]):
-        if split_method == "random":
-            split_method = "Random"
-        elif split_method == "tags":
-            split_method = "Based on item tags"
-        elif split_method == "datasets":
-            split_method = "Based on datasets"
-        elif split_method == "collections":
-            split_method = "Based on collections"
-        self._content.set_active_tab(split_method)
+        self._content.set_active_tab(SplitMethod.parse(split_method))
         StateJson().send_changes()
         DataJson().send_changes()
 
     def get_split_method(self) -> str:
+        """Returns the active split method, one of the :class:`SplitMethod` constants."""
         return self._content.get_active_tab()
 
     def set_random_splits(
         self, split: Literal["train", "training", "val", "validation"], percent: int
     ):
-        self._content.set_active_tab("Random")
+        self._content.set_active_tab(SplitMethod.RANDOM)
         if split == "train" or split == "training":
             self._random_splits_table.set_train_split_percent(percent)
         elif split == "val" or split == "validation":
@@ -392,7 +386,7 @@ class TrainValSplits(Widget):
     def set_tags_splits(
         self, train_tag: str, val_tag: str, untagged_action: Literal["train", "val", "ignore"]
     ):
-        self._content.set_active_tab("Based on item tags")
+        self._content.set_active_tab(SplitMethod.TAGS)
         self._train_tag_select.set_name(train_tag)
         self._val_tag_select.set_name(val_tag)
         self._untagged_select.set_value(untagged_action)
@@ -404,7 +398,7 @@ class TrainValSplits(Widget):
         return self._val_tag_select.get_selected_name()
 
     def set_datasets_splits(self, train_datasets: List[int], val_datasets: List[int]):
-        self._content.set_active_tab("Based on datasets")
+        self._content.set_active_tab(SplitMethod.DATASETS)
         self._train_ds_select.set_dataset_ids(train_datasets)
         self._val_ds_select.set_dataset_ids(val_datasets)
 
@@ -436,7 +430,7 @@ class TrainValSplits(Widget):
         return self._val_collections_select.get_selected_ids() or []
 
     def set_collections_splits(self, train_collections: List[int], val_collections: List[int]):
-        self._content.set_active_tab("Based on collections")
+        self._content.set_active_tab(SplitMethod.COLLECTIONS)
         self.set_collections_splits_by_ids("train", train_collections)
         self.set_collections_splits_by_ids("val", val_collections)
 
