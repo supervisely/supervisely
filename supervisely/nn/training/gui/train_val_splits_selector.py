@@ -1,7 +1,14 @@
 from typing import List
 
 from supervisely import Api, Project
-from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
+from supervisely.app.widgets import (
+    Button,
+    Card,
+    Container,
+    SplitMethod,
+    Text,
+    TrainValSplits,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
@@ -41,17 +48,22 @@ class TrainValSplitsSelector:
         self.project_id = project_id
 
         # GUI Components
-        split_methods = self.app_options.get("train_val_split_methods", [])
+        split_methods = SplitMethod.parse_list(self._get_split_methods_option())
         if len(split_methods) == 0:
-            split_methods = ["Random", "Based on tags", "Based on datasets", "Based on collections"]
-        random_split = "Random" in split_methods
-        tag_split = "Based on tags" in split_methods
-        ds_split = "Based on datasets" in split_methods
-        coll_split = "Based on collections" in split_methods
+            split_methods = list(SplitMethod.ALL)
+        random_split = SplitMethod.RANDOM in split_methods
+        tag_split = SplitMethod.TAGS in split_methods
+        ds_split = SplitMethod.DATASETS in split_methods
+        coll_split = SplitMethod.COLLECTIONS in split_methods
 
+        self._available_split_methods = split_methods
         self.train_val_splits = TrainValSplits(project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split)
 
         self._detect_splits(coll_split, ds_split)
+        if self.validator_text is None:
+            # Neither datasets nor collections split is enabled, so nothing was auto-detected
+            self.validator_text = Text("")
+            self.validator_text.hide()
         self.button = Button("Select")
         self.display_widgets.extend([self.train_val_splits, self.validator_text, self.button])
         # -------------------------------- #
@@ -65,6 +77,19 @@ class TrainValSplitsSelector:
             collapsable=self.app_options.get("collapsable", False),
         )
         self.card.lock()
+
+    @property
+    def available_split_methods(self) -> List[str]:
+        """Split methods enabled in this app, as :class:`SplitMethod` constants."""
+        return self._available_split_methods
+
+    def _get_split_methods_option(self) -> List[str]:
+        """Split methods allowed by app options, in any of the historically used keys."""
+        for key in ("train_val_split_methods", "train_val_splits_methods"):
+            methods = self.app_options.get(key, [])
+            if methods:
+                return methods
+        return self.app_options.get("train_val_splits_selector", {}).get("methods", [])
 
     @property
     def all_train_collections(self) -> List[EntitiesCollectionInfo]:
@@ -151,13 +176,19 @@ class TrainValSplitsSelector:
                 else:
                     tags_count[tag_name] = tag_total
 
-            if tags_count[train_tag] == 0:
+            if train_tag is None or val_tag is None:
+                self.validator_text.set(
+                    text="Train and val tags are not selected", status="error"
+                )
+                return False
+
+            if tags_count.get(train_tag, 0) == 0:
                 self.validator_text.set(
                     text=f"Train tag '{train_tag}' is not present in any images. {ensure_text}",
                     status="error",
                 )
                 return False
-            elif tags_count[val_tag] == 0:
+            elif tags_count.get(val_tag, 0) == 0:
                 self.validator_text.set(
                     text=f"Val tag '{val_tag}' is not present in any images. {ensure_text}",
                     status="error",
@@ -302,16 +333,20 @@ class TrainValSplitsSelector:
                 self.validator_text.set("Train and val collections are selected", status="success")
                 return True
 
-        if split_method == "Random":
+        if split_method == SplitMethod.RANDOM:
             is_valid = validate_random_split()
 
-        elif split_method == "Based on tags":
+        elif split_method == SplitMethod.TAGS:
             is_valid = validate_based_on_tags()
 
-        elif split_method == "Based on datasets":
+        elif split_method == SplitMethod.DATASETS:
             is_valid = validate_based_on_datasets()
-        elif split_method == "Based on collections":
+        elif split_method == SplitMethod.COLLECTIONS:
             is_valid = validate_based_on_collections()
+        else:
+            self.validator_text.set(
+                text=f"Unknown train/val split method: '{split_method}'", status="error"
+            )
 
         # @TODO: handle button correctly if validation fails. Do not unlock next card until validation passes if returned False
         self.validator_text.show()
@@ -321,6 +356,7 @@ class TrainValSplitsSelector:
         self.train_val_splits._project_fs = project
 
     def get_split_method(self) -> str:
+        """Returns the selected split method, one of the :class:`SplitMethod` constants."""
         return self.train_val_splits.get_split_method()
 
     def get_train_dataset_ids(self) -> List[int]:
