@@ -5,7 +5,15 @@ import supervisely as sly
 
 
 class ChunkSplitter:
+    """Iterator over (offset, size) pairs to split a byte stream into fixed-size chunks."""
+
     def __init__(self, tot_size, chunk_size):
+        """
+        :param tot_size: Total byte size.
+        :type tot_size: int
+        :param chunk_size: Chunk size.
+        :type chunk_size: int
+        """
         self.tot_size = tot_size
         self.chunk_size = chunk_size
 
@@ -23,7 +31,13 @@ class ChunkSplitter:
 
 
 class ChunkedFileWriter:
+    """Write protobuf-like chunks to a file and validate final size on close."""
+
     def __init__(self, file_path):
+        """
+        :param file_path: Output file path.
+        :type file_path: str
+        """
         self.handler = None
         self.path = file_path
 
@@ -56,7 +70,15 @@ class ChunkedFileWriter:
 
 
 class ChunkedFileReader:
+    """Read a file and yield its contents as fixed-size byte chunks."""
+
     def __init__(self, fpath, chunk_size):
+        """
+        :param fpath: File path.
+        :type fpath: str
+        :param chunk_size: Chunk size in bytes.
+        :type chunk_size: int
+        """
         self.fpath = fpath
         self.file_size = sly.fs.get_file_size(fpath)  # bytes
         self.splitter = ChunkSplitter(self.file_size, chunk_size)

@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
 
 
 class Acknowledgement(SemanticSegmVisMetric):
+    """Acknowledgement section for semantic segmentation reports."""
+
 
     @property
     def md(self) -> MarkdownWidget:

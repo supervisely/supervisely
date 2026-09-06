@@ -1,19 +1,36 @@
-from typing import List, Optional, Dict
+import traceback
+from typing import Dict, List, Optional
+
+from supervisely._utils import logger
 from supervisely.app import StateJson
+from supervisely.app.content import DataJson
 from supervisely.app.widgets import Widget
 
 
 class RadioTabs(Widget):
+    """Tabs-like widget that switches between panes and notifies on selection changes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed_cb"
 
     class RadioTabPane:
+        """One selectable tab pane (title + content widget + optional subtitle)."""
+
         def __init__(
             self,
             title: str,
             content: Widget,
             subtitle: Optional[str] = "",
         ):
+            """:param title: Tab title.
+            :type title: str
+            :param content: Widget to display when tab is active.
+            :type content: Widget
+            :param subtitle: Optional subtitle.
+            :type subtitle: str, optional
+            """
             self.title = title
             self.subtitle = subtitle
             self.name = title  # identifier corresponding to the active tab
@@ -26,6 +43,16 @@ class RadioTabs(Widget):
         descriptions: Optional[List[str]] = None,
         widget_id=None,
     ):
+        """:param titles: List of tab titles (unique, max 10).
+        :type titles: List[str]
+        :param contents: List of widgets, one per tab.
+        :type contents: List[Widget]
+        :param descriptions: Optional descriptions per tab.
+        :type descriptions: List[str], optional
+        :param widget_id: Unique widget identifier.
+
+        :raises ValueError: If titles/contents lengths differ, or titles not unique.
+        """
         if len(titles) != len(contents):
             raise ValueError(
                 "titles length must be equal to contents length in RadioTabs widget."
@@ -65,7 +92,7 @@ class RadioTabs(Widget):
         return _value_changed
 
     def get_json_data(self) -> Dict:
-        return {}
+        return {"tabsOptions": {item.name: {"disabled": False} for item in self._items}}
 
     def get_json_state(self) -> Dict:
         return {"value": self._value}
@@ -77,3 +104,15 @@ class RadioTabs(Widget):
 
     def get_active_tab(self) -> str:
         return StateJson()[self.widget_id]["value"]
+
+    def disable_tab(self, tab_name: str):
+        if tab_name not in [item.name for item in self._items]:
+            raise ValueError(f"Tab with name '{tab_name}' does not exist.")
+        DataJson()[self.widget_id]["tabsOptions"][tab_name]["disabled"] = True
+        DataJson().send_changes()
+
+    def enable_tab(self, tab_name: str):
+        if tab_name not in [item.name for item in self._items]:
+            raise ValueError(f"Tab with name '{tab_name}' does not exist.")
+        DataJson()[self.widget_id]["tabsOptions"][tab_name]["disabled"] = False
+        DataJson().send_changes()

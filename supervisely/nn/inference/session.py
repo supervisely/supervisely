@@ -21,6 +21,8 @@ from supervisely.sly_logger import logger
 
 
 class SessionJSON:
+    """Client for running inference on a deployed model and returning raw JSON predictions."""
+
     def __init__(
         self,
         api: sly.Api,
@@ -38,8 +40,8 @@ class SessionJSON:
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
-        :param api: initialized :class:`sly.Api` object.
-        :type api: sly.Api
+        :param api: initialized Api object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
@@ -48,18 +50,17 @@ class SessionJSON:
         :type inference_settings: Union[dict, str], optional
 
 
-        :Usage example:
-         .. code-block:: python
-            task_id = 27001
-            session = sly.nn.inference.SessionJSON(
-                api,
-                task_id=task_id,
-            )
-            print(session.get_session_info())
+        :Usage Example:
 
-            image_id = 17551748
-            pred = session.inference_image_id(image_id)
-            predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
+            .. code-block:: python
+
+                task_id = 27001
+                session = sly.nn.inference.SessionJSON(api, task_id=task_id)
+                print(session.get_session_info())
+
+                image_id = 17551748
+                pred = session.inference_image_id(image_id)
+                predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
 
         """
         assert not (
@@ -271,7 +272,7 @@ class SessionJSON:
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort"] = None,
         batch_size: int = None,
     ) -> Dict[str, Any]:
         endpoint = "inference_video_id"
@@ -295,7 +296,7 @@ class SessionJSON:
         frames_direction: Literal["forward", "backward"] = None,
         process_fn=None,
         preparing_cb=None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort"] = None,
         batch_size: int = None,
     ) -> Iterator:
         if self._async_inference_uuid:
@@ -441,46 +442,52 @@ class SessionJSON:
         prev_current = 0
         if preparing_cb:
             # wait for inference status
-            resp = self._get_preparing_progress()
-            awaiting_preparing_progress = 0
-            break_flag = False
-            while resp.get("status") is None:
-                time.sleep(1)
-                awaiting_preparing_progress += 1
-                if awaiting_preparing_progress > 30:
-                    break_flag = True
+            try:
                 resp = self._get_preparing_progress()
-            if break_flag:
-                logger.warning(
-                    "Unable to get preparing progress. Continue without prepaing progress status."
-                )
-            if not break_flag:
-                if resp["status"] == "download_info":
+                for i in range(30):
+                    logger.info(
+                        f"Waiting for preparing progress... {30 - i} seconds left until timeout"
+                    )
+                    resp = self._get_preparing_progress()
+                    if resp.get("status") is not None:
+                        break
+                    time.sleep(1)
+                if not resp.get("status"):
+                    raise RuntimeError("Preparing progress status is not available.")
+
+                if resp.get("status") == "download_info":
+                    logger.info("Downloading infos...")
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-                while resp["status"] == "download_info":
-                    current = resp["current"]
-                    # pylint: disable=possibly-used-before-assignment
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "download_info":
+                        current = resp["current"]
+                        # pylint: disable=possibly-used-before-assignment
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
-                if resp["status"] == "download_project":
+                if resp.get("status") == "download_project":
+                    logger.info("Downloading project...")
                     progress_widget = preparing_cb(message="Download project", total=resp["total"])
-                while resp["status"] == "download_project":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp.get("status") == "download_project":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
-                if resp["status"] == "warmup":
+                if resp.get("status") == "warmup":
+                    logger.info("Running warmup...")
                     progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
-                while resp["status"] == "warmup":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp.get("status") == "warmup":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
+            except Exception as ex:
+                logger.warning(
+                    f"An error occurred while getting preparing progress: {ex}. Continue without preparing progress status."
+                )
 
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
@@ -537,7 +544,9 @@ class SessionJSON:
         t0 = time.time()
         while not has_started and not timeout_exceeded:
             resp = self._get_inference_progress()
-            has_started = bool(resp["result"]) or resp["progress"]["total"] != 1
+            pending_results = resp.get("pending_results", None)
+            has_results = bool(pending_results)
+            has_started = bool(resp.get("result")) or resp["progress"]["total"] != 1 or has_results
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout
@@ -566,7 +575,7 @@ class SessionJSON:
             self._on_async_inference_end()
             raise Timeout("Timeout exceeded. Pending results not received from the server.")
         if len(pending_results) == 0 and resp["is_inferring"]:
-            logger.warn(
+            logger.warning(
                 "The model is inferring yet, but new pending results have not received from the serving app. "
                 "This may lead to not all samples will be inferred."
             )
@@ -656,7 +665,17 @@ class SessionJSON:
 
 
 class AsyncInferenceIterator:
+    """Iterator over async inference results that polls pending results from a :class:`SessionJSON`."""
+
     def __init__(self, total, nn_api: SessionJSON, process_fn=None):
+        """
+        :param total: Total items.
+        :type total: int
+        :param nn_api: SessionJSON.
+        :type nn_api: SessionJSON
+        :param process_fn: Optional result processor.
+        :type process_fn: Callable[[Dict[str, Any]], Any]
+        """
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
@@ -695,6 +714,8 @@ class AsyncInferenceIterator:
 
 
 class Session(SessionJSON):
+    """Inference client that converts model outputs into :class:`~supervisely.annotation.annotation.Annotation` objects."""
+
     def __init__(
         self,
         api: sly.Api,
@@ -712,8 +733,8 @@ class Session(SessionJSON):
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
-        :param api: initialized :class:`sly.Api` object.
-        :type api: sly.Api
+        :param api: initialized Api object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
@@ -722,17 +743,16 @@ class Session(SessionJSON):
         :type inference_settings: Union[dict, str], optional
 
 
-        :Usage example:
-         .. code-block:: python
-            task_id = 27001
-            session = sly.nn.inference.Session(
-                api,
-                task_id=task_id,
-            )
-            print(session.get_session_info())
+        :Usage Example:
 
-            image_id = 17551748
-            predicted_annotation = session.inference_image_id(image_id)
+            .. code-block:: python
+
+                task_id = 27001
+                session = sly.nn.inference.Session(api, task_id=task_id)
+                print(session.get_session_info())
+
+                image_id = 17551748
+                predicted_annotation = session.inference_image_id(image_id)
 
         """
         super().__init__(api, task_id, session_url, inference_settings)
@@ -795,7 +815,7 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort"] = None,
         batch_size: int = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
@@ -811,7 +831,7 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort"] = None,
         batch_size: int = None,
         preparing_cb=None,
     ) -> AsyncInferenceIterator:

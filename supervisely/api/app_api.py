@@ -1,6 +1,9 @@
 # coding: utf-8
+"""Manage Supervisely Apps and workflows."""
+
 from __future__ import annotations
 
+import gzip
 import json
 import time
 from dataclasses import dataclass
@@ -20,13 +23,13 @@ TEMPLATE = "template"
 
 from functools import wraps
 
-from pkg_resources import parse_version
+from packaging.version import Version
 
 from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.api.project_api import ProjectInfo
-from supervisely.io.fs import ensure_base_path, str_is_url
+from supervisely.io.fs import ensure_base_path, silent_remove, str_is_url
 from supervisely.io.json import validate_json
 from supervisely.task.progress import Progress
 
@@ -81,6 +84,16 @@ _context_menu_targets = {
         "type": int,
         "key": "slyDatasetId",
     },
+    "mesh_project": {
+        "help": "Context menu of meshes project. Target value is project id.",
+        "type": int,
+        "key": "slyProjectId",
+    },
+    "mesh_dataset": {
+        "help": "Context menu of meshes dataset. Target value is dataset id.",
+        "type": int,
+        "key": "slyDatasetId",
+    },
     "volumes_project": {
         "help": "Context menu of volumes project (DICOMs). Target value is project id.",
         "type": int,
@@ -124,10 +137,10 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
     If the instance is not compatible, the user will be notified about it.
 
     :param api: Supervisely API object
-    :type api: supervisely.api.api.Api
+    :type api: supervisely.api.api.:class:`~supervisely.api.api.Api`
     :param min_instance_version: Minimum version of the instance that supports workflow features
     :type min_instance_version: str
-    :return: True if the instance is compatible, False otherwise
+    :returns: True if the instance is compatible, False otherwise
     :rtype: bool
     """
 
@@ -140,7 +153,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
             "instance_version", api.instance_version
         )
 
-        if instance_version == "unknown":
+        if instance_version is None or instance_version == "unknown":
             # to check again on the next call
             del _workflow_compatibility_version_cache["instance_version"]
             logger.info(
@@ -149,7 +162,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
             )
             return False
 
-        is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
+        is_compatible = Version(instance_version) >= Version(min_instance_version)
         _workflow_compatibility_version_cache[min_instance_version] = is_compatible
 
         if not is_compatible:
@@ -170,7 +183,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
 
 
 class AppInfo(NamedTuple):
-    """AppInfo"""
+    """App instance information returned by the API (running app + related task metadata)."""
 
     id: int
     created_by_id: int
@@ -187,7 +200,7 @@ class AppInfo(NamedTuple):
 
 
 class ModuleInfo(NamedTuple):
-    """ModuleInfo in Ecosystem"""
+    """Ecosystem module information (app listing metadata, config and repository links)."""
 
     id: int
     slug: str
@@ -264,35 +277,38 @@ class ModuleInfo(NamedTuple):
         It should be used with api.app.start() method.
         See usage example below.
 
-        :return: arguments for launching the application
+        :returns: arguments for launching the application
         :rtype: Dict[str, Any]
         :raises ValueError: if arguments was not passed, and the application is not
             starting from the context menu Ecosystem
         :raises KeyError: if more than one target was passed
         :raises KeyError: if invalid target was passed
         :raises ValueError: if invalid type of target value was passed
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            module_id = 81
-            module_info = api.app.get_ecosystem_module_info(module_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            project_id = 12345
-            params = module_info.get_arguments(images_project=project_id)
+                api = sly.Api.from_env()
 
-            # Now we can use params to start the application:
-            session = api.app.start(
+                module_id = 81
+                module_info = api.app.get_ecosystem_module_info(module_id)
+
+                project_id = 12345
+                params = module_info.get_arguments(images_project=project_id)
+
+                # Now we can use params to start the application:
+                session = api.app.start(
                 agent_id=agent_id,
                 module_id=module_id,
                 workspace_id=workspace_id,
@@ -300,7 +316,7 @@ class ModuleInfo(NamedTuple):
                 params=params,
                 app_version="dninja",
                 is_branch=True,
-            )
+                )
         """
         params = self.config.get("modalTemplateState", {})
         targets = self.get_context_menu_targets()
@@ -334,7 +350,7 @@ class ModuleInfo(NamedTuple):
 
 
 class SessionInfo(NamedTuple):
-    """SessionInfo"""
+    """Information about an app session (task) and its associated app/module identifiers."""
 
     task_id: int
     user_id: int
@@ -442,9 +458,9 @@ class WorkflowMeta:
     """Used to customize the appearance of the workflow main and/or relation node.
 
     :param relation_settings: customizes the appearance of the relation node - inputs and outputs
-    :type relation_settings: Optional[WorkflowSettings]
+    :type relation_settings: Optional[:class:`~supervisely.api.app_api.WorkflowSettings`]
     :param node_settings: customizes the appearance of the main node - the task itself
-    :type node_settings: Optional[WorkflowSettings]
+    :type node_settings: Optional[:class:`~supervisely.api.app_api.WorkflowSettings`]
     """
 
     relation_settings: Optional[WorkflowSettings] = None
@@ -473,24 +489,10 @@ class WorkflowMeta:
 
 
 class AppApi(TaskApi):
-    """AppApi"""
+    """API for launching and managing Supervisely Apps (built on top of :class:`~supervisely.api.task_api.TaskApi`)."""
 
     class Workflow:
-        """The workflow functionality is used to create connections between the states of projects and tasks (application sessions) that interact with them in some way.
-        By assigning connections to various entities, the workflow tab allows tracking the history of project changes.
-        The active task always acts as a node, for which input and output elements are defined.
-        There can be multiple input and output elements.
-        A task can also be used as an input or output element.
-        For example, an inference task takes a deployed model and a project as inputs, and the output is a new state of the project.
-        This functionality uses versioning optionally.
-
-        If instances are not compatible with the workflow features, the functionality will be disabled.
-
-        :param api: Supervisely API object
-        :type api: supervisely.api.api.Api
-        :param min_instance_version: Minimum version of the instance that supports workflow features
-        :type min_instance_version: str
-        """
+        """Workflow functionality for connecting project states and task application sessions."""
 
         __custom_meta_schema = {
             "type": "object",
@@ -532,6 +534,10 @@ class AppApi(TaskApi):
         }
 
         def __init__(self, api):
+            """
+            :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+            :type api: :class:`~supervisely.api.api.Api`
+            """
             self._api = api
             # minimum instance version that supports workflow features
             self._min_instance_version = "6.9.31"
@@ -562,7 +568,7 @@ class AppApi(TaskApi):
             If the instance is not compatible, the function will not be executed.
 
             :param min_instance_version: Determine the minimum instance version that accepts the workflow method.
-            If not specified, the minimum version will be "6.9.31".
+                If not specified, the minimum version will be "6.9.31".
             :type min_instance_version: Optional[str]
             """
 
@@ -613,8 +619,8 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
             :rtype: dict
             """
             try:
@@ -641,7 +647,7 @@ class AppApi(TaskApi):
                     if validate_json(meta, self.__custom_meta_schema):
                         data_meta.update(meta)
                     else:
-                        logger.warn("Invalid customization meta, will not be added to the node.")
+                        logger.warning("Invalid customization meta, will not be added to the node.")
                 payload = {
                     ApiField.TEAM_ID: self.team_id,
                     ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},
@@ -679,7 +685,7 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
-            :type project: Optional[Union[int, ProjectInfo]]
+            :type project: Optional[Union[int, :class:`~supervisely.api.project_api.ProjectInfo`]]
             :param version_id: Version ID of the project.
             :type version_id: Optional[int]
             :param version_num: Version number of the project. This argument can only be used in conjunction with the project.
@@ -687,9 +693,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 if project is None and version_id is None and version_num is None:
@@ -739,13 +745,13 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
-            :type dataset: Union[int, DatasetInfo]
+            :type dataset: Union[int, :class:`~supervisely.api.dataset_api.DatasetInfo`]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "dataset"
@@ -773,15 +779,15 @@ class AppApi(TaskApi):
             This type is used to show that the application has used the specified file.
 
             :param file: File ID, FileInfo object or file path in team Files.
-            :type file: Union[int, FileInfo, str]
+            :type file: Union[int, :class:`~supervisely.api.file_api.FileInfo`, str]
             :param model_weight: Flag to indicate if the file is a model weight.
             :type model_weight: bool
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data = {}
@@ -825,9 +831,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 from pathlib import Path
@@ -864,9 +870,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "task"
@@ -898,9 +904,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "job"
@@ -931,15 +937,15 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
-            :type project: Union[int, ProjectInfo]
+            :type project: Union[int, :class:`~supervisely.api.project_api.ProjectInfo`]
             :param version_id: Version ID of the project.
             :type version_id: Optional[int]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 if project is None and version_id is None:
@@ -979,13 +985,13 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
-            :type dataset: Union[int, DatasetInfo]
+            :type dataset: Union[int, :class:`~supervisely.api.dataset_api.DatasetInfo`]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "dataset"
@@ -1013,15 +1019,15 @@ class AppApi(TaskApi):
             This type is used to show that the application has created a file with the result of its work.
 
             :param file: File ID or FileInfo object.
-            :type file: Union[int, FileInfo]
+            :type file: Union[int, :class:`~supervisely.api.file_api.FileInfo`]
             :param model_weight: Flag to indicate if the file is a model weight.
             :type model_weight: bool
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "file"
@@ -1055,9 +1061,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 from pathlib import Path
@@ -1091,9 +1097,9 @@ class AppApi(TaskApi):
             :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "app_session"
@@ -1122,9 +1128,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "task"
@@ -1156,9 +1162,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
-            :rtype: :class:`dict`
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
+            :returns: Response from the API.
+            :rtype: dict
             """
             try:
                 data_type = "job"
@@ -1174,12 +1180,16 @@ class AppApi(TaskApi):
         # pylint: enable=redundant-keyword-arg
 
     def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         super().__init__(api)
         self.workflow = self.Workflow(api)
 
     @staticmethod
     def info_sequence():
-        """info_sequence"""
+        """Sequence of fields that are returned by the API to represent AppInfo."""
         return [
             ApiField.ID,
             ApiField.CREATED_BY_ID,
@@ -1197,18 +1207,22 @@ class AppApi(TaskApi):
 
     @staticmethod
     def info_tuple_name():
-        """info_tuple_name"""
+        """Name of the tuple that represents AppInfo."""
         return "AppInfo"
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> AppInfo:
-        """_convert_json_info"""
+        """Convert JSON info to AppInfo."""
         res = super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
         return AppInfo(**res._asdict())
 
     def get_info_by_id(self, id: int) -> AppInfo:
         """
-        :param id: int
-        :return: application info by numeric id
+        Get application info by numeric ID.
+
+        :param id: Application ID.
+        :type id: int
+        :returns: Application info by numeric ID.
+        :rtype: :class:`~supervisely.api.app_api.AppInfo`
         """
         return self._get_info_by_id(id, "apps.info")
 
@@ -1228,20 +1242,26 @@ class AppApi(TaskApi):
         """
         Get list of applications for the specified team.
 
-        :param team_id: team id
+        :param team_id: Team ID.
         :type team_id: int
-        :param filter: list of filters
+        :param filter: List of filters.
         :type filter: Optional[List[dict]]
-        :param context: list of application contexts
+        :param context: List of application contexts.
         :type context: Optional[List[str]]
-        :param repository_key: repository key
+        :param repository_key: Repository key.
         :type repository_key: Optional[str]
-        :param show_disabled: show disabled applications
+        :param show_disabled: Show disabled applications.
         :type show_disabled: bool
-        :param integrated_into: destination of the application.
-                    Available values: "panel", "files", "standalone", "data_commander",
-                                    "image_annotation_tool", "video_annotation_tool",
-                                    "dicom_annotation_tool", "pointcloud_annotation_tool"
+        :param integrated_into: Destination(s) of the application. Available values:
+
+            - ``panel``
+            - ``files``
+            - ``standalone``
+            - ``data_commander``
+            - ``image_annotation_tool``
+            - ``video_annotation_tool``
+            - ``dicom_annotation_tool``
+            - ``pointcloud_annotation_tool``
         :type integrated_into: Optional[List[str]]
         :param session_tags: list of session tags
         :type session_tags: Optional[List[str]]
@@ -1254,34 +1274,40 @@ class AppApi(TaskApi):
                                 Note that it can be a long operation.
         :type force_all_sessions: bool
 
-        :return: list of applications
-        :rtype: List[AppInfo]
+        :returns: list of applications
+        :rtype: List[:class:`~supervisely.api.app_api.AppInfo`]
 
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            team_id = 447
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Get list of all applications (including all tasks in `tasks` field)
-            apps = api.app.get_list(team_id=team_id)
+                api = sly.Api.from_env()
 
-            # Get list of all applications (only running tasks included in `tasks` field)
-            apps = api.app.get_list(team_id=team_id, force_all_sessions=False)
+                team_id = 447
 
-            # Get list of only running applications
-            apps = api.app.get_list(team_id=team_id, only_running=True)
+                # Get list of all applications (including all tasks in `tasks` field)
+                apps = api.app.get_list(team_id=team_id)
 
-            # Get list of applications with specific filters
-            filter = [{"field": "moduleId", "operator": "=", "value": 428}]
-            apps = api.app.get_list(team_id=team_id, filter=filter)
+                # Get list of all applications (only running tasks included in `tasks` field)
+                apps = api.app.get_list(team_id=team_id, force_all_sessions=False)
+
+                # Get list of only running applications
+                apps = api.app.get_list(team_id=team_id, only_running=True)
+
+                # Get list of applications with specific filters
+                filter = [{"field": "moduleId", "operator": "=", "value": 428}]
+                apps = api.app.get_list(team_id=team_id, filter=filter)
         """
 
         if only_running is True:
@@ -1394,9 +1420,86 @@ class AppApi(TaskApi):
         """get_url"""
         return f"/apps/sessions/{task_id}"
 
-    def download_git_file(self, app_id, version, file_path, save_path):
-        """download_git_file"""
-        raise NotImplementedError()
+    def download_git_file(
+        self,
+        module_id,
+        save_path,
+        app_id=None,
+        version=None,
+        file_path=None,
+        file_key=None,
+        log_progress=True,
+        ext_logger=None,
+    ):
+        """
+        Download a file from app repository. File should be added in the app config under `files` key.
+
+        :param module_id: ID of the module
+        :type module_id: int
+        :param save_path: Path to save the file
+        :type save_path: str
+        :param app_id: ID of the app
+        :type app_id: int
+        :param version: Version of the app
+        :type version: str
+        :param file_path: Path to the file in the app github repository
+        :type file_path: str
+        :param file_key: Key of the file in the app github repository
+        :type file_key: str
+        :param log_progress: If True, will log the progress of the download
+        :type log_progress: bool
+        :param ext_logger: Logger to use for logging
+        :type ext_logger: Logger
+        :returns: None
+        :rtype: None
+        """
+        if file_path is None and file_key is None:
+            raise ValueError("Either file_path or file_key must be provided")
+        payload = {
+            ApiField.MODULE_ID: module_id,
+        }
+        if version is not None:
+            payload[ApiField.VERSION] = version
+        if app_id is not None:
+            payload[ApiField.APP_ID] = app_id
+        if file_path is not None:
+            payload[ApiField.FILE_PATH] = file_path
+        if file_key is not None:
+            payload[ApiField.FILE_KEY] = file_key
+
+        response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
+        expected_length = None
+        if "Content-Length" in response.headers:
+            expected_length = int(response.headers["Content-Length"])
+        if log_progress:
+            if ext_logger is None:
+                ext_logger = logger
+            progress = Progress(
+                "Downloading: ", expected_length, ext_logger=ext_logger, is_size=True
+            )
+
+        mb1 = 1024 * 1024
+        ensure_base_path(save_path)
+        total_written = 0
+        with open(save_path, "wb") as fd:
+            log_size = 0
+            for chunk in response.iter_content(chunk_size=mb1):
+                fd.write(chunk)
+                total_written += len(chunk)
+                log_size += len(chunk)
+                if log_progress and log_size > mb1 and progress is not None:
+                    progress.iters_done_report(log_size)
+                    log_size = 0
+
+        if expected_length is not None and total_written != expected_length:
+            silent_remove(save_path)
+            raise IOError(
+                f"Download of file_path={file_path!r}, file_key={file_key!r} for "
+                f"module_id={module_id!r}, app_id={app_id!r}, version={version!r} is "
+                f"incomplete: expected {expected_length} bytes (per Content-Length), "
+                f"received {total_written}."
+            )
 
     def download_git_archive(
         self,
@@ -1418,26 +1521,52 @@ class AppApi(TaskApi):
             payload[ApiField.APP_ID] = app_id
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
+        expected_length = None
+        if "Content-Length" in response.headers:
+            expected_length = int(response.headers["Content-Length"])
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
-
-            length = None
-            # Content-Length
-            if "Content-Length" in response.headers:
-                length = int(response.headers["Content-Length"])
-            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+            progress = Progress(
+                "Downloading: ", expected_length, ext_logger=ext_logger, is_size=True
+            )
 
         mb1 = 1024 * 1024
         ensure_base_path(save_path)
+        total_written = 0
         with open(save_path, "wb") as fd:
             log_size = 0
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
+                total_written += len(chunk)
                 log_size += len(chunk)
-                if log_progress and log_size > mb1:
+                if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
+
+        if expected_length is not None and total_written != expected_length:
+            silent_remove(save_path)
+            raise IOError(
+                f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
+                f"app_id={app_id!r}, version={version!r} is incomplete: expected "
+                f"{expected_length} bytes (per Content-Length), received {total_written}. "
+                "The server-side stored archive is likely corrupted/truncated - "
+                "try re-releasing this version."
+            )
+        if save_path.endswith(".gz"):
+            try:
+                with gzip.open(save_path, "rb") as gz:
+                    while gz.read(mb1):
+                        pass
+            except (EOFError, OSError) as e:
+                silent_remove(save_path)
+                raise IOError(
+                    f"Archive download for ecosystem_item_id={ecosystem_item_id!r}, "
+                    f"app_id={app_id!r}, version={version!r} downloaded {total_written} bytes "
+                    f"but is not a valid gzip stream ({e}). The server-side stored archive is "
+                    "likely corrupted/truncated - try re-releasing this version."
+                ) from e
 
     def get_info(self, module_id, version=None):
         """get_info"""
@@ -1460,24 +1589,25 @@ class AppApi(TaskApi):
         :type slug: Optional[str]
         :raises ValueError: if both module_id and slug are None
         :raises ValueError: if both module_id and slug are provided
-        :return: ModuleInfo object
-        :rtype: ModuleInfo
-        :Usage example:
+        :returns: ModuleInfo object
+        :rtype: :class:`~supervisely.api.app_api.ModuleInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            module_id = 81
-            module_info = api.app.get_ecosystem_module_info(module_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                api = sly.Api.from_env()
+
+                module_id = 81
+                module_info = api.app.get_ecosystem_module_info(module_id)
         """
         if module_id is None and slug is None:
             raise ValueError("Either module_id or slug must be provided")
@@ -1498,28 +1628,29 @@ class AppApi(TaskApi):
 
         :param slug: module slug, starts with "supervisely-ecosystem/"
         :type slug: str
-        :return: ID of the module
+        :returns: ID of the module
         :rtype: int
         :raises KeyError: if module with given slug not found
         :raises KeyError: if there are multiple modules with the same slug
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            slug = "supervisely-ecosystem/export-to-supervisely-format"
-            module_id = api.app.get_ecosystem_module_id(slug)
-            print(f"Module {slug} has id {module_id}")
-            # Module supervisely-ecosystem/export-to-supervisely-format has id 81
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                api = sly.Api.from_env()
+
+                slug = "supervisely-ecosystem/export-to-supervisely-format"
+                module_id = api.app.get_ecosystem_module_id(slug)
+                print(f"Module {slug} has id {module_id}")
+                # Module supervisely-ecosystem/export-to-supervisely-format has id 81
         """
         modules = self.get_list_all_pages(
             method="ecosystem.list",
@@ -1585,34 +1716,39 @@ class AppApi(TaskApi):
         :param session_name: session name to filter sessions
         :type session_name: Optional[str]
         :param statuses: list of statuses to filter sessions
-        :type statuses: Optional[List[TaskApi.Status]]
+        :type statuses: Optional[List[:meth:`~supervisely.api.task_api.TaskApi.Status`]]
         :param with_shared: include shared application sessions
         :type with_shared: bool
+        :returns: List of sessions
+        :rtype: List[:class:`~supervisely.api.app_api.SessionInfo`]
 
-        :return: list of sessions
-        :rtype: List[SessionInfo]
+        :Usage Example:
 
-        :Usage example:
+            .. code-block:: python
 
-         .. code-block:: python
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            team_id = 447
-            module_id = 428
+                api = sly.Api.from_env()
 
-            # Get list of all sessions for the specified team and module ID
-            sessions = api.app.get_sessions(team_id, module_id)
+                team_id = 447
+                module_id = 428
 
-            # Get list of sessions with specific statuses
-            from supervisely.api.task_api import TaskApi
+                # Get list of all sessions for the specified team and module ID
+                sessions = api.app.get_sessions(team_id, module_id)
 
-            statuses = [TaskApi.Status.STARTED]
-            sessions = api.app.get_sessions(team_id, module_id, statuses=statuses)
+                # Get list of sessions with specific statuses
+                from supervisely.api.task_api import TaskApi
+
+                statuses = [TaskApi.Status.STARTED]
+                sessions = api.app.get_sessions(team_id, module_id, statuses=statuses)
         """
 
         infos_json = self.get_list(
@@ -1683,6 +1819,7 @@ class AppApi(TaskApi):
         module_id: Optional[int] = None,
         redirect_requests: Dict[str, int] = {},
         kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
+        multi_user_session: bool = False,
     ) -> SessionInfo:
         """Start a new application session (task).
 
@@ -1715,14 +1852,21 @@ class AppApi(TaskApi):
         :param redirect_requests: For internal usage only in Develop and Debug mode.
         :type redirect_requests: dict
         :param kubernetes_settings: Kubernetes settings for the task. If not specified, default settings will be used.
-        :type kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]]
-        :return: SessionInfo object with information about the started task.
-        :rtype: SessionInfo
+        :type kubernetes_settings: Optional[Union[:class:`~supervisely.api.task_api.KubernetesSettings`, Dict[str, Any]]]
+        :param multi_user_session: If True, the application session will be created as multi-user.
+                                   In this case, multiple users will be able to connect to the same application session.
+                                   All users will have separate application states.
+                                   Available only for applications that support multi-user sessions.
+        :type multi_user_session: bool, default is False
+        :returns: SessionInfo object with information about the started task.
+        :rtype: :class:`~supervisely.api.app_api.SessionInfo`
         :raises ValueError: If both app_id and module_id are not provided.
         :raises ValueError: If both app_id and module_id are provided.
         """
         users_ids = None
-        if users_id is not None:
+        if isinstance(users_id, list) and all(isinstance(u, int) for u in users_id):
+            users_ids = users_id
+        elif isinstance(users_id, int):
             users_ids = [users_id]
 
         new_params = {}
@@ -1751,6 +1895,7 @@ class AppApi(TaskApi):
             module_id=module_id,
             redirect_requests=redirect_requests,
             kubernetes_settings=kubernetes_settings,
+            multi_user_session=multi_user_session,
         )
         if type(result) is not list:
             result = [result]
@@ -1785,7 +1930,7 @@ class AppApi(TaskApi):
         Checks if app is ready for API calls.
         :param task_id: ID of the running task.
         :type task_id: int
-        :return: True if app is ready for API calls, False otherwise.
+        :returns: True if app is ready for API calls, False otherwise.
         """
         try:
             info = self._api.app.send_request(
@@ -1812,7 +1957,7 @@ class AppApi(TaskApi):
         :type attempts: int
         :param attempt_delay_sec: Delay between attempts in seconds.
         :type attempt_delay_sec: int
-        :return: True if app is ready for API calls, False otherwise.
+        :returns: True if app is ready for API calls, False otherwise.
         """
         is_ready = False
         logger.info("Waiting for app to be ready for API calls")
@@ -1844,7 +1989,7 @@ class AppApi(TaskApi):
         :param slug: Slug of the app, e.g. "supervisely-ecosystem/hello-world-app".
         :type slug: str
 
-        :return: Session token for the app.
+        :returns: Session token for the app.
         :rtype: str
         """
         data = {ApiField.SLUG: slug}

@@ -10,20 +10,26 @@ from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.json import JsonSerializable
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
 
 class LabelingInterface(str, StrEnum):
+    """Enumerates supported labeling UI interfaces for a project (images, multiview, medical, etc.)."""
+
     DEFAULT = "default"
     MEDICAL_IMAGING_SINGLE = "medical_imaging_single"
     IMAGES_WITH_16_COLOR = "images_with_16_color"
     MULTISPECTRAL = "multispectral"
+    OVERLAY = "overlay"
     MULTIVIEW = "multi_view"
     IMAGE_MATTING = "image_matting"
     FISHEYE = "fisheye"
 
 
 class ProjectSettingsJsonFields:
+    """JSON field names used in :class:`~supervisely.project.project_settings.ProjectSettings` serialization."""
+
     MULTI_VIEW = "multiView"
     ENABLED = "enabled"
     TAG_ID = "tagId"
@@ -33,6 +39,8 @@ class ProjectSettingsJsonFields:
 
 
 class ProjectSettingsRequiredSchema:
+    """JSON schema for validating serialized :class:`~supervisely.project.project_settings.ProjectSettings`."""
+
     SCHEMA = {
         "type": "object",
         "properties": {
@@ -81,35 +89,7 @@ def validate_project_settings_schema(data: dict) -> None:
 
 
 class ProjectSettings(JsonSerializable):
-    """
-    General information about :class:`<supervisely.project.project_settings.ProjectSettings>`. The class is immutable.
-
-    :param multiview_enabled: Enable multi-view mode.
-    :type multiview_enabled: bool
-    :param multiview_tag_name: The name of the tag which will be used as a group tag for multi-window mode.
-    :type multiview_tag_name: str, optional
-    :param multiview_tag_id: The id of the tag which will be used as a group tag for multi-window mode.
-    :type multiview_tag_id: str, optional
-    :param multiview_is_synced: Enable syncronization of views for the multi-view mode.
-    :type multiview_is_synced: bool
-    :param labeling_interface: The interface for labeling images.
-    :type labeling_interface: str, optional
-
-    :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        Example 1: multiView Tag is known (by id or name)
-        settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
-
-        Example 2: multiView Tag is unknown, but multiView is enabled. In this case, the tag will be chosen automatically.
-        settings_json = {"multiView": {"enabled": True, "tagName": None, "tagId": None, "areSynced": False}}
-
-        settings = sly.ProjectSettings.from_json(settings_json)
-    """
+    """Project settings: multi-view mode, labeling interface, etc."""
 
     def __init__(
         self,
@@ -119,6 +99,26 @@ class ProjectSettings(JsonSerializable):
         multiview_is_synced: bool = False,
         labeling_interface: Optional[LabelingInterface] = None,
     ):
+        """:param multiview_enabled: Enable multi-view mode.
+        :type multiview_enabled: bool
+        :param multiview_tag_name: Name of the tag used as group tag for multi-window mode.
+        :type multiview_tag_name: str, optional
+        :param multiview_tag_id: Id of the tag used as group tag for multi-window mode.
+        :type multiview_tag_id: int, optional
+        :param multiview_is_synced: Enable synchronization of views for multi-view mode.
+        :type multiview_is_synced: bool
+        :param labeling_interface: The interface for labeling images.
+        :type labeling_interface: str, optional
+        :raises ValidationError: if settings schema is invalid.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                settings_json = {"multiView": {"enabled": True, "tagName": "group_tag", "tagId": None, "isSynced": False}}
+                settings = sly.ProjectSettings.from_json(settings_json)
+        """
         self.multiview_enabled = multiview_enabled
         self.multiview_tag_name = multiview_tag_name
         self.multiview_tag_id = multiview_tag_id
@@ -131,9 +131,12 @@ class ProjectSettings(JsonSerializable):
                 )
 
         self.labeling_interface = labeling_interface
+        # Instances are pickled into .bin backups: a new attribute here needs a
+        # @legacy_pickle_defaults declaration on this class, else old backups
+        # restore without it.
 
         if multiview_enabled is False and multiview_is_synced is True:
-            logger.warn(
+            logger.warning(
                 "The 'Group Images sync mode' is enabled, but it won't effect while multi-view mode is disabled. Please enable the multi-view mode (a.k.a. 'Group Images mode')."
             )
 
@@ -184,27 +187,40 @@ class ProjectSettings(JsonSerializable):
 
     def validate(self, meta):
         if meta.project_settings.multiview_enabled is True:
-            mtag_name = meta.project_settings.multiview_tag_name
-            if mtag_name is None:
-                if meta.project_settings.multiview_tag_id is None:
-                    return  # (tag_name, tag_id) == (None, None) is OK
-                mtag_name = meta.get_tag_name_by_id(meta.project_settings.multiview_tag_id)
+            # Images multiview
+            if meta.project_type == ProjectType.IMAGES:
+                mtag_name = meta.project_settings.multiview_tag_name
                 if mtag_name is None:
+                    if meta.project_settings.multiview_tag_id is None:
+                        return  # (tag_name, tag_id) == (None, None) is OK
+                    mtag_name = meta.get_tag_name_by_id(meta.project_settings.multiview_tag_id)
+                    if mtag_name is None:
+                        raise RuntimeError(
+                            f"The multi-view tag with ID={meta.project_settings.multiview_tag_id} was not found in the project meta. "
+                            "Please directly add the tag meta that will be used for image grouping for multi-view labeling interface."
+                        )
+
+                multi_tag = meta.get_tag_meta(mtag_name)
+                if multi_tag is None:
                     raise RuntimeError(
-                        f"The multi-view tag with ID={meta.project_settings.multiview_tag_id} was not found in the project meta. "
-                        "Please directly add the tag meta that will be used for image grouping for multi-view labeling interface."
+                        f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
+                        "that will be used for image grouping for multi-view labeling interface."
+                    )
+                elif multi_tag.value_type != TagValueType.ANY_STRING:
+                    raise RuntimeError(
+                        f"The multi-view tag value type should be '{TagValueType.ANY_STRING}'. The provided type: '{multi_tag.value_type}'."
                     )
 
-            multi_tag = meta.get_tag_meta(mtag_name)
-            if multi_tag is None:
-                raise RuntimeError(
-                    f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
-                    "that will be used for image grouping for multi-view labeling interface."
-                )
-            elif multi_tag.value_type != TagValueType.ANY_STRING:
-                raise RuntimeError(
-                    f"The multi-view tag value type should be '{TagValueType.ANY_STRING}'. The provided type: '{multi_tag.value_type}'."
-                )
+            # Video multiview
+            elif meta.project_type == ProjectType.VIDEOS:
+                if (
+                    meta.project_settings.multiview_tag_name is not None
+                    or meta.project_settings.multiview_tag_id is not None
+                ):
+                    raise RuntimeError(
+                        "For video projects, multiview_tag_name and multiview_tag_id should be None. "
+                        "Videos are grouped by datasets, not by tags."
+                    )
 
         if meta.project_settings.labeling_interface is not None:
             if meta.project_settings.labeling_interface not in LabelingInterface.values():

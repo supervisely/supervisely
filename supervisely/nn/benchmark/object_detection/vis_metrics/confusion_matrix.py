@@ -10,6 +10,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class ConfusionMatrix(DetectionVisMetric):
+    """Confusion matrix heatmap for detection reports with class-wise drill-down."""
+
     MARKDOWN = "confusion_matrix"
     CHART = "confusion_matrix"
 

@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with video figures via the Supervisely API."""
 
 # docs
 from __future__ import annotations
@@ -10,11 +11,12 @@ from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_figure import VideoFigure
-
+from supervisely.annotation.label import LabelingStatus
 
 class VideoFigureApi(FigureApi):
     """
-    :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` for a single video.
+    API for working with :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
+    :class:`~supervisely.api.video.video_figure_api.VideoFigureApi` object is immutable.
     """
 
     def create(
@@ -26,6 +28,7 @@ class VideoFigureApi(FigureApi):
         geometry_type: str,
         track_id: Optional[int] = None,
         meta: Optional[dict] = None,
+        status: Optional[LabelingStatus] = None,
     ) -> int:
         """
         Create new VideoFigure for given frame in given video ID.
@@ -34,43 +37,57 @@ class VideoFigureApi(FigureApi):
         :type video_id: int
         :param object_id: ID of the object to which the VideoFigure belongs.
         :type object_id: int
-        :param frame_index: Number of the frame to add VideoFigure.
+        :param frame_index: Number of the frame to add :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
         :type frame_index: int
-        :param geometry_json: Parameters of geometry for VideoFigure.
+        :param geometry_json: Parameters of geometry for :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
         :type geometry_json: dict
         :param geometry_type: Type of VideoFigure geometry.
         :type geometry_type: str
         :param track_id: int, optional.
         :type track_id: int, optional
-        :return: New figure ID
-        :rtype: :class:`int`
-        :Usage example:
+        :param meta: Meta data for :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
+        :type meta: dict, optional
+        :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+        :returns: New figure ID
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            video_id = 198703211
-            object_id = 152118
-            frame_idx = 0
-            geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
-            geometry_type = 'rectangle'
+                import supervisely as sly
 
-            figure_id = api.video.figure.create(video_id, object_id, frame_idx, geometry_json, geometry_type) # 643182610
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                video_id = 198703211
+                object_id = 152118
+                frame_idx = 0
+                geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
+                geometry_type = 'rectangle'
+
+                figure_id = api.video.figure.create(video_id, object_id, frame_idx, geometry_json, geometry_type) # 643182610
         """
         if meta is None:
             meta = {}
+        meta = {**(meta or {}), ApiField.FRAME: frame_index}
+
         return super().create(
             video_id,
             object_id,
-            {**meta, ApiField.FRAME: frame_index},
+            meta,
             geometry_json,
             geometry_type,
             track_id,
+            status=status,
         )
 
     def append_bulk(self, video_id: int, figures: List[VideoFigure], key_id_map: KeyIdMap) -> None:
@@ -80,31 +97,38 @@ class VideoFigureApi(FigureApi):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param figures: List of VideoFigures to append.
-        :type figures: List[VideoFigure]
+        :type figures: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 124976
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            key_id_map = KeyIdMap()
+                import supervisely as sly
 
-            video_id = 198703212
-            ann_info = api.video.annotation.download(video_id)
-            ann = sly.VideoAnnotation.from_json(ann_info, meta, key_id_map)
-            figures = ann.figures[:5]
-            api.video.figure.append_bulk(video_id, figures, key_id_map)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 124976
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                key_id_map = KeyIdMap()
+
+                video_id = 198703212
+                ann_info = api.video.annotation.download(video_id)
+                ann = sly.VideoAnnotation.from_json(ann_info, meta, key_id_map)
+                figures = ann.figures[:5]
+                api.video.figure.append_bulk(video_id, figures, key_id_map)
         """
 
         keys = []
@@ -115,39 +139,50 @@ class VideoFigureApi(FigureApi):
 
         self._append_bulk(video_id, figures_json, keys, key_id_map)
 
-    def update(self, figure_id: int, geometry: Geometry) -> None:
+    def update(self, figure_id: int, geometry: Geometry, status: Optional[LabelingStatus] = None) -> None:
         """Updates figure feometry with given ID in Supervisely with new Geometry object.
 
         :param figure_id: ID of the figure to update
         :type figure_id: int
         :param geometry: Supervisely Gepmetry object
-        :type geometry: Geometry
-        :Usage example:
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            new_geometry: sly.Rectangle(10, 10, 100, 100)
-            figure_id = 121236918
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.video.figure.update(figure_id, new_geometry)
+                api = sly.Api.from_env()
+
+                new_geometry: sly.Rectangle(10, 10, 100, 100)
+                figure_id = 121236918
+
+                api.video.figure.update(figure_id, new_geometry)
         """
-        self._api.post(
-            "figures.editInfo",
-            {
-                ApiField.ID: figure_id,
-                ApiField.GEOMETRY: geometry.to_json(),
-            },
-        )
+        payload = {
+            ApiField.ID: figure_id,
+            ApiField.GEOMETRY: geometry.to_json(),
+        }
+
+        if status is not None:
+            nn_created,nn_updated = LabelingStatus.to_flags(status)
+            payload[ApiField.NN_CREATED] = nn_created
+            payload[ApiField.NN_UPDATED] = nn_updated
+
+        self._api.post("figures.editInfo", payload)
 
     def download(
         self, dataset_id: int, video_ids: List[int] = None, skip_geometry: bool = False, **kwargs
@@ -161,9 +196,8 @@ class VideoFigureApi(FigureApi):
         :type video_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
-
-        :return: A dictionary where keys are video IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :returns: A dictionary where keys are video IDs and values are lists of figures.
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         if kwargs.get("image_ids", False) is not False:
             video_ids = kwargs["image_ids"]  # backward compatibility

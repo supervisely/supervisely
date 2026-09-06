@@ -20,7 +20,19 @@ from supervisely._utils import rand_str
 
 
 class PredictionsDynamicsGallery:
+    """v1 widget for comparing ground-truth vs predictions across training iterations."""
+
     def __init__(self, task_id, api: Api, v_model: str, project_meta: ProjectMeta):
+        """
+        :param task_id: Task ID.
+        :type task_id: int
+        :param api: Api instance.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param v_model: Vue model path (must start with "data.").
+        :type v_model: str
+        :param project_meta: ProjectMeta for annotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        """
         self._task_id = task_id
         self._api = api
         self._v_model = v_model
@@ -81,7 +93,7 @@ class PredictionsDynamicsGallery:
             raise KeyError(f"Prediction for item {name} already exists for time index {time_index}")
         self._pred_annotations[name][time_index] = pred_ann
         self._update_indices_range(time_index)
-        #self._items_to_upload["pred"][name] = time_index
+        # self._items_to_upload["pred"][name] = time_index
 
     def complete_update(self):
         gallery_json = self.to_json()
@@ -110,7 +122,7 @@ class PredictionsDynamicsGallery:
         self._api.task.set_fields(self._task_id, [fields_sync])
 
         self._items_to_upload["gt"].clear()
-        #self._items_to_upload["pred"].clear()
+        # self._items_to_upload["pred"].clear()
 
     def update(self, partial=True):
         if partial is True:
@@ -128,7 +140,7 @@ class PredictionsDynamicsGallery:
             res["figures"] = [label.to_json() for label in ann.labels]
         return res
 
-    #@TODO: reimplement
+    # @TODO: reimplement
     def to_json(self):
         layout, sync_view = self._construct_layout()
 

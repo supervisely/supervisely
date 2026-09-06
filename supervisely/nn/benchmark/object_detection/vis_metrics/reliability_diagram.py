@@ -10,6 +10,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class ReliabilityDiagram(DetectionVisMetric):
+    """Calibration curve and ECE/MCE for detection reports."""
+
     MARKDOWN_CALIBRATION_SCORE = "calibration_score"
     MARKDOWN_CALIBRATION_SCORE_2 = "calibration_score_2"
     MARKDOWN_RELIABILITY_DIAGRAM = "reliability_diagram"

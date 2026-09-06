@@ -7,18 +7,20 @@ import numpy as np
 from pydantic import ValidationError
 
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Geometry, Label
+from supervisely.annotation.label import Geometry, Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_figure_api import FigureInfo
 from supervisely.geometry.helpers import deserialize_geometry
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
 from supervisely.nn.inference.inference import Uploader
 from supervisely.nn.inference.inference_request import InferenceRequest
 from supervisely.nn.inference.tracking.base_tracking import BaseTracking
 from supervisely.nn.inference.tracking.tracker_interface import (
+    SOURCE_FIGURE_ID,
     TrackerInterface,
     TrackerInterfaceV2,
 )
@@ -28,6 +30,8 @@ from supervisely.sly_logger import logger
 
 
 class BBoxTracking(BaseTracking):
+    """Video tracking for bounding-box geometries; uses model or IoU-based propagation per frame."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
@@ -76,7 +80,7 @@ class BBoxTracking(BaseTracking):
                 min(frame_index for (_, _, frame_index) in items),
                 max(frame_index for (_, _, frame_index) in items),
             ]
-            pos_inc = inference_request.progress.current - video_interface.global_pos
+            pos_inc = len(items)
 
             video_interface._notify(
                 pos_increment=pos_inc,
@@ -109,7 +113,7 @@ class BBoxTracking(BaseTracking):
                 init = False
                 for _ in video_interface.frames_loader_generator():
                     geom = video_interface.geometries[fig_id]
-                    if not isinstance(geom, Rectangle):
+                    if not isinstance(geom, (Rectangle, OrientedBBox)):
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
                     imgs = video_interface.frames
@@ -117,21 +121,39 @@ class BBoxTracking(BaseTracking):
                         "",  # TODO: can this be useful?
                         [geom.top, geom.left, geom.bottom, geom.right],
                         None,
+                        geom.angle if isinstance(geom, OrientedBBox) else None,
                     )
 
                     if not init:
                         self.initialize(imgs[0], target)
                         init = True
 
-                    geometry = self.predict(
-                        rgb_image=imgs[-1],
-                        prev_rgb_image=imgs[0],
-                        target_bbox=target,
-                        settings=self.custom_inference_settings_dict,
-                    )
+                    if isinstance(geom, OrientedBBox):
+                        geometry = self.predict_oriented(
+                            rgb_image=imgs[-1],
+                            prev_rgb_image=imgs[0],
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
+                        )
+                    else:
+                        geometry = self.predict(
+                            rgb_image=imgs[-1],
+                            prev_rgb_image=imgs[0],
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
+                        )
                     sly_geometry = self._to_sly_geometry(geometry)
 
-                    uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
+                    uploader.put(
+                        [
+                            (
+                                sly_geometry,
+                                obj_id,
+                                video_interface._cur_frames_indexes[-1],
+                                fig_id,
+                            )
+                        ]
+                    )
 
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
@@ -159,7 +181,7 @@ class BBoxTracking(BaseTracking):
             api.logger.info(
                 "Finished tracking.", extra={"inference_request_uuid": inference_request.uuid}
             )
-            video_interface._notify(True, task="Finished tracking")
+        video_interface._notify(True, task="Finished tracking")
 
     def _track_api(self, api: Api, context: dict, inference_request: InferenceRequest):
         track_t = time.monotonic()
@@ -218,8 +240,7 @@ class BBoxTracking(BaseTracking):
             },
         )
         for box_i, input_geom in enumerate(input_bboxes, 1):
-            input_bbox = input_geom["data"]
-            bbox = Rectangle.from_json(input_bbox)
+            bbox = self._deserialize_geometry(input_geom)
             predictions_for_object = []
             init = False
             frame_t = time.monotonic()
@@ -229,18 +250,27 @@ class BBoxTracking(BaseTracking):
                     "",  # TODO: can this be useful?
                     [bbox.top, bbox.left, bbox.bottom, bbox.right],
                     None,
+                    bbox.angle if isinstance(bbox, OrientedBBox) else None,
                 )
 
                 if not init:
                     self.initialize(imgs[0], target)
                     init = True
 
-                geometry = self.predict(
-                    rgb_image=imgs[-1],
-                    prev_rgb_image=imgs[0],
-                    target_bbox=target,
-                    settings=self.custom_inference_settings_dict,
-                )
+                if isinstance(bbox, OrientedBBox):
+                    geometry = self.predict_oriented(
+                        rgb_image=imgs[-1],
+                        prev_rgb_image=imgs[0],
+                        target_bbox=target,
+                        settings=self.custom_inference_settings_dict,
+                    )
+                else:
+                    geometry = self.predict(
+                        rgb_image=imgs[-1],
+                        prev_rgb_image=imgs[0],
+                        target_bbox=target,
+                        settings=self.custom_inference_settings_dict,
+                    )
                 sly_geometry = self._to_sly_geometry(geometry)
 
                 predictions_for_object.append(
@@ -293,24 +323,33 @@ class BBoxTracking(BaseTracking):
         }
         results = [[] for _ in range(len(frames) - 1)]
         for geometry in geometries:
-            if not isinstance(geometry, Rectangle):
+            if not isinstance(geometry, (Rectangle, OrientedBBox)):
                 raise TypeError(f"Tracking does not work with {geometry.geometry_name()}.")
             target = PredictionBBox(
                 "",
                 [geometry.top, geometry.left, geometry.bottom, geometry.right],
                 None,
+                angle=geometry.angle if isinstance(geometry, OrientedBBox) else None,
             )
             self.initialize(frames[0], target)
             for i in range(len(frames) - 1):
-                pred_geometry = self.predict(
-                    rgb_image=frames[i + 1],
-                    prev_rgb_image=frames[i],
-                    target_bbox=target,
-                    settings=updated_settings,
-                )
+                if isinstance(geometry, OrientedBBox):
+                    pred_geometry = self.predict_oriented(
+                        rgb_image=frames[i + 1],
+                        prev_rgb_image=frames[i],
+                        target_bbox=target,
+                        settings=updated_settings,
+                    )
+                else:
+                    pred_geometry = self.predict(
+                        rgb_image=frames[i + 1],
+                        prev_rgb_image=frames[i],
+                        target_bbox=target,
+                        settings=updated_settings,
+                    )
                 sly_pred_geometry = self._to_sly_geometry(pred_geometry)
                 results[i].append(
-                    {"type": Rectangle.geometry_name(), "data": sly_pred_geometry.to_json()}
+                    {"type": sly_pred_geometry.geometry_name(), "data": sly_pred_geometry.to_json()}
                 )
         return results
 
@@ -324,10 +363,19 @@ class BBoxTracking(BaseTracking):
         ]
         frame_range_asc = [min(frame_range), max(frame_range)]
         progress_total = frames_count * len(figures)
+        tracked_figures_count = {}
 
         def _upload_f(items: List[FigureInfo]):
             inference_request.add_results(items)
             inference_request.done(len(items))
+            for item in items:
+                source_figure_id = item.meta.get(SOURCE_FIGURE_ID, item.id)
+                if source_figure_id is None:
+                    continue
+                source_figure_id = str(source_figure_id)
+                tracked_figures_count[source_figure_id] = (
+                    tracked_figures_count.get(source_figure_id, 0) + 1
+                )
 
         def _notify_f(items: List[FigureInfo]):
             frame_range = [
@@ -335,7 +383,10 @@ class BBoxTracking(BaseTracking):
                 max(item.frame_index for item in items),
             ]
             tracker_interface.notify_progress(
-                inference_request.progress.current, inference_request.progress.total, frame_range
+                inference_request.progress.current,
+                inference_request.progress.total,
+                frame_range,
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
 
         def _exception_handler(exception: Exception):
@@ -344,6 +395,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
             tracker_interface.notify_error(exception)
             raise Exception
@@ -359,12 +411,13 @@ class BBoxTracking(BaseTracking):
             uploader.raise_from_notify
             for fig_i, figure in enumerate(figures, 1):
                 figure = api.video.figure._convert_json_info(figure)
-                if not figure.geometry_type == Rectangle.geometry_name():
+                if not figure.geometry_type in (Rectangle.geometry_name(), OrientedBBox.geometry_name()):
                     raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
                 api.logger.info("figure:", extra={"figure": figure._asdict()})
                 sly_geometry: Rectangle = deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
+                source_figure_id = figure.meta.get(SOURCE_FIGURE_ID, figure.id)
                 init = False
                 for frame_i, (frame, next_frame) in enumerate(
                     tracker_interface.frames_loader_generator(), 1
@@ -378,6 +431,7 @@ class BBoxTracking(BaseTracking):
                             sly_geometry.right,
                         ],
                         None,
+                        sly_geometry.angle if isinstance(sly_geometry, OrientedBBox) else None,
                     )
 
                     if not init:
@@ -386,12 +440,20 @@ class BBoxTracking(BaseTracking):
 
                     logger.debug("Start prediction")
                     t = time.time()
-                    geometry = self.predict(
-                        rgb_image=next_frame.image,
-                        prev_rgb_image=frame.image,
-                        target_bbox=target,
-                        settings=self.custom_inference_settings_dict,
-                    )
+                    if target.angle is not None:
+                        geometry = self.predict_oriented(
+                            rgb_image=next_frame.image,
+                            prev_rgb_image=frame.image,
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
+                        )
+                    else:
+                        geometry = self.predict(
+                            rgb_image=next_frame.image,
+                            prev_rgb_image=frame.image,
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
+                        )
                     logger.debug("Prediction done. Time: %f sec", time.time() - t)
                     sly_geometry = self._to_sly_geometry(geometry)
 
@@ -400,7 +462,10 @@ class BBoxTracking(BaseTracking):
                         {
                             ApiField.ID: figure_id,
                             ApiField.OBJECT_ID: figure.object_id,
-                            "meta": {"frame": next_frame.frame_index},
+                            "meta": {
+                                "frame": next_frame.frame_index,
+                                SOURCE_FIGURE_ID: source_figure_id,
+                            },
                             ApiField.GEOMETRY_TYPE: sly_geometry.geometry_name(),
                             ApiField.GEOMETRY: sly_geometry.to_json(),
                             ApiField.TRACK_ID: tracker_interface.track_id,
@@ -431,6 +496,7 @@ class BBoxTracking(BaseTracking):
                             inference_request.progress.current,
                             inference_request.progress.current,
                             frame_range_asc,
+                            extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
                         )
                         return
                     if uploader.has_exception():
@@ -453,6 +519,7 @@ class BBoxTracking(BaseTracking):
                 inference_request.progress.current,
                 inference_request.progress.current,
                 frame_range_asc,
+                extra_data={ApiField.TRACKED_FIGURES: tracked_figures_count},
             )
 
     def track(self, api: Api, state: Dict, context: Dict):
@@ -510,7 +577,7 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: initial bbox
-        :type target_bbox: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
 
@@ -531,11 +598,50 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: previous frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: bbox added on previous step
-        :type target_bbox: PredictionBBox
-        :return: predicted annotation
-        :rtype: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
+        :returns: predicted annotation
+        :rtype: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
+
+    def _get_circumscribed_box(self, tlbr, angle):
+        top, left, bottom, right = tlbr
+        cx = (left + right) / 2
+        cy = (top + bottom) / 2
+        half_w = (right - left) / 2
+        half_h = (bottom - top) / 2
+        cos_a = np.cos(angle)
+        sin_a = np.sin(angle)
+        dx = abs(half_w * cos_a) + abs(half_h * sin_a)
+        dy = abs(half_w * sin_a) + abs(half_h * cos_a)
+
+        return [cy - dy, cx - dx, cy + dy, cx + dx]
+
+    def _inscribe_oriented_box(self, tracked_box, angle):
+        top, left, bottom, right = tracked_box
+        cx = (left + right) / 2
+        cy = (top + bottom) / 2
+        dx = (right - left) / 2
+        dy = (bottom - top) / 2
+        cos_a = abs(np.cos(angle))
+        sin_a = abs(np.sin(angle))
+        det = cos_a * cos_a - sin_a * sin_a  # = cos(2*angle)
+        if abs(det) < 1e-10:  # angle ≈ 45° or 135°
+            half_w = half_h = min(dx, dy) / (cos_a + sin_a)
+        else:
+            half_w = abs(dx * cos_a - dy * sin_a) / abs(det)
+            half_h = abs(dy * cos_a - dx * sin_a) / abs(det)
+
+        return [cy - half_h, cx - half_w, cy + half_h, cx + half_w]
+
+    def predict_oriented(self, rgb_image: np.ndarray, settings: Dict[str, Any], prev_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> PredictionBBox:
+        if not target_bbox.angle:
+            predicted = self.predict(rgb_image, settings, prev_rgb_image, target_bbox)
+            return PredictionBBox(predicted.class_name, predicted.bbox_tlbr, predicted.score, 0)
+        circumscribed_bbox = self._get_circumscribed_box(target_bbox.bbox_tlbr, target_bbox.angle)
+        circumscribed_target = self.predict(rgb_image, settings, prev_rgb_image, PredictionBBox(target_bbox.class_name, circumscribed_bbox, target_bbox.score))
+        inscribed_bbox = self._inscribe_oriented_box(circumscribed_target.bbox_tlbr, target_bbox.angle)
+        return PredictionBBox(target_bbox.class_name, inscribed_bbox, circumscribed_target.score, target_bbox.angle)
 
     def visualize(
         self,
@@ -560,12 +666,15 @@ class BBoxTracking(BaseTracking):
 
     def _to_sly_geometry(self, dto: PredictionBBox) -> Rectangle:
         top, left, bottom, right = dto.bbox_tlbr
-        geometry = Rectangle(top=top, left=left, bottom=bottom, right=right)
+        if dto.angle is not None:
+            geometry = OrientedBBox(top=top, left=left, bottom=bottom, right=right, angle=dto.angle)
+        else:
+            geometry = Rectangle(top=top, left=left, bottom=bottom, right=right)
         return geometry
 
     def _create_label(self, dto: PredictionBBox) -> Rectangle:
         geometry = self._to_sly_geometry(dto)
-        return Label(geometry, ObjClass("", Rectangle))
+        return Label(geometry, ObjClass("", type(geometry)))
 
     def _get_obj_class_shape(self):
         return Rectangle
@@ -588,8 +697,12 @@ class BBoxTracking(BaseTracking):
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
+
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution

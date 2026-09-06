@@ -8,6 +8,8 @@ from supervisely.sly_logger import logger
 
 
 class GridPlot(Widget):
+    """Grid of LinePlot widgets; displays multiple plots in columns for comparison."""
+
     def __init__(
         self,
         data: List[Union[Dict, str]] = [],
@@ -15,6 +17,16 @@ class GridPlot(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
+        """
+        :param data: List of plot configs (dicts) or titles (str). Each dict is passed to LinePlot.
+        :type data: List[Union[:class:`~supervisely.app.widgets.line_plot.line_plot.LinePlot`, str]]
+        :param columns: Number of columns in the grid.
+        :type columns: int
+        :param gap: Gap between plots in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._widgets = {}
         self._columns = columns
         self._gap = gap
@@ -31,7 +43,7 @@ class GridPlot(Widget):
             if self._columns < 1:
                 raise ValueError(f"columns ({self._columns}) < 1")
             if self._columns > len(self._widgets):
-                logger.warn(
+                logger.warning(
                     f"Number of columns ({self._columns}) > number of widgets ({len(self._widgets)}). Columns are set to {len(self._widgets)}"
                 )
                 self._columns = len(self._widgets)

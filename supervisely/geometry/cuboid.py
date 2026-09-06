@@ -32,24 +32,32 @@ if not hasattr(np, "bool"):
 
 class CuboidFace:
     """
-    CuboidFace for a single :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`.
+    A single face of a :class:`~supervisely.geometry.cuboid.Cuboid`.
 
-    :param a: Node of the CuboidFace.
-    :type a: int
-    :param b: Node of the CuboidFace.
-    :type b: int
-    :param c: Node of the CuboidFace.
-    :type c: int
-    :param d: Node of the CuboidFace.
-    :type d: int
-    :Usage example:
-
-     .. code-block:: python
-
-        edge = CuboidFace(0, 1, 2, 3)
+    The face is defined by four integer indices (``a``, ``b``, ``c``, ``d``) referencing cuboid nodes.
+    This lightweight helper is used to store faces and serialize/deserialize them in Supervisely
+    annotation format (see :meth:`to_json` / :meth:`from_json`).
     """
 
     def __init__(self, a: int, b: int, c: int, d: int):
+        """
+        CuboidFace for a single :class:`~supervisely.geometry.cuboid.Cuboid`.
+
+        :param a: Node of the CuboidFace.
+        :type a: int
+        :param b: Node of the CuboidFace.
+        :type b: int
+        :param c: Node of the CuboidFace.
+        :type c: int
+        :param d: Node of the CuboidFace.
+        :type d: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                edge = CuboidFace(0, 1, 2, 3)
+        """
         self._a = a
         self._b = b
         self._c = c
@@ -59,16 +67,17 @@ class CuboidFace:
         """
         Convert the CuboidFace to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: List of integers
+        :returns: List of integers
         :rtype: :class:`List[int, int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            edge = CuboidFace(0, 1, 2, 3)
-            edge_json = edge.to_json()
-            print(edge_json)
-            # Output: [0, 1, 2, 3]
+            .. code-block:: python
+
+                edge = CuboidFace(0, 1, 2, 3)
+                edge_json = edge.to_json()
+                print(edge_json)
+                # Output: [0, 1, 2, 3]
         """
         return [self.a, self.b, self.c, self.d]
 
@@ -79,14 +88,15 @@ class CuboidFace:
 
         :param data: List of integers.
         :type data: List[int, int, int, int]
-        :return: CuboidFace object
-        :rtype: :class:`CuboidFace<CuboidFace>`
-        :raises: :class:`ValueError` if data have not 4 indices
-        :Usage example:
+        :raises ValueError: if data have not 4 indices
+        :returns: CuboidFace from json.
+        :rtype: :class:`~supervisely.geometry.cuboid.CuboidFace`
 
-         .. code-block:: python
+        :Usage Example:
 
-            new_edge = CuboidFace.from_json([0, 1, 2, 3])
+            .. code-block:: python
+
+                new_edge = CuboidFace.from_json([0, 1, 2, 3])
         """
         if len(data) != 4:
             raise ValueError(
@@ -118,55 +128,31 @@ class CuboidFace:
         """
         Convert CuboidFace to list.
 
-        :return: List of integers.
+        :returns: List of integers.
         :rtype: :class:`List[int, int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            edge = CuboidFace(0, 1, 2, 3)
-            print(edge.tolist())
-            # Output: [0, 1, 2, 3]
+            .. code-block:: python
+
+                edge = CuboidFace(0, 1, 2, 3)
+                print(edge.tolist())
+                # Output: [0, 1, 2, 3]
         """
         return [self.a, self.b, self.c, self.d]
 
 
 class Cuboid(Geometry):
-    """
-    Cuboid geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Cuboid<Cuboid>` class object is immutable.
-
-    :param points: List or tuple of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects.
-    :type points: List[PointLocation] or Tuple[PointLocation]
-    :param faces: List or tuple of :class:`CuboidFace<CuboidFace>` objects.
-    :type faces: List[CuboidFace] or Tuple[CuboidFace]
-    :param sly_id: Cuboid ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID for :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which belongs Cuboid.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Cuboid.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Cuboid was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Cuboid was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises: :class:`ValueError`, if len(:class:`faces<faces>`) != 3
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-        from supervisely.geometry.cuboid import CuboidFace
-
-        nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-        edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-        pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-        figure = sly.Cuboid(pl_nodes, edges)
-    """
+    """3D cuboid defined by eight corner points and six faces. Immutable."""
 
     @staticmethod
     def geometry_name():
-        """ """
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "cuboid"
 
     def __init__(
@@ -179,6 +165,38 @@ class Cuboid(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Cuboid geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid.Cuboid` class object is immutable.
+
+        :param points: List or tuple of :class:`~supervisely.geometry.point_location.PointLocation` objects.
+        :type points: List[:class:`~supervisely.geometry.point_location.PointLocation`] or Tuple[:class:`~supervisely.geometry.point_location.PointLocation`]
+        :param faces: List or tuple of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
+        :type faces: List[:class:`~supervisely.geometry.cuboid.CuboidFace`] or Tuple[:class:`~supervisely.geometry.cuboid.CuboidFace`]
+        :param sly_id: Cuboid ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID for ObjClass to which belongs Cuboid.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid.Cuboid`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Cuboid was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Cuboid was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises ValueError: if len(:class:`~supervisely.geometry.cuboid.CuboidFace` objects) != 3. A cuboid must have exactly 3 faces. Instead got {len(faces)} faces.
+        :raises ValueError: if point index is out of bounds for cuboid face. Got {len(points)!r} points, but the index is {point_idx!r}.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
+
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
+        """
 
         super().__init__(
             sly_id=sly_id,
@@ -208,20 +226,20 @@ class Cuboid(Geometry):
     @property
     def points(self) -> List[PointLocation]:
         """
-        List of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects.
+        List of :class:`~supervisely.geometry.point_location.PointLocation` objects.
 
-        :return: Cuboid nodes
-        :rtype: :class:`List[PointLocation]`
+        :returns: Cuboid nodes
+        :rtype: List[:class:`~supervisely.geometry.point_location.PointLocation`]
         """
         return self._points.copy()
 
     @property
     def faces(self) -> List[CuboidFace]:
         """
-        List of :class:`CuboidFace<CuboidFace>` objects.
+        List of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
 
-        :return: Cuboid edges
-        :rtype: :class:`List[CuboidFace]`
+        :returns: Cuboid edges
+        :rtype: List[:class:`~supervisely.geometry.cuboid.CuboidFace`]
         """
         return self._faces.copy()
 
@@ -229,38 +247,39 @@ class Cuboid(Geometry):
         """
         Convert the Cuboid to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+            .. code-block:: python
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "faces": [
-            #        [0, 1, 2, 3],
-            #        [0, 4, 5, 1],
-            #        [1, 5, 6, 2]
-            #    ],
-            #    "points": [
-            #        [273, 277],
-            #        [273, 840],
-            #        [690, 840],
-            #        [690, 277],
-            #        [168, 688],
-            #        [168, 1200],
-            #        [522, 1200]
-            #    ]
-            # }
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "faces": [
+                #        [0, 1, 2, 3],
+                #        [0, 4, 5, 1],
+                #        [1, 5, 6, 2]
+                #    ],
+                #    "points": [
+                #        [273, 277],
+                #        [273, 840],
+                #        [690, 840],
+                #        [690, 277],
+                #        [168, 688],
+                #        [168, 1200],
+                #        [522, 1200]
+                #    ]
+                # }
         """
         packed_obj = {
             POINTS: points_to_row_col_list(self._points, flip_row_col_order=True),
@@ -275,34 +294,35 @@ class Cuboid(Geometry):
         Convert a json dict to Cuboid. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Cuboid in json format as a dict.
-        :type data: dict
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
-        :raises: :class:`ValueError` if json format is not correct
-        :Usage example:
+        :type data: Dict[str, List[int]]
+        :returns: Cuboid from json.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
+        :raises ValueError: if json format is not correct
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = {
-                "faces": [
-                            [0, 1, 2, 3],
-                            [0, 4, 5, 1],
-                            [1, 5, 6, 2]
-                ],
-                "points": [
-                            [273, 277],
-                            [273, 840],
-                            [690, 840],
-                            [690, 277],
-                            [168, 688],
-                            [168, 1200],
-                            [522, 1200]
-                ]
-            }
+                import supervisely as sly
 
-            figure = sly.Cuboid.from_json(data)
+                data = {
+                    "faces": [
+                                [0, 1, 2, 3],
+                                [0, 4, 5, 1],
+                                [1, 5, 6, 2]
+                    ],
+                    "points": [
+                                [273, 277],
+                                [273, 840],
+                                [690, 840],
+                                [690, 277],
+                                [168, 688],
+                                [168, 1200],
+                                [522, 1200]
+                    ]
+                }
+
+                figure = sly.Cuboid.from_json(data)
         """
         for k in [POINTS, FACES]:
             if k not in data:
@@ -330,23 +350,23 @@ class Cuboid(Geometry):
         """
         Crops current Cuboid.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :return: List of Cuboid objects
-        :rtype: :class:`List[Cuboid]<Cuboid>`
+        :param rect: Rectangle for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Cuboids after crop.
+        :rtype: List[:class:`~supervisely.geometry.cuboid.Cuboid`]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
-            crop_figures = figure.crop(sly.Rectangle(1, 1, 1500, 1550))
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
+                crop_figures = figure.crop(sly.Rectangle(1, 1, 1500, 1550))
         """
         is_all_nodes_inside = all(
             rect.contains_point_location(self._points[p])
@@ -363,27 +383,27 @@ class Cuboid(Geometry):
         """
         Rotates current Cuboid.
 
-        :param rotator: ImageRotator object for rotation.
-        :type rotator: ImageRotator
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :param rotator: Class for image rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Cuboid after rotation.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
-            from supervisely.geometry.image_rotator import ImageRotator
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            rotator = ImageRotator((300, 400), 25)
-            rotate_fugure= figure.rotate(rotator)
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                rotator = ImageRotator((300, 400), 25)
+                rotate_fugure= figure.rotate(rotator)
         """
         return self._transform(lambda p: rotator.transform_point(p))
 
@@ -391,29 +411,29 @@ class Cuboid(Geometry):
         """
         Resize current Cuboid.
 
-        :param in_size: Input image size (height, width) to which belongs Cuboid object.
+        :param in_size: Input image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type in_size: Tuple[int, int]
-        :param out_size: Desired output image size (height, width) to which belongs Cuboid object.
+        :param out_size: Desired output image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type out_size: Tuple[int, int]
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after resize.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            in_height, in_width = 1250, 1400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                in_height, in_width = 1250, 1400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self._transform(lambda p: p.resize(in_size, out_size))
 
@@ -423,23 +443,23 @@ class Cuboid(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after scale.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            scale_figure = figure.scale(1.75)
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                scale_figure = figure.scale(1.75)
         """
         return self._transform(lambda p: p.scale(factor))
 
@@ -451,23 +471,23 @@ class Cuboid(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after translate.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            translate_figure = figure.translate(150, 350)
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                translate_figure = figure.translate(150, 350)
         """
         return self._transform(lambda p: p.translate(drow, dcol))
 
@@ -475,26 +495,26 @@ class Cuboid(Geometry):
         """
         Flips current Cuboid in horizontal.
 
-        :param img_size: Image size (height, width) to which belongs Cuboid object.
+        :param img_size: Image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type img_size: Tuple[int, int]
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after flip in horizontal.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            height, width = 1250, 1400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                height, width = 1250, 1400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self._transform(lambda p: p.fliplr(img_size))
 
@@ -502,26 +522,26 @@ class Cuboid(Geometry):
         """
         Flips current Cuboid in vertical.
 
-        :param img_size: Image size (height, width) to which belongs Cuboid object.
+        :param img_size: Image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type img_size: Tuple[int, int]
-        :return: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after flip in vertical.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            height, width = 1250, 1400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                height, width = 1250, 1400
+                flipud_figure = figure.flipud((height, width))
         """
         return self._transform(lambda p: p.flipud(img_size))
 
@@ -551,22 +571,22 @@ class Cuboid(Geometry):
         """
         Create Rectangle object from current Cuboid.
 
-        :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from cuboid.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         points_np = np.array(
             [
@@ -588,23 +608,23 @@ class Cuboid(Geometry):
         """
         Cuboid area.
 
-        :return: Area of current Cuboid
-        :rtype: :class:`float`
+        :returns: Area of current Cuboid.
+        :rtype: float
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            print(figure.area)
-            # Output: 5146.0
+                print(figure.area)
+                # Output: 5146.0
         """
         bbox = self.to_bbox()
         canvas = np.zeros([bbox.bottom + 1, bbox.right + 1], dtype=np.bool)

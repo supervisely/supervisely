@@ -25,5 +25,5 @@ Supervisely SDK for Python
    :caption: Social
    :hidden:
 
-   Slack                   <https://supervisely.com/slack>
+   Slack                  <https://supervisely.com/slack>
    YouTube                <https://www.youtube.com/supervisely>

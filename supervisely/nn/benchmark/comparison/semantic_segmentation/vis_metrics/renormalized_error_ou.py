@@ -3,6 +3,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class RenormalizedErrorOverUnion(BaseVisMetrics):
+    """Renormalized error-over-union charts for segmentation comparison."""
+
 
     @property
     def md(self) -> MarkdownWidget:

@@ -1,15 +1,16 @@
 # coding: utf-8
-"""General information about :class:`Tag<supervisely.annotation.tag.Tag>`"""
 
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 
 from supervisely._utils import take_with_default
 from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
+from supervisely.io.pickle_compat import legacy_pickle_defaults
 
 
 class TagValueType:
@@ -25,11 +26,13 @@ class TagValueType:
     """"""
     ONEOF_STRING = "oneof_string"
     """"""
+    DATE = "date"
+    """"""
 
 
 class TagMetaJsonFields:
     """
-    Json fields for :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
+    Json fields for :class:`~supervisely.annotation.tag_meta.TagMeta`
     """
 
     ID = "id"
@@ -50,6 +53,10 @@ class TagMetaJsonFields:
     APPLICABLE_CLASSES = "classes"
     """"""
     TARGET_TYPE = "target_type"  # "Scope"
+    """"""
+    FRAME_RANGE_MIN_LENGTH = "frame_range_min_length"
+    """"""
+    FRAME_RANGE_MAX_LENGTH = "frame_range_max_length"
 
 
 class TagApplicableTo:
@@ -83,6 +90,7 @@ SUPPORTED_TAG_VALUE_TYPES = [
     TagValueType.ANY_NUMBER,
     TagValueType.ANY_STRING,
     TagValueType.ONEOF_STRING,
+    TagValueType.DATE,
 ]
 SUPPORTED_APPLICABLE_TO = [
     TagApplicableTo.ALL,
@@ -96,51 +104,87 @@ SUPPORTED_TARGET_TYPES = [
     TagTargetType.GLOBAL,
 ]
 
+NO_FRAME_RANGE_LENGTH_LIMIT = 0
+"""Frame range length limit value that means "no limit"."""
 
+
+def validate_frame_range_length_limits(
+    min_length: Optional[int], max_length: Optional[int]
+) -> Tuple[int, int]:
+    """
+    Validate a pair of frame range length limits and normalize them to plain ints.
+
+    Limits apply to finished frame range tags (videos and point cloud episodes) and
+    are measured in frames, inclusively: a tag from frame 10 to frame 12 has length 3.
+    There is no separate on/off switch on the server side - a limit is active only
+    while its value differs from :data:`NO_FRAME_RANGE_LENGTH_LIMIT`, so ``0`` (and
+    ``None``, which is normalized to ``0``) disables it.
+
+    :param min_length: Minimum frame range length, 0 or None to disable.
+    :type min_length: int, optional
+    :param max_length: Maximum frame range length, 0 or None to disable.
+    :type max_length: int, optional
+    :raises ValueError: If a limit is not a non-negative integer, or both limits are
+        active and min_length is greater than max_length.
+    :returns: Normalized (min_length, max_length) pair
+    :rtype: Tuple[int, int]
+    """
+    normalized = []
+    for name, value in (("min_length", min_length), ("max_length", max_length)):
+        value = take_with_default(value, NO_FRAME_RANGE_LENGTH_LIMIT)
+        # bool is an int subclass, but True as a frame count is always a mistake
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(
+                "frame range {} = {!r} is invalid, should be a non-negative integer".format(
+                    name, value
+                )
+            )
+        normalized.append(value)
+
+    min_length, max_length = normalized
+
+    if (
+        min_length > NO_FRAME_RANGE_LENGTH_LIMIT
+        and max_length > NO_FRAME_RANGE_LENGTH_LIMIT
+        and min_length > max_length
+    ):
+        raise ValueError(
+            "frame range min_length = {} must be less than or equal to max_length = {}".format(
+                min_length, max_length
+            )
+        )
+
+    return min_length, max_length
+
+
+def _is_valid_iso_datetime(value: str) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return True
+    except ValueError:
+        return False
+
+
+def detect_tag_value_type(value) -> str:
+    if value is None:
+        return TagValueType.NONE
+    if isinstance(value, (int, float)):
+        return TagValueType.ANY_NUMBER
+    if _is_valid_iso_datetime(value):
+        return TagValueType.DATE
+    return TagValueType.ANY_STRING
+
+
+# Pickles predating #1214 have no _target_type, older ones have no frame range limits.
+@legacy_pickle_defaults(
+    _target_type=TagTargetType.ALL,
+    _frame_range_min_length=NO_FRAME_RANGE_LENGTH_LIMIT,
+    _frame_range_max_length=NO_FRAME_RANGE_LENGTH_LIMIT,
+)
 class TagMeta(KeyObject, JsonSerializable):
-    """
-    General information about :class:`Tag<supervisely.annotation.tag>`. :class:`TagMeta<TagMeta>` object is immutable.
-
-    :param name: Tag name.
-    :type name: str
-    :param value_type: Tag value type.
-    :type value_type: str
-    :param possible_values: List of possible values.
-    :type possible_values: List[str], optional
-    :param color: :class:`[R, G, B]` color, generates random color by default.
-    :type color: List[int, int, int], optional
-    :param sly_id: Tag ID in Supervisely server.
-    :type sly_id: int, optional
-    :param hotkey: Hotkey for Tag in annotation tool UI.
-    :type hotkey: str, optional
-    :param applicable_to: Defines applicability of Tag only to images, objects or both.
-    :type applicable_to: str, optional
-    :param applicable_classes: Defines applicability of Tag only to certain classes.
-    :type applicable_classes: List[str], optional
-    :param target_type: Defines Tag target type (scope) - entities, frames or both.
-    :type target_type: str, optional
-    :raises: :class:`ValueError`, if color is not list, or doesn't have exactly 3 values
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        # TagMeta
-        meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-
-        # TagMeta applicable only to Images example
-        meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE, applicable_to=sly.TagApplicableTo.IMAGES_ONLY)
-
-        # TagMeta with string value applicable only to Objects example
-        meta_breed = sly.TagMeta('breed', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
-
-        # More complex TagMeta example
-        # Create a list with possible values in order to use "ONEOF_STRING" value type
-        coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        # Note that "ONEOF_STRING" value type requires possible values, otherwise ValueError will be raised
-        meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, coat_colors, [255,120,0], hotkey="M", applicable_to=sly.TagApplicableTo.OBJECTS_ONLY, applicable_classes=["dog", "cat"])
-    """
+    """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
 
     def __init__(
         self,
@@ -153,7 +197,57 @@ class TagMeta(KeyObject, JsonSerializable):
         applicable_to: Optional[str] = None,
         applicable_classes: Optional[List[str]] = None,
         target_type: Optional[str] = None,
+        frame_range_min_length: Optional[int] = None,
+        frame_range_max_length: Optional[int] = None,
     ):
+        """
+        :param name: Tag name.
+        :type name: str
+        :param value_type: TagValueType: NONE, ANY_STRING, ANY_NUMBER, ONEOF_STRING, DATE.
+        :type value_type: str
+        :param possible_values: Required for ONEOF_STRING; list of allowed values.
+        :type possible_values: List[str], optional
+        :param color: RGB color [R, G, B]. Random if not provided.
+        :type color: List[int, int, int], optional
+        :param sly_id: Server-side tag meta ID.
+        :type sly_id: int, optional
+        :param hotkey: Hotkey in annotation UI.
+        :type hotkey: str, optional
+        :param applicable_to: TagApplicableTo: ALL, IMAGES_ONLY, OBJECTS_ONLY.
+        :type applicable_to: str, optional
+        :param applicable_classes: Restrict to specific class names.
+        :type applicable_classes: List[str], optional
+        :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL.
+        :type target_type: str, optional
+        :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
+            frame range tag. 0 or None means no limit.
+        :type frame_range_min_length: int, optional
+        :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
+            frame range tag. 0 or None means no limit.
+        :type frame_range_max_length: int, optional
+        :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values;
+            frame range limits are negative or min is greater than max.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
+                colors = ["brown", "white", "black"]
+                meta_coat = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, color=[255, 120, 0])
+
+                # frame range tag that must cover between 5 and 30 frames
+                meta_running = sly.TagMeta(
+                    'running',
+                    sly.TagValueType.NONE,
+                    target_type=sly.TagTargetType.FRAME_BASED,
+                    frame_range_min_length=5,
+                    frame_range_max_length=30,
+                )
+        """
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
             raise ValueError(
                 "value_type = {!r} is unknown, should be one of {}".format(
@@ -170,6 +264,11 @@ class TagMeta(KeyObject, JsonSerializable):
         self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
         self._applicable_classes = take_with_default(applicable_classes, [])
         self._target_type = take_with_default(target_type, TagTargetType.ALL)
+        self._frame_range_min_length, self._frame_range_max_length = (
+            validate_frame_range_length_limits(frame_range_min_length, frame_range_max_length)
+        )
+        # Instances are pickled into .bin backups: a new attribute here needs an
+        # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
             raise ValueError(
                 "applicable_to = {!r} is unknown, should be one of {}".format(
@@ -207,15 +306,16 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Name.
 
-        :return: Name
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Name
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            print(meta_dog.name)
-            # Output: 'dog'
+            .. code-block:: python
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                print(meta_dog.name)
+                # Output: 'dog'
         """
         return self._name
 
@@ -225,19 +325,20 @@ class TagMeta(KeyObject, JsonSerializable):
     @property
     def value_type(self) -> str:
         """
-        Value type. See possible value types in :class:`TagValueType<TagValueType>`.
+        Value type. See possible value types in :class:`~supervisely.annotation.tag_meta.TagValueType`.
 
-        :return: Value type
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Value type
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            meta_dog.value_type == sly.TagValueType.ANY_STRING # True
+            .. code-block:: python
 
-            print(meta_dog.value_type)
-            # Output: 'any_string'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                meta_dog.value_type == sly.TagValueType.ANY_STRING # True
+
+                print(meta_dog.value_type)
+                # Output: 'any_string'
         """
         return self._value_type
 
@@ -246,25 +347,26 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Possible values of object. This is a required field if object has "oneof_string" value type.
 
-        :raise: :class:`ValueError` if list of possible values is not defined or TagMeta value_type is not "oneof_string".
-        :return: List of possible values
+        :raise ValueError: if list of possible values is not defined or TagMeta value_type is not "oneof_string".
+        :returns: List of possible values
         :rtype: :class:`List[str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # List of possible values
-            coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+            .. code-block:: python
 
-            # TagMeta
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=coat_colors)
+                # List of possible values
+                coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
 
-            print(meta_coat_color.possible_values)
-            # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
+                # TagMeta
+                meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=coat_colors)
 
-            # Note that this is a required field if object has "oneof_string" value type.
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING)
-            # Output: ValueError: TagValueType is ONEOF_STRING. List of possible values have to be defined.
+                print(meta_coat_color.possible_values)
+                # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
+
+                # Note that this is a required field if object has "oneof_string" value type.
+                meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING)
+                # Output: ValueError: TagValueType is ONEOF_STRING. List of possible values have to be defined.
         """
         return self._possible_values.copy() if self._possible_values is not None else None
 
@@ -273,16 +375,17 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         :class:`[R,G,B]` color.
 
-        :return: Color
+        :returns: Color
         :rtype: :class:`List[int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, color=[255,120,0])
+            .. code-block:: python
 
-            print(meta_dog.color)
-            # Output: [255,120,0]
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, color=[255,120,0])
+
+                print(meta_dog.color)
+                # Output: [255,120,0]
         """
         return self._color.copy()
 
@@ -291,16 +394,17 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Tag ID in Supervisely server.
 
-        :return: ID
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: ID
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, sly_id=38584)
+            .. code-block:: python
 
-            print(meta_dog.sly_id)
-            # Output: 38584
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, sly_id=38584)
+
+                print(meta_dog.sly_id)
+                # Output: 38584
         """
         return self._sly_id
 
@@ -309,16 +413,17 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Hotkey for Tag in annotation tool UI.
 
-        :return: Hotkey
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Hotkey
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, hotkey='M')
+            .. code-block:: python
 
-            print(meta_dog.hotkey)
-            # Output: 'M'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, hotkey='M')
+
+                print(meta_dog.hotkey)
+                # Output: 'M'
         """
         return self._hotkey
 
@@ -327,16 +432,17 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Tag applicability to objects, images, or both.
 
-        :return: Applicability
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Applicability
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, applicable_to=IMAGES_ONLY)
+            .. code-block:: python
 
-            print(meta_dog.applicable_to)
-            # Output: 'imagesOnly'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, applicable_to=IMAGES_ONLY)
+
+                print(meta_dog.applicable_to)
+                # Output: 'imagesOnly'
         """
         return self._applicable_to
 
@@ -347,19 +453,20 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :returns: List of applicable classes
         :rtype: :class:`List[str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # Imagine we have 2 ObjClasses in our Project
-            class_car = sly.ObjClass(name='car', geometry_type='rectangle')
-            class_bicycle = sly.ObjClass(name='bicycle', geometry_type='rectangle')
+            .. code-block:: python
 
-            # You can put a "string" with ObjClass name or use ObjClass.name
-            meta_vehicle = sly.TagMeta('vehicle', sly.TagValueType.NONE, applicable_classes=["car", class_bicycle.name])
+                # Imagine we have 2 ObjClasses in our Project
+                class_car = sly.ObjClass(name='car', geometry_type='rectangle')
+                class_bicycle = sly.ObjClass(name='bicycle', geometry_type='rectangle')
 
-            print(meta_vehicle.applicable_classes)
-            # Output: ['car', 'bicycle']
+                # You can put a "string" with ObjClass name or use ObjClass.name
+                meta_vehicle = sly.TagMeta('vehicle', sly.TagValueType.NONE, applicable_classes=["car", class_bicycle.name])
+
+                print(meta_vehicle.applicable_classes)
+                # Output: ['car', 'bicycle']
         """
         return self._applicable_classes
 
@@ -368,73 +475,235 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Tag target type (scope) - entities, frames or both.
 
-        :return: Target type
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Target type
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, target_type=TagTargetType.FRAME_BASED)
+            .. code-block:: python
 
-            print(meta_dog.target_type)
-            # Output: 'framesOnly'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, target_type=TagTargetType.FRAME_BASED)
+
+                print(meta_dog.target_type)
+                # Output: 'framesOnly'
         """
         return self._target_type
+
+    @property
+    def frame_range_min_length(self) -> int:
+        """
+        Minimum length (in frames, inclusive) of a finished frame range tag.
+        0 means the limit is disabled.
+
+        :returns: Minimum frame range length
+        :rtype: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, frame_range_min_length=5)
+
+                print(meta_dog.frame_range_min_length)
+                # Output: 5
+        """
+        return self._frame_range_min_length
+
+    @property
+    def frame_range_max_length(self) -> int:
+        """
+        Maximum length (in frames, inclusive) of a finished frame range tag.
+        0 means the limit is disabled.
+
+        :returns: Maximum frame range length
+        :rtype: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, frame_range_max_length=30)
+
+                print(meta_dog.frame_range_max_length)
+                # Output: 30
+        """
+        return self._frame_range_max_length
+
+    @property
+    def frame_range_length_limits(self) -> Tuple[int, int]:
+        """
+        Both frame range length limits as a ``(min_length, max_length)`` pair.
+        0 in either position means that limit is disabled.
+
+        :returns: Minimum and maximum frame range length
+        :rtype: Tuple[int, int]
+        """
+        return self._frame_range_min_length, self._frame_range_max_length
+
+    @property
+    def has_frame_range_length_limits(self) -> bool:
+        """
+        Whether at least one frame range length limit is active.
+
+        :returns: True if any limit is set to a non-zero value, otherwise False
+        :rtype: bool
+        """
+        return (
+            self._frame_range_min_length > NO_FRAME_RANGE_LENGTH_LIMIT
+            or self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT
+        )
+
+    def with_frame_range_length_limits(
+        self,
+        min_length: Optional[int] = None,
+        max_length: Optional[int] = None,
+    ) -> TagMeta:
+        """
+        Return a copy of this TagMeta with the given frame range length limits.
+
+        Unlike :func:`clone`, both limits are always replaced, so passing None (or 0)
+        disables the corresponding limit instead of keeping the current value.
+
+        :param min_length: Minimum frame range length, 0 or None to disable.
+        :type min_length: int, optional
+        :param max_length: Maximum frame range length, 0 or None to disable.
+        :type max_length: int, optional
+        :raises ValueError: If a limit is negative, or min_length is greater than max_length
+            while both are active.
+        :returns: New instance of TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_running = sly.TagMeta('running', sly.TagValueType.NONE)
+
+                # tag must cover between 5 and 30 frames
+                meta_running = meta_running.with_frame_range_length_limits(5, 30)
+
+                # drop both limits
+                meta_running = meta_running.with_frame_range_length_limits()
+        """
+        min_length, max_length = validate_frame_range_length_limits(min_length, max_length)
+        return self.clone(
+            frame_range_min_length=min_length,
+            frame_range_max_length=max_length,
+        )
+
+    def is_valid_frame_range_length(self, length: int) -> bool:
+        """
+        Check a frame range length against this TagMeta's limits.
+
+        :param length: Frame range length in frames.
+        :type length: int
+        :returns: True if the length satisfies both active limits, otherwise False
+        :rtype: bool
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_running = sly.TagMeta(
+                    'running', sly.TagValueType.NONE, frame_range_min_length=5, frame_range_max_length=30
+                )
+
+                meta_running.is_valid_frame_range_length(3)   # False
+                meta_running.is_valid_frame_range_length(10)  # True
+        """
+        if (
+            self._frame_range_min_length > NO_FRAME_RANGE_LENGTH_LIMIT
+            and length < self._frame_range_min_length
+        ):
+            return False
+        if (
+            self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT
+            and length > self._frame_range_max_length
+        ):
+            return False
+        return True
+
+    def is_valid_frame_range(self, start_frame: int, end_frame: int) -> bool:
+        """
+        Check a frame range against this TagMeta's length limits.
+
+        The range is inclusive on both ends, matching the server: frames 10 to 12
+        have length 3. Reversed ranges are accepted as-is.
+
+        :param start_frame: First frame of the range.
+        :type start_frame: int
+        :param end_frame: Last frame of the range.
+        :type end_frame: int
+        :returns: True if the range length satisfies both active limits, otherwise False
+        :rtype: bool
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_running = sly.TagMeta(
+                    'running', sly.TagValueType.NONE, frame_range_min_length=5, frame_range_max_length=30
+                )
+
+                meta_running.is_valid_frame_range(10, 12)  # False, length is 3
+                meta_running.is_valid_frame_range(10, 19)  # True, length is 10
+        """
+        return self.is_valid_frame_range_length(abs(end_frame - start_frame) + 1)
 
     def to_json(self) -> Dict:
         """
         Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            colors = ["brown", "white", "black", "red", "blue", "yellow", "grey"]
-            meta_color = sly.TagMeta('Color',
-                                    sly.TagValueType.ONEOF_STRING,
-                                    possible_values=colors,
-                                    color=[255, 120, 0],
-                                    hotkey="M",
-                                    applicable_classes=["car", "bicycle"])
+                import supervisely as sly
+
+                colors = ["brown", "white", "black", "red", "blue", "yellow", "grey"]
+                meta_color = sly.TagMeta(
+                    'Color',
+                    sly.TagValueType.ONEOF_STRING,
+                    possible_values=colors,
+                    color=[255, 120, 0],
+                    hotkey="M",
+                    applicable_classes=["car", "bicycle"]
+                )
 
 
-            meta_color_json = meta_color.to_json()
-            print(meta_color_json)
-            # Output: {
-            #     "name":"Color",
-            #     "value_type":"oneof_string",
-            #     "color":"#FF7800",
-            #     "values":[
-            #         "brown",
-            #         "white",
-            #         "black",
-            #         "red",
-            #         "blue",
-            #         "yellow",
-            #         "grey"
-            #     ],
-            #     "hotkey":"M",
-            #     "applicable_type":"all",
-            #     "classes":[
-            #         "car",
-            #         "bicycle"
-            #     ]
-            # }
+                meta_color_json = meta_color.to_json()
+                print(meta_color_json)
+                # Output: {
+                #     "name":"Color",
+                #     "value_type":"oneof_string",
+                #     "color":"#FF7800",
+                #     "values":[
+                #         "brown",
+                #         "white",
+                #         "black",
+                #         "red",
+                #         "blue",
+                #         "yellow",
+                #         "grey"
+                #     ],
+                #     "hotkey":"M",
+                #     "applicable_type":"all",
+                #     "classes":[
+                #         "car",
+                #         "bicycle"
+                #     ]
+                # }
         """
         jdict = {
             TagMetaJsonFields.NAME: self.name,
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
-
-        #! fix for the issue with the default value of the target_type
-        #! while restoring Data Version with old class definitions
-        if not hasattr(self, "_target_type"):
-            self._target_type = TagTargetType.ALL
 
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
@@ -449,6 +718,12 @@ class TagMeta(KeyObject, JsonSerializable):
             jdict[TagMetaJsonFields.APPLICABLE_CLASSES] = self.applicable_classes
         if self._target_type is not None:
             jdict[TagMetaJsonFields.TARGET_TYPE] = self.target_type
+        # Omitted when disabled: the server defaults a missing limit to 0 anyway, and
+        # keeping the keys out leaves existing meta.json files byte-identical.
+        if self._frame_range_min_length > NO_FRAME_RANGE_LENGTH_LIMIT:
+            jdict[TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH] = self.frame_range_min_length
+        if self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT:
+            jdict[TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH] = self.frame_range_max_length
 
         return jdict
 
@@ -459,36 +734,37 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :param data: TagMeta in json format as a dict.
         :type data: dict
-        :return: TagMeta object
-        :rtype: :class:`TagMeta<TagMeta>`
-        :Usage example:
+        :returns: TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = {
-                "name":"Color",
-                "value_type":"oneof_string",
-                "color":"#FF7800",
-                "values":[
-                    "brown",
-                    "white",
-                    "black",
-                    "red",
-                    "blue",
-                    "yellow",
-                    "grey"
-                ],
-                "hotkey":"M",
-                "applicable_type":"all",
-                "classes":[
-                    "car",
-                    "bicycle"
-                ]
-            }
+                import supervisely as sly
 
-            meta_colors = sly.TagMeta.from_json(data)
+                data = {
+                    "name":"Color",
+                    "value_type":"oneof_string",
+                    "color":"#FF7800",
+                    "values":[
+                        "brown",
+                        "white",
+                        "black",
+                        "red",
+                        "blue",
+                        "yellow",
+                        "grey"
+                    ],
+                    "hotkey":"M",
+                    "applicable_type":"all",
+                    "classes":[
+                        "car",
+                        "bicycle"
+                    ]
+                }
+
+                meta_colors = sly.TagMeta.from_json(data)
         """
         if isinstance(data, str):
             return cls(name=data, value_type=TagValueType.NONE)
@@ -505,6 +781,8 @@ class TagMeta(KeyObject, JsonSerializable):
             applicable_to = data.get(TagMetaJsonFields.APPLICABLE_TYPE, TagApplicableTo.ALL)
             applicable_classes = data.get(TagMetaJsonFields.APPLICABLE_CLASSES, [])
             target_type = data.get(TagMetaJsonFields.TARGET_TYPE, TagTargetType.ALL)
+            frame_range_min_length = data.get(TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH)
+            frame_range_max_length = data.get(TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH)
 
             return cls(
                 name=name,
@@ -516,6 +794,8 @@ class TagMeta(KeyObject, JsonSerializable):
                 applicable_to=applicable_to,
                 applicable_classes=applicable_classes,
                 target_type=target_type,
+                frame_range_min_length=frame_range_min_length,
+                frame_range_max_length=frame_range_max_length,
             )
         else:
             raise ValueError("Tags must be dict or str types.")
@@ -526,28 +806,29 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :param value: New value that will be added to a list.
         :type value: str
-        :raises: :class:`ValueError`, if object's value type is not "oneof_string" or already exists in a list
-        :return: New instance of TagMeta
-        :rtype: :class:`TagMeta<TagMeta>`
+        :raises ValueError: if object's value type is not "oneof_string" or already exists in a list
+        :returns: New instance of TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            #In order to add possible values, you must first initialize a variable where all possible values will be stored if it doesnt exist already
-            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, applicable_classes=["dog", "cat"])
+                #In order to add possible values, you must first initialize a variable where all possible values will be stored if it doesnt exist already
+                colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+                meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, applicable_classes=["dog", "cat"])
 
-            print(meta_coat_color.possible_values)
-            # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
+                print(meta_coat_color.possible_values)
+                # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
 
-            #Now we can add new possible value to our TagMeta
-            # Remember that TagMeta object is immutable, and we need to assign new instance of TagMeta to a new variable
-            meta_coat_color = meta_coat_color.add_possible_value("bald (no coat)")
+                #Now we can add new possible value to our TagMeta
+                # Remember that TagMeta object is immutable, and we need to assign new instance of TagMeta to a new variable
+                meta_coat_color = meta_coat_color.add_possible_value("bald (no coat)")
 
-            print(meta_coat_color.possible_values)
-            # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
+                print(meta_coat_color.possible_values)
+                # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
         """
         if self.value_type == TagValueType.ONEOF_STRING:
             if value in self._possible_values:
@@ -567,32 +848,33 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :param value: Value to check.
         :type value: str
-        :return: True if value is supported, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :returns: True if value is supported, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Initialize TagMeta
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                import supervisely as sly
 
-            # Check what value type is in our Tagmeta
-            print(meta_dog.value_type)
-            # Output: 'any_string'
+                # Initialize TagMeta
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
 
-            # Our TagMeta has 'any_string' value type, it means only 'string' values will work with it
-            # Let's check if value is valid for our TagMeta
-            meta_dog.is_valid_value('Woof!')            # True
-            meta_dog.is_valid_value(555)                # False
+                # Check what value type is in our Tagmeta
+                print(meta_dog.value_type)
+                # Output: 'any_string'
 
-            # TagMetas with 'any_number' value type are compatible with 'int' and 'float' values
-            meta_quantity = sly.TagMeta('quantity', sly.TagValueType.ANY_NUMBER)
+                # Our TagMeta has 'any_string' value type, it means only 'string' values will work with it
+                # Let's check if value is valid for our TagMeta
+                meta_dog.is_valid_value('Woof!')            # True
+                meta_dog.is_valid_value(555)                # False
 
-            meta_quantity.is_valid_value('new string value') # False
-            meta_quantity.is_valid_value(555)                # True
-            meta_quantity.is_valid_value(3.14159265359)      # True
+                # TagMetas with 'any_number' value type are compatible with 'int' and 'float' values
+                meta_quantity = sly.TagMeta('quantity', sly.TagValueType.ANY_NUMBER)
+
+                meta_quantity.is_valid_value('new string value') # False
+                meta_quantity.is_valid_value(555)                # True
+                meta_quantity.is_valid_value(3.14159265359)      # True
         """
         if self.value_type == TagValueType.NONE:
             return value is None
@@ -602,6 +884,8 @@ class TagMeta(KeyObject, JsonSerializable):
             return isinstance(value, str)
         elif self.value_type == TagValueType.ONEOF_STRING:
             return isinstance(value, str) and (value in self._possible_values)
+        elif self.value_type == TagValueType.DATE:
+            return _is_valid_iso_datetime(value)
         else:
             raise ValueError("Unsupported TagValueType detected ({})!".format(self.value_type))
 
@@ -610,27 +894,28 @@ class TagMeta(KeyObject, JsonSerializable):
         Checks that 2 TagMetas are equal by their name, value type and possible values.
 
         :param other: TagMeta object.
-        :type other: TagMeta
-        :return: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :type other: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :returns: True if comparable objects are equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical TagMetas
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                import supervisely as sly
 
-            # and 1 different TagMeta and compare them to each other
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                # Let's create 2 identical TagMetas
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
 
-            # Compare identical TagMetas
-            meta_lemon_1 == meta_lemon_2      # True
+                # and 1 different TagMeta and compare them to each other
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
 
-            # Compare unidentical TagMetas
-            meta_lemon_1 == meta_cucumber     # False
+                # Compare identical TagMetas
+                meta_lemon_1 == meta_lemon_2      # True
+
+                # Compare unidentical TagMetas
+                meta_lemon_1 == meta_cucumber     # False
         """
         # TODO compare colors also here (need to check the usages and replace with is_compatible() where appropriate).
         return (
@@ -645,27 +930,28 @@ class TagMeta(KeyObject, JsonSerializable):
         Checks that 2 TagMetas are opposite.
 
         :param other: TagMeta object.
-        :type other: TagMeta
-        :return: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :type other: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :returns: True if comparable objects are not equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical TagMetas
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                import supervisely as sly
 
-            # and 1 different TagMeta and compare them to each other
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                # Let's create 2 identical TagMetas
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
 
-            # Compare identical TagMetas
-            meta_lemon_1 != meta_lemon_2      # False
+                # and 1 different TagMeta and compare them to each other
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
 
-            # Compare unidentical TagMetas
-            meta_lemon_1 != meta_cucumber     # True
+                # Compare identical TagMetas
+                meta_lemon_1 != meta_lemon_2      # False
+
+                # Compare unidentical TagMetas
+                meta_lemon_1 != meta_cucumber     # True
         """
         return not self == other
 
@@ -694,6 +980,8 @@ class TagMeta(KeyObject, JsonSerializable):
         applicable_to: Optional[str] = None,
         applicable_classes: Optional[List[str]] = None,
         target_type: Optional[str] = None,
+        frame_range_min_length: Optional[int] = None,
+        frame_range_max_length: Optional[int] = None,
     ) -> TagMeta:
         """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
@@ -704,7 +992,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :type value_type: str
         :param possible_values: List of possible values.
         :type possible_values: List[str], optional
-        :param color: :class:`[R, G, B]` color, generates random color by default.
+        :param color: [R, G, B] color, generates random color by default.
         :type color: List[int, int, int], optional
         :param sly_id: Tag ID in Supervisely server.
         :type sly_id: int, optional
@@ -714,27 +1002,37 @@ class TagMeta(KeyObject, JsonSerializable):
         :type applicable_to: str, optional
         :param applicable_classes: Defines applicability of Tag only to certain classes.
         :type applicable_classes: List[str], optional
-        :return: New instance of TagMeta
-        :rtype: :class:`TagMeta<TagMeta>`
+        :param target_type: Defines Tag target type (scope) - entities, frames or both.
+        :type target_type: str, optional
+        :param frame_range_min_length: Minimum length (in frames, inclusive) of a finished
+            frame range tag. Pass 0 to disable the limit; None keeps the current value.
+            :func:`with_frame_range_length_limits` sets both limits at once.
+        :type frame_range_min_length: int, optional
+        :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
+            frame range tag. Pass 0 to disable the limit; None keeps the current value.
+        :type frame_range_max_length: int, optional
+        :returns: New instance of TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            #Original TagMeta
-            meta_dog_breed = sly.TagMeta('breed', sly.TagValueType.NONE)
+                #Original TagMeta
+                meta_dog_breed = sly.TagMeta('breed', sly.TagValueType.NONE)
 
-            # TagMetas made of original TagMeta
-            # Remember that TagMeta class object is immutable, and we need to assign new instance of TagMeta to a new variable
-            A_breeds = ["Affenpinscher", "Afghan Hound", "Aidi", "Airedale Terrier", "Akbash Dog", "Akita"]
-            meta_A_breed = meta_dog_breed.clone(value_type=sly.TagValueType.ONEOF_STRING, possible_values=A_breeds, hotkey='A')
+                # TagMetas made of original TagMeta
+                # Remember that TagMeta class object is immutable, and we need to assign new instance of TagMeta to a new variable
+                A_breeds = ["Affenpinscher", "Afghan Hound", "Aidi", "Airedale Terrier", "Akbash Dog", "Akita"]
+                meta_A_breed = meta_dog_breed.clone(value_type=sly.TagValueType.ONEOF_STRING, possible_values=A_breeds, hotkey='A')
 
-            B_breeds = ["Basset Fauve de Bretagne", "Basset Hound", "Bavarian Mountain Hound", "Beagle", "Beagle-Harrier", "Bearded Collie"]
-            meta_B_breed = meta_A_breed.clone(possible_values=B_breeds, hotkey='B')
+                B_breeds = ["Basset Fauve de Bretagne", "Basset Hound", "Bavarian Mountain Hound", "Beagle", "Beagle-Harrier", "Bearded Collie"]
+                meta_B_breed = meta_A_breed.clone(possible_values=B_breeds, hotkey='B')
 
-            C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
-            meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
+                C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
+                meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
         """
         return TagMeta(
             name=take_with_default(name, self.name),
@@ -746,6 +1044,12 @@ class TagMeta(KeyObject, JsonSerializable):
             applicable_to=take_with_default(applicable_to, self.applicable_to),
             applicable_classes=take_with_default(applicable_classes, self.applicable_classes),
             target_type=take_with_default(target_type, self.target_type),
+            frame_range_min_length=take_with_default(
+                frame_range_min_length, self.frame_range_min_length
+            ),
+            frame_range_max_length=take_with_default(
+                frame_range_max_length, self.frame_range_max_length
+            ),
         )
 
     def __str__(self):
@@ -777,6 +1081,8 @@ class TagMeta(KeyObject, JsonSerializable):
             "Applicable to",
             "Applicable classes",
             "Target type",
+            "Frame range min length",
+            "Frame range max length",
         ]
 
     def get_row_ptable(self):
@@ -789,6 +1095,8 @@ class TagMeta(KeyObject, JsonSerializable):
             self.applicable_to,
             self.applicable_classes,
             self.target_type,
+            self.frame_range_min_length,
+            self.frame_range_max_length,
         ]
 
     def _set_id(self, id: int):

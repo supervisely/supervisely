@@ -1,0 +1,207 @@
+from __future__ import annotations
+
+from typing import Dict, List, Optional
+
+from supervisely.app import DataJson
+from supervisely.app.widgets import Widget
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
+
+class ActivityFeed(Widget):
+    """Vertical list of activity items with status indicators (pending, in progress, completed, failed)."""
+
+    class Item:
+        """Single item in ActivityFeed (content, status, optional number)."""
+
+        def __init__(
+            self,
+            content: Widget,
+            status: Literal["pending", "in_progress", "completed", "failed"] = "pending",
+            number: Optional[int] = None,
+        ) -> ActivityFeed.Item:
+            """
+            :param content: Widget to display as item content.
+            :type content: :class:`~supervisely.app.widgets.widget.Widget`
+            :param status: pending, in_progress, completed, or failed.
+            :type status: Literal["pending", "in_progress", "completed", "failed"]
+            :param number: Position in feed (auto-assigned if None).
+            :type number: Optional[int]
+            """
+            self.content = content
+            self.status = status
+            self.number = number
+            self._validate_status()
+
+        def _validate_status(self):
+            valid_statuses = ["pending", "in_progress", "completed", "failed"]
+            if self.status not in valid_statuses:
+                raise ValueError(
+                    f"Invalid status '{self.status}'. Must be one of: {', '.join(valid_statuses)}"
+                )
+
+        def to_json(self):
+            return {
+                "number": self.number,
+                "status": self.status,
+            }
+
+    def __init__(
+        self,
+        items: Optional[List[ActivityFeed.Item]] = None,
+        widget_id: Optional[str] = None,
+    ):
+        """
+        :param items: List of ActivityFeed.Item to display. Items auto-numbered if number not set.
+        :type items: Optional[List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]]
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ActivityFeed, Text
+
+                item1 = ActivityFeed.Item(content=Text("Processing"), status="completed")
+                item2 = ActivityFeed.Item(content=Text("Training"), status="in_progress", number=2)
+                feed = ActivityFeed(items=[item1, item2])
+                feed.set_status(2, "completed")
+        """
+        self._items = items if items is not None else []
+        self._auto_assign_numbers()
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def _auto_assign_numbers(self):
+        """Automatically assign numbers to items that don't have them."""
+        next_number = 1
+        for item in self._items:
+            if item.number is None:
+                item.number = next_number
+            next_number = max(next_number, item.number) + 1
+
+    def get_json_data(self) -> Dict:
+        """Returns dictionary with widget data.
+
+        :returns: Dictionary with items data
+        :rtype: Dict
+        """
+        return {
+            "items": [item.to_json() for item in self._items],
+        }
+
+    def get_json_state(self) -> Dict:
+        """Returns dictionary with widget state (empty for this widget).
+
+        :returns: Empty dictionary
+        :rtype: Dict
+        """
+        return {}
+
+    def add_item(
+        self,
+        item: Optional[ActivityFeed.Item] = None,
+        content: Optional[Widget] = None,
+        status: Literal["pending", "in_progress", "completed", "failed"] = "pending",
+        number: Optional[int] = None,
+    ) -> None:
+        """Add a new item to the activity feed.
+
+        You can either pass an item object or provide content and status separately.
+
+        :param item: Item to add
+        :type item: Optional[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
+        :param content: Widget content (used if item is not provided)
+        :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
+        :param status: Status of the item (used if item is not provided)
+        :type status: Literal["pending", "in_progress", "completed", "failed"]
+        :param number: Position number (auto-assigned if not provided)
+        :type number: Optional[int]
+        """
+        if item is None:
+            if content is None:
+                raise ValueError("Either 'item' or 'content' must be provided")
+            item = ActivityFeed.Item(content=content, status=status, number=number)
+
+        if item.number is None:
+            # Auto-assign number
+            if self._items:
+                item.number = max(i.number for i in self._items) + 1
+            else:
+                item.number = 1
+
+        self._items.append(item)
+        self.update_data()
+        DataJson().send_changes()
+
+    def remove_item(self, number: int) -> None:
+        """Remove an item from the activity feed by its number.
+
+        :param number: Number of the item to remove. Starts from 1.
+        :type number: int
+        """
+        self._items = [item for item in self._items if item.number != number]
+        self.update_data()
+        DataJson().send_changes()
+
+    def set_status(
+        self,
+        number: int,
+        status: Literal["pending", "in_progress", "completed", "failed"],
+    ) -> None:
+        """Update the status of an item by its number.
+
+        :param number: Number of the item to update. Starts from 1.
+        :type number: int
+        :param status: New status for the item
+        :type status: Literal["pending", "in_progress", "completed", "failed"]
+        """
+        for i, item in enumerate(self._items):
+            if item.number == number:
+                item.status = status
+                item._validate_status()
+                DataJson()[self.widget_id]["items"][i]["status"] = status
+                DataJson().send_changes()
+                return
+        raise ValueError(f"Item with number {number} not found")
+
+    def get_status(self, number: int) -> str:
+        """Get the status of an item by its number.
+
+        :param number: Number of the item. Starts from 1.
+        :type number: int
+        :returns: Status of the item
+        :rtype: str
+        """
+        for item in self._items:
+            if item.number == number:
+                return item.status
+        raise ValueError(f"Item with number {number} not found")
+
+    def get_items(self) -> List[ActivityFeed.Item]:
+        """Get all items in the activity feed.
+
+        :returns: List of all items
+        :rtype: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
+        """
+        return self._items
+
+    def clear(self) -> None:
+        """Remove all items from the activity feed."""
+        self._items = []
+        self.update_data()
+        DataJson().send_changes()
+
+    def set_items(self, items: List[ActivityFeed.Item]) -> None:
+        """Replace all items in the activity feed.
+
+        :param items: New list of items
+        :type items: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
+        """
+        self._items = items
+        self._auto_assign_numbers()
+        self.update_data()
+        DataJson().send_changes()

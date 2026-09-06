@@ -1,4 +1,5 @@
 # coding: utf-8
+# isort: skip_file
 
 import os
 import concurrent.futures
@@ -11,17 +12,26 @@ import threading
 from supervisely.annotation.annotation import Annotation
 from supervisely.function_wrapper import function_wrapper, function_wrapper_nofail
 from supervisely.imaging.image import drop_image_alpha_channel
-from supervisely.nn.legacy.hosted.inference_modes import InferenceModeFactory, InfModeFullImage, \
-    MODE, NAME, get_effective_inference_mode_config
+from supervisely.nn.legacy.hosted.inference_modes import (
+    InferenceModeFactory,
+    InfModeFullImage,
+    MODE,
+    NAME,
+    get_effective_inference_mode_config,
+)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.worker_api.agent_api import AgentAPI
-from supervisely.worker_api.agent_rpc import decode_image, download_image_from_remote, download_data_from_remote, \
-    send_from_memory_generator
+from supervisely.worker_api.agent_rpc import (
+    decode_image,
+    download_image_from_remote,
+    download_data_from_remote,
+    send_from_memory_generator,
+)
 from supervisely.worker_api.interfaces import SingleImageInferenceInterface
-from supervisely.worker_proto import worker_api_pb2 as api_proto
+
+# from supervisely.worker_proto import worker_api_pb2 as api_proto  # Import moved to methods where needed
 from supervisely.task.progress import report_agent_rpc_ready
 from supervisely.api.api import Api
-
 
 REQUEST_TYPE = 'request_type'
 GET_OUT_META = 'get_out_meta'
@@ -40,14 +50,28 @@ FRAME_INDEX = 'frame_index'
 
 
 class ConnectionClosedByServerException(Exception):
+    """Raised when the server closes the RPC request stream unexpectedly."""
+
     pass
 
 
 class AgentRPCServicerBase:
+    """Base implementation of the agent RPC loop for single-image inference requests."""
+
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
 
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        """
+        :param logger: Logger.
+        :type logger: Logger
+        :param model_applier: SingleImageInferenceInterface.
+        :type model_applier: SingleImageInferenceInterface
+        :param conn_config: Dict with server_address, token, task_id.
+        :type conn_config: dict
+        :param cache: Image cache.
+        :type cache: ImageCache
+        """
         self.logger = logger
         self.server_address = conn_config['server_address']
         self.api = AgentAPI(token=conn_config['token'],
@@ -123,6 +147,13 @@ class AgentRPCServicerBase:
             self.thread_pool.submit(function_wrapper_nofail, self._send_data, res_msg, req_id)  # skip errors
 
     def _send_data(self, out_msg, req_id):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         self.logger.trace('Will send output data.', extra={REQUEST_ID: req_id})
         out_bytes = json.dumps(out_msg).encode('utf-8')
 
@@ -173,6 +204,13 @@ class AgentRPCServicerBase:
             self._load_data_if_required(event_obj)
 
     def run_inf_loop(self):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         def seq_inf_wrapped():
             function_wrapper(self._sequential_final_processing)  # exit if raised
 
@@ -203,6 +241,8 @@ class AgentRPCServicerBase:
 
 
 class AgentRPCServicer(AgentRPCServicerBase):
+    """Default Agent RPC servicer that applies a model via an InferenceMode pipeline."""
+
     @staticmethod
     def _in_project_meta_from_msg(in_msg):
         pr_meta_json = in_msg.get('meta')
@@ -236,6 +276,8 @@ class AgentRPCServicer(AgentRPCServicerBase):
 
 
 class SmarttoolRPCServicer(AgentRPCServicerBase):
+    """RPC servicer that forwards requests to a SmartTool model applier (custom inference API)."""
+
     def _do_single_img_inference(self, img, in_msg):
         inference_result = self.model_applier.inference(img, in_msg)
         return inference_result.to_json()
@@ -245,7 +287,10 @@ class SmarttoolRPCServicer(AgentRPCServicerBase):
 
 
 class InactiveRPCServicer(AgentRPCServicer):
+    """Servicer variant that disables RPC loop (used for internal wiring/tests)."""
+
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        """See AgentRPCServicerBase for params."""
         self.logger = logger
         self.model_applier = model_applier
         self._default_inference_mode_config = InfModeFullImage.make_default_config(model_result_suffix=MODEL_RESULT_SUFFIX)

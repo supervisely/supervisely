@@ -1,0 +1,96 @@
+<div class="experiment-info-header">
+    <div class="experiment-info-subheader">
+        <h1>{{ session.name }}</h1>
+
+        <div class="experiment-info-buttons">
+            <!-- Download -->
+            <sly-iw-download-button
+                style="padding: 7px 8px;"
+                :disabled="false"
+                teamFilesPath="{{ session.artifacts_dir + '/' }}"   
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABn0lEQVR4nO2YT04CMRSHPzdzDEAT4lZIvICDHsiFia7Y4BEQTsF50CiCW42iCzeTjKkpyXNScDodp4P0S17Sgfb1/fr6ZzoQCAQC/5VDYAE8Am22kCsg1XbJFtIXAlR56+gHAZ4JGfBNyIBvQgbKogWMgScgEXu7tE9gYJGBa90mNVii+xoBTdfgz4D3NR1l7SOngD1dN4/PJdBzGfm8wdtmYLAhA6lBRKOIgLFw8gCcAFEFizgCYmAm2t8UiP97Hq4cqOCr3oVi0X5eoP2PBWsz8mUJiDIL2xo5D32dA6lLDDsj4AC4A+6Bbg4BXV1Xzet2HQSci3ovQoRJQFfXWf1+UQcBrUxQqtwxCOgY6u3XQYBpZFV5Ip4nhv/ldPMuQHEEPOc4WV+B4z+KwbnxbyJsgve2ja4TYRu813MgK6JI8N4PMrVIb4FpzgVbOwFlkO60gMTxbdSVyPVtdOF4H3ClJ/pXn+itGQkHM+2wikxEwGnmRjYs4qip76OpZ3sreidGj/rSc/AxjjR0CucbvguVaYnua+gy8oFAIEAlfAG3TJLaWbXlEAAAAABJRU5ErkJggg==" alt="download--v1">
+            </sly-iw-download-button>
+
+            {% if resources.apps.online_training.module_id %}
+            <!-- Finetune --->
+            <sly-iw-launch-button
+                style=""
+                :disabled="false"
+                :autoRun="false"
+                :openInNewWindow="true"
+                :selectContext="true"
+                :state="{ 'checkpointMode': 'finetune', 'selectedExperimentTaskId': {{ session.task_id }}}"
+                :moduleId="{{ resources.apps.online_training.module_id }}"
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACeElEQVR4nO2Yy2oVQRCGv+AhUXyBqDFqHiEighIXgpHcFH0EF3GnWfgICaJuzEbNwn127oIuYrbeLyAuIiQcycWdRkFNEEZKaqBoZsY5mdMzc6B/aA4zPaf6q+6q6p6BoKCgoJzqAUaAOeA1sAH8Ab4C74GHwGWgm5qpAVxV4ChH2wTGqYn6gTc5wSPTZEUq1wngiwO2CswAp4ADGi7i5JLz3N2q4fsd+J/AVEJ8dwGzDvy8hl1lajhhs6mrQSfAowlrZ74IfEPD6QMwQUml0labqYLw885Kei+xo07CJg14ZxfwkbZLvh2YM4NNJ/RPFICPdLPzqldmsNMJ/Yum/1FOeFti3/l2wMa/1HlX303/wRzwkitHzPU33w5sm8EkoV1tpTjQSIHvUjvxvZ0yV+DQf0JoAegDDms4JcGjjsb313078NwMNpTQP57jHDRr4FE7cd9L3w7YEnkr5ZnpDPjbDrzopum/59uBa2awtxnPjQFPgR/aFnUPcbUXaBqb5z2y/6vxNomftMHmDWNvzedOLG9av81gyylJ3IqO61kqtnmFkmb+UxvgTzrHcSkOeygJXkrjbtWjYfPL2NwoaLMt8LIijzWxpTqd0XvdWueHtNrYhI3hB+sAv5yj/kdOe9GGUCycsL3AxxbB14BJXzF/ocDMy/+u62b1TMNjW48HMtv3geEyS2UWvDvzAnqRCjUS4CvSWAsx36f9NmxK+ZKQpgE9aHUkvPuCvtJp8KLPBuosHQaPUzL3kQ9e9onaqJmxArWHFz0wgOLMOWC//q7UHV50zPmOk9RqCx9rOMOJrZT32NrpqB60mjrjTb2WL2ZBQUFBFNJfCnaIn00BSHcAAAAASUVORK5CYII=" alt="support">
+                <span>Finetune</span>
+            </sly-iw-launch-button>
+
+            <!-- Continue --->
+            <sly-iw-launch-button
+                style=""
+                :disabled="false"
+                :autoRun="false"
+                :openInNewWindow="true"
+                :selectContext="false"
+                :state="{ 'checkpointMode': 'continue', 'selectedExperimentTaskId': {{ session.task_id }}, 'slyProjectId': {{ session.project.id }} }"
+                :moduleId="{{ resources.apps.online_training.module_id }}"
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAAFcklEQVR4nO2da4hVVRTHf42Zjjg1RUwmSWX0GqlMe9sDUokKv0RUFvVBoje9vkT6oaDI3mVR9KAPFUUY5IfACS2bqKAHOVMRKFpN1JSNWc1ILytPbPgPXS5z7z1733vOvufe9YMNcuc81l7rnL3/55y1tmAYhmEYhmEYhmEYhmEYzccewBnASuAtYBgYUxvWbyu1jdvWaBDTgOuBzUCSsm3WPm5fI5C9gZuA7z0cX962A3cC+1kU0nOAnPZrHY4vbzuBVcAsC0RlDpOT/mig48vbLuAFoNcC8T/Hyyn/ZOj48rYbeB04tV0D4VTKuUB/gPMGgVt1FXeq9eq3wYDj9cuWtlBOHcAS4KMAR72nfWs56nRd3bs9j/8ZcAWwJy3IFHXOR0omwL9y5skB55yroe1vz3N+LfU1rZWk5LCnE/6S845qgA2zNbn/7mnDSJEl7LiU/MWz02Ny1kEZ2NQjm35uZQkbKiV/lHP2zcHGLt2V3wXelb2tJCW/kjOcksmbvTQvbQqcl5pCwo4rjsSzDTaR4uiQuvowQ2VWOClZtAvq0zwuqHql5CkUh7mBQ2omErarTil5NMVldkwJGyold2YoJWPRk6cvnDp4VFewz8m2AbcD3eRDJ/AUMKr2bIMe3KrRrT5uCxgNHtMwXpOHPQ++FbgGmEq+PF1hvlmTw3wzVX3e6ukrd2HX5KeUB9sIXAxMIg6/1bDvHeD8jBXXJPlgY0qfuafwlghAh15bpLHzc+ByYHITBMB9Xq3JQwUZgh73tPMb4GZgesQh6N60k/AjBZiEp8jOPz3t3AHcJWWT1yTsbLzP9y6cCTzgcauPt1Gd7EDyYSZwv87rY6fT9k9I69fCPeHeE3COUdnmbAzGRX15YNSfAQ4nH/YBbgtIY3FPu68A82oc/zi9cog2GjjdfS3wpWcHnTR8FTiB/IamKwNembi2DlhU463Ax7HnQzfzXwIMBHTwTWAx+SmlC4APAuz8BLiogsI7eIJXE9EU4TnAhgZ3MAvOAtYGfKh3V/SyCY63Sn/fIB9E5yTgNQ03Ph3cAlyV9hG9ARwLvKgELR87XcpLKUeoz03HkQFZCAnwgyZQN5FmjTvHk572uTfBhSGpo43qYWVGBnbN0LF9pWSiO7stApBkkJZyaOA7/fJWGCp14Dp9hPfV6KuB+QF2zNe+vvNSywZg/IlyaWAO53pgYYrzL9S2vscflG0tHYBGJOcOSJXMKUnOnaPfBhqQnNsWAWjm9PSk3QLQbAUabRuAZilRavsAxC7SswBUKFP1yeHcVEeZqgWgAk6lLADulswcKklJGdKrZPe30+r8EG8BiIwFIDIWgMhYACJjAYiMBSAyFoDIWAAiYwGIjAUgMhaAyFgAImMBiIwFIDIWgMgUPgCVvunmVTlDuwfg2wodOJNikBQ9AJUWu3BFGs3O8ioBWEFBuLFKJ1yFTbOyOMW35mrVM01DT43cnpdyWFIghDdSBMBtUwgeTJGZ1q9czLyKM2oxknJptULQpeqXNCkkIwrYgpxKllzt2IkTFNK1VAAcx3gse5CUFFG/DFwWWEhdLe3xUuB5OTGZoCy1r5WGoNKaLN+y1qSsNGidlk9YpmK7eSqu3l9V/ZO12uIhyvl0C3TcoH36qlwE5YLg7BT2uG0KR7fWyvEtjEsybu9OYOuKKts7iVpo3KpRd1R5UEsitEUVCjz6lFe6Xf9OUxhSGDrU8dWBFZWNbEMaytqWWUqiXduAIjqftkv/6c8tGVVkFpJO4DytYPJFA4vrEj0Yvq/l2C7MqR658EzXC7yrtWzOGjlxi5b+Gispad0hteVqxN4GntOEulSLhGSxWpZhGIZhGIZhGIZhGIZh4MN/hN4K9eVoLMsAAAAASUVORK5CYII=" alt="graduation-cap">
+                <span>Continue</span>
+            </sly-iw-launch-button>
+            {% else %}
+            <!-- Module not found - buttons disabled -->
+            {% endif %}
+        </div>
+    </div>
+    <div class="experiment-info-subheader-body">
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Info</h2>
+                {% if training.session_url %}
+                <a href="{{ training.session_url }}" target="_blank">Session <i class="zmdi zmdi-arrow-right-top" /></a>
+                {% endif %}
+                {% if training.logs.url %}
+                <a href="{{ training.logs.url }}" target="_blank">Logs <i class="zmdi zmdi-arrow-right-top" /></a>
+                {% endif %}
+            </div>
+            <ul>
+            <li><strong>Session ID:</strong> {{ session.id }}</li>
+            <li><strong>Date:</strong> {{ session.start_time }}</li>
+            <li><strong>Duration:</strong> {{ session.duration or "N/A" }}</li>
+            <li><strong>Device:</strong> {{ training.device or "N/A" }}</li>
+            <li><strong>Total Iterations:</strong> {{ training.total_iterations }}</li>
+            </ul>
+        </div>
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Model</h2>
+            </div>
+            <ul>
+            <li><strong>Architecture:</strong> {{ model.name }}</li>
+            <li><strong>Backbone:</strong> {{ model.backbone }}</li>
+            <li><strong>Task:</strong> {{ model.task_type or "Live Learning" }}</li>
+            <li><strong>Classes:</strong> ({{ model.num_classes }}) {% for class_name in model.classes_short %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>            </ul>
+        </div>
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Data</h2>
+                <a href="{{ session.project.url }}" target="_blank">Project <i class="zmdi zmdi-arrow-right-top" /></a>
+                <a href="{{ session.artifacts_url }}" target="_blank">Artifacts <i class="zmdi zmdi-arrow-right-top" /></a>
+            </div>
+            <ul>
+            <li><strong>Project:</strong> {{ session.project.name }}</li>
+            <li><strong>Final Size:</strong> {{ dataset.current_size }} samples</li>
+            <li><strong>Initial Samples:</strong> {{ dataset.initial_samples }}</li>
+            </ul>
+        </div>
+    </div>
+    <div class="experiment-info-subheader-footer-menu">
+        <a :href="`${location.pathname}#about-live-training`" class="active">About Live Training</a>
+        <a :href="`${location.pathname}#training-results`">Training Results</a>
+        <a :href="`${location.pathname}#checkpoints`">Checkpoints</a>
+        <a :href="`${location.pathname}#classes`">Classes</a>
+    </div>
+</div>

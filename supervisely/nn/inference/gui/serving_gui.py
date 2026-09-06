@@ -9,6 +9,8 @@ from supervisely.task.progress import Progress
 
 
 class ServingGUI:
+    """GUI for model serving: device selection, serve/stop buttons, inference settings editor, download progress."""
+
     def __init__(self) -> None:
         self._device_select = Widgets.SelectCudaDevice(include_cpu_option=True)
         self._device_field = Widgets.Field(self._device_select, title="Device")
@@ -167,7 +169,7 @@ class ServingGUI:
 
     def set_project_meta(self, inference):
         if self._get_classes_from_inference(inference) is None:
-            logger.warn("Skip loading project meta.")
+            logger.warning("Skip loading project meta.")
             self._model_classes_widget.hide()
             self._model_classes_plug.show()
             return
@@ -185,15 +187,15 @@ class ServingGUI:
         try:
             classes = inference.get_classes()
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(inference)} object.")
+            logger.warning(f"get_classes() function not implemented for {type(inference)} object.")
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warning("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
-            logger.warn("Skip getting classes info due to exception")
+            logger.warning("Skip getting classes info due to exception")
             logger.exception(exc)
 
         if classes is None or len(classes) == 0:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warning(f"get_classes() function return {classes}; skip classes processing.")
             return None
         return classes
 

@@ -4,7 +4,11 @@ from typing import List, Union
 
 
 class Rate(Widget):
+    """Star rating widget (optionally half-precision) that emits value-changed callbacks."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -22,6 +26,30 @@ class Rate(Widget):
         disabled_void_color: str = "#EFF2F7",
         widget_id: str = None,
     ):
+        """:param value: Initial rating value.
+        :type value: Union[int, float], optional
+        :param max: Maximum stars (default 5).
+        :type max: int
+        :param disabled: If True, widget is disabled.
+        :type disabled: bool
+        :param allow_half: If True, allow half-star ratings.
+        :type allow_half: bool
+        :param texts: Optional text labels for each level.
+        :type texts: List[str]
+        :param show_text: If True, show text.
+        :type show_text: bool
+        :param text_color: Text color.
+        :type text_color: str
+        :param text_template: Template for disabled state.
+        :type text_template: str
+        :param colors: List of star colors.
+        :param void_color: Color for unselected stars.
+        :type void_color: str
+        :param disabled_void_color: Color when disabled.
+        :type disabled_void_color: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._value = value
         self._max = max
         self._disabled = disabled

@@ -1,21 +1,24 @@
+import hashlib
 import inspect
 import json
 import os
 import signal
 import sys
-from contextlib import suppress
+import time
+from contextlib import contextmanager, suppress
+from contextvars import ContextVar
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-import arel
 import jinja2
 import numpy as np
 import psutil
 from async_asgi_testclient import TestClient
+from cachetools import TTLCache
 from fastapi import (
     Depends,
     FastAPI,
@@ -30,6 +33,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 
+import supervisely.app.fastapi.multi_user as multi_user
 import supervisely.io.env as sly_env
 from supervisely._utils import (
     is_debug_with_sly_net,
@@ -55,18 +59,45 @@ from supervisely.sly_logger import create_formatter, logger
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
+try:
+    import arel
+except ImportError:
+    arel = None
+
 import logging
 
 SUPERVISELY_SERVER_PATH_PREFIX = sly_env.supervisely_server_path_prefix()
 if SUPERVISELY_SERVER_PATH_PREFIX and not SUPERVISELY_SERVER_PATH_PREFIX.startswith("/"):
     SUPERVISELY_SERVER_PATH_PREFIX = f"/{SUPERVISELY_SERVER_PATH_PREFIX}"
 
+HEALTH_ENDPOINTS = ["/health", "/is_ready"]
+
+# Context variable for response time
+response_time_ctx: ContextVar[float] = ContextVar("response_time", default=None)
+
+# Mapping from user_id to Api instance
+_USER_API_CACHE = TTLCache(maxsize=500, ttl=60 * 15)  # Cache up to 15 minutes
+
 
 class ReadyzFilter(logging.Filter):
+    """Adjust log level for readiness/liveness probe requests."""
+
     def filter(self, record):
         if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
             record.levelno = logging.DEBUG  # Change log level to DEBUG
             record.levelname = "DEBUG"
+        return True
+
+
+class ResponseTimeFilter(logging.Filter):
+    """Attach response time from context to uvicorn access logs (if available)."""
+
+    def filter(self, record):
+        # Check if this is an HTTP access log line by logger name
+        if getattr(record, "name", "") == "uvicorn.access":
+            response_time = response_time_ctx.get(None)
+            if response_time is not None:
+                record.responseTime = int(response_time)
         return True
 
 
@@ -75,12 +106,15 @@ def _init_uvicorn_logger():
     for handler in uvicorn_logger.handlers:
         handler.setFormatter(create_formatter())
     uvicorn_logger.addFilter(ReadyzFilter())
+    uvicorn_logger.addFilter(ResponseTimeFilter())
 
 
 _init_uvicorn_logger()
 
 
 class PrefixRouter(APIRouter):
+    """APIRouter that prefixes routes with instance path prefix (except health endpoints)."""
+
     def add_api_route(self, path, *args, **kwargs):
         allowed_paths = ["/livez", "/is_alive", "/is_running", "/readyz", "/is_ready"]
         if path in allowed_paths:
@@ -91,8 +125,13 @@ class PrefixRouter(APIRouter):
 
 
 class Event:
+    """Typed payload classes for common Supervisely UI/tool events delivered via webhooks."""
+
     class Brush:
+        """Brush tool events (e.g. bitmap brush interactions)."""
+
         class DrawLeftMouseReleased:
+            """Payload for bitmap brush change event (left mouse released)."""
             endpoint = "/tools_bitmap_brush_figure_changed"
 
             def __init__(
@@ -115,6 +154,42 @@ class Event:
                 geometry_type: str,
                 mask: np.ndarray,
             ):
+                """
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param image_id: Image ID.
+                :type image_id: int
+                :param label_id: Figure/label ID.
+                :type label_id: int
+                :param object_class_id: Object class ID.
+                :type object_class_id: int
+                :param object_class_title: Object class name.
+                :type object_class_title: str
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: int
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param is_fill: If True, fill mode.
+                :type is_fill: bool
+                :param is_erase: If True, erase mode.
+                :type is_erase: bool
+                :param geometry_type: Geometry type string.
+                :type geometry_type: str
+                :param mask: Mask as numpy array.
+                :type mask: np.ndarray
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -179,7 +254,10 @@ class Event:
                 )
 
     class ManualSelected:
+        """Events for manual selection changes in labeling tools."""
+
         class VideoChanged:
+            """Payload for manual selection change event for videos."""
             endpoint = "/manual_selected_entity_changed"
 
             def __init__(
@@ -197,6 +275,32 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -228,6 +332,7 @@ class Event:
                 )
 
         class FigureChanged:
+            """Payload for manual selection change event for a figure."""
             endpoint = "/manual_selected_figure_changed"
 
             def __init__(
@@ -250,6 +355,42 @@ class Event:
                 job_id: int,
                 previous_figure: dict = None,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param image_id: Image ID.
+                :type image_id: int
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param object_id: Object ID.
+                :type object_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param previous_figure: Previous figure.
+                :type previous_figure: dict
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -313,6 +454,34 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param image_id: Image ID.
+                :type image_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -346,6 +515,7 @@ class Event:
                 )
 
     class FigureCreated:
+        """Payload for a new figure creation event in labeling tools."""
         endpoint = "/figure_created"
 
         def __init__(
@@ -369,6 +539,44 @@ class Event:
             tool_state: dict,
             figure_state: dict,
         ):
+            """
+            :param dataset_id: Dataset ID.
+            :type dataset_id: int
+            :param team_id: Team ID.
+            :type team_id: int
+            :param workspace_id: Workspace ID.
+            :type workspace_id: int
+            :param project_id: Project ID.
+            :type project_id: int
+            :param figure_id: Figure ID.
+            :type figure_id: int
+            :param figure_class_id: Figure class ID.
+            :type figure_class_id: int
+            :param figure_class_title: Figure class title.
+            :type figure_class_title: str
+            :param image_id: Image ID.
+            :type image_id: int
+            :param video_id: Video ID.
+            :type video_id: int
+            :param frame: Frame number.
+            :type frame: int
+            :param object_id: Object ID.
+            :type object_id: int
+            :param tool_class_id: Tool class ID.
+            :type tool_class_id: int
+            :param session_id: Session ID.
+            :type session_id: str
+            :param tool: Tool identifier.
+            :type tool: str
+            :param user_id: User ID.
+            :type user_id: int
+            :param job_id: Job ID.
+            :type job_id: int
+            :param tool_state: Tool state.
+            :type tool_state: dict
+            :param figure_state: Figure state.
+            :type figure_state: dict
+            """
             self.dataset_id = dataset_id
             self.team_id = team_id
             self.workspace_id = workspace_id
@@ -412,8 +620,13 @@ class Event:
             )
 
     class Tools:
+        """Tool-specific events grouped by tool name."""
+
         class Rectangle:
+            """Events produced by the rectangle labeling tool (create/update rectangle figures)."""
+
             class FigureChanged:
+                """Payload for rectangle tool figure changed event."""
                 endpoint = "/tools_rectangle_figure_changed"
 
                 def __init__(
@@ -434,6 +647,38 @@ class Event:
                     tool_state: dict,
                     figure_state: dict,
                 ):
+                    """
+                    :param dataset_id: Dataset ID.
+                    :type dataset_id: int
+                    :param team_id: Team ID.
+                    :type team_id: int
+                    :param workspace_id: Workspace ID.
+                    :type workspace_id: int
+                    :param project_id: Project ID.
+                    :type project_id: int
+                    :param figure_id: Figure ID.
+                    :type figure_id: int
+                    :param figure_class_id: Figure class ID.
+                    :type figure_class_id: int
+                    :param figure_class_title: Figure class title.
+                    :type figure_class_title: str
+                    :param image_id: Image ID.
+                    :type image_id: int
+                    :param tool_class_id: Tool class ID.
+                    :type tool_class_id: int
+                    :param session_id: Session ID.
+                    :type session_id: str
+                    :param tool: Tool identifier.
+                    :type tool: str
+                    :param user_id: User ID.
+                    :type user_id: int
+                    :param job_id: Job ID.
+                    :type job_id: int
+                    :param tool_state: Tool state.
+                    :type tool_state: dict
+                    :param figure_state: Figure state.
+                    :type figure_state: dict
+                    """
                     self.dataset_id = dataset_id
                     self.team_id = team_id
                     self.workspace_id = workspace_id
@@ -471,7 +716,10 @@ class Event:
                     )
 
     class Entity:
+        """Events related to entity navigation (e.g. video frame changes)."""
+
         class FrameChanged:
+            """Payload for entity frame changed event."""
             endpoint = "/entity_frame_changed"
 
             def __init__(
@@ -492,6 +740,38 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param object_id: Object ID.
+                :type object_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -529,7 +809,10 @@ class Event:
                 )
 
     class JobEntity:
+        """Events related to labeling job entities (e.g. status changes)."""
+
         class StatusChanged:
+            """Payload for job entity status change event."""
             endpoint = "/job_entity_status_changed"
 
             def __init__(
@@ -550,6 +833,38 @@ class Event:
                 job_id: int,
                 job_entity_status: str,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param image_id: Image ID.
+                :type image_id: int
+                :param entity_id: Entity ID.
+                :type entity_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param job_entity_status: Job entity status.
+                :type job_entity_status: str
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -606,18 +921,30 @@ def create(
         shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
-
         @app.post("/data")
         async def send_data(request: Request):
-            data = DataJson()
-            response = JSONResponse(content=dict(data))
+            if not sly_env.is_multiuser_mode_enabled():
+                data = DataJson()
+                response = JSONResponse(content=dict(data))
+                return response
+            user_id = await multi_user.extract_user_id_from_request(request)
+            multi_user.remember_cookie(request, user_id)
+            with multi_user.session_context(user_id):
+                data = DataJson()
+                response = JSONResponse(content=dict(data))
             return response
 
         @app.post("/state")
         async def send_state(request: Request):
-            state = StateJson()
-
-            response = JSONResponse(content=dict(state))
+            if not sly_env.is_multiuser_mode_enabled():
+                state = StateJson()
+                response = JSONResponse(content=dict(state))
+            else:
+                user_id = await multi_user.extract_user_id_from_request(request)
+                multi_user.remember_cookie(request, user_id)
+                with multi_user.session_context(user_id):
+                    state = StateJson()
+                    response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
             if (gettrace is not None and gettrace()) or is_development():
                 response.headers["x-debug-mode"] = "1"
@@ -700,6 +1027,9 @@ def enable_hot_reload_on_debug(app: FastAPI):
     if gettrace is None:
         print("Can not detect debug mode, no sys.gettrace")
     elif gettrace():
+        if arel is None:
+            logger.warning("UI hot-reload is disabled because arel is not installed")
+            return
         # List of directories to exclude from the hot reload.
         exclude = [".venv", ".git", "tmp"]
 
@@ -707,9 +1037,9 @@ def enable_hot_reload_on_debug(app: FastAPI):
             paths=[arel.Path(path) for path in os.listdir() if path not in exclude]
         )
 
-        app.add_websocket_route("/hot-reload", route=hot_reload, name="hot-reload")
-        app.add_event_handler("startup", hot_reload.startup)
-        app.add_event_handler("shutdown", hot_reload.shutdown)
+        _add_websocket_route(app, "/hot-reload", hot_reload, name="hot-reload")
+        _add_event_handler(app, "startup", hot_reload.startup)
+        _add_event_handler(app, "shutdown", hot_reload.shutdown)
         templates.env.globals["HOTRELOAD"] = "1"
         templates.env.globals["hot_reload"] = hot_reload
         logger.debug("Debugger (gettrace) detected, UI hot-reload is enabled")
@@ -754,6 +1084,51 @@ def handle_server_errors(app: FastAPI):
         return await process_server_error(request, exc)
 
 
+def _add_event_handler(app: FastAPI, event_type: str, func: Callable[[], Any]) -> None:
+    router = getattr(app, "router", None)
+    add_router_event_handler = getattr(router, "add_event_handler", None)
+    if callable(add_router_event_handler):
+        add_router_event_handler(event_type, func)
+        return
+
+    add_app_event_handler = getattr(app, "add_event_handler", None)
+    if callable(add_app_event_handler):
+        add_app_event_handler(event_type, func)
+        return
+
+    handler_lists = {"startup": "on_startup", "shutdown": "on_shutdown"}
+    handler_list_name = handler_lists.get(event_type)
+    handlers = getattr(router, handler_list_name, None) if handler_list_name else None
+    if hasattr(handlers, "append"):
+        handlers.append(func)
+        return
+
+    raise AttributeError(
+        f"Unable to register {event_type!r} event handler: neither the app nor its router "
+        "exposes a supported event registration API."
+    )
+
+
+def _add_websocket_route(
+    app: FastAPI, path: str, route: Callable[..., Any], name: Optional[str] = None
+) -> None:
+    router = getattr(app, "router", None)
+    add_router_websocket_route = getattr(router, "add_websocket_route", None)
+    if callable(add_router_websocket_route):
+        add_router_websocket_route(path, route, name=name)
+        return
+
+    add_app_websocket_route = getattr(app, "add_websocket_route", None)
+    if callable(add_app_websocket_route):
+        add_app_websocket_route(path, route, name=name)
+        return
+
+    raise AttributeError(
+        f"Unable to register websocket route {path!r}: neither the app nor its router "
+        "exposes a supported raw websocket route registration API."
+    )
+
+
 def _init(
     app: FastAPI = None,
     templates_dir: str = "templates",
@@ -794,41 +1169,64 @@ def _init(
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
-        if headless is False:
-            await StateJson.from_request(request)
+        # Start timer for response time measurement
+        start_time = time.perf_counter()
 
-        if not ("application/json" not in request.headers.get("Content-Type", "")):
-            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://app.supervisely.com'}
-            content = await request.json()
+        async def _process_request(request: Request, call_next):
+            if "application/json" in request.headers.get("Content-Type", ""):
+                content = await request.json()
+                request.state.context = content.get("context")
+                request.state.state = content.get("state")
+                request.state.api_token = content.get(
+                    "api_token",
+                    (
+                        request.state.context.get("apiToken")
+                        if request.state.context is not None
+                        else None
+                    ),
+                )
+                request.state.server_address = content.get(
+                    "server_address", sly_env.server_address(raise_not_found=False)
+                )
+                if (
+                    request.state.server_address is not None
+                    and request.state.api_token is not None
+                ):
+                    request.state.api = Api(
+                        request.state.server_address, request.state.api_token
+                    )
+                    if sly_env.is_multiuser_mode_enabled():
+                        user_id = sly_env.user_from_multiuser_app()
+                        if user_id is not None:
+                            _USER_API_CACHE[user_id] = request.state.api
+                else:
+                    request.state.api = None
 
-            request.state.context = content.get("context")
-            request.state.state = content.get("state")
-            request.state.api_token = content.get(
-                "api_token",
-                (
-                    request.state.context.get("apiToken")
-                    if request.state.context is not None
-                    else None
-                ),
-            )
-            # logger.debug(f"middleware request api_token {request.state.api_token}")
-            request.state.server_address = content.get(
-                "server_address", sly_env.server_address(raise_not_found=False)
-            )
-            # request.state.server_address = sly_env.server_address(raise_not_found=False)
-            # logger.debug(f"middleware request server_address {request.state.server_address}")
-            # logger.debug(f"middleware request context {request.state.context}")
-            # logger.debug(f"middleware request state {request.state.state}")
-            if request.state.server_address is not None and request.state.api_token is not None:
-                request.state.api = Api(request.state.server_address, request.state.api_token)
-            else:
-                request.state.api = None
+            try:
+                response = await call_next(request)
+            except Exception as exc:
+                need_to_handle_error = is_production()
+                response = await process_server_error(
+                    request, exc, need_to_handle_error
+                )
 
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            need_to_handle_error = is_production()
-            response = await process_server_error(request, exc, need_to_handle_error)
+            return response
+
+        if not sly_env.is_multiuser_mode_enabled():
+            if headless is False:
+                await StateJson.from_request(request)
+            response = await _process_request(request, call_next)
+        else:
+            user_id = await multi_user.extract_user_id_from_request(request)
+            multi_user.remember_cookie(request, user_id)
+
+            with multi_user.session_context(user_id):
+                if headless is False:
+                    await StateJson.from_request(request, local=False)
+                response = await _process_request(request, call_next)
+        # Calculate response time and set it for uvicorn logger in ms
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000)
+        response_time_ctx.set(elapsed_ms)
         return response
 
     def verify_localhost(request: Request):
@@ -864,7 +1262,13 @@ def _init(
                 )
             return app.cached_template
 
-        @app.on_event("shutdown")
+        def drop_cached_template():
+            # Application.__init__ requests "/" in a thread, so the page can be cached before
+            # widget handlers are registered (they are baked into the HTML). Drop that render.
+            app.cached_template = None
+
+        _add_event_handler(app, "startup", drop_cached_template)
+
         def shutdown():
             from supervisely.app.content import ContentOrigin
 
@@ -874,6 +1278,8 @@ def _init(
             assert resp.status_code == 200
             logger.info("Application has been shut down successfully")
 
+        _add_event_handler(app, "shutdown", shutdown)
+
         if static_dir is not None:
             app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
 
@@ -881,6 +1287,8 @@ def _init(
 
 
 class _MainServer(metaclass=Singleton):
+    """Singleton wrapper around a FastAPI server instance used by the app runtime."""
+
     def __init__(self):
         self._server = FastAPI()
         self._server.router = PrefixRouter()
@@ -890,6 +1298,8 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
+    """Supervisely application runtime built on top of FastAPI and widgets."""
+
     class StopException(Exception):
         """Raise to stop the function from running in app.handle_stop"""
 
@@ -905,7 +1315,33 @@ class Application(metaclass=Singleton):
             Callable
         ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
         show_header: bool = True,
+        hide_health_check_logs: bool = True,  # whether to hide health check logs in info level
+        health_check_endpoints: Optional[List[str]] = None,  # endpoints to check health of the app
     ):
+        """
+        :param layout: Main layout of the application.
+        :type layout: :class:`~supervisely.app.widgets.widget.Widget`
+        :param templates_dir: Directory with Jinja2 templates. It is preferred to use `layout` instead of `templates_dir`.
+        :type templates_dir: str, optional
+        :param static_dir: Directory with static files (e.g. CSS, JS), used for serving static content.
+        :type static_dir: str, optional
+        :param hot_reload: Whether to enable hot reload during development (default is False).
+        :type hot_reload: bool, optional
+        :param session_info_extra_content: Additional content to be displayed in the session info area.
+        :type session_info_extra_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
+        :param session_info_solid: Whether to use solid background for the session info area.
+        :type session_info_solid: bool, optional
+        :param ready_check_function: Function to check if the app is ready for requests.
+        :type ready_check_function: Callable, optional
+        :param show_header: Whether to show the header in the application.
+        :type show_header: bool, optional
+        :param hide_health_check_logs: Whether to hide health check logs in info level.
+        :type hide_health_check_logs: bool, optional
+        :param health_check_endpoints: List of additional endpoints to check health of the app.
+            Add your custom endpoints here to be able to manage logging of health check requests on info level with `hide_health_check_logs`.
+        :type health_check_endpoints: List[str], optional
+        """
+        self.hot_reload = None
         self._favicon = os.environ.get("icon", "https://cdn.supervisely.com/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -980,23 +1416,38 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
+
+        # add filter to hide health check logs for info level
+        if health_check_endpoints is None or len(health_check_endpoints) == 0:
+            self._health_check_endpoints = HEALTH_ENDPOINTS
+        else:
+            health_check_endpoints = [endpoint.strip() for endpoint in health_check_endpoints]
+            self._health_check_endpoints = HEALTH_ENDPOINTS + health_check_endpoints
+
+        if hide_health_check_logs:
+            self._setup_health_check_filter()
+
         self.test_client = TestClient(self._fastapi)
 
         if not headless:
             if is_development() and hot_reload:
-                templates = Jinja2Templates()
-                self.hot_reload = arel.HotReload([])
-                self._fastapi.add_websocket_route(
-                    "/hot-reload", route=self.hot_reload, name="hot-reload"
-                )
-                self._fastapi.add_event_handler("startup", self.hot_reload.startup)
-                self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
+                if arel is None:
+                    logger.warning("Hot reload is disabled because arel is not installed.")
+                    hot_reload = False
+                else:
+                    templates = Jinja2Templates()
+                    self.hot_reload = arel.HotReload([])
+                    _add_websocket_route(
+                        self._fastapi, "/hot-reload", self.hot_reload, name="hot-reload"
+                    )
+                    _add_event_handler(self._fastapi, "startup", self.hot_reload.startup)
+                    _add_event_handler(self._fastapi, "shutdown", self.hot_reload.shutdown)
 
-                # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
-                templates.env.globals["HOTRELOAD"] = "1"
-                templates.env.globals["hot_reload"] = self.hot_reload
+                    # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
+                    templates.env.globals["HOTRELOAD"] = "1"
+                    templates.env.globals["hot_reload"] = self.hot_reload
 
-                logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
+                    logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
             if is_production():
                 # to save offline session
@@ -1050,6 +1501,9 @@ class Application(metaclass=Singleton):
         return self._stop_event.is_set()
 
     def reload_page(self):
+        if self.hot_reload is None:
+            logger.warning("Hot reload is disabled; reload_page() is skipped.")
+            return
         run_sync(self.hot_reload.notify.notify())
 
     def get_static_dir(self):
@@ -1065,7 +1519,7 @@ class Application(metaclass=Singleton):
         If set to `False` and shutdown request recieved (i.e. `app.is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
         :type graceful: bool
-        :return: context manager
+        :returns: context manager
         :rtype: _type_
         """
         self._graceful_stop_event = ThreadingEvent()
@@ -1078,25 +1532,25 @@ class Application(metaclass=Singleton):
         Supports both async and sync functions.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
-        :type event: Event
+        :type event: :class:`~supervisely.app.fastapi.subapp.Event`
         :param use_state: if set to True, data will be extracted from request.state.state,
             otherwise from request.state.context, defaults to False
         :type use_state: bool, optional
-        :return: decorator
+        :returns: decorator
         :rtype: Callable
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            app = sly.Application(layout=layout)
+                app = sly.Application(layout=layout)
 
-            @app.event(sly.Event.Brush.LeftMouseReleased)
-            def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
-                # do something
-                pass
+                @app.event(sly.Event.Brush.LeftMouseReleased)
+                def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
+                    # do something
+                    pass
         """
 
         def inner(func: Callable) -> Callable:
@@ -1126,6 +1580,40 @@ class Application(metaclass=Singleton):
     def set_ready_check_function(self, func: Callable):
         self._ready_check_function = func
 
+    def _setup_health_check_filter(self):
+        """Setup filter to hide health check logs for info level."""
+
+        class HealthCheckFilter(logging.Filter):
+            """Hide health check requests from access logs in non-debug mode."""
+
+            def __init__(self, app_instance):
+                """
+                :param app_instance: Application instance for debug/endpoints check.
+                :type app_instance: :class:`~supervisely.app.fastapi.subapp.Application`
+                """
+                super().__init__()
+                self.app: Application = app_instance
+
+            def filter(self, record):
+                # Hide health check requests if NOT in debug mode
+                if not self.app._fastapi.debug and hasattr(record, "getMessage"):
+                    message = record.getMessage()
+                    # Check if the message contains health check paths
+                    if any(path in message for path in self.app._health_check_endpoints):
+                        return False
+                return True
+
+        # Apply filter to uvicorn access logger
+        health_filter = HealthCheckFilter(self)
+        uvicorn_logger = logging.getLogger("uvicorn.access")
+
+        # Remove old filters of this type, if any (for safety)
+        uvicorn_logger.filters = [
+            f for f in uvicorn_logger.filters if not isinstance(f, HealthCheckFilter)
+        ]
+
+        uvicorn_logger.addFilter(health_filter)
+
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
     """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
@@ -1141,7 +1629,7 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
     api = Api()
     task_id = sly_env.task_id(raise_not_found=False)
     if task_id is None:
-        logger.warn("`autostart` env can't be setted: TASK_ID variable is not defined.")
+        logger.warning("`autostart` env can't be setted: TASK_ID variable is not defined.")
         return
     task_meta = api.task.get_info_by_id(task_id).get("meta", None)
     task_params = None
@@ -1167,7 +1655,7 @@ def call_on_autostart(
 
     :param default_func: default function to call if autostart is not enabled, defaults to None
     :type default_func: Optional[Callable], optional
-    :return: decorator
+    :returns: decorator
     :rtype: Callable
     """
     set_autostart_flag_from_state()
@@ -1190,3 +1678,12 @@ def call_on_autostart(
 
 def get_name_from_env(default="Supervisely App"):
     return os.environ.get("APP_NAME", default)
+
+def session_user_api() -> Optional[Api]:
+    """Returns the API instance for the current session user."""
+    if not sly_env.is_multiuser_mode_enabled():
+        return Api.from_env()
+    user_id = sly_env.user_from_multiuser_app()
+    if user_id is None:
+        return None
+    return _USER_API_CACHE.get(user_id, None)

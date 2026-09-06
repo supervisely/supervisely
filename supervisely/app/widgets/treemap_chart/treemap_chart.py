@@ -5,55 +5,7 @@ from supervisely.app.content import DataJson
 
 
 class TreemapChart(Apexchart):
-    """Widget for displaying data for series in a comparison by distribution of each of them.
-    Supports multiple series, which can be added in one chart. Widget also handles click events on datapoints.
-
-    :param title: title of the chart, which will be displayed above the chart
-    :type title: str
-    :param colors: list of colors for series, if not specified, default color will be used,
-        if there are more series than colors, colors will be repeated. colors should be in hex format (e.g. #008FFB)
-    :type colors: List[str]
-    :param tooltip: tooltip for chart, which will be displayed on hover over datapoint
-    :type tooltip: str
-
-    :Methods:
-    add_series(): add new series to the chart, if len(names) != len(values), ValueError will be raised
-    set_series(): set series to the chart, deleting all previous series, if len(names) != len(values),
-        ValueError will be raised
-    get_series(): get series by index. If index is out of range, IndexError will be raised
-    delete_series(): delete series by index. If index is out of range, IndexError will be raised
-    @click(): decorator for handling click events on datapoints. It will return ClickedDataPoint object.
-
-    :Usage example:
-
-     .. code-block:: python
-        from supervisely.app.widgets import TreemapChart
-
-        # Preparing list of custom colors for series (it's optional)
-        colors = [
-            "#008FFB",
-            "#00E396",
-            "#FEB019",
-            "#FF4560",
-            "#775DD0",
-            ]
-
-        # Creating tooltip for chart (it's optional)
-        tooltip = "There are {y} objects"
-
-        # Initialize empty chart without any series.
-        tc = TreemapChart(title="Treemap Chart", colors=colors)
-
-
-        # Preparing series data for widget
-        # Remember that names and values must have the same length, otherwise ValueError will be raised
-        names = ["cats", "dogs", "birds", "fishes", "snakes"]
-        values = [3, 5, 1, 2, 1]
-
-        # Setting series to the chart (aware that it will delete all previous series if they existed)
-        dc.set_series(names, values)
-
-    """
+    """Widget for displaying data series by distribution. Supports multiple series and click events on datapoints."""
 
     class ClickedDataPoint(NamedTuple):
         """Class, representing clicked datapoint, which contains information about series, data index and data itself.
@@ -70,6 +22,27 @@ class TreemapChart(Apexchart):
         colors: List[str] = None,
         tooltip: str = None,
     ):
+        """Initialize the TreemapChart widget.
+
+        :param title: Title of the chart displayed above.
+        :type title: str
+        :param colors: List of hex colors for series (e.g. #008FFB). Repeated if more series than colors.
+        :type colors: List[str]
+        :param tooltip: Tooltip displayed on hover over datapoint.
+        :type tooltip: str
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import TreemapChart
+
+                colors = ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"]
+                tc = TreemapChart(title="Treemap Chart", colors=colors)
+                names = ["cats", "dogs", "birds", "fishes", "snakes"]
+                values = [3, 5, 1, 2, 1]
+                tc.set_series(names, values)
+        """
         self._title = title
         self._series = []
         self._widget_height = 350
@@ -175,7 +148,7 @@ class TreemapChart(Apexchart):
         :type index: int
         :raises TypeError: if index is not int
         :raises IndexError: if index is out of range
-        :return: series data by given index
+        :returns: series data by given index
         :rtype: Dict[str, Union[int, float]]
         """
 
@@ -207,7 +180,7 @@ class TreemapChart(Apexchart):
         """Returns clicked datapoint as a ClickedDataPoint object, which is a namedtuple with fields:
         series_index, data_index and data. If click was outside of the cells, None will be returned.
 
-        :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the cells
+        :returns: clicked datapoint as a ClickedDataPoint object or None if click was outside of the cells
         :rtype: Union[ClickedDataPoint, None]
         """
         value = self.get_clicked_value()

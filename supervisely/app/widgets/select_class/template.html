@@ -1,0 +1,50 @@
+<el-select v-model="state.{{{widget.widget_id}}}.value" {% if widget._changes_handled==true %}
+	@change="post('/{{{widget.widget_id}}}/value_changed')" {% endif %}
+	:placeholder="data.{{{widget.widget_id}}}.placeholder" :filterable="data.{{{widget.widget_id}}}.filterable"
+	:multiple="data.{{{widget.widget_id}}}.multiple" :size="data.{{{widget.widget_id}}}.size">
+	<el-option v-for="item in data.{{{widget.widget_id}}}.items" :key="item.value" :label="item.label"
+		:value="item.value">
+		<i class="zmdi zmdi-circle"
+			:style="{color: 'rgb(' + item.color[0] + ',' + item.color[1] + ',' + item.color[2] + ')'}"></i>
+		{{ item.label }}
+		<span v-if="item.geometryType" style="float: right; color: #8492a6; font-size: 12px; margin-right: 20px;">
+			{{ item.geometryType }}
+		</span>
+	</el-option>
+	<el-option v-if="data.{{{widget.widget_id}}}.showAddNewClass" value="__add_new_class__" label="+ Add new class"
+		disabled @click.native.stop="state.{{{widget.widget_id}}}.createClassDialog.visible = true"
+		style="cursor: pointer;">
+		<span style="color: #409EFF; font-weight: 500;">+ Add new class</span>
+	</el-option>
+</el-select>
+
+<!-- Dialog for creating new class -->
+<el-dialog title="Create New Class" :visible.sync="state.{{{widget.widget_id}}}.createClassDialog.visible" width="450px"
+	:close-on-click-modal="false" @open="state.{{{widget.widget_id}}}.createClassDialog.showError = false">
+	<el-form label-width="120px" label-position="left">
+		<el-form-item label="Class Name">
+			<el-input v-model="state.{{{widget.widget_id}}}.createClassDialog.className" placeholder="Enter class name"
+				@input="state.{{{widget.widget_id}}}.createClassDialog.showError = false"
+				@keyup.enter.native="post('/{{{widget.widget_id}}}/class_created_cb')"></el-input>
+		</el-form-item>
+		<el-form-item label="Geometry Type">
+			<el-select v-model="state.{{{widget.widget_id}}}.createClassDialog.geometryType"
+				placeholder="Select geometry type" style="width: 100%">
+				<el-option v-for="geom in data.{{{widget.widget_id}}}.availableGeometryTypes" :key="geom.value"
+					:label="geom.label" :value="geom.value">
+				</el-option>
+			</el-select>
+		</el-form-item>
+		<div v-show="state.{{{widget.widget_id}}}.createClassDialog.showError" style="margin-top: 10px;">
+			{{{widget._error_message}}}
+		</div>
+	</el-form>
+	<span slot="footer" class="dialog-footer">
+		<el-button @click="state.{{{widget.widget_id}}}.createClassDialog.visible = false">
+			Cancel
+		</el-button>
+		<el-button type="primary" @click="post('/{{{widget.widget_id}}}/class_created_cb')">
+			Create
+		</el-button>
+	</span>
+</el-dialog>

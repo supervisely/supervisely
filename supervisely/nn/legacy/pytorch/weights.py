@@ -1,19 +1,19 @@
 # coding: utf-8
 import os.path
 
-import torch
-from torch.nn import Parameter
+import torch  # pylint: disable=import-error
+from torch.nn import Parameter  # pylint: disable=import-error
 
 
 class WeightsRW:
-    """
-    Help to load weights for PyTorch model from file and save current model state dict into given place.
+    """Load/save PyTorch model weights from/to file."""
 
-    Args:
-        model_dir: Path to the folder for storing weights.
-        model_file: Name of weights file(default: model.pt).
-    """
     def __init__(self, model_dir, model_file=None):
+        """:param model_dir: Path to the folder for storing weights.
+        :type model_dir: str
+        :param model_file: Name of weights file (default: model.pt).
+        :type model_file: str
+        """
         self._weights_fpath = os.path.join(model_dir, model_file or 'model.pt')
 
     def save(self, model):
@@ -21,15 +21,16 @@ class WeightsRW:
 
     @staticmethod
     def _transfer_params(src_state, dest_model):
-        """Copies parameters and buffers from :attr:`src_state` into
-        :attr:`dest_model` module and its descendants.
-
-        Arguments:
-            src_state (dict): A dict containing parameters and
-                persistent buffers.
-            dest_model: model
         """
+        Copy parameters and buffers from :attr:`src_state` into :attr:`dest_model` module and its descendants.
 
+        :param src_state: A dict containing parameters and persistent buffers.
+        :type src_state: dict
+        :param dest_model: Model to copy parameters and buffers to.
+        :type dest_model: :class:`~torch.nn.Module`
+        :returns: None
+        :rtype: None
+        """
         dest_state = dest_model.state_dict()
         for name, param in src_state.items():
             if name in dest_state:

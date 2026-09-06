@@ -7,19 +7,10 @@ from supervisely.app.widgets import Text, Widget
 
 
 class CheckboxField(Widget):
-    """This widget is a checkbox with a description.
-
-    :param title: Title of the checkbox.
-    :type title: str
-    :param description: Description of the checkbox.
-    :type description: str
-    :param checked: Initial state of the checkbox.
-    :type checked: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    """
+    """Checkbox with title and description."""
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -29,6 +20,23 @@ class CheckboxField(Widget):
         checked: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param title: Checkbox title.
+        :type title: str
+        :param description: Checkbox description.
+        :type description: str
+        :param checked: Initial checked state.
+        :type checked: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import CheckboxField
+                cb = CheckboxField("Title", "Description", checked=False)
+        """
         self._title = title
         self._description = description
         self._checked = checked
@@ -41,7 +49,7 @@ class CheckboxField(Widget):
             - title: Current title data of the checkbox.
             - description: Current description data of the checkbox
 
-        :return: Dictionary with the data of the checkbox.
+        :returns: Dictionary with the data of the checkbox.
         :rtype: Dict[str, str]
         """
         return {"title": self._title, "description": self._description}
@@ -51,7 +59,7 @@ class CheckboxField(Widget):
         Dictionary contains the following keys:
             - checked: Current state of the checkbox.
 
-        :return: Dictionary with the state of the checkbox.
+        :returns: Dictionary with the state of the checkbox.
         :rtype: Dict[str, bool]
         """
         return {"checked": self._checked}
@@ -59,7 +67,7 @@ class CheckboxField(Widget):
     def is_checked(self) -> bool:
         """Returns the state of the checkbox. True if checked, False otherwise.
 
-        :return: Current state of the checkbox.
+        :returns: Current state of the checkbox.
         :rtype: bool
         """
         return StateJson()[self.widget_id]["checked"]
@@ -106,7 +114,7 @@ class CheckboxField(Widget):
 
         :param func: Function that handles the event of changing the state of the checkbox.
         :type func: Callable[[bool], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(CheckboxField.Routes.VALUE_CHANGED)

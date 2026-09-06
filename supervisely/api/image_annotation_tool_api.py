@@ -6,6 +6,8 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class ImageAnnotationToolAction(StrEnum):
+    """Action to set the figure as the current figure (selected figure) in the annotation tool."""
+
     SET_FIGURE = "figures/setFigure"
     """"""
     NEXT_IMAGE = "images/nextImage"
@@ -22,9 +24,13 @@ class ImageAnnotationToolAction(StrEnum):
     """"""
     SHOW_ERROR_NOTIFICATION = "app/showErrorNotification"
     """"""
+    JOBS_CONFIRM_AND_PULL_NEXT = "jobs/confirmAndPullNext"
+    """"""
 
 
 class ImageAnnotationToolApi(ModuleApiBase):
+    """Control the Supervisely Image Annotation Tool UI via API."""
+
     def set_figure(self, session_id: str, figure_id: int):
         """Sets the figure as the current figure (selected figure) in the annotation tool.
 
@@ -111,6 +117,21 @@ class ImageAnnotationToolApi(ModuleApiBase):
 
         payload = {ApiField.MESSAGE: message, ApiField.DURATION: duration}
         return self._act(session_id, action, payload)
+
+    def confirm_and_pull_next(self, session_id: str, entity_id: int):
+        """Confirms the current entity in a labeling job/queue and pulls the next one.
+        Use when the native CONFIRM & PULL NEXT button is disabled and confirmation is
+        driven programmatically from a custom app after validation.
+
+        :param session_id: Annotation tool session id.
+        :type session_id: str
+        :param entity_id: Image id to confirm.
+        :type entity_id: int"""
+        return self._act(
+            session_id,
+            ImageAnnotationToolAction.JOBS_CONFIRM_AND_PULL_NEXT,
+            {ApiField.ENTITY_ID: entity_id},
+        )
 
     def _act(self, session_id: str, action: ImageAnnotationToolAction, payload: dict):
         """ """

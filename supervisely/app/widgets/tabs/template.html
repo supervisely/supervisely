@@ -11,7 +11,11 @@
   %}
 >
   {% for tab_pane in widget._items %}
-  <el-tab-pane label="{{{tab_pane.label}}}" name="{{{tab_pane.name}}}">
+  <el-tab-pane
+    label="{{{tab_pane.label}}}"
+    name="{{{tab_pane.name}}}"
+    :disabled="data.{{{widget.widget_id}}}.tabsOptions['{{{tab_pane.name}}}'].disabled"
+  >
     {{{ tab_pane.content }}}
   </el-tab-pane>
   {% endfor %}

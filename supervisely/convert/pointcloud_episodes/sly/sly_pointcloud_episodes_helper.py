@@ -6,9 +6,9 @@ from supervisely import (
     ObjClass,
     ProjectMeta,
     TagMeta,
-    TagValueType,
     logger,
 )
+from supervisely.annotation.tag_meta import detect_tag_value_type
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.io.json import load_json_file
@@ -22,17 +22,22 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         ann_json = ann_json["annotation"]
 
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(
+        logger.warning(
             f"Pointcloud Episode Annotation file {ann_path} is not in Supervisely format"
         )
         return meta
 
     object_key_to_name = {}
+    all_class_names = set()
     for object in ann_json["objects"]:
         meta = create_tags_from_annotation(object["tags"], meta)
         object_key_to_name[object["key"]] = object["classTitle"]
+        all_class_names.add(object["classTitle"])
     for frame in ann_json["frames"]:
         meta = create_classes_from_annotation(frame, meta, object_key_to_name)
+    for class_name in all_class_names:
+        if meta.get_obj_class(class_name) is None:
+            meta = meta.add_obj_class(ObjClass(name=class_name, geometry_type=AnyGeometry))
     meta = create_tags_from_annotation(ann_json["tags"], meta)
     return meta
 
@@ -40,13 +45,9 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
 def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectMeta:
     for tag in tags:
         tag_name = tag["name"]
-        tag_value = tag["value"]
-        if tag_value is None:
-            tag_meta = TagMeta(tag_name, TagValueType.NONE)
-        elif isinstance(tag_value, int) or isinstance(tag_value, float):
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_NUMBER)
-        else:
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+        tag_value = tag.get("value")
+        tag_value_type = detect_tag_value_type(tag_value)
+        tag_meta = TagMeta(tag_name, tag_value_type)
 
         # check existing tag_meta in meta
         existing_tag = meta.get_tag_meta(tag_name)

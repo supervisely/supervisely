@@ -1,0 +1,20 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/reorder_table/style.css" />
+<reorder-table
+  :widget-id="'{{{widget.widget_id}}}'"
+  :columns="data.{{{widget.widget_id}}}.columns"
+  :rows="data.{{{widget.widget_id}}}.rows"
+  :total="data.{{{widget.widget_id}}}.total"
+  :order.sync="state.{{{widget.widget_id}}}.order"
+  :page.sync="state.{{{widget.widget_id}}}.page"
+  :page-size.sync="state.{{{widget.widget_id}}}.pageSize"
+  :selected-positions.sync="state.{{{widget.widget_id}}}.selectedPositions"
+  {% if widget._changes_handled == true %}
+  @order-changed="post('/{{{widget.widget_id}}}/order_changed_cb')"
+  {% endif %}
+>
+  {% if widget._content_top_right is not none %}
+  <template slot="top-right">
+    {{{widget._content_top_right}}}
+  </template>
+  {% endif %}
+</reorder-table>

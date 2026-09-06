@@ -1,9 +1,9 @@
 import os
 import re
 import subprocess
+from importlib.metadata import PackageNotFoundError, distribution
 
 import requests
-from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -78,56 +78,67 @@ version = get_version()
 
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
-    "numpy>=1.19, <2.0.0",
+    "numpy>=1.19, <=2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
-    "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <=10.2.0",
-    "protobuf>=3.19.5, <=3.20.3",
-    "python-json-logger>=0.1.11, <3.0.0",
-    "requests>=2.27.1, <3.0.0",
-    "requests-toolbelt>=0.9.1",  # , <1.0.0
-    "Shapely>=1.7.1, <=2.0.2",
+    "prettytable>=3.8.0, <4.0.0",
+    "pillow>=12.3.0, <=12.3.0; python_version >= '3.10'",
+    "pillow>=5.4.1, <12.0.0; python_version < '3.10'",
+    "python-json-logger>=0.1.11, <=3.0.1",
+    "packaging>=20.0",
+    "requests>=2.33.0, <=2.34.0; python_version >= '3.10'",
+    "requests>=2.27.1; python_version < '3.10'",
+    "requests-toolbelt>=1.0.0, <2.0.0",
+    "Shapely>=1.7.1, <=2.1.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <=1.0.0",
+    "python-dotenv>=0.19.2, <=1.0.1; python_version < '3.10'",
+    "python-dotenv==1.2.2; python_version >= '3.10'",
     "pynrrd>=0.4.2, <1.0.0",
     "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
-    "pydicom>=2.3.0, <3.0.0",
+    "pydicom>=3.0.2, <4.0.0; python_version >= '3.10'",
+    "pydicom>=2.3.0, <3.0.0; python_version < '3.10'",
     "stringcase>=1.2.0, <2.0.0",
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.11.3",
-    "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
-    "fastapi>=0.79.0, <=0.109.0",
+    "starlette==1.3.1; python_version >= '3.10'",
+    "starlette<0.49.1; python_version < '3.10'",
+    "pydantic>=1.7.4, <=2.12.3",
+    "fastapi==0.136.3; python_version >= '3.10'",
+    "fastapi<0.129.0; python_version < '3.10'",
     "websockets>=10.3, <=13.1",
-    "jinja2>=3.0.3, <4.0.0",
-    "psutil>=5.9.0, <6.0.0",
+    "jinja2>=3.1.6, <4.0.0",
+    "psutil>=5.9.0, <=7.2.0",
     "jsonpatch>=1.32, <2.0",
+    "patchdiff>=0.3.12, <1.0.0; python_version >= '3.9'",
     "MarkupSafe>=2.1.1, <3.0.0",
-    "arel>=0.2.0, <1.0.0",
-    "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=2.1.4",
+    "arel>=0.2.0, <1.0.0; python_version < '3.10'",
+    "tqdm>=4.66.3, <5.0.0",
+    "pandas>=1.1.3, <=2.3.3",
     "async_asgi_testclient",
     "PyYAML>=5.4.0",
     "distinctipy",
     "beautifulsoup4",
     "numerize",
     "ffmpeg-python==0.2.0",
-    "python-multipart>=0.0.5, <=0.0.12",
+    "python-multipart==0.0.31; python_version >= '3.10'",
+    "python-multipart<=0.0.20; python_version < '3.10'",
     "GitPython",
     "giturlparse",
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.2",
+    "urllib3>=2.6.3, <3.0.0; python_version >= '3.10'",
+    "urllib3>=1.26.15, <=2.2.3; python_version < '3.10'",
     "cacheout==0.14.1",
-    "jsonschema>=2.6.0,<=4.20.0",
+    "jsonschema>=2.6.0,<=4.23.0",
     "pyjwt>=2.1.0,<3.0.0",
     "zstd",
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
+    "setuptools>=83.0.0, <84.0.0; python_version >= '3.10'",
+    "setuptools<76; python_version < '3.10'",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -146,9 +157,9 @@ def check_alternative_installation(install_require, alternative_install_requires
     for alternative_install_require in alternative_install_requires:
         try:
             alternative_pkg_name = re.split(r"[ !<>=]", alternative_install_require)[0]
-            get_distribution(alternative_pkg_name)
+            distribution(alternative_pkg_name)
             return str(alternative_install_require)
-        except DistributionNotFound:
+        except PackageNotFoundError:
             continue
 
     return str(install_require)
@@ -200,9 +211,8 @@ setup(
             "video/*.sh",
             "app/development/*.sh",
             "imaging/colors.json.gz",
-            "nn/tracker/bot_sort/configs/MOT17/*.yml",
-            "nn/tracker/bot_sort/configs/MOT20/*.yml",
             "nn/benchmark/*/*.yaml",
+            "nn/tracker/botsort/botsort_config.yaml",
         ],
     },
     entry_points={
@@ -222,6 +232,8 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
@@ -234,29 +246,30 @@ setup(
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
             "scipy>=1.8.0, <2.0.0",
-            "pandas>=1.1.3, <1.4.0",
             "ruamel.yaml==0.17.21",
         ],
-        "apps": [
+        "apps": [  # todo: discuss, all app reqs are duplicated in base requires.
             "uvicorn[standard]>=0.18.2, <1.0.0",
-            "fastapi>=0.79.0, <1.0.0",
+            "fastapi==0.136.3; python_version >= '3.10'",
+            "fastapi<0.129.0; python_version < '3.10'",
             "websockets>=10.3, <=13.1",
-            "jinja2>=3.0.3, <4.0.0",
+            "jinja2>=3.1.6, <4.0.0",
             "psutil>=5.9.0, <6.0.0",
             "jsonpatch>=1.32, <2.0",
+            "patchdiff>=0.3.12, <1.0.0; python_version >= '3.9'",
             "MarkupSafe>=2.1.1, <3.0.0",
-            "arel>=0.2.0, <1.0.0",
-            "tqdm>=4.62.3, <5.0.0",
-            "pandas>=1.1.3, <1.4.0",
+            "arel>=0.2.0, <1.0.0; python_version < '3.10'",
+            "tqdm>=4.66.3, <5.0.0",
+            "pandas>=1.1.3, <=2.3.3",
+        ],
+        "video-av": [
+            "av>=12.0.0, <13.0.0; python_version == '3.8'",
+            "av>=13.0.0, <18.0.0; python_version >= '3.9'",
         ],
         "docs": [
-            "sphinx==4.4.0",
-            "jinja2==3.0.3",
-            "sphinx-immaterial==0.4.0",
-            "sphinx-copybutton==0.4.0",
-            "sphinx-autodoc-typehints==1.15.3",
-            "sphinxcontrib-details-directive==0.1.0",
-            "myst-parser==0.18.0",
+            "sphinx==8.2.3",
+            "sphinx-immaterial==0.13.9",
+            "myst-parser==5.0.0",
         ],
         "sdk-no-usages": [
             "grpcio>=1.53.2, <2.0.0",
@@ -271,10 +284,13 @@ setup(
             "cython_bbox",
             "termcolor",
             "scikit-learn",
-            "faiss-gpu",
+            "faiss-gpu",  # Not supported in Python 3.11+
             "tabulate",
             "tensorboard",
             "decord",
+            "gdown",
+            "torch",
+            "motmetrics",
         ],
         "model-benchmark": [
             "pycocotools",
@@ -292,6 +308,8 @@ setup(
             "tensorboardX",
             "markdown",
             "pymdown-extensions",
+            "tbparse",
+            "kaleido==0.2.1",
         ],
         # legacy dependencies
         "plugins": [
@@ -304,6 +322,13 @@ setup(
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
+            "numpy>=1.19, <2.0.0",
+        ],
+        "agent": [
+            "protobuf>=3.19.5, <=3.20.3",
+        ],
+        "versioning": [
+            "pyarrow>=17.0.0, <=23.0.1",
         ],
     },
 )

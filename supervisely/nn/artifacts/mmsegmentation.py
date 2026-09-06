@@ -6,7 +6,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class MMSegmentation(BaseTrainArtifacts):
+    """Train/serve artifacts handler for MMSegmentation instance segmentation models."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMSegmentation"
@@ -22,6 +25,7 @@ class MMSegmentation(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/mmsegmentation/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["instance segmentation"]
         self._require_runtime = False
+        self._has_benchmark_evaluation = True
 
     def get_task_id(self, artifacts_folder: str) -> str:
         return artifacts_folder.split("/")[2].split("_")[0]

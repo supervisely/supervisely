@@ -16,6 +16,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class PerClassOutcomeCounts(DetectionVisMetric):
+    """Per-class TP/FP/FN counts chart for detection reports."""
+
     MARKDOWN = "per_class_outcome_counts"
     MARKDOWN_2 = "per_class_outcome_counts_2"
     CHART = "per_class_outcome_counts"

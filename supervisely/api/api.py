@@ -1,5 +1,4 @@
 # coding: utf-8
-"""api connection to the server which allows user to communicate with Supervisely"""
 
 from __future__ import annotations
 
@@ -10,6 +9,9 @@ import glob
 import json
 import os
 import shutil
+import threading
+import time
+import weakref
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -22,6 +24,7 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Tuple,
     Union,
 )
 from urllib.parse import urljoin, urlparse
@@ -30,7 +33,7 @@ import httpx
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
-from pkg_resources import parse_version
+from packaging.version import Version
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -41,12 +44,14 @@ import supervisely.api.dataset_api as dataset_api
 import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
+import supervisely.api.guides_api as guides_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
 import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.mesh.mesh_api as mesh_api
 import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
@@ -63,11 +68,19 @@ import supervisely.api.user_api as user_api
 import supervisely.api.video.video_api as video_api
 import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
+import supervisely.api.webhook_api as webhook_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely._utils import (
+    CrossLoopSemaphore,
+    camel_to_snake,
+    is_community,
+    is_development,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
+    CONNECTION_ERROR_PATTERNS,
+    STREAMING_ERROR_PATTERNS,
     RetryableRequestException,
     process_requests_exception,
     process_requests_exception_async,
@@ -89,43 +102,9 @@ SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 class ApiContext:
     """
     Context manager for the API object for optimization purposes.
+
     Use this context manager when you need to perform a series of operations on the same project or dataset.
     It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
-
-    :param api: API object.
-    :type api: :class:`Api`
-    :param project_id: Project ID.
-    :type project_id: int, optional
-    :param dataset_id: Dataset ID.
-    :type dataset_id: int, optional
-    :param project_meta: ProjectMeta object.
-    :type project_meta: :class:`ProjectMeta`, optional
-    :raises: :class:`RuntimeError`, if api is None.
-
-    :Usage example:
-
-         .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
-
-            with ApiContext(
-                api,
-                project_id=33333,
-                dataset_id=99999,
-                project_meta=project_meta,
-                with_alpha_masks=True,
-            ):
-                api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
-                # another code here
     """
 
     def __init__(
@@ -136,6 +115,43 @@ class ApiContext:
         project_meta: Optional[ProjectMeta] = None,
         with_alpha_masks: Optional[bool] = True,
     ):
+        """
+        :param api: API object.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param project_id: Project ID.
+        :type project_id: int, optional
+        :param dataset_id: Dataset ID.
+        :type dataset_id: int, optional
+        :param project_meta: ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
+        :raises RuntimeError: if api is None.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                with ApiContext(
+                    api,
+                    project_id=33333,
+                    dataset_id=99999,
+                    project_meta=project_meta,
+                    with_alpha_masks=True,
+                ):
+                    api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                    # another code here
+        """
         if api is None:
             raise RuntimeError("Api object is None")
         self.api = api
@@ -160,13 +176,14 @@ class ApiContext:
 class UserSession:
     """
     UserSession object contains info that is returned after user authentication.
-
-    :param server: Server url.
-    :type server: str
-    :raises: :class:`RuntimeError`, if server url is invalid.
     """
 
     def __init__(self, server_address: str):
+        """
+        :param server_address: Server address.
+        :type server_address: str
+        :raises RuntimeError: if server address is invalid.
+        """
         self.api_token = None
         self.team_id = None
         self.workspace_id = None
@@ -183,9 +200,9 @@ class UserSession:
 
     def _normalize_and_validate_server_url(self) -> bool:
         """
-        Validate server url.
+        Validate server address.
 
-        :return: True if server url is valid, False otherwise.
+        :returns: True if server address is valid, False otherwise.
         """
         self.server_address = Api.normalize_server_address(self.server_address)
         if not self.server_address.startswith("https://"):
@@ -210,8 +227,8 @@ class UserSession:
 
         :param decoded_token: Decoded token.
         :type decoded_token: dict
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         for key, value in decoded_token.items():
             if key == "group":
@@ -232,8 +249,8 @@ class UserSession:
         :type login: str
         :param password: User password.
         :type password: str
-        :return: UserSession object
-        :rtype: :class:`UserSession`
+        :returns: UserSession object
+        :rtype: :class:`~supervisely.api.api.UserSession`
         """
         login_url = urljoin(self.server_address, "api/account")
         payload = {"login": login, "password": password}
@@ -252,48 +269,16 @@ class UserSession:
 
 class Api:
     """
-    An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<Api>` object is immutable.
-
-    :param server_address: Address of the server.
-    :type server_address: str
-    :param token: Unique secret token associated with your agent.
-    :type token: str
-    :param retry_count: The number of attempts to connect to the server.
-    :type retry_count: int, optional
-    :param retry_sleep_sec: The number of seconds to delay between attempts to connect to the server.
-    :type retry_sleep_sec: int, optional
-    :param external_logger: Logger class object.
-    :type external_logger: logger, optional
-    :param ignore_task_id:
-    :type ignore_task_id: bool, optional
-    :param api_server_address: Address of the API server.
-    :type api_server_address: str, optional
-    :param check_instance_version: Check if the given version is lower or equal to the current
-        Supervisely instance version. If set to True, will try to read the version from the environment variable
-        "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
-        If set to False, will skip the check.
-    :type check_instance_version: bool or str, optional
-    :raises: :class:`ValueError`, if token is None or it length != 128
-    :Usage example:
-
-     .. code-block:: python
-
-        import os
-        from dotenv import load_dotenv
-
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+    Main Supervisely API client (aggregates sub-APIs and handles auth, retries and common configuration).
     """
 
     _checked_servers = set()
+
+    # one throttle per server and token: a process holds many Api objects per instance
+    _semaphores: "weakref.WeakValueDictionary[Tuple[str, Optional[str]], CrossLoopSemaphore]" = (
+        weakref.WeakValueDictionary()
+    )
+    _semaphores_lock = threading.Lock()
 
     def __init__(
         self,
@@ -306,6 +291,49 @@ class Api:
         api_server_address: Optional[str] = None,
         check_instance_version: Union[bool, str] = False,
     ):
+        """
+        :param server_address: Address of the server.
+        :type server_address: str
+        :param token: Unique secret token associated with your agent.
+        :type token: str
+        :param retry_count: The number of attempts to connect to the server.
+        :type retry_count: int, optional
+        :param retry_sleep_sec: The number of seconds to delay between attempts to connect to the server.
+        :type retry_sleep_sec: int, optional
+        :param external_logger: Logger class object.
+        :type external_logger: logger, optional
+        :param ignore_task_id:
+        :type ignore_task_id: bool, optional
+        :param api_server_address: Address of the API server.
+        :type api_server_address: str, optional
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            Supervisely instance version. If set to True, will try to read the version from the environment variable
+            "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
+            If set to False, will skip the check.
+        :type check_instance_version: bool or str, optional
+        :raises ValueError: if token is None or it length != 128
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Or you can pass values into the API constructor (optional, not recommended)
+                server_address = "https://app.supervisely.com"
+                token = "4r47N...xaTatb"
+                api = sly.Api(server_address, token)
+        """
         self.logger = external_logger or logger
 
         if server_address is None:
@@ -357,12 +385,14 @@ class Api:
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
         self.labeling_queue = labeling_queue_api.LabelingQueueApi(self)
+        self.guides = guides_api.GuidesApi(self)
         self.video = video_api.VideoApi(self)
         # self.project_class = project_class_api.ProjectClassApi(self)
         self.object_class = object_class_api.ObjectClassApi(self)
         self.report = report_api.ReportApi(self)
         self.pointcloud = pointcloud_api.PointcloudApi(self)
         self.pointcloud_episode = pointcloud_episode_api.PointcloudEpisodeApi(self)
+        self.mesh = mesh_api.MeshApi(self)
         self.app = app_api.AppApi(self)
         self.file = file_api.FileApi(self)
         self.storage = storage_api.StorageApi(self)
@@ -375,6 +405,7 @@ class Api:
         self.volume = volume_api.VolumeApi(self)
         self.issues = issues_api.IssuesApi(self)
         self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
+        self.webhook = webhook_api.WebhookApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
@@ -392,13 +423,27 @@ class Api:
             else not self.server_address.startswith("https://")
         )
 
-        if check_instance_version:
-            self._check_version(None if check_instance_version is True else check_instance_version)
-
-        self.async_httpx_client: httpx.AsyncClient = None
+        # one client per event loop: httpx binds a client to the loop that created it
+        self._async_clients: Dict[
+            Optional[int], Tuple[Optional[Any], httpx.AsyncClient]
+        ] = {}
+        self._async_clients_lock = threading.Lock()
+        self._warned_about_shared_client = False
         self.httpx_client: httpx.Client = None
         self._semaphore = None
         self._instance_version = None
+        self._version_check_completed = False
+        self._version_check_lock = threading.Lock()
+        # threading.Lock: nothing is awaited under it, and asyncio.Lock is loop bound
+        self._client_recreation_lock = threading.Lock()
+        self._last_client_recreation_time = None  # honored as a global cooldown if set
+        # clients are per event loop, so the cooldown is too: one loop healing its pool must
+        # not stop another loop from healing its own
+        self._client_recreation_times: Dict[Optional[int], float] = {}
+        self._client_recreation_cooldown = 30  # seconds between client recreations
+
+        if check_instance_version:
+            self._check_version(None if check_instance_version is True else check_instance_version)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -428,25 +473,24 @@ class Api:
         :param check_instance_version: Check if the given version is lower or equal to the current
             version of the Supervisely instance.
         :type check_instance_version: bool or str, optional
-        :return: Api object
-        :rtype: :class:`Api<supervisely.api.api.Api>`
+        :returns: Api object
+        :rtype: :class:`~supervisely.api.api.Api`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # alternatively you can store SERVER_ADDRESS and API_TOKEN
-            # in "~/supervisely.env" .env file
-            # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
-
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
         """
 
         server_address = sly_env.server_address(raise_not_found=False)
@@ -490,9 +534,9 @@ class Api:
         :type key: str
         :param value: New value.
         :type value: str
-        :raises: :class:`RuntimeError`, if key is already set
-        :return: None
-        :rtype: :class:`NoneType`
+        :raises RuntimeError: if key is already set
+        :returns: None
+        :rtype: None
         """
         if key in self.headers:
             raise RuntimeError(
@@ -509,8 +553,8 @@ class Api:
         :type key: str
         :param value: New value.
         :type value: str
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         self.additional_fields[key] = value
 
@@ -519,16 +563,24 @@ class Api:
         """Return Supervisely instance version, e.g. "6.9.13".
         If the version cannot be determined, return "unknown".
 
-        :return: Supervisely instance version or "unknown" if the version cannot be determined.
+        :returns: Supervisely instance version or "unknown" if the version cannot be determined.
         :rtype: str
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
                 print(api.instance_version)
                 # Output:
                 # '6.9.13'
@@ -551,21 +603,20 @@ class Api:
 
         :param version: Version to check.
         :type version: Optional[str], e.g. "6.9.13"
-        :return: True if the given version is lower or equal to the current Supervisely
+        :returns: True if the given version is lower or equal to the current Supervisely
             instance version, otherwise False.
         :rtype: bool
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-            version_to_check = "6.9.13"
-            print(api.is_version_supported(version_to_check))
-            # Output:
-            # True
+                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                version_to_check = "6.9.13"
+                print(api.is_version_supported(version_to_check))
+                # Output: True
         """
         instance_version = self.instance_version
         if instance_version == "unknown":
@@ -589,7 +640,42 @@ class Api:
             )
             return
 
-        return parse_version(instance_version) >= parse_version(version)
+        return Version(instance_version) >= Version(version)
+
+    def cleanup_unused_data(self) -> int:
+        """Start the instance-wide cleanup of the data that is not referenced by any entity
+        anymore, e.g. the data left by the permanently removed teams, workspaces, projects and
+        datasets. The cleanup is performed in the background, the method returns as soon as the
+        task is created.
+
+        The method is available only for the instance administrator (root user), a regular user
+        token is not enough.
+
+        :returns: ID of the created cleanup task.
+        :rtype: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = api.cleanup_unused_data()
+                print(task_id)
+                # Output: 34698
+        """
+        response = self.post("instance.data.cleanup-unused", {})
+        return response.json()[ApiField.TASK_ID]
 
     def _check_version(self, version: Optional[str] = None) -> None:
         """Check if the given version is compatible with the current Supervisely instance version.
@@ -600,38 +686,49 @@ class Api:
         :type version: Optional[str], e.g. "6.9.13"
         """
 
-        # Since it's a informational message, we don't raise an exception if the check fails
-        # in any case, we don't want to interrupt the user's workflow.
-        try:
-            check_result = self.is_version_supported(version)
-            if check_result is None:
-                logger.debug(
-                    "Failed to check if the instance version meets the minimum requirements "
-                    "of current SDK version. "
-                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
-                    "Usually you can ignore this message, but if you're adding new features, "
-                    "which will require upgrade of the Supervisely instance, you should update "
-                    "it supervisely.__init__.py file."
-                )
-            if check_result is False:
-                message = (
-                    "The current version of the Supervisely instance is not supported by the SDK. "
-                    "Some features may not work correctly."
-                )
-                if not is_community():
-                    message += (
-                        " Please upgrade the Supervisely instance to the latest version (recommended) "
-                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
-                        "Refer to this docs for more information: "
-                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
-                        "Check out changelog for the latest version of Supervisely: "
-                        "https://app.supervisely.com/changelog"
+        # Thread-safe one-time check with double-checked locking pattern
+        if self._version_check_completed:
+            return
+
+        with self._version_check_lock:
+            # Double-check inside the lock
+            if self._version_check_completed:
+                return
+
+            self._version_check_completed = True
+
+            # Since it's a informational message, we don't raise an exception if the check fails
+            # in any case, we don't want to interrupt the user's workflow.
+            try:
+                check_result = self.is_version_supported(version)
+                if check_result is None:
+                    logger.debug(
+                        "Failed to check if the instance version meets the minimum requirements "
+                        "of current SDK version. "
+                        "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                        "Usually you can ignore this message, but if you're adding new features, "
+                        "which will require upgrade of the Supervisely instance, you should update "
+                        "it supervisely.__init__.py file."
                     )
-                    logger.warning(message)
-        except Exception as e:
-            logger.debug(
-                f"Tried to check version compatibility between SDK and instance, but failed: {e}"
-            )
+                if check_result is False:
+                    message = (
+                        "The current version of the Supervisely instance is not supported by the SDK. "
+                        "Some features may not work correctly."
+                    )
+                    if not is_community():
+                        message += (
+                            " Please upgrade the Supervisely instance to the latest version (recommended) "
+                            "or downgrade the SDK to the version that supports the current instance (not recommended). "
+                            "Refer to this docs for more information: "
+                            "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
+                            "Check out changelog for the latest version of Supervisely: "
+                            "https://app.supervisely.com/changelog"
+                        )
+                        logger.warning(message)
+            except Exception as e:
+                logger.debug(
+                    f"Tried to check version compatibility between SDK and instance, but failed: {e}"
+                )
 
     def post(
         self,
@@ -654,7 +751,7 @@ class Api:
         :type stream: bool, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
         :type raise_error: bool, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         if not self._skip_https_redirect_check:
@@ -686,7 +783,8 @@ class Api:
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -723,6 +821,7 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         use_public_api: Optional[bool] = True,
+        data: Optional[Dict] = None,
     ) -> requests.Response:
         """
         Performs GET request to server with given parameters.
@@ -730,14 +829,16 @@ class Api:
         :param method:
         :type method: str
         :param params: Dictionary to send in the body of the :class:`Request`.
-        :type method: dict
+        :type params: dict
         :param retries: The number of attempts to connect to the server.
-        :type method: int, optional
+        :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
-        :type method: bool, optional
+        :type stream: bool, optional
         :param use_public_api:
-        :type method: bool, optional
-        :return: Response object
+        :type use_public_api: bool, optional
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict, optional
+        :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         if not self._skip_https_redirect_check:
@@ -756,7 +857,9 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                response = requests.get(
+                    url, params=json_body, data=data, headers=self.headers, stream=stream
+                )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
@@ -876,8 +979,8 @@ class Api:
         :type method: str, optional
         :param default_message: Message to user.
         :type method: str, optional
-        :return: Number of error and message about curren connection mistake
-        :rtype: :class:`int`, :class:`str`
+        :returns: Number of error and message about curren connection mistake
+        :rtype: int, str
         """
         ERROR_FIELD = "error"
         MESSAGE_FIELD = "message"
@@ -956,18 +1059,19 @@ class Api:
         :type login: str
         :param password: User password.
         :type password: str
-        :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
+        :param override: If False, return :class:`~supervisely.api.api.Api` object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
         :type override: bool, optional
         :param env_file: Path to your .env file.
         :type env_file: str, optional
         :param check_instance_version: Check if the given version is lower or equal to the current
             version of the Supervisely instance.
         :type check_instance_version: bool or str, optional
-        :return: Api object
+        :returns: Api object
+        :rtype: :class:`~supervisely.api.api.Api`
 
-        :Usage example:
+        :Usage Example:
 
-             .. code-block:: python
+            .. code-block:: python
 
                 import supervisely as sly
 
@@ -1017,18 +1121,26 @@ class Api:
         """
         Get API server address.
 
-        :return: API server address.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: API server address.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-            print(api.api_server_address)
-            # Output:
-            # 'https://app.supervisely.com/public/api'
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+                print(api.api_server_address)
+                # Output: 'https://app.supervisely.com/public/api'
         """
 
         if self._api_server_address is not None:
@@ -1069,7 +1181,7 @@ class Api:
         :type raise_error: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`httpx.Response`
         """
         self._set_client()
@@ -1098,7 +1210,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1152,7 +1265,7 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         self._set_client()
@@ -1245,7 +1358,7 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Generator object.
+        :returns: Generator object.
         :rtype: :class:`Generator`
         """
         self._set_client()
@@ -1314,7 +1427,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
@@ -1399,7 +1513,7 @@ class Api:
         :type raise_error: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`httpx.Response`
         """
         self._set_async_client()
@@ -1428,7 +1542,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1440,6 +1555,8 @@ class Api:
                     self.logger.warning(
                         "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
                     )
+
+                client_recreated = await self._recreate_client_if_needed(exc)
                 if raise_error:
                     raise exc
                 else:
@@ -1454,6 +1571,10 @@ class Api:
                         response=response,
                         retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                     )
+                    if client_recreated:
+                        self.logger.warning(
+                            f"Recreated httpx client due to: {exc.__class__.__name__}"
+                        )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
         raise httpx.RequestError(
@@ -1499,7 +1620,10 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Async generator object.
+        :param content: Request body passed via kwargs. May be bytes, an iterator,
+            or a zero-arg callable returning a fresh body iterator — a callable is
+            invoked on every attempt so retries resend the full body.
+        :returns: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
         self._set_async_client()
@@ -1537,12 +1661,15 @@ class Api:
 
         for retry_idx in range(retries):
             total_streamed = 0
+            # content may be a zero-arg factory returning a fresh body iterator,
+            # so each retry sends the full body instead of an exhausted generator
+            request_content = content() if callable(content) else content
             try:
                 if method_type == "POST":
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        content=content,
+                        content=request_content,
                         json=json_body,
                         headers=headers,
                         timeout=timeout,
@@ -1552,7 +1679,7 @@ class Api:
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        content=content,
+                        content=request_content,
                         json=json_body,
                         headers=headers,
                         timeout=timeout,
@@ -1569,14 +1696,24 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     # received hash of the content to check integrity of the data stream
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    # Uploads (request has a body) can't resume the response via Range,
+                    # so a mid-stream response error would make the consumer accumulate
+                    # attempt-1 partial + attempt-2 full. Buffer the (small) upload
+                    # response and yield it once, only after a fully successful read.
+                    is_upload = content is not None
+                    response_buffer = bytearray() if is_upload else None
                     try:
                         async for chunk in resp.aiter_raw(chunk_size):
-                            yield chunk, hhash
+                            if is_upload:
+                                response_buffer.extend(chunk)
+                            else:
+                                yield chunk, hhash
                             total_streamed += len(chunk)
                     except Exception as e:
                         raise RetryableRequestException(repr(e))
@@ -1585,6 +1722,8 @@ class Api:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
+                    if is_upload:
+                        yield bytes(response_buffer), hhash
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
@@ -1596,11 +1735,17 @@ class Api:
                     self.logger.warning(
                         "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
                     )
-                retry_range_start = total_streamed + (range_start or 0)
-                if total_streamed != 0:
-                    retry_range_start += 1
-                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
-                logger.debug(f"Setting Range header {headers['Range']} for retry")
+
+                client_recreated = await self._recreate_client_if_needed(e)
+                if content is None:
+                    # Range resume only makes sense for downloads; for uploads
+                    # (request has a body stream) total_streamed counts response
+                    # bytes and a Range header would be meaningless
+                    retry_range_start = total_streamed + (range_start or 0)
+                    if total_streamed != 0:
+                        retry_range_start += 1
+                    headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                    logger.debug(f"Setting Range header {headers['Range']} for retry")
                 await process_requests_exception_async(
                     self.logger,
                     e,
@@ -1612,6 +1757,8 @@ class Api:
                     response=locals().get("resp"),
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
+                if client_recreated:
+                    self.logger.warning(f"Recreated httpx client due to: {e.__class__.__name__}")
             except Exception as e:
                 process_unhandled_request(self.logger, e)
         raise httpx.RequestError(
@@ -1619,31 +1766,220 @@ class Api:
             request=resp.request if locals().get("resp") else None,
         )
 
+    @staticmethod
+    def _current_loop() -> Tuple[Optional[int], Optional[asyncio.AbstractEventLoop]]:
+        """
+        Key of the event loop running in this thread, or (None, None) in a sync context.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return None, None
+        return id(loop), loop
+
+    def _forget_client_of_a_foreign_loop(self, key: Optional[int], loop) -> None:
+        """
+        Drop the entry when a new loop got the id of a collected one.
+
+        Python reuses the id of a collected loop readily, and the entry of the old loop
+        would hand its client, and its recreation cooldown, to a loop it is not bound to.
+
+        :param key: Registry key of the current loop.
+        :type key: Optional[int]
+        :param loop: Event loop running in this thread.
+        :type loop: Optional[asyncio.AbstractEventLoop]
+        """
+        if key is None:
+            return
+        with self._async_clients_lock:
+            entry = self._async_clients.get(key)
+            if entry is None:
+                return
+            loop_ref, _ = entry
+            if loop_ref is not None and loop_ref() is not loop:
+                self._async_clients.pop(key, None)
+                self._client_recreation_times.pop(key, None)
+
+    def _drop_stale_async_clients(self) -> None:
+        """
+        Forget clients whose event loop is gone or closed.
+
+        A client can only be closed from its own loop, and a loop that is merely stopped may
+        still hold suspended tasks, so driving it from here would resume them on this thread.
+        Their sockets are left to the garbage collector, which finalizes the transports once
+        the loop is collected.
+        """
+        with self._async_clients_lock:
+            for key, (loop_ref, _) in list(self._async_clients.items()):
+                if loop_ref is None:
+                    continue  # assigned outside of a loop, it is not bound to one
+                loop = loop_ref()
+                if loop is None or loop.is_closed():
+                    self._async_clients.pop(key, None)
+                    self._client_recreation_times.pop(key, None)
+
+    @property
+    def async_httpx_client(self) -> Optional[httpx.AsyncClient]:
+        """
+        Async httpx client of the event loop running in the current thread.
+
+        :returns: Client of the current event loop or None if it is not created yet.
+        :rtype: Optional[httpx.AsyncClient]
+        """
+        key, loop = self._current_loop()
+        self._forget_client_of_a_foreign_loop(key, loop)
+        with self._async_clients_lock:
+            entry = self._async_clients.get(key)
+            if entry is None and key is not None:
+                # a client assigned outside of a running loop is not bound to one and stays
+                # shared. _set_async_client() never creates such an entry, it only appears
+                # when app or test code assigns api.async_httpx_client directly
+                entry = self._async_clients.get(None)
+                if entry is not None and not self._warned_about_shared_client:
+                    self._warned_about_shared_client = True
+                    self.logger.warning(
+                        "Using an httpx client that was assigned outside of an event loop. "
+                        "It is shared by every loop of this process, which is exactly what "
+                        "binds a client to a foreign loop: assign it from the loop that uses it."
+                    )
+        return entry[1] if entry is not None else None
+
+    @async_httpx_client.setter
+    def async_httpx_client(self, client: Optional[httpx.AsyncClient]) -> None:
+        key, loop = self._current_loop()
+        with self._async_clients_lock:
+            if client is None:
+                self._async_clients.pop(key, None)
+                if key is not None:
+                    # also drop a shared client assigned outside of a loop
+                    self._async_clients.pop(None, None)
+                return
+            loop_ref = None
+            if loop is not None:
+                try:
+                    loop_ref = weakref.ref(loop)
+                except TypeError:  # pragma: no cover - exotic loop implementations
+                    loop_ref = lambda bound=loop: bound
+            self._async_clients[key] = (loop_ref, client)
+
     def _set_async_client(self):
         """
-        Set async httpx client with HTTP/2 if it is not set yet.
+        Set async httpx client with HTTP/2 for the current event loop if it is not set yet.
         """
         if self.async_httpx_client is None:
-            self.async_httpx_client = httpx.AsyncClient(http2=True)
+            self._drop_stale_async_clients()
+            semaphore_size = self.get_default_semaphore_size()
+            limits = httpx.Limits(
+                max_connections=semaphore_size + 2,
+                max_keepalive_connections=semaphore_size,
+                keepalive_expiry=5.0,  # as default
+            )
+            self.async_httpx_client = httpx.AsyncClient(http2=True, limits=limits)
 
     def _set_client(self):
         """
         Set sync httpx client with HTTP/2 if it is not set yet.
         """
         if self.httpx_client is None:
-            self.httpx_client = httpx.Client(http2=True)
+            semaphore_size = self.get_default_semaphore_size()
+            limits = httpx.Limits(
+                max_connections=semaphore_size + 2,
+                max_keepalive_connections=semaphore_size,
+                keepalive_expiry=5.0,  # as default
+            )
+            self.httpx_client = httpx.Client(http2=True, limits=limits)
 
-    def get_default_semaphore(self) -> asyncio.Semaphore:
+    async def _close_client_gracefully(self, client: httpx.AsyncClient, delay: int = 30) -> None:
+        """
+        Close httpx client gracefully after a delay to allow active requests to finish.
+        Runs in background to avoid blocking current request.
+
+        :param client: The client to close.
+        :type client: httpx.AsyncClient
+        :param delay: Seconds to wait before closing. Default is 30.
+        :type delay: int
+        """
+        try:
+            await asyncio.sleep(delay)
+            await client.aclose()
+            self.logger.debug(f"Gracefully closed old httpx client after {delay}s")
+        except Exception as e:
+            self.logger.debug(f"Error during graceful client closure: {e}")
+
+    async def _recreate_client_if_needed(self, exc: Exception) -> bool:
+        """
+        Check if httpx client should be recreated based on error type and recreate if needed.
+        Used to handle HTTP/2 connection errors and corrupted connection pools.
+        Thread-safe for concurrent async requests with cooldown period to prevent excessive recreations.
+
+        :param exc: Exception that was raised during request.
+        :type exc: Exception
+        :return: True if client was recreated, False otherwise.
+        :rtype: bool
+        """
+        should_recreate = False
+        exc_str = str(exc).lower()
+
+        # HTTP/2 specific protocol errors - always recreate
+        if isinstance(exc, httpx.RemoteProtocolError):
+            should_recreate = True
+        # Connection errors - recreate on critical patterns
+        elif isinstance(exc, (httpx.ConnectError, httpx.ReadError, httpx.WriteError)):
+            should_recreate = any(err in exc_str for err in CONNECTION_ERROR_PATTERNS)
+        # RetryableRequestException wraps errors from streaming (aiter_raw)
+        # These are rare mid-stream errors, not initial connection errors
+        elif isinstance(exc, RetryableRequestException):
+            should_recreate = any(pattern in exc_str for pattern in STREAMING_ERROR_PATTERNS)
+
+        if not should_recreate:
+            return False
+
+        # Use lock to prevent concurrent recreation by parallel requests
+        with self._client_recreation_lock:
+            # Check cooldown period - don't recreate if recently recreated
+            current_time = time.time()
+            key, loop = self._current_loop()
+            self._forget_client_of_a_foreign_loop(key, loop)
+            last_recreation = self._client_recreation_times.get(key)
+            if self._last_client_recreation_time is not None:
+                last_recreation = max(last_recreation or 0, self._last_client_recreation_time)
+            if last_recreation is not None:
+                time_since_last_recreation = current_time - last_recreation
+                if time_since_last_recreation < self._client_recreation_cooldown:
+                    self.logger.debug(
+                        f"Skipping client recreation (cooldown: {time_since_last_recreation:.1f}s / {self._client_recreation_cooldown}s)"
+                    )
+                    return False
+
+            # Check again inside lock - another request might have already recreated the client
+            if self.async_httpx_client is not None:
+                # Save old client reference and replace with new one immediately
+                old_client = self.async_httpx_client
+                self.async_httpx_client = None
+                self._set_async_client()
+                self._client_recreation_times[key] = current_time
+
+                # Schedule old client closure in background to avoid blocking
+                # This allows active requests to finish gracefully while preventing memory leaks
+                asyncio.create_task(self._close_client_gracefully(old_client))
+                return True
+            return False
+
+    def get_default_semaphore(self) -> CrossLoopSemaphore:
         """
         Get default global API semaphore for async requests.
         If the semaphore is not set, it will be initialized.
+
+        The semaphore is shared by every Api object of this process with the same server
+        address and token: the limit belongs to the Supervisely instance the requests go
+        to, and a process usually holds several Api objects for the same instance.
 
         During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, the default value will be set based on the server address.
         Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
 
-        :return: Semaphore object.
-        :rtype: :class:`asyncio.Semaphore`
+        :returns: Semaphore object.
+        :rtype: :class:`~supervisely._utils.CrossLoopSemaphore`
         """
         if self._semaphore is None:
             self._initialize_semaphore()
@@ -1651,20 +1987,40 @@ class Api:
 
     def _initialize_semaphore(self):
         """
-        Initialize the semaphore for async requests.
+        Get or create the semaphore shared by every Api object with the same server
+        address and token.
 
-        If the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set, create a semaphore with the given value.
-
-        Otherwise, create a semaphore with a default value:
+        The size of a freshly created semaphore comes from the environment variable
+        SUPERVISELY_ASYNC_SEMAPHORE, and if it is not set, from the server address:
 
             - If server supports HTTPS, create a semaphore with value 10.
             - If server supports HTTP, create a semaphore with value 5.
         """
+        # the redirect rewrites server_address, which is part of the key, so resolve it here
+        # and not only on the branch of _default_semaphore_size() that needs the address
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
+        size = self._default_semaphore_size()
+        key = (self.server_address, self.token)
+        with Api._semaphores_lock:
+            semaphore = Api._semaphores.get(key)
+            if semaphore is None:
+                semaphore = CrossLoopSemaphore(size)
+                Api._semaphores[key] = semaphore
+        self._semaphore = semaphore
+
+    def _default_semaphore_size(self) -> int:
+        """
+        Default number of concurrent async requests for this server address.
+
+        :returns: Semaphore size.
+        :rtype: int
+        """
         semaphore_size = sly_env.semaphore_size()
         if semaphore_size is not None:
-            self._semaphore = asyncio.Semaphore(semaphore_size)
+            size = semaphore_size
             logger.debug(
-                f"Setting global API semaphore size to {semaphore_size} from environment variable"
+                f"Setting global API semaphore size to {size} from environment variable"
             )
         else:
             if not self._skip_https_redirect_check:
@@ -1677,28 +2033,50 @@ class Api:
             else:
                 size = 5
                 logger.debug(f"Setting global API semaphore size to {size} for HTTP")
-            self._semaphore = asyncio.Semaphore(size)
+        return size
 
     def set_semaphore_size(self, size: int = None):
         """
-        Set the global API semaphore with the given size. Will replace the existing semaphore.
+        Set the size of the global API semaphore.
         If the size is not set, will set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, will set the default value.
+
+        The semaphore is shared by every Api object with the same server address and token,
+        because the limit it enforces belongs to the Supervisely instance and not to a
+        python object. Changing the size therefore affects all of them, in this process.
 
         :param size: Size of the semaphore.
         :type size: int, optional
         """
-        if size is not None:
-            self._semaphore = asyncio.Semaphore(size)
-        else:
+        if self._semaphore is None:
             self._initialize_semaphore()
+        if size is None:
+            size = self._default_semaphore_size()
+        # resize in place to keep current holders and waiters valid
+        self._semaphore.resize(size)
+
+    def get_default_semaphore_size(self) -> int:
+        """
+        Get the configured size of the global API semaphore (the number of permits it was
+        created with), as opposed to ``get_default_semaphore()._value`` which reflects the
+        currently available permits and may be lower while requests are in-flight.
+
+        Initializes the semaphore if it has not been created yet. The value is read from
+        the shared semaphore, so it cannot drift apart from it.
+
+        :returns: Configured semaphore size.
+        :rtype: int
+        """
+        if self._semaphore is None:
+            self._initialize_semaphore()
+        return self._semaphore.limit
 
     @property
-    def semaphore(self) -> asyncio.Semaphore:
+    def semaphore(self) -> CrossLoopSemaphore:
         """
         Get the global API semaphore for async requests.
 
-        :return: Semaphore object.
-        :rtype: :class:`asyncio.Semaphore`
+        :returns: Semaphore object.
+        :rtype: :class:`~supervisely._utils.CrossLoopSemaphore`
         """
         return self._semaphore

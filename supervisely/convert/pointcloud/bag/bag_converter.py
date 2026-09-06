@@ -17,7 +17,10 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import AvailablePointcloudConverters
-from supervisely.convert.pointcloud.bag.bag_helper import process_pc2_msg, process_vector3_msg
+from supervisely.convert.pointcloud.bag.bag_helper import (
+    process_pc2_msg,
+    process_vector3_msg,
+)
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.fs import (
@@ -30,7 +33,11 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class BagConverter(PointcloudConverter):
+    """Converter for ROS bag files containing PointCloud2 messages (and optional Supervisely annotations topics)."""
+
     class Item(PointcloudConverter.Item):
+        """Bag item that stores the selected ROS topic name (and optional annotation topic)."""
+
         def __init__(
             self,
             item_path,
@@ -38,6 +45,16 @@ class BagConverter(PointcloudConverter):
             related_images: list = None,
             custom_data: dict = None,
         ):
+            """
+            :param item_path: Path to pointcloud file.
+            :type item_path: str
+            :param ann_data: Annotation path or data.
+            :type ann_data: str, optional
+            :param related_images: List of related image tuples.
+            :type related_images: list, optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._topic = None
             self._type = "point_cloud"
@@ -51,13 +68,17 @@ class BagConverter(PointcloudConverter):
             self._topic = topic
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._total_msg_count = 0
         self._is_pcd_episode = False
@@ -97,7 +118,7 @@ class BagConverter(PointcloudConverter):
                 for topic, topic_type, msg_count in topics:
                     if topic_type == "sensor_msgs/PointCloud2":
                         if "SlyAnnotations" in topic:
-                            logger.warn(
+                            logger.warning(
                                 f"{topic} topic: only [geometry_msgs/Vector3Stamped] supported for Supervisely annotations"
                             )
                             # ann_topic = topic
@@ -162,7 +183,7 @@ class BagConverter(PointcloudConverter):
                         if re.match(r"\d+\.\d+", frame_id):
                             time_to_vectors[frame_id].append(msg)
                     elif ann_topic_type == "sensor_msgs/PointCloud2":
-                        logger.warn(
+                        logger.warning(
                             f"{item.ann_data} topic: only [geometry_msgs/Vector3Stamped] supported for Supervisely annotations"
                         )
                         # process_pc2_msg(time_to_data, msg, rostime, bag_path, ann_topic, meta, is_ann=True)
@@ -220,6 +241,9 @@ class BagConverter(PointcloudConverter):
         else:
             progress_cb = None
 
+        upload_fn = (
+            api.pointcloud_episode.upload_path if is_episodes else api.pointcloud.upload_path
+        )
         for idx, item in enumerate(self._items):
             current_dataset = dataset_info if not multiple_items else datasets[idx]
             current_dataset_id = current_dataset.id
@@ -239,11 +263,6 @@ class BagConverter(PointcloudConverter):
                 )
                 if is_episodes:
                     pcd_meta["frame"] = idx
-                upload_fn = (
-                    api.pointcloud_episode.upload_path
-                    if is_episodes
-                    else api.pointcloud.upload_path
-                )
                 info = upload_fn(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 pcd_id = info.id
                 frame_to_pointcloud_ids[idx] = pcd_id

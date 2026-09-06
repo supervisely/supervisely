@@ -1,3 +1,4 @@
+import os
 from os.path import join
 from typing import Any, Dict, List, Optional, Union
 
@@ -7,23 +8,46 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 from supervisely import Api
-from supervisely.app.widgets import Card, Container, Field, RadioTabs, SelectString, Text, Widget
-from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
+from supervisely.app.widgets import (
+    Card,
+    Container,
+    Field,
+    RadioTabs,
+    SelectString,
+    Text,
+    Widget,
+)
+from supervisely.app.widgets.experiment_selector.experiment_selector import (
+    ExperimentSelector,
+)
 from supervisely.app.widgets.pretrained_models_selector.pretrained_models_selector import (
     PretrainedModelsSelector,
 )
-from supervisely.nn.experiments import get_experiment_infos
+from supervisely.app.widgets.external_model_selector.external_model_selector import (
+    ExternalModelSelector,
+)
+from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
 from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
 
 
 class ServingGUITemplate(ServingGUI):
+    """Serving GUI with experiment selector, pretrained models, external model support; extends ServingGUI."""
+
     def __init__(
         self,
         framework_name: str,
         models: Optional[list] = None,
         app_options: Optional[str] = None,
     ):
+        """
+        :param framework_name: Framework display name.
+        :type framework_name: str
+        :param models: Optional model list.
+        :type models: List[str]
+        :param app_options: Optional app options JSON.
+        :type app_options: Dict[str, Any]
+        """
         if not isinstance(framework_name, str):
             raise ValueError("'framework_name' must be a string")
         super().__init__()
@@ -53,10 +77,11 @@ class ServingGUITemplate(ServingGUI):
         # Pretrained models
         use_pretrained_models = self.app_options.get("pretrained_models", True)
         use_custom_models = self.app_options.get("custom_models", True)
+        use_external_models = self.app_options.get("external_models", False)
 
-        if not use_pretrained_models and not use_custom_models:
+        if not use_pretrained_models and not use_custom_models and not use_external_models:
             raise ValueError(
-                "At least one of 'pretrained_models' or 'custom_models' must be enabled."
+                "At least one of 'pretrained_models', 'custom_models' or 'external_models' must be enabled."
             )
 
         if use_pretrained_models and self.models is not None:
@@ -67,9 +92,24 @@ class ServingGUITemplate(ServingGUI):
         # Custom models
         if use_custom_models:
             experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
-            self.experiment_selector = ExperimentSelector(self.team_id, experiments)
+            self.experiment_selector = ExperimentSelector(self.api, self.team_id, experiments)
         else:
             self.experiment_selector = None
+
+        # External models
+        if use_external_models:
+            external_model_options = self.app_options.get("external_model_options", {})
+            need_config = external_model_options.get("config", True)
+            need_classes = external_model_options.get("classes", True)
+            task_types = external_model_options.get("task_types", [])
+            self.external_models_selector = ExternalModelSelector(
+                task_types=task_types,
+                need_config=need_config,
+                need_classes=need_classes,
+            )
+            self.external_models_selector.set_model_name(f"{self.framework_name} External Model")
+        else:
+            self.external_models_selector = None
 
         # Tabs
         tabs = []
@@ -87,6 +127,14 @@ class ServingGUITemplate(ServingGUI):
                     ModelSource.CUSTOM,
                     "Models trained in Supervisely",
                     self.experiment_selector,
+                )
+            )
+        if self.external_models_selector is not None:
+            tabs.append(
+                (
+                    ModelSource.EXTERNAL,
+                    "Models from other sources",
+                    self.external_models_selector,
                 )
             )
         if tabs:
@@ -132,11 +180,13 @@ class ServingGUITemplate(ServingGUI):
 
         if self.runtime_select is not None:
             self.runtime_select.value_changed(lambda _: self._update_export_message())
+
         if self.experiment_selector is not None:
-            self.experiment_selector.value_changed(lambda _: self._update_export_message())
-            for task_type in self.experiment_selector.rows:
-                for row in self.experiment_selector.rows[task_type]:
-                    row.checkpoints_selector.value_changed(lambda _: self._update_export_message())
+            self.experiment_selector.selection_changed(lambda _: self._update_export_message())
+            self.experiment_selector.checkpoint_changed(
+                lambda row, _: self._update_export_message()
+            )
+
         if self.pretrained_models_table is not None:
             self.pretrained_models_table.model_changed(lambda _: self._update_export_message())
 
@@ -156,22 +206,48 @@ class ServingGUITemplate(ServingGUI):
 
     @property
     def model_info(self) -> Dict[str, Any]:
-        return self._get_selected_row()
+        model_info = self._get_selected_row()
+        if isinstance(model_info, ExperimentInfo):
+            # model info requires json format
+            # to match types of pretrained and custom model info
+            model_info = model_info.to_json()
+        return model_info
 
     @property
     def model_name(self) -> Optional[str]:
         if self.model_source == ModelSource.PRETRAINED:
             return _get_model_name(self.model_info)
-        else:
+        elif self.model_source == ModelSource.CUSTOM:
             return self.model_info.get("model_name")
+        elif self.model_source == ModelSource.EXTERNAL:
+            return self.external_models_selector.get_model_name()
+        else:
+            raise ValueError(f"Invalid model source: {self.model_source}")
 
     @property
     def model_files(self) -> List[str]:
         if self.model_source == ModelSource.PRETRAINED:
             model_meta = self.model_info.get("meta", {})
             return model_meta.get("model_files", {})
+        elif self.model_source == ModelSource.CUSTOM:
+            experiment_info = self.experiment_selector.get_selected_experiment_info()
+            if experiment_info is None:
+                raise ValueError(
+                    "No experiment selected. Please select an experiment before serving."
+                )
+            artifacts_dir = experiment_info.artifacts_dir
+            model_files = experiment_info.model_files
+            full_model_files = {
+                name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
+            }
+            full_model_files["checkpoint"] = self.experiment_selector.get_selected_checkpoint_path()
+            return full_model_files
+        elif self.model_source == ModelSource.EXTERNAL:
+            deploy_params = self.external_models_selector.get_deploy_params()
+            model_files = deploy_params["model_files"]
+            return model_files
         else:
-            return self.experiment_selector.get_model_files()
+            raise ValueError(f"Invalid model source: {self.model_source}")
 
     @property
     def runtime(self) -> str:
@@ -215,6 +291,9 @@ class ServingGUITemplate(ServingGUI):
             return self.pretrained_models_table.get_selected_row()
         elif self.model_source == ModelSource.CUSTOM and self.experiment_selector:
             return self.experiment_selector.get_selected_experiment_info()
+        elif self.model_source == ModelSource.EXTERNAL and self.external_models_selector:
+            deploy_params = self.external_models_selector.get_deploy_params()
+            return deploy_params["model_info"]
         return {}
 
     def _update_export_message(self):
@@ -235,10 +314,10 @@ class ServingGUITemplate(ServingGUI):
 
         checkpoint_name = None
         if self.model_source == ModelSource.CUSTOM and self.experiment_selector is not None:
-            selected_row = self.experiment_selector.get_selected_row()
-            if selected_row is None:
+            selected_experiment_info = self.experiment_selector.get_selected_experiment_info()
+            if selected_experiment_info is None:
                 return
-            checkpoint_name = selected_row.get_selected_checkpoint_name()
+            checkpoint_name = self.experiment_selector.get_selected_checkpoint_name()
             if checkpoint_name is None:
                 return
 
@@ -250,7 +329,7 @@ class ServingGUITemplate(ServingGUI):
                 if key.lower().startswith(runtime.lower()):
                     available = True
                     break
-            if checkpoint_name != selected_row.best_checkpoint:
+            if checkpoint_name != selected_experiment_info.best_checkpoint:
                 available = False
 
         if available:

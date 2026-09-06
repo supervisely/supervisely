@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Speedtest(DetectionVisMetric):
+    """Inference speed and FPS tables/charts for detection reports."""
+
     MARKDOWN_INTRO = "speedtest_intro"
     TABLE_MARKDOWN = "speedtest_table"
     TABLE = "speedtest"

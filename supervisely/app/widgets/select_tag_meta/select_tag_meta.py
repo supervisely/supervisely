@@ -14,7 +14,11 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class SelectTagMeta(Widget):
+    """Widget to select one or multiple TagMetas from a project meta (by project ID or provided meta)."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -28,6 +32,25 @@ class SelectTagMeta(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        """:param default: Initial tag name.
+        :type default: str, optional
+        :param project_id: Project ID to load TagMetas from.
+        :type project_id: int, optional
+        :param project_meta: ProjectMeta with TagMetas. Mutually exclusive with project_id.
+        :type project_meta: ProjectMeta, optional
+        :param allowed_types: Filter by tag value types.
+        :type allowed_types: List[str], optional
+        :param multiselect: If True, allow multiple selection.
+        :type multiselect: bool
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If both project_id and project_meta provided, or invalid allowed_types.
+        """
         self._changes_handled = False
         self._api = Api()
         self._default = default

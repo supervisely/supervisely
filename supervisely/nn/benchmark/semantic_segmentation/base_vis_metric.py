@@ -7,6 +7,7 @@ from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
 
 
 class SemanticSegmVisMetric(BaseVisMetric):
+    """Base visualization metric for semantic segmentation reports with segmentation-specific click data."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

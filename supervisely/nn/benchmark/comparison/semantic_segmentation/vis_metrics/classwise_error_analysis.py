@@ -3,6 +3,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class ClasswiseErrorAnalysis(BaseVisMetrics):
+    """Per-class error analysis chart for segmentation model comparison."""
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.clickable = True

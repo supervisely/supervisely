@@ -43,6 +43,8 @@ ERROR_PALETTE = {
 
 
 class Evaluator:
+    """Computes semantic segmentation metrics (IoU, pixel accuracy, boundary/extent errors) over prediction vs GT pairs."""
+
     def __init__(
         self,
         class_names: List[str],

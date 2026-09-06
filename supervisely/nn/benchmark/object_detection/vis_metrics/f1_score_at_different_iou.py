@@ -8,6 +8,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class F1ScoreAtDifferentIOU(DetectionVisMetric):
+    """F1 score at varying IoU thresholds chart for detection reports."""
+
     MARKDOWN = "f1_score_at_iou"
     CHART = "f1_score_at_iou"
 

@@ -23,15 +23,20 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class CityscapesConverter(ImageConverter):
+    """Imports Cityscapes semantic segmentation format (images + JSON annotations) into Supervisely image project."""
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._classes_mapping = {}
         self._supports_links = True
@@ -43,7 +48,7 @@ class CityscapesConverter(ImageConverter):
     @property
     def key_file_ext(self) -> str:
         return ".json"
-    
+
     @property
     def ann_ext(self) -> str:
         return ".json"
@@ -59,12 +64,12 @@ class CityscapesConverter(ImageConverter):
                 if objects is not None:
                     return True
                 else:
-                    logger.warn(f"Couldn't read objects from annoation file: '{ann_file_path}'")
+                    logger.warning(f"Couldn't read objects from annoation file: '{ann_file_path}'")
                     return False
             else:
                 return False
         except:
-            logger.warn(f"Failed to read annotation file: '{ann_file_path}'")
+            logger.warning(f"Failed to read annotation file: '{ann_file_path}'")
             return False
 
     def validate_key_file(self, key_file_path: str) -> bool:
@@ -110,11 +115,11 @@ class CityscapesConverter(ImageConverter):
             else:
                 return False
         except Exception as e:
-            logger.warn(f"Failed to read 'class_to_id.json': {repr(e)}")
+            logger.warning(f"Failed to read 'class_to_id.json': {repr(e)}")
             return False
 
     def validate_format(self) -> bool:
-        if self.upload_as_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
         detected_ann_cnt = 0
         images_list, ann_dict = [], {}
@@ -126,7 +131,7 @@ class CityscapesConverter(ImageConverter):
                 if file.lower() == "class_to_id.json":
                     success = self.validate_key_file(os.path.join(root, file))
                     if not success:
-                        logger.warn(
+                        logger.warning(
                             f"Failed to validate key file: '{file}'. Will use default cityscapes classes."
                         )
                 if file in JUNK_FILES:
@@ -204,5 +209,5 @@ class CityscapesConverter(ImageConverter):
                 ann = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
             return ann
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return ann

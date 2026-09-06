@@ -1,0 +1,10 @@
+<el-dialog :title="data.{{{widget.widget_id}}}.title" :size="data.{{{widget.widget_id}}}.size"
+  :visible.sync="state.{{{widget.widget_id}}}.visible" @close="post('/{{{widget.widget_id}}}/close_cb');" {% if
+  widget._value_changed_handled==true %} @open="post('/{{{widget.widget_id}}}/value_changed');"
+  @close="post('/{{{widget.widget_id}}}/value_changed');" {% endif %}>
+  <div>
+    {% for item in widget._widgets %}
+    {{{item}}}
+    {% endfor %}
+  </div>
+</el-dialog>

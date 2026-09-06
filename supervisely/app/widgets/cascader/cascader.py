@@ -12,70 +12,14 @@ except ImportError:
 
 
 class Cascader(Widget):
-    """Cascader is a dropdown list with hierarchical options.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/cascader>`_
-        (including screenshots and examples).
-
-    :param items: List of Cascader.Item objects to be displayed in the cascader.
-    :type items: Optional[List[Cascader.Item]]
-    :param selected_items: List of selected items.
-    :type selected_items: Optional[List[str]]
-    :param filterable: If True, the cascader will be filterable.
-    :type filterable: Optional[bool]
-    :param placeholder: Placeholder text of the cascader.
-    :type placeholder: Optional[str]
-    :param size: Size of the cascader.
-    :type size: Optional[Literal["large", "small", "mini"]]
-    :param expand_trigger: Trigger type to expand the cascader.
-    :type expand_trigger: Optional[Literal["click", "hover"]]
-    :param clearable: If True, the cascader will be clearable.
-    :type clearable: Optional[bool]
-    :param show_all_levels: If True, all levels of the cascader will be displayed.
-    :type show_all_levels: Optional[bool]
-    :param parent_selectable: If True, parent items will be selectable.
-    :type parent_selectable: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Cascader
-
-        cascader_items = [
-            Cascader.Item(value="cat", label="Cat", children=[
-                Cascader.Item(value="black cat", label="Black Cat"),
-                Cascader.Item(value="fluffy cat", label="Fluffy Cat"),
-            ]),
-            Cascader.Item(value="dog", label="Dog", children=[
-                Cascader.Item(value="black dog", label="Black Dog"),
-                Cascader.Item(value="fluffy dog", label="Fluffy Dog"),
-            ]),
-        ]
-
-        cascader = Cascader(
-            items=cascader_items, selected_items=[], filterable=True, placeholder="select",
-            size="small", expand_trigger="click", clearable=True, show_all_levels=True,
-            parent_selectable=False
-            )
-    """
+    """Dropdown with hierarchical options (cascading levels)."""
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """Represents an item in the cascader.
-
-        :param value: Value of the item.
-        :type value: str
-        :param label: Label of the item.
-        :type label: Optional[str]
-        :param children: Children of the item.
-        :type children: Optional[List[Cascader.Item]]
-        :param disabled: If True, the item will be disabled.
-        :type disabled: Optional[bool]
-        """
+        """Single cascader item (value, label, optional children)."""
 
         def __init__(
             self,
@@ -84,6 +28,16 @@ class Cascader(Widget):
             children: Optional[List[Cascader.Item]] = [],
             disabled: Optional[bool] = False,
         ) -> Cascader.Item:
+            """
+            :param value: Item value.
+            :type value: str
+            :param label: Display label. Defaults to value.
+            :type label: str, optional
+            :param children: Nested items.
+            :type children: List[Cascader.Item], optional
+            :param disabled: Disable selection.
+            :type disabled: bool, optional
+            """
             self.value = value
             self.label = label
             if label is None:
@@ -126,6 +80,39 @@ class Cascader(Widget):
         parent_selectable: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Cascader.Item (hierarchical).
+        :type items: List[Cascader.Item], optional
+        :param selected_items: Initially selected values.
+        :type selected_items: List[str], optional
+        :param filterable: Enable search/filter.
+        :type filterable: bool, optional
+        :param placeholder: Placeholder text.
+        :type placeholder: str, optional
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param expand_trigger: Trigger type to expand the cascader: "click", "hover".
+        :type expand_trigger: Literal["click", "hover"], optional
+        :param clearable: Allow clearing selection.
+        :type clearable: bool, optional
+        :param show_all_levels: Show full path in selection.
+        :type show_all_levels: bool, optional
+        :param parent_selectable: Allow selecting parent nodes.
+        :type parent_selectable: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Cascader
+                items = [
+                    Cascader.Item("cat", "Cat", [Cascader.Item("black", "Black Cat")]),
+                    Cascader.Item("dog", "Dog"),
+                ]
+                cascader = Cascader(items=items, filterable=True, placeholder="Select")
+        """
         self._items = items
         self._selected_items = selected_items
         self._filterable = filterable
@@ -160,7 +147,7 @@ class Cascader(Widget):
             - parentSelectable: If True, parent items will be selectable.
             - items: List of cascader items.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         res = {
@@ -184,15 +171,15 @@ class Cascader(Widget):
         Dictionary contains the following fields:
             - selectedItems: List of selected items.
 
-        :return: Dictionary with widget state.
-        :rtype: Dict[str, List[Cascader.Item]]
+        :returns: Dictionary with widget state.
+        :rtype: Dict[str, List[:class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]]
         """
         return {"selectedItems": self._selected_items}
 
     def get_selected_items(self) -> List[str]:
         """Returns list of values of selected items.
 
-        :return: List of values of selected items.
+        :returns: List of values of selected items.
         :rtype: List[str]
         """
         return StateJson()[self.widget_id]["selectedItems"]
@@ -200,19 +187,20 @@ class Cascader(Widget):
     def select_item(self, values: List[Union[str, Cascader.Item]]):
         """Selects item by value.
 
-        Can be used to select multiple items, can be passed as a list of values or a list of Cascader.Item objects.
+        Can be used to select multiple items, can be passed as a list of values or a list of items.
 
         :param values: List of values of items to be selected.
-        :type values: List[Union[str, Cascader.Item]]]
+        :type values: List[Union[str, :class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]]]
 
-        :Usage example:
-        .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
 
 
-            # Selects item by string value
-            cascader.select_item(["cat", "black cat", "fluffy cat"])
-            # Selects item by Cascader.Item object
-            cascader.select_item([Cascader.Item("cat"), Cascader.Item("black cat"), Cascader.Item("fluffy cat")])
+                # Selects item by string value
+                cascader.select_item(["cat", "black cat", "fluffy cat"])
+                # Selects item by Cascader.Item object
+                cascader.select_item([Cascader.Item("cat"), Cascader.Item("black cat"), Cascader.Item("fluffy cat")])
         """
 
         str_values = []
@@ -239,29 +227,29 @@ class Cascader(Widget):
         self.select_item([])
 
     def get_items(self) -> List[Cascader.Item]:
-        """Returns list of Cascader.Item objects.
+        """Returns list of items.
 
-        :return: List of Cascader.Item objects.
-        :rtype: List[Cascader.Item]
+        :returns: List of items.
+        :rtype: List[:class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
     def get_item(self, value: str) -> Cascader.Item:
-        """Returns Cascader.Item object by value.
+        """Returns item by value.
 
         :param value: Value of the item.
         :type value: str
-        :return: Cascader.Item object.
-        :rtype: Cascader.Item
+        :returns: Item.
+        :rtype: :meth:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`
         """
 
         def _recursive_search(items: List[Cascader.Item]) -> Cascader.Item:
             """Recursively searches for item by its value.
 
-            :param items: List of Cascader.Item objects.
-            :type items: List[Cascader.Item]
-            :return: Cascader.Item object.
-            :rtype: Cascader.Item
+            :param items: List of items.
+            :type items: List[:meth:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]
+            :returns: Item.
+            :rtype: :meth:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`
             """
             for item in items:
                 if item.value == value:
@@ -274,14 +262,14 @@ class Cascader(Widget):
         return _recursive_search(self._items)
 
     def set_items(self, items: List[Cascader.Item]) -> None:
-        """Sets list of Cascader.Item objects to be displayed in the cascader.
+        """Sets list of items to be displayed in the cascader.
 
         This method will overwrite the existing items, not append to it.
         To append items, use :meth:`add_items`.
 
-        :param items: List of Cascader.Item objects to be displayed in the cascader.
-        :type items: List[Cascader.Item]
-        :raises TypeError: If items are not of type Cascader.Item.
+        :param items: List of items to be displayed in the cascader.
+        :type items: List[:class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]
+        :raises TypeError: If items are not of type :class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`.
         """
         if any(not isinstance(item, Cascader.Item) for item in items):
             raise TypeError("All items must be of type Cascader.Item")
@@ -290,25 +278,25 @@ class Cascader(Widget):
         self.deselect()
 
     def add_item(self, item: Cascader.Item) -> None:
-        """Appends Cascader.Item object to the existing items.
+        """Appends item to the existing items.
 
         This method will not overwrite the existing items, but append to it.
         To overwrite items, use :meth:`set_items`.
 
-        :param item: Cascader.Item object to be displayed in the cascader.
-        :type item: Cascader.Item
+        :param item: Item to be displayed in the cascader.
+        :type item: :class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`
         """
         self.add_items([item])
 
     def add_items(self, items: List[Cascader.Item]) -> None:
-        """Appends list of Cascader.Item objects to the existing items.
+        """Appends list of items to the existing items.
 
         This method will not overwrite the existing items, but append to it.
         To overwrite items, use :meth:`set_items`.
 
-        :param items: List of Cascader.Item objects to be displayed in the cascader.
-        :type items: List[Cascader.Item]
-        :raises TypeError: If items are not of type Cascader.Item.
+        :param items: List of items to be displayed in the cascader.
+        :type items: List[:class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]
+        :raises TypeError: If items are not of type :class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`.
         :raises ValueError: If item with the same value already exists.
         """
         if any(not isinstance(item, Cascader.Item) for item in items):
@@ -319,13 +307,13 @@ class Cascader(Widget):
         self._items.extend(items)
         self._set_items()
 
-    def value_changed(self, func: Callable[[List[str]], Any]) -> Callable[[], None]:
+    def value_changed(self, func: Callable[List[str], Any]) -> Callable[None]:
         """Decorator for the function to be called when the value of the cascader is changed.
 
         :param func: Function to be called when the value of the cascader is changed.
-        :type func: Callable[[List[str]], Any]
-        :return: Decorated function.
-        :rtype: Callable[[], None]
+        :type func: Callable[List[str], Any]
+        :returns: Decorated function.
+        :rtype: Callable[None]
         """
         route_path = self.get_route_path(Cascader.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()

@@ -4,7 +4,11 @@ from supervisely.app.content import StateJson, DataJson
 
 
 class Timeline(Widget):
+    """Timeline widget that visualizes colored frame intervals and supports pointer/segment selection."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         SEGMENT_SELECTED = "segment_selected_cb"
         CLICK = "click"
 
@@ -18,6 +22,23 @@ class Timeline(Widget):
         tooltip_content: Optional[Widget] = None,
         widget_id: str = None,
     ):
+        """:param frames_count: Total number of frames.
+        :type frames_count: int
+        :param intervals: List of [start, end] frame intervals.
+        :type intervals: List[List[int]]
+        :param colors: List of [r, g, b] colors per interval.
+        :type colors: List[List[int]]
+        :param height: CSS height (e.g. "30px").
+        :type height: str, optional
+        :param pointer_color: Color of playhead pointer.
+        :type pointer_color: str, optional
+        :param tooltip_content: Optional widget for segment tooltip.
+        :type tooltip_content: Widget, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If intervals/colors lengths differ or interval out of bounds.
+        """
         self._frames_count = frames_count
         self._intervals = intervals
         self._colors = colors

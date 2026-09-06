@@ -39,6 +39,8 @@ type_to_text_color = {
 
 
 class Text(Widget):
+    """Text label with optional status styling (info, success, warning, error) and icon; updatable via set()."""
+
     def __init__(
         self,
         text: str = None,
@@ -47,6 +49,17 @@ class Text(Widget):
         widget_id: str = None,
         font_size: int = 14,
     ):
+        """:param text: Text content.
+        :type text: str, optional
+        :param status: Style: "text", "info", "success", "warning", or "error".
+        :type status: Literal["text", "info", "success", "warning", "error"]
+        :param color: Override text color.
+        :type color: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param font_size: Font size in pixels.
+        :type font_size: int
+        """
         self._text = None
         self._status = None
         self._icon = None

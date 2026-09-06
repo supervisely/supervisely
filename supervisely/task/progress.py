@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import math
 import re
+import weakref
 from functools import partial, wraps
 from typing import Dict, Optional, Union
 
@@ -20,55 +21,9 @@ def epoch_float(epoch, train_it, train_its):
 
 class Progress:
     """
-    Modules operations monitoring and displaying statistics of data processing. :class:`Progress<Progress>` object is immutable.
+    Progress reporter for long-running operations.
 
-    :param message: Progress message e.g. "Images uploaded:", "Processing:".
-    :type message: str
-    :param total_cnt: Total count.
-    :type total_cnt: int, optional
-    :param ext_logger: Logger object.
-    :type ext_logger: logger, optional
-    :param is_size: Shows Label size.
-    :type is_size: bool, optional
-    :param need_info_log: Shows info log.
-    :type need_info_log: bool, optional
-    :param min_report_percent: Minimum report percent of total items in progress to log.
-    :type min_report_percent: int, optional
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-        from supervisely.sly_logger import logger
-
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
-
-        progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
-        api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)
-
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0,
-        #  "total": 6, "current_label": "0.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:45.659Z", "level": "info"}
-        # {"message": "Images downloaded:  [0.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:45.660Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1,
-        #  "total": 6, "current_label": "1.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
-        # {"message": "Images downloaded:  [1.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2,
-        #  "total": 6, "current_label": "2.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "Images downloaded:  [2.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3,
-        #  "total": 6, "current_label": "3.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "Images downloaded:  [3.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4,
-        #  "total": 6, "current_label": "4.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "Images downloaded:  [4.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5,
-        #  "total": 6, "current_label": "5.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
-        # {"message": "Images downloaded:  [5.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6,
-        #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
-        # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+    Can be used as a callback to increment and log progress (optionally with size-based labels).
     """
 
     def __init__(
@@ -82,6 +37,64 @@ class Progress:
         log_extra: Optional[Dict[str, str]] = None,
         update_task_progress: Optional[bool] = True,
     ):
+        """
+        Modules operations monitoring and displaying statistics of data processing. :class:`Progress<Progress>` object is immutable.
+
+        :param message: Progress message e.g. "Images uploaded:", "Processing:".
+        :type message: str
+        :param total_cnt: Total count.
+        :type total_cnt: int, optional
+        :param ext_logger: Logger object.
+        :type ext_logger: logger, optional
+        :param is_size: Shows Label size.
+        :type is_size: bool, optional
+        :param need_info_log: Shows info log.
+        :type need_info_log: bool, optional
+        :param min_report_percent: Minimum report percent of total items in progress to log.
+        :type min_report_percent: int, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.sly_logger import logger
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
+                api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)
+
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0,
+                #  "total": 6, "current_label": "0.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:45.659Z", "level": "info"}
+                # {"message": "Images downloaded:  [0.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:45.660Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1,
+                #  "total": 6, "current_label": "1.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
+                # {"message": "Images downloaded:  [1.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2,
+                #  "total": 6, "current_label": "2.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+                # {"message": "Images downloaded:  [2.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3,
+                #  "total": 6, "current_label": "3.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+                # {"message": "Images downloaded:  [3.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4,
+                #  "total": 6, "current_label": "4.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+                # {"message": "Images downloaded:  [4.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5,
+                #  "total": 6, "current_label": "5.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+                # {"message": "Images downloaded:  [5.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6,
+                #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+                # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+        """
         self.is_size = is_size
         self.message = message
         self.total = total_cnt
@@ -152,8 +165,8 @@ class Progress:
         """
         Logs a message with level INFO in logger. Message contain type of progress, subtask message, current and total number of iterations
 
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         self.print_progress()
         self.reported_cnt += 1
@@ -204,33 +217,34 @@ class Progress:
         """
         Increments the current iteration counter by 1 and logs a message depending on current number of iterations.
 
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            progress = sly.Progress("Processing:", len(img_infos))
-            for img_info in img_infos:
-                img_names.append(img_info.name)
-                progress.iter_done_report()
+                import supervisely as sly
 
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                progress = sly.Progress("Processing:", len(img_infos))
+                for img_info in img_infos:
+                    img_names.append(img_info.name)
+                    progress.iter_done_report()
+
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
         """
         self.iter_done()
         self.report_if_needed()
@@ -241,33 +255,34 @@ class Progress:
 
         :param count: Counter.
         :type count: int
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            progress = sly.Progress("Processing:", len(img_infos))
-            for img_info in img_infos:
-                img_names.append(img_info.name)
-                progress.iters_done_report(1)
+                import supervisely as sly
 
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                progress = sly.Progress("Processing:", len(img_infos))
+                for img_info in img_infos:
+                    img_names.append(img_info.name)
+                    progress.iters_done_report(1)
+
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
         """
         self.iters_done(count)
         self.report_if_needed()
@@ -280,8 +295,8 @@ class Progress:
         :type value: int
         :param report: Defines whether to report to log or not.
         :type report: bool
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         if report is True:
             self.iters_done_report(value - self.current)
@@ -298,8 +313,8 @@ class Progress:
         :type total: int, optional
         :param report: Defines whether to report to log or not.
         :type report: bool
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         self.total = total
 
@@ -351,6 +366,14 @@ def report_dtl_verification_finished(output: str) -> None:
     )
 
 
+def update_progress(progress_cb, value: int) -> None:
+    """Update either a tqdm-like progress object or a simple callback."""
+    if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
+        progress_cb.update(value)
+    else:
+        progress_cb(value)
+
+
 def _report_metrics(m_type, epoch, metrics):
     logger.info(
         "metrics",
@@ -386,6 +409,8 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
 
 
 class SlyWrapFile:
+    """File-like wrapper that redirects tqdm-style output to Supervisely logger."""
+
     def __init__(self) -> None:
         self._pattern = "\\r(.*?)\\:"
 
@@ -396,7 +421,139 @@ class SlyWrapFile:
         logger.info(msg)
 
 
+class _StrongRef:
+    """
+    Stand-in for weakref.ref, for the rare object that forbids weak references.
+
+    Every monitor the SDK builds is weak referenceable; this is here for a caller supplying
+    a monitor of its own, for instance one with __slots__ and no __weakref__.
+    """
+
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __call__(self):
+        return self._obj
+
+
+class UploadProgressDelta(int):
+    """
+    Byte increment handed to an upload ``progress_cb``.
+
+    Delta style callbacks (``tqdm.update``, ``Progress.iters_done_report``, a plain
+    ``lambda count: ...``) see a number. Callbacks written back when the SDK passed the
+    multipart encoder monitor itself still find ``bytes_read``, ``len`` and every other
+    attribute of that monitor on this value, so both conventions keep working.
+
+    ``bytes_read`` and ``len`` are copied onto the value and stay readable for good. The
+    monitor itself is held weakly, so a callback that keeps the numbers it was handed does
+    not keep the encoder and its open files alive with them; attributes that only the
+    monitor has are therefore readable while the upload runs. Pickling and copying give a
+    plain ``int``, the way a delta style callback saw the value before this type existed.
+    """
+
+    def __new__(cls, delta: int, monitor):
+        obj = super().__new__(cls, delta)
+        obj.bytes_read = monitor.bytes_read
+        obj.len = monitor.len
+        try:
+            obj._monitor_ref = weakref.ref(monitor)
+        except TypeError:
+            obj._monitor_ref = _StrongRef(monitor)
+        return obj
+
+    def __reduce__(self):
+        # a monitor crosses neither a pickle nor a process boundary: hand over the number
+        return (int, (int(self),))
+
+    def __getattr__(self, name: str):
+        # reached only for names neither int nor __new__ above defines
+        if name.startswith("_"):
+            raise AttributeError(name)
+        monitor = self._monitor_ref()
+        if monitor is None:
+            raise AttributeError(
+                f"{name!r} is readable only while the upload is running, and this "
+                f"increment outlived its monitor; bytes_read and len are always kept"
+            )
+        return getattr(monitor, name)
+
+    @property
+    def monitor(self):
+        """
+        The multipart encoder monitor this increment came from.
+
+        Held weakly, so it is None once the upload is over.
+
+        :returns: Monitor object, or None.
+        :rtype: Optional[:class:`MultipartEncoderMonitor<requests_toolbelt.multipart.encoder.MultipartEncoderMonitor>`]
+        """
+        return self._monitor_ref()
+
+
+def build_multipart_monitor_callback(progress_cb):
+    """
+    Adapt any supported ``progress_cb`` to a ``MultipartEncoderMonitor`` callback.
+
+    Accepts a bare ``tqdm``, anything callable (delta style or monitor style), and objects
+    exposing ``get_partial()`` such as :class:`tqdm_sly` and the ``SlyTqdm`` widget, which
+    report from the monitor on their own.
+
+    Callables are handed a byte increment, with one exception:
+    :meth:`Progress.set_current_value` sets an absolute value, so it is told where the bar
+    should stand, which adds up across the several requests of a bulk upload. The exception
+    is on the function itself, so subclasses are served too and a foreign method of the same
+    name stays on the increment contract.
+
+    :param progress_cb: Progress callback of any supported shape, or None.
+    :type progress_cb: Optional[Union[tqdm, Callable]]
+    :returns: Callback for the monitor, or None if there is nothing to report to.
+    :rtype: Optional[Callable]
+    :raises TypeError: if progress_cb is neither callable, nor a tqdm, nor monitor aware.
+    """
+    if progress_cb is None:
+        return None
+
+    get_partial = getattr(progress_cb, "get_partial", None)
+    if callable(get_partial):
+        return get_partial()
+
+    if not callable(progress_cb):
+        # a bare tqdm and a bare Progress are not callable, but both take an increment
+        for attr in ("update", "iters_done_report"):
+            method = getattr(progress_cb, attr, None)
+            if callable(method):
+                progress_cb = method
+                break
+        else:
+            raise TypeError(
+                "progress_cb must be callable, a tqdm or Progress instance, or expose "
+                f"get_partial(), got {type(progress_cb).__name__}"
+            )
+
+    # Progress.set_current_value sets an absolute value, so it is told where the bar should
+    # stand rather than handed an increment. bytes_read of the current monitor would not do:
+    # a bulk upload sends several requests, and every request starts its monitor at zero.
+    sets_absolute = getattr(progress_cb, "__func__", None) is Progress.set_current_value
+    bar = progress_cb.__self__ if sets_absolute else None
+
+    reported = 0
+
+    def _report(monitor):
+        nonlocal reported
+        delta = monitor.bytes_read - reported
+        reported = monitor.bytes_read
+        if sets_absolute:
+            progress_cb(bar.current + delta)
+        else:
+            progress_cb(UploadProgressDelta(delta, monitor))
+
+    return _report
+
+
 class tqdm_sly(tqdm, Progress):
+    """tqdm-compatible progress bar that also reports progress via :class:`~supervisely.task.progress.Progress`."""
+
     def __init__(
         self,
         *args,
@@ -434,7 +591,6 @@ class tqdm_sly(tqdm, Progress):
             self.offset = 0  # to prevent overfilling of tqdm in console
         else:
             for k, v in {
-                "disable": True,
                 "delay": 0,  # sec init delay
                 "mininterval": 3,  # sec between reports
                 "miniters": 0,

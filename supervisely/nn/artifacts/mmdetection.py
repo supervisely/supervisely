@@ -9,7 +9,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class MMDetection(BaseTrainArtifacts):
+    """Training artifacts descriptor for MMDetection sessions (object detection / instance segmentation)."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection"
@@ -26,6 +29,7 @@ class MMDetection(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/mmdetection/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["object detection", "instance segmentation"]
         self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
@@ -59,12 +63,15 @@ class MMDetection(BaseTrainArtifacts):
 
 
 class MMDetection3(BaseTrainArtifacts):
+    """Training artifacts descriptor for MMDetection 3.0 sessions with benchmark evaluation support."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection 3.0"
-        self._slug = "Serve MMDetection 3.0"
-        self._serve_app_name = "supervisely-ecosystem/train-mmdetection-v3"
+        self._slug = "supervisely-ecosystem/train-mmdetection-v3"
+        self._serve_app_name = "Serve MMDetection 3.0"
         self._serve_slug = "supervisely-ecosystem/serve-mmdetection-v3"
         self._framework_name = "MMDetection 3.0"
         self._framework_folder = "/mmdetection-3"
@@ -75,7 +82,8 @@ class MMDetection3(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/mmdetection-3/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["object detection", "instance segmentation"]
         self._require_runtime = False
-        
+        self._has_benchmark_evaluation = True
+
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
         if len(parts) < 3:

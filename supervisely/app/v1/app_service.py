@@ -1,3 +1,5 @@
+# isort: skip_file
+
 import json
 import os
 import time
@@ -12,7 +14,8 @@ import queue
 import re
 
 from supervisely.worker_api.agent_api import AgentAPI
-from supervisely.worker_proto import worker_api_pb2 as api_proto
+
+# from supervisely.worker_proto import worker_api_pb2 as api_proto # Import moved to methods where needed
 from supervisely.function_wrapper import function_wrapper
 from supervisely._utils import take_with_default
 from supervisely.sly_logger import logger as default_logger
@@ -30,15 +33,18 @@ from supervisely._utils import _remove_sensitive_information
 from supervisely.worker_api.agent_rpc import send_from_memory_generator
 from supervisely.io.fs_cache import FileCache
 
-
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
 
 class ConnectionClosedByServerException(Exception):
+    """Raised when the server closes the app RPC request stream unexpectedly."""
+
     pass
 
 
 class AppCommandNotFound(Exception):
+    """Raised when an incoming app command has no registered callback handler."""
+
     pass
 
 
@@ -54,6 +60,8 @@ def _default_stop(api: Api, task_id, context, state, app_logger):
 
 
 class AppService:
+    """Legacy app service runtime that receives commands/events and sends UI/state updates to Supervisely."""
+
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
     DEFAULT_EVENTS = [STOP_COMMAND, *IMAGE_ANNOTATION_EVENTS]
@@ -67,9 +75,24 @@ class AppService:
         ignore_errors=False,
         ignore_task_id=False,
     ):
+        """
+        :param logger: Logger instance.
+        :type logger: :class:`~supervisely.sly_logger.SlyLogger`
+        :param task_id: Task ID.
+        :type task_id: int
+        :param server_address: Server address.
+        :type server_address: str
+        :param agent_token: Agent token.
+        :type agent_token: str
+        :param ignore_errors: If True, ignore errors.
+        :type ignore_errors: bool
+        :param ignore_task_id: If True, ignore task_id validation.
+        :type ignore_task_id: bool
+        """
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors
+        self.loop = None
         self.task_id = take_with_default(task_id, int(os.environ["TASK_ID"]))
         self.server_address = take_with_default(server_address, os.environ[SERVER_ADDRESS])
         self.agent_token = take_with_default(agent_token, os.environ[AGENT_TOKEN])
@@ -110,6 +133,25 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
 
+    @staticmethod
+    def _get_or_create_event_loop():
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop
+
+    def _close_event_loop(self):
+        loop = self.loop
+        if loop is not None and not loop.is_closed():
+            loop.close()
+        if loop is not None:
+            self.loop = None
+
     def is_stopped(self):
         return self.stop_event.is_set()
 
@@ -118,7 +160,7 @@ class AppService:
 
     def _run_executors(self):
         self.executor = concurrent.futures.ThreadPoolExecutor()
-        self.loop = asyncio.get_event_loop()
+        self.loop = self._get_or_create_event_loop()
         self.logger.trace(f"Operating system: {sys.platform}")
         # May want to catch other signals too
         if os.name == "nt":
@@ -390,6 +432,13 @@ class AppService:
         )
 
     def publish_sync(self, initial_events=None):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         if initial_events is not None:
             for event_obj in initial_events:
                 event_obj["api_token"] = os.environ[API_TOKEN]
@@ -452,7 +501,7 @@ class AppService:
             self.loop.create_task(self.scheduler(), name="Scheduler")
             self.loop.run_forever()
         finally:
-            self.loop.close()
+            self._close_event_loop()
             self.logger.info("Successfully shutdown the APP service.")
 
         if self._error is not None:
@@ -507,6 +556,13 @@ class AppService:
             self._error = error
 
     def send_response(self, request_id, data):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         out_bytes = json.dumps(data).encode("utf-8")
         self.api.put_stream_with_data(
             "SendGeneralEventData",

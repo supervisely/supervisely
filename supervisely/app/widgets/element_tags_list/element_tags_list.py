@@ -9,52 +9,14 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class ElementTagsList(Widget):
-    """ElementTagsList widget in Supervisely is a widget that allows users to display multiple elements tags in the UI.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/elementtagslist>`_
-        (including screenshots and examples).
-
-    :param tags: List of tags
-    :type tags: Optional[List[Tag]]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-            from supervisely.app.widgets import ElementTagsList
-
-            element_tags_list = ElementTagsList(
-                tags=[
-                    ElementTagsList.Tag(
-                        text="Tag",
-                        type="primary",
-                        hit=True,
-                        color="#20a0ff",
-                    )
-                ]
-            )
-    """
+    """Displays multiple element tags in a list."""
 
     class Routes:
+        """Route name constants for this widget."""
         CLOSE = "tag_close_cb"
 
     class Tag:
-        """Represents tag in ElementTagsList widget.
-
-        :param text: Tag text
-        :type text: Optional[str]
-        :param type: Tag type, one of: primary, gray, success, warning, danger
-        :type type: Optional[Literal["primary", "gray", "success", "warning", "danger"]]
-        :param hit: If True, tag will be highlighted
-        :type hit: Optional[bool]
-        :param color: Tag color
-        :type color: Optional[str]
-        :param closable: If True, tag will be closable
-        :type closable: Optional[bool]
-        :param close_transition: If True, tag will be closable with transition
-        :type close_transition: Optional[bool]
-        """
+        """Single tag in ElementTagsList."""
 
         def __init__(
             self,
@@ -65,6 +27,20 @@ class ElementTagsList(Widget):
             closable: Optional[bool] = False,
             close_transition: Optional[bool] = False,
         ):
+            """
+            :param text: Tag text.
+            :type text: str
+            :param type: Tag type, one of: primary, gray, success, warning, danger.
+            :type type: Optional[Literal["primary", "gray", "success", "warning", "danger"]]
+            :param hit: Highlight tag.
+            :type hit: Optional[bool]
+            :param color: Custom color.
+            :type color: Optional[str]
+            :param closable: Show close button.
+            :type closable: Optional[bool]
+            :param close_transition: Animate on close.
+            :type close_transition: Optional[bool]
+            """
             self._text = text
             self._type = type
             self._hit = hit
@@ -76,7 +52,7 @@ class ElementTagsList(Widget):
         def text(self) -> str:
             """Returns tag text.
 
-            :return: tag text
+            :returns: tag text
             :rtype: str
             """
             return self._text
@@ -85,7 +61,7 @@ class ElementTagsList(Widget):
         def type(self) -> str:
             """Returns tag type.
 
-            :return: tag type
+            :returns: tag type
             :rtype: str
             """
             return self._type
@@ -94,7 +70,7 @@ class ElementTagsList(Widget):
         def hit(self) -> bool:
             """Returns True if tag is highlighted, False otherwise.
 
-            :return: True if tag is highlighted, False otherwise
+            :returns: True if tag is highlighted, False otherwise
             :rtype: bool
             """
             return self._hit
@@ -103,7 +79,7 @@ class ElementTagsList(Widget):
         def color(self) -> str:
             """Returns tag color.
 
-            :return: tag color
+            :returns: tag color
             :rtype: str
             """
             return self._color
@@ -119,7 +95,7 @@ class ElementTagsList(Widget):
                 - closable: If True, tag will be closable
                 - close_transition: If True, tag will be closable with transition
 
-            :return: dictionary with tag data
+            :returns: dictionary with tag data
             :rtype: Dict[str, Union[str, bool]]
             """
             return {
@@ -137,8 +113,8 @@ class ElementTagsList(Widget):
 
             :param tag_json: JSON representation of tag
             :type tag_json: Dict[str, Union[str, bool]]
-            :return: tag
-            :rtype: ElementTagsList.Tag
+            :returns: tag
+            :rtype: :class:`~supervisely.app.widgets.element_tags_list.element_tags_list.ElementTagsList.Tag`
             """
             return cls(
                 tag_json["text"],
@@ -154,6 +130,20 @@ class ElementTagsList(Widget):
         tags: Optional[List[Tag]] = [],
         widget_id: Optional[str] = None,
     ):
+        """
+        :param tags: List of ElementTagsList.Tag.
+        :type tags: Optional[List[ElementTagsList.Tag]]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ElementTagsList
+                tags = [ElementTagsList.Tag("Tag1", type="primary")]
+                el = ElementTagsList(tags=tags)
+        """
         self._clicked_tag = None
 
         self._validate_tags(tags)
@@ -178,7 +168,7 @@ class ElementTagsList(Widget):
         The dictionary contains the following fields:
             - tags: List of JSON representations of tags
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, List[Dict[str, Union[str, bool]]]]
         """
         return {"tags": [tag.to_json() for tag in self._tags]}
@@ -189,7 +179,7 @@ class ElementTagsList(Widget):
         To add tags, use add_tags method.
 
         :param tags: List of tags
-        :type tags: List[Tag]]
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]]
         """
 
         self._tags = tags
@@ -199,8 +189,8 @@ class ElementTagsList(Widget):
     def get_tags(self) -> List[Tag]:
         """Returns current tags.
 
-        :return: current tags
-        :rtype: List[Tag]
+        :returns: current tags
+        :rtype: List[:class:`~supervisely.annotation.tag.Tag`]
         """
         return [ElementTagsList.Tag.from_json(tag) for tag in StateJson()[self.widget_id]["tags"]]
 
@@ -210,7 +200,7 @@ class ElementTagsList(Widget):
         To replace all tags, use set_tags method.
 
         :param tags: List of tags
-        :type tags: List[Tag]]
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]]
         """
         self._tags = self.get_tags()
         self._tags.extend(tags)
@@ -221,8 +211,8 @@ class ElementTagsList(Widget):
         """Decorator for function that will be called when tag is closed.
 
         :param func: Function that will be called when tag is closed
-        :type func: Callable[[List[Tag]], Any]
-        :return: Decorated function
+        :type func: Callable[[List[:class:`~supervisely.annotation.tag.Tag`]], Any]
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ElementTagsList.Routes.CLOSE)

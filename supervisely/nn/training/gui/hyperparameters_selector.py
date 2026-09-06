@@ -12,11 +12,18 @@ from supervisely.app.widgets import (
 
 
 class HyperparametersSelector:
+    """GUI component for selecting hyperparameters."""
     title = "Hyperparameters"
     description = "Set hyperparameters for training"
     lock_message = "Select previous step to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
+        """
+        :param hyperparameters: Hyperparameters dict.
+        :type hyperparameters: dict
+        :param app_options: App options.
+        :type app_options: dict
+        """
         # Init widgets
         self.editor = None
         self.run_model_benchmark_checkbox = None
@@ -48,7 +55,7 @@ class HyperparametersSelector:
             self.run_model_benchmark_checkbox = Checkbox(
                 content="Run Model Benchmark evaluation", checked=True
             )
-            self.run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
+            self.run_speedtest_checkbox = Checkbox(content="Run speed test", checked=False)
 
             self.model_benchmark_field = Field(
                 title="Model Evaluation Benchmark",

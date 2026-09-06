@@ -11,6 +11,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class KeyMetrics(DetectionVisMetric):
+    """Key metrics table and chart for detection evaluation reports."""
+
     MARKDOWN = "key_metrics"
     CHART = "key_metrics"
     TABLE = "key_metrics"

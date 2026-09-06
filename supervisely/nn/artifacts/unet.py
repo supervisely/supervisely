@@ -6,7 +6,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class UNet(BaseTrainArtifacts):
+    """Train/serve artifacts handler for UNet semantic segmentation models."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train UNet"
@@ -22,6 +25,7 @@ class UNet(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/unet/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["semantic segmentation"]
         self._require_runtime = False
+        self._has_benchmark_evaluation = True
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

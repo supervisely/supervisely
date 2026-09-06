@@ -6,8 +6,8 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 
 
 class GithubApi(ModuleApiBase):
-    """
-    """
+    """API module for GitHub-related operations exposed by Supervisely backend."""
+
     def get_account_info(self):
         """
         """

@@ -66,11 +66,14 @@ def handle_validation(func):
 
 
 class BaseTracking(Inference):
+    """Base for video object tracking: propagates annotations frame-to-frame via model or heuristic."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
+        """See :class:`~supervisely.nn.inference.inference.Inference` for params."""
         Inference.__init__(
             self,
             model_dir,

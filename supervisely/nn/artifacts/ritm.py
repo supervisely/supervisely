@@ -6,7 +6,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class RITM(BaseTrainArtifacts):
+    """Train/serve artifacts handler for RITM interactive segmentation models."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train RITM"
@@ -22,6 +25,7 @@ class RITM(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/RITM_training/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["interactive segmentation"]
         self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

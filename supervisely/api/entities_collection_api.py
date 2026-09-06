@@ -15,25 +15,34 @@ from supervisely.api.module_api import (
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.api.image_api import ImageInfo
+    from supervisely.api.video.video_api import VideoInfo
+    from supervisely.api.volume.volume_api import VolumeInfo
 
 
 class CollectionType:
+    """String constants for supported entities collection types."""
+
     DEFAULT = "default"
     AI_SEARCH = "aiSearch"
     ALL = "all"
 
 
 class CollectionTypeFilter:
+    """Filter keys used by the API to select collections by type."""
+
     AI_SEARCH = "entities_ai_search_collection"
     DEFAULT = "entities_collection"
 
 
 class AiSearchThresholdDirection:
+    """Direction for AI-search threshold filtering (above/below the threshold)."""
+
     ABOVE = "above"
     BELOW = "below"
 
@@ -64,7 +73,7 @@ class CollectionItem:
             """
             Convert meta information to a JSON-compatible dictionary.
 
-            :return: Dictionary with meta information.
+            :returns: Dictionary with meta information.
             :rtype: dict
             """
             return {ApiField.SCORE: self.score}
@@ -76,8 +85,8 @@ class CollectionItem:
 
             :param data: Dictionary with meta information.
             :type data: dict
-            :return: Meta object.
-            :rtype: CollectionItem.Meta
+            :returns: Meta object.
+            :rtype: :class:`~supervisely.api.entities_collection_api.CollectionItem.Meta`
             """
             return cls(score=data.get(ApiField.SCORE, 0.0))
 
@@ -88,7 +97,7 @@ class CollectionItem:
         """
         Convert collection item to a JSON-compatible dictionary.
 
-        :return: Dictionary with collection item data.
+        :returns: Dictionary with collection item data.
         :rtype: dict
         """
         result = {ApiField.ENTITY_ID: self.entity_id}
@@ -103,8 +112,8 @@ class CollectionItem:
 
         :param data: Dictionary with collection item data.
         :type data: dict
-        :return: CollectionItem object.
-        :rtype: CollectionItem
+        :returns: CollectionItem object.
+        :rtype: :class:`~supervisely.api.entities_collection_api.CollectionItem`
         """
         meta_data = data.get(ApiField.META)
         meta = cls.Meta.from_json(meta_data) if meta_data is not None else None
@@ -113,24 +122,24 @@ class CollectionItem:
 
 class EntitiesCollectionInfo(NamedTuple):
     """
-    Object with entitites collection parameters from Supervisely.
+    NamedTuple with entities collection information from Supervisely.
 
-    :Example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        EntitiesCollectionInfo(
-            id=1,
-            team_id=2,
-            project_id=3,
-            name="collection_name",
-            created_at="2023-01-01T00:00:00Z",
-            updated_at="2023-01-02T00:00:00Z",
-            description="This is a collection",
-            options={"key": "value"},
-            type="default",
-            ai_search_key="search_key"
-        )
+            EntitiesCollectionInfo(
+                id=1,
+                team_id=2,
+                project_id=3,
+                name="collection_name",
+                created_at="2023-01-01T00:00:00Z",
+                updated_at="2023-01-02T00:00:00Z",
+                description="This is a collection",
+                options={"key": "value"},
+                type="default",
+                ai_search_key="search_key"
+            )
     """
 
     #: ID of the collection.
@@ -166,49 +175,27 @@ class EntitiesCollectionInfo(NamedTuple):
 
 class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     """
-    API for working with Entities Collection. :class:`EntitiesCollectionApi<EntitiesCollectionApi>` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
-
-     .. code-block:: python
-
-        import os
-        from dotenv import load_dotenv
-
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        collection = api.entities_collection.get_list(9) # api usage example
+    API for working with entities collections.
     """
 
     @staticmethod
     def info_sequence():
         """
-        NamedTuple EntitiesCollectionInfo information about Entities Collection.
+        Sequence of fields that are returned by the API to represent EntitiesCollectionInfo.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-             EntitiesCollectionInfo(
-                id=2,
-                name='Enitites Collections #1',
-                team_id=4,
-                project_id=58,
-                description='',
-                created_at='2020-04-08T15:10:12.618Z',
-                updated_at='2020-04-08T15:10:19.833Z',
-            )
+                EntitiesCollectionInfo(
+                    id=2,
+                    name='Enitites Collections #1',
+                    team_id=4,
+                    project_id=58,
+                    description='',
+                    created_at='2020-04-08T15:10:12.618Z',
+                    updated_at='2020-04-08T15:10:19.833Z',
+                )
         """
         return [
             ApiField.ID,
@@ -226,21 +213,31 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`EntitiesCollectionInfo` NamedTuple.
+        Name of the tuple that represents EntitiesCollectionInfo.
 
-        :return: NamedTuple name.
-        :rtype: :class:`str`
+        :returns: NamedTuple name.
+        :rtype: str
         """
         return "EntitiesCollectionInfo"
 
     def __init__(self, api: Api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         ModuleApi.__init__(self, api)
         self._api = api
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> EntitiesCollectionInfo:
         """
-        Differs from the original method by using skip_missing equal to True by default.
-        Also unpacks 'meta' field to top level for fields in info_sequence.
+        Convert JSON info to EntitiesCollectionInfo.
+
+        :param info: JSON info to convert.
+        :type info: dict
+        :param skip_missing: If True, missing fields will be skipped. Defaults to True.
+        :type skip_missing: bool
+        :returns: EntitiesCollectionInfo object.
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
         """
 
         def _get_value(dict, field_name, skip_missing):
@@ -281,6 +278,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         description: Optional[str] = None,
         type: str = CollectionType.DEFAULT,
         ai_search_key: Optional[str] = None,
+        change_name_if_conflict=False,
     ) -> EntitiesCollectionInfo:
         """
         Creates Entities Collections.
@@ -295,27 +293,43 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type type: str
         :param ai_search_key: AI search key for the collection. Defaults to None.
         :type ai_search_key: Optional[str]
-        :return: Information about new Entities Collection
-        :rtype: :class:`EntitiesCollectionInfo`
-        :Usage example:
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name. Defaults to False.
+        :type change_name_if_conflict: bool
+        :returns: Information about new Entities Collection
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 123
-            name = "Chihuahuas"
-            description = "Collection of Chihuahuas"
-            type = CollectionType.AI_SEARCH
-            ai_search_key = "0ed6a5256433bbe32822949d563d476a"
+                import supervisely as sly
 
-            new_collection = api.entities_collection.create(project_id, name, description, type, ai_search_key)
-            print(new_collection)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 123
+                name = "Chihuahuas"
+                description = "Collection of Chihuahuas"
+                type = CollectionType.AI_SEARCH
+                ai_search_key = "0ed6a5256433bbe32822949d563d476a"
+
+                new_collection = api.entities_collection.create(project_id, name, description, type, ai_search_key)
+                print(new_collection)
         """
+
+        name = self._get_effective_new_name(
+            parent_id=project_id,
+            name=name,
+            change_name_if_conflict=change_name_if_conflict,
+        )
+
         method = "entities-collections.add"
         data = {
             ApiField.PROJECT_ID: project_id,
@@ -341,14 +355,14 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
         Remove Entites Collection with the specified ID from the Supervisely server.
 
-        If `force` is set to True, the collection will be removed permanently.
-        If `force` is set to False, the collection will be disabled instead of removed.
+        If ``force`` is set to True, the collection will be removed permanently.
+        If ``force`` is set to False, the collection will be disabled instead of removed.
 
         :param id: Entites Collection ID in Supervisely
         :type id: int
         :param force: If True, the collection will be removed permanently. Defaults to False.
         :type force: bool
-        :return: None
+        :returns: None
         """
         self._api.post(
             self._remove_api_method_name(), {ApiField.ID: id, ApiField.HARD_DELETE: force}
@@ -371,26 +385,33 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
         :param collection_type: Type of the collection.
-                    Defaults to CollectionType.DEFAULT.
+                    Defaults to :attr:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`.
 
                     Available types are:
-                     - CollectionType.DEFAULT
-                     - CollectionType.AI_SEARCH
-                     - CollectionType.ALL
-        :type collection_type: CollectionType
-        :return: List of information about Entities Collections.
+                     - :attr:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`
+                     - :attr:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH`
+                     - :attr:`~supervisely.api.entities_collection_api.CollectionType.ALL`
+        :type collection_type: :class:`~supervisely.api.entities_collection_api.CollectionType`
+        :returns: List of information about Entities Collections.
         :rtype: :class:`List[EntitiesCollectionInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            collections = api.entities_collection.get_list(4)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                collections = api.entities_collection.get_list(4)
         """
         method = "entities-collections.list"
 
@@ -411,30 +432,37 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
-        :return: Information about Entities Collection.
-        :rtype: :class:`EntitiesCollectionInfo`
-        :Usage example:
+        :returns: Information about Entities Collection.
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
+
+        :Usage Example:
 
             .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            collection = api.entities_collection.get_info_by_id(2)
-            print(collection)
-            # Output:
-            # {
-            #     "id": 1,
-            #     "teamId": 1,
-            #     "projectId": 1,
-            #     "name": "ds",
-            #     "description": "",
-            #     "createdAt": "2018-08-21T14:25:56.140Z",
-            #     "updatedAt": "2018-08-21T14:25:56.140Z"
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                collection = api.entities_collection.get_info_by_id(2)
+                print(collection)
+                # Output:
+                # {
+                #     "id": 1,
+                #     "teamId": 1,
+                #     "projectId": 1,
+                #     "name": "ds",
+                #     "description": "",
+                #     "createdAt": "2018-08-21T14:25:56.140Z",
+                #     "updatedAt": "2018-08-21T14:25:56.140Z"
+                # }
         """
         method = "entities-collections.info"
         if with_meta:
@@ -447,25 +475,36 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         self, project_id: int, ai_search_key: str
     ) -> Optional[EntitiesCollectionInfo]:
         """
-        Get information about Entities Collection of type `CollectionType.AI_SEARCH` with given AI search key.
+        Get information about Entities Collection of type :attr:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH` with given AI search key.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param ai_search_key: AI search key for the collection.
-        :type  ai_search_key: str
-        :return: Information about Entities Collection.
-        :rtype: :class:`EntitiesCollectionInfo`
-        :Usage example:
-         .. code-block:: python
-            import supervisely as sly
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-            project_id = 123
-            ai_search_key = "0ed6a5256433bbe32822949d563d476a"
+        :type ai_search_key: str
+        :returns: Information about Entities Collection.
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
 
-            # Get collection by AI search key
-            collection = api.entities_collection.get_info_by_ai_search_key(project_id, ai_search_key)
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 123
+                ai_search_key = "0ed6a5256433bbe32822949d563d476a"
+
+                # Get collection by AI search key
+                collection = api.entities_collection.get_info_by_ai_search_key(project_id, ai_search_key)
         """
         collections = self.get_list(
             project_id=project_id,
@@ -511,30 +550,37 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
         :param id: Entities Collection ID in Supervisely.
         :type id: int
-        :param items: List of items to add to the collection. Could be a list of entity IDs (int) or CollectionItem objects.
-        :type items: List[Union[int, CollectionItem]]
-        :return: List of added items with their IDs and creation timestamps.
+        :param items: List of items to add to the collection. Could be a list of entity IDs (int) or :class:`~supervisely.api.entities_collection_api.CollectionItem` objects.
+        :type items: List[Union[int, :class:`~supervisely.api.entities_collection_api.CollectionItem`]]
+        :returns: List of added items with their IDs and creation timestamps.
         :rtype: List[Dict[str, int]]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.api.entities_collection_api import CollectionItem
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            collection_id = 2
-            item_ids = [525, 526]
-            items = [CollectionItem(entity_id=item_id) for item_id in item_ids]
-            new_items = api.entities_collection.add_items(collection_id, items)
-            print(new_items)
-            # Output: [
-            #   {"id": 1, "entityId": 525, 'createdAt': '2025-04-10T08:49:41.852Z'},
-            #   {"id": 2, "entityId": 526, 'createdAt': '2025-04-10T08:49:41.852Z'}
-            ]
+                import supervisely as sly
+                from supervisely.api.entities_collection_api import CollectionItem
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                collection_id = 2
+                item_ids = [525, 526]
+                items = [CollectionItem(entity_id=item_id) for item_id in item_ids]
+                new_items = api.entities_collection.add_items(collection_id, items)
+                print(new_items)
+                # Output: [
+                #   {"id": 1, "entityId": 525, 'createdAt': '2025-04-10T08:49:41.852Z'},
+                #   {"id": 2, "entityId": 526, 'createdAt': '2025-04-10T08:49:41.852Z'}
+                ]
         """
         if all(isinstance(item, int) for item in items):
             data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_IDS: items}
@@ -561,37 +607,46 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         project_id: Optional[int] = None,
         ai_search_threshold: Optional[float] = None,
         ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
-    ) -> List[ImageInfo]:
+    ) -> Union[List[ImageInfo], List[VideoInfo], List[VolumeInfo]]:
         """
         Get items from Entities Collection.
 
         :param collection_id: Entities Collection ID in Supervisely.
         :type collection_id: int
-        :param collection_type: Type of the collection. Can be CollectionTypeFilter.AI_SEARCH or CollectionTypeFilter.DEFAULT.
-        :type collection_type: CollectionTypeFilter
+        :param collection_type: Type of the collection. Can be AI_SEARCH or DEFAULT.
+        :type collection_type: :class:`~supervisely.api.entities_collection_api.CollectionTypeFilter`
         :param project_id: Project ID in Supervisely.
         :type project_id: int, optional
         :param ai_search_threshold: AI search threshold for filtering items. Optional, defaults to None.
         :type ai_search_threshold: float, optional
         :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to 'above'.
         :type ai_search_threshold_direction: str
-        :return: List of ImageInfo objects.
-        :rtype: List[ImageInfo]
+        :returns: List of ImageInfo objects for `images` projects, VideoInfo for `videos`, VolumeInfo for `volumes`.
+            AI_SEARCH collections only exist for `images` projects - the server rejects their creation otherwise.
+        :rtype: Union[List[:class:`~supervisely.api.image_api.ImageInfo`], List[:class:`~supervisely.api.video.video_api.VideoInfo`], List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]]
         :raises RuntimeError: If Entities Collection with given ID not found.
-        :Usage example:
+        :raises NotImplementedError: If the collection's project type is not `images`, `videos` or `volumes`.
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            collection_id = 2
-            project_id = 4
-            item_ids = api.entities_collection.get_items(collection_id, project_id)
-            print(item_ids)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                collection_id = 2
+                project_id = 4
+                item_ids = api.entities_collection.get_items(collection_id, project_id)
+                print(item_ids)
         """
         if project_id is None:
             info = self.get_info_by_id(collection_id)
@@ -600,6 +655,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             project_id = info.project_id
 
         if collection_type == CollectionTypeFilter.AI_SEARCH:
+            # AI Search collections can only be created for `images` projects (server-enforced).
             return self._api.image.get_list(
                 project_id=project_id,
                 ai_search_collection_id=collection_id,
@@ -607,10 +663,26 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
                 ai_search_threshold=ai_search_threshold,
                 ai_search_threshold_direction=ai_search_threshold_direction,
             )
-        else:
+
+        project_type = self._api.project.get_info_by_id(project_id).type
+        if project_type == ProjectType.IMAGES.value:
             return self._api.image.get_list(
                 project_id=project_id,
                 entities_collection_id=collection_id,
+            )
+        elif project_type == ProjectType.VIDEOS.value:
+            return self._api.video.get_list(
+                project_id=project_id,
+                entities_collection_id=collection_id,
+            )
+        elif project_type == ProjectType.VOLUMES.value:
+            return self._api.volume.get_list(
+                project_id=project_id,
+                entities_collection_id=collection_id,
+            )
+        else:
+            raise NotImplementedError(
+                f"Entities Collection items are not supported for project type {project_type!r}."
             )
 
     def remove_items(self, id: int, items: List[int]) -> List[Dict[str, int]]:
@@ -621,18 +693,28 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param items: List of entity IDs in Supervisely, e.g. image IDs etc.
         :type items: List[int]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            api = sly.Api.from_env()
+            .. code-block:: python
 
-            collection_id = 2
-            item_ids = [525, 526, 527]
-            removed_items = api.entities_collection.remove_items(collection_id, item_ids)
-            # print(removed_items)
-            # Output: [{"id": 1, "entityId": 525}, {"id": 2, "entityId": 526}]
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                collection_id = 2
+                item_ids = [525, 526, 527]
+                removed_items = api.entities_collection.remove_items(collection_id, item_ids)
+                # print(removed_items)
+                # Output: [{"id": 1, "entityId": 525}, {"id": 2, "entityId": 526}]
         """
         method = "entities-collections.items.bulk.remove"
 

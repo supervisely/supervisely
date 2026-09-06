@@ -10,6 +10,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class IOUDistribution(DetectionVisMetric):
+    """IoU distribution histogram for detection reports."""
+
     MARKDOWN_LOCALIZATION_ACCURACY = "localization_accuracy"
     MARKDOWN_IOU_DISTRIBUTION = "iou_distribution"
     NOTIFICATION = "iou_distribution"

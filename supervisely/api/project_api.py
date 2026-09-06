@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create/download/update :class:`Project<supervisely.project.project.Project>`"""
+"""Create, download, and update :class:`~supervisely.project.project.Project` objects."""
 
 # docs
 from __future__ import annotations
@@ -12,10 +12,12 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Generator,
     List,
     Literal,
     NamedTuple,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -31,6 +33,7 @@ from supervisely._utils import (
     abs_url,
     compare_dicts,
     compress_image_url,
+    deep_merge_dicts,
     get_unix_timestamp,
     is_development,
 )
@@ -38,16 +41,19 @@ from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.io.env import upload_count, uploaded_ids
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import (
+    LabelingInterface,
     ProjectSettings,
     ProjectSettingsJsonFields,
 )
@@ -63,19 +69,19 @@ from supervisely.project.project_type import (
 
 
 class ProjectNotFound(Exception):
-    """ """
+    """Raised when a project with the requested ID/name cannot be found."""
 
     pass
 
 
 class ExpectedProjectTypeMismatch(Exception):
-    """ """
+    """Raised when a project type does not match the expected type for an operation."""
 
     pass
 
 
 class ProjectInfo(NamedTuple):
-    """ """
+    """Project information returned by the API (metadata, counts, settings and links)."""
 
     id: int
     name: str
@@ -105,7 +111,11 @@ class ProjectInfo(NamedTuple):
 
     @property
     def image_preview_url(self):
-        if self.type in [str(ProjectType.POINT_CLOUDS), str(ProjectType.POINT_CLOUD_EPISODES)]:
+        if self.type in [
+            str(ProjectType.POINT_CLOUDS),
+            str(ProjectType.POINT_CLOUD_EPISODES),
+            str(ProjectType.MESHES),
+        ]:
             res = "https://user-images.githubusercontent.com/12828725/199022135-4161917c-05f8-4681-9dc1-b5e10ee8bb0f.png"
         else:
             res = self.reference_image_url
@@ -124,30 +134,26 @@ class ProjectInfo(NamedTuple):
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     """
-    API for working with :class:`Project<supervisely.project.project.Project>`. :class:`ProjectApi<ProjectApi>` object is immutable.
+    API for working with projects. :class:`~supervisely.api.project_api.ProjectApi` object is immutable.
 
-    :param api: API connection to the server
-    :type api: Api
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import os
-        from dotenv import load_dotenv
+            import os
+            from dotenv import load_dotenv
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            api = sly.Api.from_env()
 
-        project_id = 1951
-        project_info = api.project.get_info_by_id(project_id)
+            project_id = 1951
+            project_info = api.project.get_info_by_id(project_id)
     """
 
     debug_messages_sent = {"get_list_versions": False}
@@ -155,37 +161,38 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple ProjectInfo with API Fields containing information about Project.
+        Sequence of fields that are returned by the API to represent ProjectInfo.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            ProjectInfo(id=999,
-                        name='Cat_breeds',
-                        description='',
-                        size='861069',
-                        readme='',
-                        workspace_id=58,
-                        images_count=10,
-                        items_count=10,
-                        datasets_count=2,
-                        created_at='2020-11-17T17:44:28.158Z',
-                        updated_at='2021-03-01T10:51:57.545Z',
-                        type='images',
-                        reference_image_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-                        custom_data={},
-                        backup_archive={},
-                        team_id=2,
-                        import_settings={}
-                        version={'id': 260, 'version': 3}
-                        created_by_id=7,
-                        embeddings_enabled=False,
-                        embeddings_updated_at=None,
-                        embeddings_in_progress=False,
-                        local_entities_count=10,
-                        remote_entities_count=0
-                        )
+                ProjectInfo(
+                    id=999,
+                    name="Cat_breeds",
+                    description="",
+                    size="861069",
+                    readme="",
+                    workspace_id=58,
+                    images_count=10,
+                    items_count=10,
+                    datasets_count=2,
+                    created_at="2020-11-17T17:44:28.158Z",
+                    updated_at="2021-03-01T10:51:57.545Z",
+                    type="images",
+                    reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg",
+                    custom_data={},
+                    backup_archive={},
+                    team_id=2,
+                    import_settings={},
+                    version={"id": 260, "version": 3},
+                    created_by_id=7,
+                    embeddings_enabled=False,
+                    embeddings_updated_at=None,
+                    embeddings_in_progress=False,
+                    local_entities_count=10,
+                    remote_entities_count=0,
+                )
         """
         return [
             ApiField.ID,
@@ -220,10 +227,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         NamedTuple ProjectInfo fields available for listing operations.
 
-        This subset includes only fields that are available in the `projects.list` API endpoint.
-        For complete project information, use `get_info_by_id()`.
+        This subset includes only fields that are available in the ``projects.list`` API endpoint.
+        For complete project information, use :meth:`get_info_by_id`.
 
-        :return: List of API field names available for listing
+        :returns: List of API field names available for listing
         :rtype: List[str]
         """
         return [
@@ -251,11 +258,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **ProjectInfo**.
+        Name of the tuple that represents ProjectInfo.
         """
         return "ProjectInfo"
 
     def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         from supervisely.project.data_version import DataVersion
 
         CloneableModuleApi.__init__(self, api)
@@ -264,99 +275,112 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def get_list(
         self,
-        workspace_id: int,
+        workspace_id: Optional[int] = None,
         filters: Optional[List[Dict[str, str]]] = None,
         fields: List[str] = [],
+        team_id: Optional[int] = None,
     ) -> List[ProjectInfo]:
         """
-        List of Projects in the given Workspace.
+        List of Projects in the given Workspace (without version info).
 
         *NOTE*: Version information is not available while getting list of projects.
         If you need version information, use :func:`get_info_by_id`.
 
         :param workspace_id: Workspace ID in which the Projects are located.
-        :type workspace_id: int
+        :type workspace_id: int, optional
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
         :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
         :type fields: List[str]
+        :param team_id: Team ID in which the Projects are located.
+        :type team_id: int, optional
+        :returns: List of all projects in the workspace (without version info). See :meth:`info_sequence_for_listing`.
+        :rtype: List[:class:`~supervisely.api.project_api.ProjectInfo`]
 
-        :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class: `List[ProjectInfo]`
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            workspace_id = 58
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            project_list = api.project.get_list(workspace_id)
-            print(project_list)
-            # Output: [
-            # ProjectInfo(id=861,
-            #             name='Project_COCO',
-            #             description='',
-            #             size='22172241',
-            #             readme='',
-            #             workspace_id=58,
-            #             images_count=6,
-            #             items_count=6,
-            #             datasets_count=1,
-            #             created_at='2020-11-09T18:21:32.356Z',
-            #             updated_at='2020-11-09T18:21:32.356Z',
-            #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-            #             custom_data={},
-            #             backup_archive={},
-            #             import_settings={}
-            #           ),
-            # ProjectInfo(id=999,
-            #             name='Cat_breeds',
-            #             description='',
-            #             size='861069',
-            #             readme='',
-            #             workspace_id=58,
-            #             images_count=10,
-            #             items_count=10,
-            #             datasets_count=2,
-            #             created_at='2020-11-17T17:44:28.158Z',
-            #             updated_at='2021-03-01T10:51:57.545Z',
-            #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-            #             custom_data={},
-            #             backup_archive={},
-            #             import_settings={}
-            #           )
-            # ]
+                api = sly.Api.from_env()
 
-            # Filtered Project list
-            project_list = api.project.get_list(workspace_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Cat_breeds'}])
-            print(project_list)
-            # Output: ProjectInfo(id=999,
-            #                     name='Cat_breeds',
-            #                     description='',
-            #                     size='861069',
-            #                     readme='',
-            #                     workspace_id=58,
-            #                     images_count=10,
-            #                     items_count=10,
-            #                     datasets_count=2,
-            #                     created_at='2020-11-17T17:44:28.158Z',
-            #                     updated_at='2021-03-01T10:51:57.545Z',
-            #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-            #                     custom_data={},
-            #                     backup_archive={},
-            #                     import_settings={}
-            #                   )
-            # ]
+                workspace_id = 58
+                project_list = api.project.get_list(workspace_id)
+                print(project_list)
+                # Output: [
+                # ProjectInfo(id=861,
+                #             name='Project_COCO',
+                #             description='',
+                #             size='22172241',
+                #             readme='',
+                #             workspace_id=58,
+                #             images_count=6,
+                #             items_count=6,
+                #             datasets_count=1,
+                #             created_at='2020-11-09T18:21:32.356Z',
+                #             updated_at='2020-11-09T18:21:32.356Z',
+                #             type='images',
+                #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+                #             custom_data={},
+                #             backup_archive={},
+                #             import_settings={}
+                #           ),
+                # ProjectInfo(id=999,
+                #             name='Cat_breeds',
+                #             description='',
+                #             size='861069',
+                #             readme='',
+                #             workspace_id=58,
+                #             images_count=10,
+                #             items_count=10,
+                #             datasets_count=2,
+                #             created_at='2020-11-17T17:44:28.158Z',
+                #             updated_at='2021-03-01T10:51:57.545Z',
+                #             type='images',
+                #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+                #             custom_data={},
+                #             backup_archive={},
+                #             import_settings={}
+                #           )
+                # ]
+
+                # Filtered Project list
+                project_list = api.project.get_list(workspace_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Cat_breeds'}])
+                print(project_list)
+                # Output: ProjectInfo(id=999,
+                #                     name='Cat_breeds',
+                #                     description='',
+                #                     size='861069',
+                #                     readme='',
+                #                     workspace_id=58,
+                #                     images_count=10,
+                #                     items_count=10,
+                #                     datasets_count=2,
+                #                     created_at='2020-11-17T17:44:28.158Z',
+                #                     updated_at='2021-03-01T10:51:57.545Z',
+                #                     type='images',
+                #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+                #                     custom_data={},
+                #                     backup_archive={},
+                #                     import_settings={}
+                #                   )
+                # ]
 
         """
+        if team_id is not None and workspace_id is not None:
+            raise ValueError(
+                "team_id and workspace_id cannot be used together. Please provide only one of them."
+            )
+
         method = "projects.list"
 
         debug_message = "While getting list of projects, the following fields are not available: "
@@ -367,11 +391,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 self.debug_messages_sent["get_list_versions"] = True
                 logger.debug(debug_message + "version. ")
 
+        default_fields = [
+            ApiField.ID,
+            ApiField.WORKSPACE_ID,
+            ApiField.TITLE,
+            ApiField.DESCRIPTION,
+            ApiField.SIZE,
+            ApiField.README,
+            ApiField.TYPE,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.CUSTOM_DATA,
+            ApiField.GROUP_ID,
+            ApiField.CREATED_BY_ID[0][0],
+        ]
+
+        if fields:
+            merged_fields = list(set(default_fields + fields))
+            fields = list(dict.fromkeys(merged_fields))
+
         data = {
-            ApiField.WORKSPACE_ID: workspace_id,
             ApiField.FILTER: filters or [],
             ApiField.FIELDS: fields,
         }
+        if workspace_id is not None:
+            data[ApiField.WORKSPACE_ID] = workspace_id
+        if team_id is not None:
+            data[ApiField.GROUP_ID] = team_id
 
         return self.get_list_all_pages(method, data)
 
@@ -387,46 +433,51 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :param expected_type: Expected ProjectType.
-        :type expected_type: ProjectType, optional
-        :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
+        :param expected_type: Expected project type.
+        :type expected_type: :class:`~supervisely.project.project_type.ProjectType`, optional
+        :param raise_error: If True raise error if given name is missing in the :class:`~supervisely.project.project.Project`, otherwise skips missing names.
         :type raise_error: bool, optional
         :param extra_fields: List of extra fields to include in the response.
         :type extra_fields: list[str], optional
-        :raises: Error if type of project is not None and != expected type
-        :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ProjectInfo`
-        :Usage example:
+        :returns: ProjectInfo object with information about the Project.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 1951
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_info = api.project.get_info_by_id(project_id)
-            print(project_info)
-            # Output: ProjectInfo(id=861,
-            #                     name='fruits_annotated',
-            #                     description='',
-            #                     size='22172241',
-            #                     readme='',
-            #                     workspace_id=58,
-            #                     images_count=6,
-            #                     items_count=6,
-            #                     datasets_count=1,
-            #                     created_at='2020-11-09T18:21:32.356Z',
-            #                     updated_at='2020-11-09T18:21:32.356Z',
-            #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-            #                     custom_data={},
-            #                     backup_archive={},
-            #                     import_settings={}
-            #                   )
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                project_info = api.project.get_info_by_id(project_id)
+                print(project_info)
+                # Output: ProjectInfo(id=861,
+                #                     name='fruits_annotated',
+                #                     description='',
+                #                     size='22172241',
+                #                     readme='',
+                #                     workspace_id=58,
+                #                     images_count=6,
+                #                     items_count=6,
+                #                     datasets_count=1,
+                #                     created_at='2020-11-09T18:21:32.356Z',
+                #                     updated_at='2020-11-09T18:21:32.356Z',
+                #                     type='images',
+                #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+                #                     custom_data={},
+                #                     backup_archive={},
+                #                     import_settings={}
+                #                   )
 
 
         """
@@ -454,41 +505,48 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type parent_id: int
         :param name: Project name.
         :type name: str
-        :param expected_type: Expected ProjectType.
-        :type expected_type: ProjectType, optional
-        :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
+        :param expected_type: Expected project type.
+        :type expected_type: :class:`~supervisely.project.project_type.ProjectType`, optional
+        :param raise_error: If True raise error if given name is missing in the :class:`~supervisely.project.project.Project`, otherwise skips missing names.
         :type raise_error: bool, optional
-        :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ProjectInfo`
-        :Usage example:
+        :returns: ProjectInfo object with information about the Project.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_info = api.project.get_info_by_name(58, "fruits_annotated")
-            print(project_info)
-            # Output: ProjectInfo(id=861,
-            #                     name='fruits_annotated',
-            #                     description='',
-            #                     size='22172241',
-            #                     readme='',
-            #                     workspace_id=58,
-            #                     images_count=6,
-            #                     items_count=6,
-            #                     datasets_count=1,
-            #                     created_at='2020-11-09T18:21:32.356Z',
-            #                     updated_at='2020-11-09T18:21:32.356Z',
-            #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-            #                     custom_data={},
-            #                     backup_archive={},
-            #                     import_settings={}
-            #                   )
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_info = api.project.get_info_by_name(58, "fruits_annotated")
+                print(project_info)
+                # Output: ProjectInfo(id=861,
+                #                     name='fruits_annotated',
+                #                     description='',
+                #                     size='22172241',
+                #                     readme='',
+                #                     workspace_id=58,
+                #                     images_count=6,
+                #                     items_count=6,
+                #                     datasets_count=1,
+                #                     created_at='2020-11-09T18:21:32.356Z',
+                #                     updated_at='2020-11-09T18:21:32.356Z',
+                #                     type='images',
+                #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+                #                     custom_data={},
+                #                     backup_archive={},
+                #                     import_settings={}
+                #                   )
         """
         try:
             fields = self.info_sequence_for_listing()
@@ -556,40 +614,47 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param with_settings: Add settings field to the meta. By default False.
         :type with_settings: bool
 
-        :return: ProjectMeta dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: ProjectMeta dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_meta = api.project.get_meta(project_id)
-            print(project_meta)
-            # Output: {
-            #     "classes":[
-            #         {
-            #             "id":22310,
-            #             "title":"kiwi",
-            #             "shape":"bitmap",
-            #             "hotkey":"",
-            #             "color":"#FF0000"
-            #         },
-            #         {
-            #             "id":22309,
-            #             "title":"lemon",
-            #             "shape":"bitmap",
-            #             "hotkey":"",
-            #             "color":"#51C6AA"
-            #         }
-            #     ],
-            #     "tags":[],
-            #     "projectType":"images"
-            # }
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_meta = api.project.get_meta(project_id)
+                print(project_meta)
+                # Output: {
+                #     "classes":[
+                #         {
+                #             "id":22310,
+                #             "title":"kiwi",
+                #             "shape":"bitmap",
+                #             "hotkey":"",
+                #             "color":"#FF0000"
+                #         },
+                #         {
+                #             "id":22309,
+                #             "title":"lemon",
+                #             "shape":"bitmap",
+                #             "hotkey":"",
+                #             "color":"#51C6AA"
+                #         }
+                #     ],
+                #     "tags":[],
+                #     "projectType":"images"
+                # }
         """
         json_response = self._api.post("projects.meta", {"id": id}).json()
 
@@ -658,6 +723,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         type: ProjectType = ProjectType.IMAGES,
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
+        readme: Optional[str] = None,
+        settings: Optional[Dict] = None,
+        custom_data: Optional[Dict] = None,
+        read_only: Optional[bool] = None,
     ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
@@ -666,45 +735,59 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type workspace_id: int
         :param name: Project Name.
         :type name: str
-        :param type: Type of created Project.
-        :type type: ProjectType
+        :param type: Type of project. Example: ProjectType.IMAGES, ProjectType.VIDEOS and etc.
+        :type type: :class:`~supervisely.project.project_type.ProjectType`
         :param description: Project description.
         :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :return: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ProjectInfo`
-        :Usage example:
+        :param readme: Project readme.
+        :type readme: str, optional
+        :param settings: Optional project settings dict.
+        :type settings: dict, optional
+        :param custom_data: Optional custom metadata dict.
+        :type custom_data: dict, optional
+        :param read_only: Optional flag to set the project as read-only. Works only with image and video projects. If set to True, the project will be created with read-only settings, and users will not be able to modify annotations in this project. Default is False.
+        :type read_only: bool, optional
+        :returns: ProjectInfo object with information about the Project.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            workspace_id = 8
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            new_proj = api.project.create(workspace_id, "fruits_test", sly.ProjectType.IMAGES)
-            print(new_proj)
-            # Output: ProjectInfo(id=1993,
-            #                     name='fruits_test',
-            #                     description='',
-            #                     size='0',
-            #                     readme='',
-            #                     workspace_id=58,
-            #                     images_count=None,
-            #                     items_count=None,
-            #                     datasets_count=None,
-            #                     created_at='2021-03-11T09:28:42.585Z',
-            #                     updated_at='2021-03-11T09:28:42.585Z',
-            #                     type='images',
-            #                     reference_image_url=None,
-            #                     custom_data={},
-            #                     backup_archive={},
-            #                     import_settings={}
-            #                   )
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                workspace_id = 8
+                new_proj = api.project.create(workspace_id, "fruits_test", sly.ProjectType.IMAGES)
+                print(new_proj)
+                # Output: ProjectInfo(id=1993,
+                #                     name='fruits_test',
+                #                     description='',
+                #                     size='0',
+                #                     readme='',
+                #                     workspace_id=58,
+                #                     images_count=None,
+                #                     items_count=None,
+                #                     datasets_count=None,
+                #                     created_at='2021-03-11T09:28:42.585Z',
+                #                     updated_at='2021-03-11T09:28:42.585Z',
+                #                     type='images',
+                #                     reference_image_url=None,
+                #                     custom_data={},
+                #                     backup_archive={},
+                #                     import_settings={}
+                #                   )
 
         """
         effective_name = self._get_effective_new_name(
@@ -712,15 +795,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             name=name,
             change_name_if_conflict=change_name_if_conflict,
         )
-        response = self._api.post(
-            "projects.add",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.NAME: effective_name,
-                ApiField.DESCRIPTION: description,
-                ApiField.TYPE: str(type),
-            },
-        )
+        payload = {
+            ApiField.NAME: effective_name,
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.DESCRIPTION: description,
+            ApiField.TYPE: str(type),
+        }
+        if readme is not None:
+            payload[ApiField.README] = readme
+        if settings is not None:
+            payload[ApiField.SETTINGS] = settings
+        if custom_data is not None:
+            payload[ApiField.CUSTOM_DATA] = custom_data
+
+        if type in (ProjectType.IMAGES, ProjectType.VIDEOS) and read_only:
+            payload.setdefault(ApiField.SETTINGS, {}).setdefault(ApiField.ADVANCED_SETTINGS, {})[ApiField.IS_READ_ONLY_PROJECT] = True
+
+        response = self._api.post("projects.add", payload)
+
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
@@ -734,47 +826,52 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :param meta: ProjectMeta object or ProjectMeta in JSON format.
-        :type meta: :class:`ProjectMeta` or dict
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta` or dict
+        :returns: ProjectMeta object with updated ProjectMeta.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
-        :return: ProjectMeta
-        :rtype: :class: `ProjectMeta`
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            lemons_proj_id = 1951
-            kiwis_proj_id = 1952
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Using ProjectMeta in JSON format
+                api = sly.Api.from_env()
 
-            project_meta_json = api.project.get_meta(lemons_proj_id)
-            api.project.update_meta(kiwis_proj_id, project_meta_json)
+                lemons_proj_id = 1951
+                kiwis_proj_id = 1952
 
-            # Using ProjectMeta object
+                # Using ProjectMeta in JSON format
+                project_meta_json = api.project.get_meta(lemons_proj_id)
+                api.project.update_meta(kiwis_proj_id, project_meta_json)
 
-            project_meta_json = api.project.get_meta(lemons_proj_id)
-            project_meta = sly.ProjectMeta.from_json(path_to_meta)
-            api.project.update_meta(kiwis_proj_id, project_meta)
+                # Using ProjectMeta object
 
-            # Using programmatically created ProjectMeta
+                project_meta_json = api.project.get_meta(lemons_proj_id)
+                project_meta = sly.ProjectMeta.from_json(path_to_meta)
+                api.project.update_meta(kiwis_proj_id, project_meta)
 
-            cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
-            scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
-            project_meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
-            api.project.update_meta(kiwis_proj_id, project_meta)
+                # Using programmatically created ProjectMeta
 
-            # Update ProjectMeta from local `meta.json`
-            from supervisely.io.json import load_json_file
+                cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
+                scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
+                project_meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
+                api.project.update_meta(kiwis_proj_id, project_meta)
 
-            path_to_meta = "/path/project/meta.json"
-            project_meta_json = load_json_file(path_to_meta)
-            api.project.update_meta(kiwis_proj_id, project_meta)
+                # Update ProjectMeta from local `meta.json`
+                from supervisely.io.json import load_json_file
+
+                path_to_meta = "/path/project/meta.json"
+                project_meta_json = load_json_file(path_to_meta)
+                api.project.update_meta(kiwis_proj_id, project_meta)
         """
 
         m = meta
@@ -830,23 +927,29 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: Number of Datasets in the given Project
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: Number of Datasets in the given project.
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 454
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_ds_count = api.project.get_datasets_count(project_id)
-            print(project_ds_count)
-            # Output: 4
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 454
+                project_ds_count = api.project.get_datasets_count(project_id)
+                print(project_ds_count)
+                # Output: 4
         """
         datasets = self._api.dataset.get_list(id)
         return len(datasets)
@@ -857,30 +960,69 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: Number of images in the given Project
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: Number of images in the given project.
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 454
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_imgs_count = api.project.get_images_count(project_id)
-            print(project_imgs_count)
-            # Output: 24
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 454
+                project_imgs_count = api.project.get_images_count(project_id)
+                print(project_imgs_count)
+                # Output: 24
         """
         datasets = self._api.dataset.get_list(id, recursive=True)
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):
         """"""
-        return "projects.remove"
+        return "projects.archive"
+
+    def remove(self, id: int) -> None:
+        """
+        Archive Project by ID.
+
+        The Project is not deleted from the database, it is hidden from the Project list and can be
+        restored. To delete the Project and all its data permanently use
+        :func:`remove_permanently`.
+
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.project.remove(1951)
+        """
+        super().remove(id)
 
     def merge_metas(self, src_project_id: int, dst_project_id: int) -> Dict:
         """
@@ -890,22 +1032,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type src_project_id: int
         :param dst_project_id: Destination Project ID.
         :type dst_project_id: int
-        :return: ProjectMeta dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: ProjectMeta dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            lemons_proj_id = 1951
-            kiwis_proj_id = 1980
+                import supervisely as sly
 
-            merged_projects = api.project.merge_metas(lemons_proj_id, kiwis_proj_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                lemons_proj_id = 1951
+                kiwis_proj_id = 1980
+                merged_projects = api.project.merge_metas(lemons_proj_id, kiwis_proj_id)
         """
         if src_project_id == dst_project_id:
             return self.get_meta(src_project_id)
@@ -927,28 +1075,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: `Pandas DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
-        :rtype: :class:`DataFrame`
-        :Usage example:
+        :returns: Pandas DataFrame with project activity.
+        :rtype: pandas.DataFrame
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 1951
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_activity = api.project.get_activity(project_id)
-            print(project_activity)
-            # Output:    userId               action  ... tagId             meta
-            #         0       7  annotation_duration  ...  None  {'duration': 1}
-            #         1       7  annotation_duration  ...  None  {'duration': 2}
-            #         2       7        create_figure  ...  None               {}
-            #
-            #         [3 rows x 18 columns]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                project_activity = api.project.get_activity(project_id)
+                print(project_activity)
+                # Output:    userId               action  ... tagId             meta
+                #         0       7  annotation_duration  ...  None  {'duration': 1}
+                #         1       7  annotation_duration  ...  None  {'duration': 2}
+                #         2       7        create_figure  ...  None               {}
+                #
+                #         [3 rows x 18 columns]
         """
         import pandas as pd
 
@@ -973,21 +1127,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: Project statistics
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Project statistics
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 1951
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_stats = api.project.get_stats(project_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                project_stats = api.project.get_stats(project_id)
         """
         response = self._api.post("projects.stats", {ApiField.ID: id})
         return response.json()
@@ -998,23 +1158,29 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: Project URL
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Project URL
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 1951
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_url = api.project.url(project_id)
-            print(project_url)
-            # Output: http://supervisely.com/projects/1951/datasets
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                project_url = api.project.url(project_id)
+                print(project_url)
+                # Output: http://supervisely.com/projects/1951/datasets
         """
         res = f"projects/{id}/datasets"
         if is_development():
@@ -1034,24 +1200,31 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param data: Custom data
         :type data: dict
-        :param silent: determines whether the `updatedAt` timestamp should be updated or not, if False - update `updatedAt`
+        :param silent: Determines whether the ``updatedAt`` timestamp should be updated or not.
+                       If False, ``updatedAt`` will be updated.
         :type silent: bool
-        :return: Project information in dict format
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: ProjectInfo object in json format.
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 1951
-            custom_data = {1:2}
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            new_info = api.project.update_custom_data(project_id, custom_data)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                custom_data = {1:2}
+                new_info = api.project.update_custom_data(project_id, custom_data)
         """
         if type(data) is not dict:
             raise TypeError("Meta must be dict, not {!r}".format(type(data)))
@@ -1067,22 +1240,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: Custom data of the Project
-        :rtype: :class:`dict`
+        :returns: Custom data of the project.
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            custom_data = api.project.get_custom_data(project_id)
+                api = sly.Api.from_env()
 
-            print(custom_data) # Output: {'key': 'value'}
+                project_id = 123456
+                custom_data = api.project.get_custom_data(project_id)
+                print(custom_data) # Output: {'key': 'value'}
         """
         return self.get_info_by_id(id).custom_data
 
@@ -1093,22 +1272,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: System custom data of the Project
-        :rtype: :class:`dict`
+        :returns: System custom data of the project.
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            system_custom_data = api.project._get_system_custom_data(project_id)
+                api = sly.Api.from_env()
 
-            print(system_custom_data)
+                project_id = 123456
+                system_custom_data = api.project._get_system_custom_data(project_id)
+                print(system_custom_data)
         """
         return self.get_info_by_id(id).custom_data.get(_METADATA_SYSTEM_KEY, {})
 
@@ -1125,22 +1310,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param use_caching: If True, uses cached version of the schema if available.
             NOTE: This may lead to checks with outdated schema. Use with caution.
             And only in scenarios when the schema is not expected to change.
-        :return: Validation schema of the Project
-        :rtype: :class:`dict`
+        :returns: Validation schema of the project.
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            validation_schema = api.project.get_validation_schema(project_id)
+                api = sly.Api.from_env()
 
-            print(validation_schema) # Output: {'key': 'Description of the field'}
+                project_id = 123456
+                validation_schema = api.project.get_validation_schema(project_id)
+                print(validation_schema) # Output: {'key': 'Description of the field'}
         """
         SCHEMA_DIFF_THRESHOLD = 60 * 60  # 1 hour
         json_cache_filename = os.path.join(os.getcwd(), f"{id}_validation_schema.json")
@@ -1174,23 +1365,29 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param schema: Validation schema to set. If None, removes validation schema.
         :type schema: dict, optional
-        :return: Project information in dict format
-        :rtype: :class:`dict`
+        :returns: ProjectInfo object in json format.
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            schema = {'key': 'Description of the field'}
+                api = sly.Api.from_env()
 
-            api.project._edit_validation_schema(project_id, schema) #Set new validation schema.
-            api.project._edit_validation_schema(project_id) #Remove validation schema.
+                project_id = 123456
+                schema = {'key': 'Description of the field'}
+                api.project._edit_validation_schema(project_id, schema) #Set new validation schema.
+                api.project._edit_validation_schema(project_id) #Remove validation schema.
         """
         custom_data = self.get_custom_data(id)
         system_data = custom_data.setdefault(_METADATA_SYSTEM_KEY, {})
@@ -1210,22 +1407,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param schema: Validation schema to set.
         :type schema: dict
-        :return: Project information in dict format
-        :rtype: :class:`dict`
+        :returns: ProjectInfo object in json format.
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            schema = {'key': 'Description of the field'}
+                api = sly.Api.from_env()
 
-            api.project.set_validation_schema(project_id, schema)
+                project_id = 123456
+                schema = {'key': 'Description of the field'}
+                api.project.set_validation_schema(project_id, schema)
         """
         return self._edit_validation_schema(id, schema)
 
@@ -1234,39 +1437,48 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :return: Project information in dict format
-        :rtype: :class:`dict`
+        :returns: ProjectInfo object in json format.
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.project.remove_validation_schema(project_id)
+                api = sly.Api.from_env()
+
+                project_id = 123456
+                api.project.remove_validation_schema(project_id)
         """
         return self._edit_validation_schema(id)
 
     def validate_entities_schema(
         self, id: int, strict: bool = False
     ) -> List[Dict[str, Union[id, str, List[str], List[Any]]]]:
-        """Validates entities of the Project by ID using validation schema.
-        Returns list of entities that do not match the schema.
+        """
+        Validates entities of the Project by ID using validation schema.
 
-        Example of the returned list:
+        Returns a list of entities that do not match the schema.
 
-        [
-            {
-                "entity_id": 123456,
-                "entity_name": "image.jpg",
-                "missing_fields": ["location"],
-                "extra_fields": ["city.name"] <- Nested field (field "name" of the field "city")
-            }
-        ]
+        Example of the returned list::
+
+            [
+                {
+                    "entity_id": 123456,
+                    "entity_name": "image.jpg",
+                    "missing_fields": ["location"],
+                    "extra_fields": ["city.name"],  # nested field (field "name" of the field "city")
+                }
+            ]
 
         :param id: Project ID in Supervisely.
         :type id: int
@@ -1274,23 +1486,31 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             Any extra fields in the entity will be ignored and will not be considered as an error.
             If strict is enabled, checks that the entity custom data is an exact match to the schema.
         :type strict: bool, optional
-        :return: List of dictionaries with information about entities that do not match the schema.
-        :rtype: :class:`List[Dict[str, Union[id, str, List[str], List[Any]]]`
+        :returns: List of dictionaries with information about entities that do not match the schema.
+        :rtype: List[dict]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            incorrect_entities = api.project.validate_entities_schema(project_id)
+                api = sly.Api.from_env()
 
-            for entity in incorrect_entities:
-                print(entity["entity_id"], entity["entity_name"]) # Output: 123456, 'image.jpg'
+                project_id = 123456
+
+                incorrect_entities = api.project.validate_entities_schema(project_id)
+
+                for entity in incorrect_entities:
+                    print(entity["entity_id"], entity["entity_name"]) # Output: 123456, 'image.jpg'
         """
         validation_schema = self.get_validation_schema(id)
         if not validation_schema:
@@ -1333,20 +1553,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return incorrect_entities
 
-    def get_settings(self, id: int) -> Dict[str, str]:
+    def get_settings(self, id: int) -> Dict[str, Any]:
         info = self._get_info_by_id(id, "projects.info")
+        if info is None:
+            raise ProjectNotFound(f"Project with id={id} not found")
         return info.settings
 
-    def update_settings(self, id: int, settings: Dict[str, str]) -> None:
+    def update_settings(
+        self,
+        id: int,
+        settings: Dict[str, Any],
+        merge_with_current: bool = False,
+    ) -> None:
         """
-        Updates project wuth given project settings by id.
+        Updates project with given project settings by id.
 
         :param id: Project ID
         :type id: int
-        :param settings: Project settings
-        :type settings: Dict[str, str]
+        :param settings: Project settings to apply.
+        :type settings: Dict[str, Any]
+        :param merge_with_current: If True, deep-merges the new settings with the current settings.
+            If False, replaces the current settings entirely.
+        :type merge_with_current: bool, optional
         """
-        self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
+        if merge_with_current:
+            current_settings = self.get_settings(id)
+            settings = deep_merge_dicts(current_settings, settings)
+        payload = {ApiField.ID: id, ApiField.SETTINGS: settings}
+        self._api.post("projects.settings.update", payload)
 
     def download_images_tags(
         self, id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
@@ -1358,25 +1592,32 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Defaultdict matching tag names to ImageInfos
+        :returns: Defaultdict matching tag names to ImageInfos
         :rtype: :class:`defaultdict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 8200
-            tags_to_infos = api.project.download_images_tags(project_id)
-            for tag_name in tags_to_infos:
-                print(tag_name, tags_to_infos[tag_name])
-            # Output:
-            # train [ImageInfo(id=2389064, name='IMG_4451_JjH4WPkHlk.jpeg', link=None, hash='6EpjCL+lBdMBYo...
-            # val [ImageInfo(id=2389066, name='IMG_1836.jpeg', link=None, hash='Si0WvJreU6pmrx1EDa1itkqqSkQkZFzNJSu...
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 8200
+                tags_to_infos = api.project.download_images_tags(project_id)
+                for tag_name in tags_to_infos:
+                    print(tag_name, tags_to_infos[tag_name])
+                # Output:
+                # train [ImageInfo(id=2389064, name='IMG_4451_JjH4WPkHlk.jpeg', link=None, hash='6EpjCL+lBdMBYo...
+                # val [ImageInfo(id=2389066, name='IMG_1836.jpeg', link=None, hash='Si0WvJreU6pmrx1EDa1itkqqSkQkZFzNJSu...
         """
         # returns dict: tagname->images infos
         project_meta = self.get_meta(id)
@@ -1438,28 +1679,31 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param name: name of the project to search or create
         :type name: str
         :param type: type of the project to create
-        :type type: Optional[str], default ProjectType.IMAGES
+        :type type: Optional[str], default :class:`~supervisely.project.project_type.ProjectType.IMAGES`
         :param description: description of the project to create
         :type description: Optional[str]
-        :return: ProjectInfo about found or created project
-        :rtype: ProjectInfo
-        :Usage example:
+        :returns: ProjectInfo about found or created project
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_name = "my_project"
-            workspace_id = 123
-            project_info = api.project.get_or_create(workspace_id, project_name)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_name = "my_project"
+                workspace_id = 123
+                project_info = api.project.get_or_create(workspace_id, project_name)
         """
         info = self.get_info_by_name(workspace_id, name)
         if info is None:
@@ -1489,30 +1733,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type custom_data: Optional[Dict[Any, Any]]
         :param project_type: new type of the project
         :type project_type: Optional[str]
-        :return: ProjectInfo of the edited project
-        :rtype: ProjectInfo
+        :returns: ProjectInfo of the edited project
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         :raises ValueError: if no arguments are specified
         :raises ValueError: if invalid project type is specified
         :raises ValueError: if project with given id already has given type
         :raises ValueError: if conversion from current project type to given project type is not supported
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123
-            new_name = "new_name"
-            new_description = "new_description"
-            project_info = api.project.edit_info(project_id, name=new_name, description=new_description)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 123
+                new_name = "new_name"
+                new_description = "new_description"
+                project_info = api.project.edit_info(project_id, name=new_name, description=new_description)
         """
         if (
             name is None
@@ -1559,27 +1806,32 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID
         :type id: int
         :param meta: ProjectMeta to update ids
-        :type meta: ProjectMeta
-        :Usage example:
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123
-            # We already have ProjectMeta and now we want to update ids in it
-            # from server
-            meta: sly.ProjectMeta
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.project.pull_meta_ids(project_id, meta)
+                api = sly.Api.from_env()
+
+                project_id = 123
+                # We already have ProjectMeta and now we want to update ids in it
+                # from server
+                meta: sly.ProjectMeta
+
+                api.project.pull_meta_ids(project_id, meta)
         """
         # to update ids in existing project meta
         meta_json = self.get_meta(id)
@@ -1595,22 +1847,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param workspace_id: Workspace ID the project will move in
         :type workspace_id: int
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            workspace_id = 688
-            project_id = 17173
+                import supervisely as sly
 
-            api.project.move(id=project_id, workspace_id=workspace_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                workspace_id = 688
+                project_id = 17173
+                api.project.move(id=project_id, workspace_id=workspace_id)
         """
         self._api.post(
             "projects.workspace.set", {ApiField.ID: id, ApiField.WORKSPACE_ID: workspace_id}
@@ -1628,22 +1886,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type archive_urls: List[str]
         :param ann_archive_urls: Shared URLs of annotations backup on Dropbox.
         :type ann_archive_urls: List[str], optional
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            ids = [18464, 18461]
-            archive_urls = ['https://www.dropbox.com/...', 'https://www.dropbox.com/...']
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            api.project.archive_batch(ids, archive_urls, ann_archive_urls)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                ids = [18464, 18461]
+                archive_urls = ['https://www.dropbox.com/...', 'https://www.dropbox.com/...']
+                api.project.archive_batch(ids, archive_urls, ann_archive_urls)
         """
         if len(ids) != len(archive_urls):
             raise ValueError(
@@ -1671,22 +1935,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type archive_url: str
         :param ann_archive_url: Shared URL of annotations backup on Dropbox.
         :type ann_archive_url: str, optional
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            id = 18464
-            archive_url = 'https://www.dropbox.com/...'
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            api.project.archive(id, archive_url, ann_archive_url)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                id = 18464
+                archive_url = 'https://www.dropbox.com/...'
+                api.project.archive(id, archive_url, ann_archive_url)
         """
         if ann_archive_url is None:
             self.archive_batch([id], [archive_url])
@@ -1723,52 +1993,59 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type sort: Optional[Literal["id", "title", "size", "createdAt", "updatedAt"]]
         :param sort_order: Determines which value to list from.
         :type sort_order: Optional[Literal["asc", "desc"]]
-        :return: List of all projects with information. See :class:`info_sequence<info_sequence>`
+        :returns: List of ProjectInfo objects.
         :rtype: :class:`List[ProjectInfo]`
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_list = api.project.get_archivation_list()
-            print(project_list)
-            # Output: [
-            # ProjectInfo(id=861,
-            #             name='Project_COCO'
-            #             size='22172241',
-            #             workspace_id=58,
-            #             created_at='2020-11-09T18:21:32.356Z',
-            #             updated_at='2020-11-09T18:21:32.356Z',
-            #             type='images',
-            #             ...
-            #             ),
-            # ProjectInfo(id=777,
-            #             name='Trucks',
-            #             size='76154769',
-            #             workspace_id=58,
-            #             created_at='2021-07-077T17:44:28.158Z',
-            #             updated_at='2023-07-15T12:33:45.747Z',
-            #             type='images',)
-            # ]
+                import supervisely as sly
 
-            # Project list for desired date range
-            project_list = api.project.get_archivation_list(to_day=2)
-            print(project_list)
-            # Output: ProjectInfo(id=777,
-            #                     name='Trucks',
-            #                     size='76154769',
-            #                     workspace_id=58,
-            #                     created_at='2021-07-077T17:44:28.158Z',
-            #                     updated_at='2023-07-15T12:33:45.747Z',
-            #                     type='images',
-            #                     ...
-            #                     )
-            # ]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_list = api.project.get_archivation_list()
+                print(project_list)
+                # Output: [
+                # ProjectInfo(id=861,
+                #             name='Project_COCO'
+                #             size='22172241',
+                #             workspace_id=58,
+                #             created_at='2020-11-09T18:21:32.356Z',
+                #             updated_at='2020-11-09T18:21:32.356Z',
+                #             type='images',
+                #             ...
+                #             ),
+                # ProjectInfo(id=777,
+                #             name='Trucks',
+                #             size='76154769',
+                #             workspace_id=58,
+                #             created_at='2021-07-077T17:44:28.158Z',
+                #             updated_at='2023-07-15T12:33:45.747Z',
+                #             type='images',)
+                # ]
+
+                # Project list for desired date range
+                project_list = api.project.get_archivation_list(to_day=2)
+                print(project_list)
+                # Output: ProjectInfo(id=777,
+                #                     name='Trucks',
+                #                     size='76154769',
+                #                     workspace_id=58,
+                #                     created_at='2021-07-077T17:44:28.158Z',
+                #                     updated_at='2023-07-15T12:33:45.747Z',
+                #                     type='images',
+                #                     ...
+                #                     )
+                # ]
 
         """
         kwargs = {}
@@ -1815,28 +2092,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :return: dict with shared URL of files backup or None
+        :returns: dict with shared URL of files backup or None
         :rtype: Dict, optional
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            response = check_imageset_backup(project_id)
-            archive_url = response['imagesArchiveUrl']
+                api = sly.Api.from_env()
+
+                response = check_imageset_backup(project_id)
+                archive_url = response['imagesArchiveUrl']
 
         """
         response = self._api.get("projects.images.get-backup-archive", {ApiField.ID: id})
@@ -1850,27 +2126,108 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :param classes: New classes
-        :type classes: :class: ObjClassCollection or List[ObjClass]
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :type classes: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` or List[:class:`~supervisely.annotation.obj_class.ObjClass`]
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            proj_id = 28145
-            lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
-            api.project.append_classes(proj_id, [lung_obj_class])
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                proj_id = 28145
+                lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
+                api.project.append_classes(proj_id, [lung_obj_class])
         """
         meta_json = self.get_meta(id)
         meta = ProjectMeta.from_json(meta_json)
         meta = meta.add_obj_classes(classes)
         self.update_meta(id, meta)
+
+    def remove_class(self, project_id: int, class_id: int) -> None:
+        """
+        Remove a single class from the given Project by its server-side ID.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param class_id: Server-side ID of the class to remove (see :attr:`~supervisely.annotation.obj_class.ObjClass.sly_id`).
+        :type class_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                proj_id = 28145
+                meta = sly.ProjectMeta.from_json(api.project.get_meta(proj_id))
+                class_id = meta.get_obj_class("dog").sly_id
+                api.project.remove_class(proj_id, class_id)
+        """
+        self._api.post(
+            "projects.classes.remove",
+            {ApiField.ID: class_id, ApiField.PROJECT_ID: project_id},
+        )
+
+    def remove_tag(self, project_id: int, tag_id: int) -> None:
+        """
+        Remove a single tag (TagMeta) from the given Project by its server-side ID.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tag_id: Server-side ID of the tag to remove (see :attr:`~supervisely.annotation.tag_meta.TagMeta.sly_id`).
+        :type tag_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                proj_id = 28145
+                meta = sly.ProjectMeta.from_json(api.project.get_meta(proj_id))
+                tag_id = meta.get_tag_meta("cat").sly_id
+                api.project.remove_tag(proj_id, tag_id)
+        """
+        self._api.post(
+            "projects.tags.remove",
+            {ApiField.ID: tag_id, ApiField.PROJECT_ID: project_id},
+        )
 
     def _set_custom_grouping_settings(
         self,
@@ -1893,8 +2250,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param label_group_tag_name: Name of the tag. Labels will be grouped by this tag
         :type label_group_tag_name: str
         :raises ValueError: if tag value type is not 'any_string'
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         meta = ProjectMeta.from_json(self.get_meta(id, with_settings=True))
         existing_tag_meta = meta.get_tag_meta(tag_name)
@@ -1932,24 +2289,23 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param project_id: Project ID to set multispectral settings.
         :type project_id: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.project.set_multispectral_settings(project_id=123)
+                api = sly.Api.from_env()
+                api.project.set_multispectral_settings(project_id=123)
         """
 
         self._set_custom_grouping_settings(
@@ -1960,38 +2316,116 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
 
     def set_multiview_settings(self, project_id: int) -> None:
-        """Sets the project settings for multiview images.
-        Images will be grouped by tag and have synchronized view and labeling.
+        """Sets the project settings for multiview mode.
+        Automatically detects project type and applies appropriate settings:
+
+        - For IMAGE projects: Images are grouped by tag with synchronized view and labeling.
+        - For VIDEO projects: Videos are grouped by datasets (each dataset = one group).
 
         :param project_id: Project ID to set multiview settings.
         :type project_id: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.project.set_multiview_settings(project_id=123)
+                api = sly.Api.from_env()
+
+                # For images project - will enable grouping by tags
+                api.project.set_multiview_settings(image_project_id)
+
+                # For videos project - will enable grouping by datasets
+                api.project.set_multiview_settings(video_project_id)
         """
+        project_info = self.get_info_by_id(project_id)
+        if project_info.type == ProjectType.IMAGES.value:
+            self._set_custom_grouping_settings(
+                id=project_id,
+                group_images=True,
+                tag_name=_MULTIVIEW_TAG_NAME,
+                sync=False,
+                label_group_tag_name=_LABEL_GROUP_TAG_NAME,
+            )
+        elif project_info.type == ProjectType.VIDEOS.value:
+            self._set_custom_grouping_settings_video(project_id, sync=True)
+        else:
+            raise ValueError("Multiview settings can only be set for image or video projects")
 
-        self._set_custom_grouping_settings(
-            id=project_id,
-            group_images=True,
-            tag_name=_MULTIVIEW_TAG_NAME,
-            sync=False,
-            label_group_tag_name=_LABEL_GROUP_TAG_NAME,
+    def set_overlay_settings(self, project_id: int) -> None:
+        """Sets the project labeling interface to overlay mode.
+
+        In overlay mode, images that share the same parent (linked via ``parent_id``)
+        are displayed as layered overlays on top of the parent image in the labeling UI.
+
+        .. note::
+            This method only changes the project's labeling interface setting.
+            To upload images as overlays of a parent image, use
+            :meth:`~supervisely.api.image_api.ImageApi.upload_overlay_images`.
+
+        :param project_id: Project ID to apply overlay settings to.
+        :type project_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.project.set_overlay_settings(project_id=123)
+        """
+        meta = ProjectMeta.from_json(self.get_meta(project_id, with_settings=True))
+        new_settings = meta.project_settings.clone(
+            labeling_interface=LabelingInterface.OVERLAY,
         )
+        meta = meta.clone(project_settings=new_settings)
+        self.update_meta(id=project_id, meta=meta)
+
+    def _set_custom_grouping_settings_video(self, project_id: int, sync: bool = True) -> None:
+        """Sets the project settings for multiview videos (private method).
+        For video projects, videos are grouped by datasets (not by tags).
+        Each dataset represents a group of videos that will be displayed together in multiview mode.
+
+        :param project_id: Project ID to set video multiview settings.
+        :type project_id: int
+        :param sync: If True, enables synchronized playback across video views.
+        :type sync: bool
+        :returns: None
+        :rtype: None
+        """
+        meta = ProjectMeta.from_json(self.get_meta(project_id, with_settings=True))
+
+        new_settings = ProjectSettings(
+            multiview_enabled=True,
+            multiview_tag_name=None,  # Not used for videos
+            multiview_tag_id=None,  # Not used for videos
+            multiview_is_synced=sync,
+            labeling_interface=LabelingInterface.MULTIVIEW,
+        )
+
+        meta = meta.clone(project_settings=new_settings)
+        self.update_meta(id=project_id, meta=meta)
 
     def remove_permanently(
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
@@ -2004,13 +2438,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         All project IDs must belong to the same team.
         Therefore, it is necessary to sort IDs before calling this method.
 
+        Projects must be archived with :func:`remove` before calling this method, otherwise the
+        server rejects the request. The method is available only for the instance administrator
+        (root user), a regular user token is not enough.
+
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]
         :param batch_size: The number of entities that will be deleted by a single API call. This value must be in the range 1-50 inclusive, if you set a value out of range it will automatically adjust to the boundary values.
         :type batch_size: int, optional
         :param progress_cb: Function for control delete progress.
         :type progress_cb: Callable, optional
-        :return: A list of response content in JSON format for each API call.
+        :returns: A list of response content in JSON format for each API call.
         :rtype: List[dict]
         """
         if batch_size > 50:
@@ -2082,76 +2520,81 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param extra_fields: List of additional fields to be included in the response.
         :type extra_fields: List[str], optional
 
-        :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
+        :returns: Search response information and ':class:`~supervisely.api.project_api.ProjectInfo`' of all projects that are searched by a given criterion.
         :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import os
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            filter_1 = {
-                "field": "updatedAt",
-                "operator": "<",
-                "value": "2023-12-03T14:53:00.952Z"
-            }
-            filter_2 = {
-                "field": "updatedAt",
-                "operator": ">",
-                "value": "2023-04-03T14:53:00.952Z"
-            }
-            filters = [filter_1, filter_2]
-            projects = api.projects.get_list_all(filters, True)
-            print(projects)
-            # Output:
-            # {
-            #     "total": 2,
-            #     "perPage": 20000,
-            #     "pagesCount": 1,
-            #     "entities": [ ProjectInfo(id = 22,
-            #                       name = 'lemons_annotated',
-            #                       description = None,
-            #                       size = '861069',
-            #                       readme = None,
-            #                       workspace_id = 2,
-            #                       images_count = None,
-            #                       items_count = None,
-            #                       datasets_count = None,
-            #                       created_at = '2020-04-03T13:43:24.000Z',
-            #                       updated_at = '2020-04-03T14:53:00.952Z',
-            #                       type = 'images',
-            #                       reference_image_url = None,
-            #                       custom_data = None,
-            #                       backup_archive = None,
-            #                       teamd_id = 1,
-            #                       import_settings = {},
-            #                   ),
-            #                   ProjectInfo(id = 23,
-            #                       name = 'lemons_test',
-            #                       description = None,
-            #                       size = '1177212',
-            #                       readme = None,
-            #                       workspace_id = 2,
-            #                       images_count = None,
-            #                       items_count = None,
-            #                       datasets_count = None,
-            #                       created_at = '2020-04-03T13:43:24.000Z',
-            #                       updated_at = '2020-04-03T14:53:00.952Z',
-            #                       type = 'images',
-            #                       reference_image_url = None,
-            #                       custom_data = None,
-            #                       backup_archive = None),
-            #                       teamd_id = 1,
-            #                       import_settings = {},
-            #                   )
-            #                 ]
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                filter_1 = {
+                    "field": "updatedAt",
+                    "operator": "<",
+                    "value": "2023-12-03T14:53:00.952Z"
+                }
+                filter_2 = {
+                    "field": "updatedAt",
+                    "operator": ">",
+                    "value": "2023-04-03T14:53:00.952Z"
+                }
+                filters = [filter_1, filter_2]
+                projects = api.projects.get_list_all(filters, True)
+                print(projects)
+                # Output:
+                # {
+                #     "total": 2,
+                #     "perPage": 20000,
+                #     "pagesCount": 1,
+                #     "entities": [ ProjectInfo(id = 22,
+                #                       name = 'lemons_annotated',
+                #                       description = None,
+                #                       size = '861069',
+                #                       readme = None,
+                #                       workspace_id = 2,
+                #                       images_count = None,
+                #                       items_count = None,
+                #                       datasets_count = None,
+                #                       created_at = '2020-04-03T13:43:24.000Z',
+                #                       updated_at = '2020-04-03T14:53:00.952Z',
+                #                       type = 'images',
+                #                       reference_image_url = None,
+                #                       custom_data = None,
+                #                       backup_archive = None,
+                #                       team_id = 1,
+                #                       import_settings = {},
+                #                   ),
+                #                   ProjectInfo(id = 23,
+                #                       name = 'lemons_test',
+                #                       description = None,
+                #                       size = '1177212',
+                #                       readme = None,
+                #                       workspace_id = 2,
+                #                       images_count = None,
+                #                       items_count = None,
+                #                       datasets_count = None,
+                #                       created_at = '2020-04-03T13:43:24.000Z',
+                #                       updated_at = '2020-04-03T14:53:00.952Z',
+                #                       type = 'images',
+                #                       reference_image_url = None,
+                #                       custom_data = None,
+                #                       backup_archive = None),
+                #                       team_id = 1,
+                #                       import_settings = {},
+                #                   )
+                #                 ]
+                # }
 
         """
 
@@ -2223,10 +2666,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
+        :param silent: Determines whether the ``updatedAt`` timestamp of the Project should be updated or not.
+                       If False, ``updatedAt`` will be updated.
         :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         self._api.post(
             "projects.editInfo",
@@ -2239,10 +2683,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :param silent: Determines whether the ``updatedAt`` timestamp of the Project should be updated or not.
+                       If False, ``updatedAt`` will be updated.
         :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         self._api.post(
             "projects.editInfo",
@@ -2255,7 +2700,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :return: True if embeddings are enabled, False otherwise.
+        :returns: True if embeddings are enabled, False otherwise.
         :rtype: bool
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_ENABLED])
@@ -2274,8 +2719,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type in_progress: bool
         :param error_message: Optional error message to provide additional context.
         :type error_message: Optional[str]
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         data = {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress}
         if error_message is not None:
@@ -2289,12 +2734,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :return: True if embeddings are in progress, False otherwise.
+        :returns: True if embeddings are in progress, False otherwise.
         :rtype: bool
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_IN_PROGRESS])
         if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
+            raise ProjectNotFound(f"Project with ID {id} not found.")
         if not hasattr(info, "embeddings_in_progress"):
             raise RuntimeError(
                 f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
@@ -2312,23 +2757,35 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param timestamp: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffffZ). If None, current UTC time is used.
         :type timestamp: Optional[str]
-        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
+        :param silent: Determines whether the ``updatedAt`` timestamp of the Project should be updated or not.
+                       If False, ``updatedAt`` will be updated.
         :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
 
 
-            api = sly.Api.from_env()
-            project_id = 123
+                import os
+                from dotenv import load_dotenv
 
-            # Set current time as embeddings update timestamp
-            api.project.set_embeddings_updated_at(project_id)
+                import supervisely as sly
 
-            # Set specific timestamp
-            api.project.set_embeddings_updated_at(project_id, "2025-06-01T10:30:45.123456Z")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Set current time as embeddings update timestamp
+                project_id = 123
+                api.project.set_embeddings_updated_at(project_id)
+
+                # Set specific timestamp
+                api.project.set_embeddings_updated_at(project_id, "2025-06-01T10:30:45.123456Z")
         """
         if timestamp is None:
             timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -2344,22 +2801,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :return: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffZ) or None if not set.
+        :returns: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffZ) or None if not set.
         :rtype: Optional[str]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            api = sly.Api.from_env()
-            project_id = 123
+            .. code-block:: python
 
-            # Get embeddings updated timestamp
-            updated_at = api.project.get_embeddings_updated_at(project_id)
-            print(updated_at)  # Output: "2025-06-01T10:30:45.123Z" or None
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Get embeddings updated timestamp
+                project_id = 123
+                updated_at = api.project.get_embeddings_updated_at(project_id)
+                print(updated_at)  # Output: "2025-06-01T10:30:45.123Z" or None
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT])
         if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
+            raise ProjectNotFound(f"Project with ID {id} not found.")
         if not hasattr(info, "embeddings_updated_at"):
             raise RuntimeError(
                 f"Project with ID {id} does not have 'embeddings_updated_at' field in its info."
@@ -2382,13 +2850,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         Send AI search request to initiate search process.
         This method allows you to search for similar images in a project using either a text prompt, an image ID, or a method type.
-        It is mutually exclusive, meaning you can only provide one of the parameters: `prompt`, `image_id`, or `method`.
+        It is mutually exclusive, meaning you can only provide one of the parameters: ``prompt``, ``image_id``, or ``method``.
 
-        :param project_id: ID of the Project
+        :param project_id: ID of the project.
         :type project_id: int
-        :param dataset_id: ID of the Dataset. If not None - search will be limited to this dataset.
+        :param dataset_id: ID of the dataset. If not None - search will be limited to this dataset.
         :type dataset_id: Optional[int]
-        :param image_id: ID(s) of the Image(s). Searches for images similar to the specified image(s).
+        :param image_id: ID(s) of the image(s). Searches for images similar to the specified image(s).
         :type image_id: Optional[Union[int, List[int]]]
         :param prompt: Text prompt for search request. Searches for similar images based on a text description.
         :type prompt: Optional[str]
@@ -2404,38 +2872,48 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type image_id_scope: Optional[List[int]]
         :param threshold: Threshold for similarity. If provided, only images with similarity above this threshold will be returned.
         :type threshold: Optional[float]
-        :return: Entitites Collection ID of the search results, or None if no collection was created.
+        :raises ValueError: Exactly one of ``prompt``, ``image_id`` or ``method`` must be provided.
+                            If ``method`` is set, it must be one of the allowed values.
+        :returns: Entitites Collection ID of the search results, or None if no collection was created.
         :rtype: Optional[int]
-        :raises ValueError: only one of `prompt`, `image_id` or `method`must be provided, and `method` must be one of the allowed values.
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 123
-            image_id = 789
-            prompt = "person with a dog"
+                import supervisely as sly
 
-            # Search with text prompt
-            collection_id = api.project.perform_ai_search(
-                project_id=project_id,
-                prompt=prompt,
-            )
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Search with method
-            collection_id = api.project.perform_ai_search(
-                project_id=project_id,
-                method="centroids",
-            )
+                api = sly.Api.from_env()
 
-            # Search with image ID
-            collection_id = api.project.perform_ai_search(
-                project_id=project_id,
-                image_id=image_id,
-            )
+                project_id = 123
+                image_id = 789
+                prompt = "person with a dog"
+
+                # Search with text prompt
+                collection_id = api.project.perform_ai_search(
+                    project_id=project_id,
+                    prompt=prompt,
+                )
+
+                # Search with method
+                collection_id = api.project.perform_ai_search(
+                    project_id=project_id,
+                    method="centroids",
+                )
+
+                # Search with image ID
+                collection_id = api.project.perform_ai_search(
+                    project_id=project_id,
+                    image_id=image_id,
+                )
         """
 
         # Check that only one of prompt, method, or image_id is provided
@@ -2455,6 +2933,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         request_body = {
             ApiField.PROJECT_ID: project_id,
             ApiField.LIMIT: limit,
+            ApiField.UNIQUE_ITEMS: limit,  # the same as limit, but for diverse search
         }
 
         if dataset_id is not None:
@@ -2511,18 +2990,251 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api.from_env()
-            project_id = 123
+                import os
+                from dotenv import load_dotenv
 
-            # Calculate embeddings for the project
-            api.project.calculate_embeddings(project_id)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 123
+                # Calculate embeddings for the project
+                api.project.calculate_embeddings(project_id)
         """
         self._api.post("embeddings.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
+
+    def recreate_structure_generator(
+        self,
+        src_project_id: int,
+        dst_project_id: Optional[int] = None,
+        dst_project_name: Optional[str] = None,
+    ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
+        """This method can be used to recreate a project with hierarchial datasets (without the data itself) and
+        yields the tuple of source and destination DatasetInfo objects.
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int, optional
+        :param dst_project_name: Name of the destination project. If ``dst_project_id`` is None, a new project will be created with this name.
+                                 If ``dst_project_id`` is provided, this parameter will be ignored.
+        :type dst_project_name: str, optional
+
+        :returns: Generator of tuples of source and destination DatasetInfo objects.
+        :rtype: Generator[Tuple[:class:`~supervisely.api.dataset_api.DatasetInfo`, :class:`~supervisely.api.dataset_api.DatasetInfo`], None, None]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                src_project_id = 123
+                dst_project_id = api.project.create("new_project", "images").id
+
+                for src_ds, dst_ds in api.project.recreate_structure_generator(src_project_id, dst_project_id):
+                    print(f"Recreated dataset {src_ds.id} -> {dst_ds.id}")
+                    # Implement your logic here to process the datasets.
+        """
+        if dst_project_id is None:
+            src_project_info = self._api.project.get_info_by_id(src_project_id)
+            dst_project_info = self._api.project.create(
+                src_project_info.workspace_id,
+                dst_project_name or f"Recreation of {src_project_info.name}",
+                src_project_info.type,
+                src_project_info.description,
+                change_name_if_conflict=True,
+            )
+            dst_project_id = dst_project_info.id
+
+        datasets = self._api.dataset.get_list(
+            src_project_id, recursive=True, include_custom_data=True
+        )
+        src_to_dst_ids = {}
+
+        for src_dataset_info in datasets:
+            dst_dataset_info = self._api.dataset.create(
+                dst_project_id,
+                src_dataset_info.name,
+                description=src_dataset_info.description,
+                parent_id=src_to_dst_ids.get(src_dataset_info.parent_id),
+                custom_data=src_dataset_info.custom_data,
+            )
+            src_to_dst_ids[src_dataset_info.id] = dst_dataset_info.id
+
+            yield src_dataset_info, dst_dataset_info
+
+    def recreate_structure(
+        self,
+        src_project_id: int,
+        dst_project_id: Optional[int] = None,
+        dst_project_name: Optional[str] = None,
+    ) -> List[Tuple[DatasetInfo, DatasetInfo]]:
+        """This method can be used to recreate a project with hierarchial datasets (without the data itself).
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int, optional
+        :param dst_project_name: Name of the destination project. If ``dst_project_id`` is None, a new project will be created with this name.
+                                 If ``dst_project_id`` is provided, this parameter will be ignored.
+        :type dst_project_name: str, optional
+
+        :returns: List of tuples of source and destination DatasetInfo objects.
+        :rtype: List[Tuple[:class:`~supervisely.api.dataset_api.DatasetInfo`, :class:`~supervisely.api.dataset_api.DatasetInfo`]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                src_project_id = 123
+                dst_project_name = "New Project"
+                infos = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
+                print(f"Recreated project {src_project_id}")
+        """
+        infos = []
+        for src_info, dst_info in self.recreate_structure_generator(
+            src_project_id, dst_project_id, dst_project_name
+        ):
+            infos.append((src_info, dst_info))
+
+        return infos
+
+    def add_import_history(self, id: int, task_id: int) -> None:
+        """
+        Adds import history to project info. Gets task info and adds it to project custom data.
+
+        :param id: Project ID
+        :type id: int
+        :param task_id: Task ID
+        :type task_id: int
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+                project_id = 123
+                task_id = 456
+                api.project.add_import_history(project_id, task_id)
+        """
+
+        task_info = self._api.task.get_info_by_id(task_id)
+        module_id = task_info.get("meta", {}).get("app", {}).get("moduleId")
+        slug = None
+        if module_id is not None:
+            module_info = self._api.app.get_ecosystem_module_info(module_id)
+            slug = module_info.slug
+
+        items_count = upload_count()
+        items_count = {int(k): v for k, v in items_count.items()}
+        uploaded_images = uploaded_ids()
+        uploaded_images = {int(k): v for k, v in uploaded_images.items()}
+        total_items = sum(items_count.values()) if len(items_count) > 0 else 0
+        app = task_info.get("meta", {}).get("app")
+        app_name = app.get("name") if app else None
+        app_version = app.get("version") if app else None
+        data = {
+            "task_id": task_id,
+            "app": {"name": app_name, "version": app_version},
+            "slug": slug,
+            "status": task_info.get(ApiField.STATUS),
+            "user_id": task_info.get(ApiField.USER_ID),
+            "team_id": task_info.get(ApiField.TEAM_ID),
+            "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "source_state": task_info.get("settings", {}).get("message", {}).get("state"),
+            "items_count": total_items,
+            "datasets": [
+                {
+                    "id": ds,
+                    "items_count": items_count[ds],
+                    "uploaded_images": uploaded_images.get(ds, []),
+                }
+                for ds in items_count.keys()
+            ],
+        }
+
+        project_info = self.get_info_by_id(id)
+
+        custom_data = project_info.custom_data or {}
+        if "import_history" not in custom_data:
+            custom_data["import_history"] = {"tasks": []}
+        if "tasks" not in custom_data["import_history"]:
+            custom_data["import_history"]["tasks"] = []
+        custom_data["import_history"]["tasks"].append(data)
+
+        self.edit_info(id, custom_data=custom_data)
+
+    def set_read_only(self, id: int, enable: bool = True) -> None:
+        """
+        Set or unset read-only status for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param enable: If True, sets the project to read-only. If False, unsets the read-only status.
+        :type enable: bool
+        :returns: None
+        :rtype: None
+        """
+        self.update_settings(
+            id,
+            {ApiField.ADVANCED_SETTINGS: {ApiField.IS_READ_ONLY_PROJECT: enable}},
+            merge_with_current=True,
+        )
+
+    def is_read_only(self, id: int) -> bool:
+        """Check if the project is read-only.
+
+        :param id: Project ID
+        :type id: int
+        :returns: True if the project is read-only, False otherwise
+        :rtype: bool
+        """
+        project_settings = self.get_settings(id)
+        return project_settings.get(ApiField.ADVANCED_SETTINGS, {}).get(ApiField.IS_READ_ONLY_PROJECT, False)

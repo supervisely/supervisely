@@ -6,51 +6,10 @@ from supervisely.app.widgets import Widget
 
 
 class DateTimePicker(Widget):
-    """DateTimePicker is a widget in Supervisely that allows you to choose a date and time on the UI.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/datetimepicker>`_
-        (including screenshots and examples).
-
-    :param value: initial value
-    :type value: Optional[Union[int, str, datetime, list, tuple]]
-    :param readonly: if True, date picker will be readonly
-    :type readonly: Optional[bool]
-    :param disabled: if True, date picker will be disabled
-    :type disabled: Optional[bool]
-    :param editable: if True, date picker will be editable
-    :type editable: Optional[bool]
-    :param clearable: if True, date picker will be clearable
-    :type clearable: Optional[bool]
-    :param size: size of the input box, one of: large, small, mini
-    :type size: Optional[Literal["large", "small", "mini"]]
-    :param placeholder: placeholder text, default: "Select date and time"
-    :type placeholder: Optional[str]
-    :param w_type: picker type, one of: year, month, date, datetime, week, datetimerange, daterange, default: datetime
-    :type w_type: Optional[Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]]
-    :param format: date format, one of: yyyy, MM, dd, HH, mm, ss, default: yyyy-MM-dd HH:mm:ss
-    :type format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-            from supervisely.app.widgets import DateTimePicker
-
-            date_time_picker = DateTimePicker(
-                value=datetime.now(),
-                readonly=False,
-                disabled=False,
-                editable=False,
-                clearable=True,
-                size="small",
-                placeholder="Select date and time",
-                w_type="datetime",
-                format="yyyy-MM-dd HH:mm:ss",
-            )
-    """
+    """Date and time picker input."""
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -68,6 +27,35 @@ class DateTimePicker(Widget):
         format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]] = "yyyy-MM-dd HH:mm:ss",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param value: Initial value (datetime, str, or timestamp).
+        :type value: Optional[Union[int, str, list, tuple]]
+        :param readonly: Read-only mode.
+        :type readonly: Optional[bool]
+        :param disabled: Disabled state.
+        :type disabled: Optional[bool]
+        :param editable: Allow manual edit.
+        :type editable: Optional[bool]
+        :param clearable: Allow clearing.
+        :type clearable: Optional[bool]
+        :param size: large, small, or mini.
+        :type size: Optional[Literal["large", "small", "mini"]]
+        :param placeholder: Placeholder text.
+        :type placeholder: Optional[str]
+        :param w_type: year, month, date, datetime, week, datetimerange, daterange.
+        :type w_type: Optional[Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]]
+        :param format: Date format string.
+        :type format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import DateTimePicker
+                dtp = DateTimePicker(value=datetime.now(), w_type="datetime")
+        """
         self._value = value
         self._readonly = readonly
         self._disabled = disabled
@@ -94,7 +82,7 @@ class DateTimePicker(Widget):
             - type: picker type, one of: year, month, date, datetime, week, datetimerange, daterange
             - format: date format, one of: yyyy, MM, dd, HH, mm, ss
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[str, bool]]
         """
         return {
@@ -114,7 +102,7 @@ class DateTimePicker(Widget):
         Dictionary contains the following fields:
             - value: current value
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, list]]
         """
         return {"value": self._value}
@@ -122,7 +110,7 @@ class DateTimePicker(Widget):
     def get_value(self) -> Union[int, str, datetime, list, tuple]:
         """Returns current value.
 
-        :return: current value
+        :returns: current value
         :rtype: Union[int, str, datetime, list, tuple]
         """
         if "value" not in StateJson()[self.widget_id].keys():
@@ -174,7 +162,7 @@ class DateTimePicker(Widget):
 
         :param func: function that will be called when the value of the widget is changed
         :type func: Callable[[Union[int, str, datetime, list, tuple]], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(DateTimePicker.Routes.VALUE_CHANGED)

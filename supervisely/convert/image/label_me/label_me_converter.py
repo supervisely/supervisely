@@ -11,6 +11,7 @@ from supervisely.io.json import load_json_file
 
 
 class LabelmeConverter(ImageConverter):
+    """Imports LabelMe JSON format (one JSON per image with shapes) into Supervisely image project."""
 
     def __str__(self):
         return AvailableImageConverters.LABEL_ME

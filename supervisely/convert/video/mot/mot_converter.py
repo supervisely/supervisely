@@ -4,6 +4,7 @@ from supervisely.convert.video.video_converter import VideoConverter
 
 
 class MOTConverter(VideoConverter):
+    """Base for MOT (Multiple Object Tracking) challenge format import; to_supervisely not implemented."""
 
     def __str__(self):
         return AvailableVideoConverters.MOT

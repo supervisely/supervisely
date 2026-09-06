@@ -3,7 +3,16 @@ from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS
 
 
 def _is_2d_typed_coords_valid(coords, individual_coord_types):
-    """ """
+    """
+    Validate 2D coordinates.
+
+    :param coords: List of 2D coordinates.
+    :type coords: list
+    :param individual_coord_types: Types of individual coordinates.
+    :type individual_coord_types: tuple
+    :returns: True if validation successful, False otherwise.
+    :rtype: bool
+    """
     return isinstance(coords, (list, tuple)) and all(
         len(point) == 2 and all(isinstance(coord, individual_coord_types) for coord in point)
         for point in coords
@@ -12,21 +21,20 @@ def _is_2d_typed_coords_valid(coords, individual_coord_types):
 
 def _is_2d_numeric_coords_valid(coords) -> bool:
     """
-    Float-type coordinates will be deprecated soon.
-    Args:
-        coords:  list or tuple of 2 numbers.
-    Returns:
-        True if validation successful, False otherwise.
+    :param coords: list or tuple of 2 numbers.
+    :type coords: list or tuple
+    :returns: True if validation successful, False otherwise.
+    :rtype: bool
     """
     return _is_2d_typed_coords_valid(coords, (int, float))
 
 
 def is_2d_int_coords_valid(coords) -> bool:
     """
-    Args:
-        coords:  list (or tuple) of 2 integers.
-    Returns:
-        True if validation successful, False otherwise.
+    :param coords: list (or tuple) of 2 integers.
+    :type coords: list or tuple
+    :returns: True if validation successful, False otherwise.
+    :rtype: bool
     """
     return _is_2d_typed_coords_valid(coords, (int,))
 
@@ -34,14 +42,10 @@ def is_2d_int_coords_valid(coords) -> bool:
 def validate_geometry_points_fields(json_obj: dict) -> None:
     """
     Validate json geometry points container structure, which presented as python dict.
-    :param json_obj: example:
-        {
-            "points": {
-                "exterior": [[1,2], [10, 20]],
-                "interior": [[2,3]]
-            }
-        }
-    :return: None
+    :param json_obj: example: { "points": { "exterior": [[1,2], [10, 20]], "interior": [[2,3]] } }
+    :type json_obj: dict
+    :returns: None
+    :rtype: None
     """
     if POINTS not in json_obj:
         raise ValueError("Input data must contain {} field.".format(POINTS))

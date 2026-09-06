@@ -8,7 +8,21 @@ import requests
 
 # should be stateless
 class RetrierAbstract:
+    """Base class for retry policies used around network/API calls."""
+
     def __init__(self, retry_cnt, wait_sec_first, wait_sec_max, timeout, swallow_exc=False):
+        """
+        :param retry_cnt: Max retries.
+        :type retry_cnt: int
+        :param wait_sec_first: Initial wait.
+        :type wait_sec_first: int
+        :param wait_sec_max: Max wait.
+        :type wait_sec_max: int
+        :param timeout: Request timeout.
+        :type timeout: tuple
+        :param swallow_exc: If True, don't raise on final failure.
+        :type swallow_exc: bool
+        """
         self.retry_cnt = int(retry_cnt)
         self.wait_sec = (wait_sec_first, wait_sec_max)
         if isinstance(timeout, list):  # requests lib timeout format
@@ -36,6 +50,8 @@ class RetrierAbstract:
 
 
 class RetrierAlways(RetrierAbstract):
+    """Retry on any exception until attempts are exhausted."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -47,6 +63,8 @@ class RetrierAlways(RetrierAbstract):
 
 
 class RetrierAlwaysYield(RetrierAbstract):
+    """Retry on any exception for generator-style (streaming) callbacks."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -58,24 +76,46 @@ class RetrierAlwaysYield(RetrierAbstract):
         return None
 
 
+def _is_retryable_conn_exc(exc):
+    """True for connection errors, timeouts (connect/read), and retryable HTTP statuses."""
+    if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+        return True
+    if isinstance(exc, requests.HTTPError):
+        response = getattr(exc, "response", None)
+        if response is not None:
+            # imported lazily to avoid a circular import at module load
+            from supervisely.io.network_exceptions import RETRY_STATUS_CODES
+
+            return response.status_code in RETRY_STATUS_CODES
+    return False
+
+
 class RetrierConnTO(RetrierAbstract):
+    """Retry on connection/timeout errors and retryable HTTP status codes."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
                 return cback(*args, timeout=self.timeout, **kwargs)
-            except (requests.ConnectionError, requests.ConnectTimeout):
+            except Exception as exc:
+                if not _is_retryable_conn_exc(exc):
+                    raise
                 if self._need_raise(att + 1):
                     raise
         return None
 
 
 class RetrierConnTOYield(RetrierAbstract):
+    """Retry on connection/timeout errors and retryable HTTP status codes for streaming callbacks."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
                 yield from cback(*args, timeout=self.timeout, **kwargs)
                 return
-            except (requests.ConnectionError, requests.ConnectTimeout):
+            except Exception as exc:
+                if not _is_retryable_conn_exc(exc):
+                    raise
                 if self._need_raise(att + 1):
                     raise
         return None

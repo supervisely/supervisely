@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class ChartWidget(BaseWidget):
+    """Benchmark report widget that renders a Plotly chart with optional click-to-gallery binding."""
+
     def __init__(
         self,
         name: str,
@@ -17,6 +19,12 @@ class ChartWidget(BaseWidget):
         switch_key: str = "switch_key",
         radiogroup_id: str = None,
     ) -> None:
+        """:param name: Widget name.
+        :param figure: Plotly figure.
+        :param switchable: Allow view switching.
+        :param switch_key: Key for switch state.
+        :param radiogroup_id: Optional radio group ID.
+        """
         super().__init__(name)
         self.switchable = switchable
         self.switch_key = switch_key

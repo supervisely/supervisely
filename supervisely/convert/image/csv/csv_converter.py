@@ -8,17 +8,18 @@ from tqdm import tqdm
 import supervisely.convert.image.csv.csv_helper as csv_helper
 from supervisely import (
     Annotation,
+    ProjectMeta,
+    TagCollection,
     batched,
     generate_free_name,
     is_development,
     logger,
-    ProjectMeta,
-    TagCollection,
 )
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
+from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name_with_ext,
@@ -29,8 +30,10 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class CSVConverter(ImageConverter):
+    """Converter for image datasets described by a CSV/TSV/TXT file (paths/links + optional tags)."""
 
     class Item(ImageConverter.Item):
+        """Single CSV row mapped to an image item and its optional annotation/meta fields."""
 
         def __init__(
             self,
@@ -41,6 +44,18 @@ class CSVConverter(ImageConverter):
             custom_data: dict | None = None,
             team_files: bool = False,
         ):
+            """
+            :param item_path: Path or URL to image.
+            :type item_path: str
+            :param ann_data: Annotation data.
+            :type ann_data: str, optional
+            :param meta_data: Meta data.
+            :type meta_data: str | dict, optional
+            :param shape: Image shape.
+            :param custom_data: Extra data.
+            :param team_files: If True, path is in Team Files.
+            :type team_files: bool
+            """
             self._path: str = item_path
             self._name: str = get_file_name_with_ext(self._path)
             self._ann_data: Union[str,] = ann_data
@@ -78,16 +93,30 @@ class CSVConverter(ImageConverter):
     }
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        """:param input_data: Path to CSV/TSV/TXT or directory.
+        :type input_data: str
+        :param labeling_interface: Labeling interface.
+        :type labeling_interface: LabelingInterface, optional
+        :param upload_as_links: If True, upload as links.
+        :type upload_as_links: bool
+        :param remote_files_map: Map for link upload.
+        :type remote_files_map: Dict[str, str], optional
+        :param team_files_id_map: Map for team files upload.
+        :type team_files_id_map: Dict[str, str], optional
+        """
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
+        self._supports_links = True
         self._csv_reader = None
-        self._team_id = None
 
     def __str__(self):
         return AvailableImageConverters.CSV
@@ -121,6 +150,12 @@ class CSVConverter(ImageConverter):
 
         full_path = valid_files[0]
 
+        if self.upload_as_links and self._supports_links:
+            for local_path, remote_path in self._remote_files_map.items():
+                if local_path.endswith(full_path):
+                    self._api.storage.download(self._team_id, remote_path, local_path)
+                    break
+
         file_ext = get_file_ext(full_path)
         if file_ext in self.conversion_functions:
             csv_full_path = os.path.splitext(full_path)[0] + ".csv"
@@ -147,7 +182,7 @@ class CSVConverter(ImageConverter):
                         team_files = False
                     break
             if item_path is None:
-                logger.warn(f"Failed to find image path in row: {row}. Skipping.")
+                logger.warning(f"Failed to find image path in row: {row}. Skipping.")
                 continue
             ann_data = row.get("tag")
             item = CSVConverter.Item(
@@ -192,7 +227,7 @@ class CSVConverter(ImageConverter):
                 ann_json = csv_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return Annotation.from_json(ann_json, meta)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
 
     def process_remote_image(
@@ -209,19 +244,21 @@ class CSVConverter(ImageConverter):
         image_path = image_path.strip()
         if is_team_file:
             if not api.file.exists(team_id, image_path):
-                logger.warn(f"File {image_path} not found in Team Files. Skipping...")
+                logger.warning(f"File {image_path} not found in Team Files. Skipping...")
                 return None
             team_file_image_info = api.file.list(team_id, image_path)
             image_path = team_file_image_info[0]["fullStorageUrl"]
             if not image_path:
-                logger.warn(f"Failed to get full storage URL for file '{image_path}'. Skipping...")
+                logger.warning(
+                    f"Failed to get full storage URL for file '{image_path}'. Skipping..."
+                )
                 return None
 
         extension = os.path.splitext(image_path)[1]
         if not extension:
-            logger.warn(f"FYI: Image [{image_path}] doesn't have extension.")
+            logger.warning(f"FYI: Image [{image_path}] doesn't have extension.")
         elif extension.lower() not in SUPPORTED_IMG_EXTS:
-            logger.warn(
+            logger.warning(
                 f"Image [{image_path}] has unsupported extension [{extension}]. Skipping..."
             )
             return None
@@ -234,7 +271,7 @@ class CSVConverter(ImageConverter):
                 force_metadata_for_links=force_metadata,
             )
         except Exception:
-            logger.warn(f"Failed to upload image {image_name}. Skipping...")
+            logger.warning(f"Failed to link image {image_name}. Skipping...")
             return None
         if progress_cb is not None:
             progress_cb(1)
@@ -312,7 +349,7 @@ class CSVConverter(ImageConverter):
                     success = False
                     continue
                 if item.name not in info.name:
-                    logger.warn(
+                    logger.warning(
                         f"Batched image with name '{item.name}' doesn't match uploaded image name '{info.name}'"
                     )
                     success = False
@@ -339,4 +376,4 @@ class CSVConverter(ImageConverter):
         if success:
             logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
         else:
-            logger.warn(f"Dataset ID:'{dataset_id}' has been uploaded.")
+            logger.warning(f"Dataset ID:'{dataset_id}' has been uploaded.")

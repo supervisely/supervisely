@@ -16,8 +16,14 @@ MatchWithConfidence = namedtuple('MatchWithConfidence', ['is_correct', 'confiden
 
 
 class MAPMetric(MetricsBase):
+    """Computes mean average precision for object detection given class mapping and IoU threshold."""
 
     def __init__(self, class_mapping, iou_threshold, confidence_tag_name='confidence', confidence_threshold=0.0):
+        """:param class_mapping: Dict mapping ground-truth class names to prediction class names (1-to-1).
+        :param iou_threshold: IoU threshold for matching boxes.
+        :param confidence_tag_name: Tag name for detection confidence.
+        :param confidence_threshold: Min confidence for predictions.
+        """
         if len(class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined!')
         self._gt_to_pred_class_mapping = class_mapping.copy()
@@ -45,7 +51,7 @@ class MAPMetric(MetricsBase):
         for label in all_labels_pred:
             label_confidence = self._get_confidence_value(label)
             if label_confidence is None:
-                logger.warn(f'Found a label with class {label.obj_class.name!r} that does not have a '
+                logger.warning(f'Found a label with class {label.obj_class.name!r} that does not have a '
                             f'{self._confidence_tag_name!r} tag attached. Skipping this object for metric computation.')
             elif label_confidence >= self._confidence_threshold:
                 labels_pred.append(label)

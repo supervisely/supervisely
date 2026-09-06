@@ -6,7 +6,13 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class Detectron2(BaseTrainArtifacts):
+    """Train/serve artifacts handler for Detectron2 instance segmentation models."""
+
     def __init__(self, team_id: int):
+        """
+        :param team_id: The team ID.
+        :type team_id: int
+        """
         super().__init__(team_id)
 
         self._app_name = "Train Detectron2"
@@ -25,6 +31,7 @@ class Detectron2(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/detectron2/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["instance segmentation"]
         self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

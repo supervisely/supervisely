@@ -1,5 +1,5 @@
 # coding: utf-8
-"""list all user roles that are available on private supervisely instance"""
+"""List user roles available in a Supervisely instance."""
 
 # docs
 from __future__ import annotations
@@ -11,6 +11,8 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 
 
 class RoleInfo(NamedTuple):
+    """NamedTuple describing a role entry returned by the API."""
+
     id: int
     role: str
     created_at: str
@@ -18,34 +20,25 @@ class RoleInfo(NamedTuple):
 
 
 class RoleApi(ModuleApiBase):
-    """
-    API for working with Roles. :class:`RoleApi<RoleApi>` object is immutable.
+    """API for working with roles."""
 
-    :param api: API connection to the server
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+        :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+            .. code-block:: python
 
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        roles = api.role.get_list() # api usage example
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                roles = api.role.get_list()
+        """
+        super().__init__(api)
 
     class DefaultRole(IntEnum):
-        """class DefaultRole"""
+        """Built-in role IDs used by the platform (admin/developer/annotator/viewer)."""
 
         ADMIN = 1
         """"""
@@ -59,45 +52,54 @@ class RoleApi(ModuleApiBase):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple RoleInfo information about Role.
+        Sequence of fields that are returned by the API to represent RoleInfo.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            RoleInfo(id=71,
-                     role='manager',
-                     created_at='2019-12-10T14:31:41.878Z',
-                     updated_at='2019-12-10T14:31:41.878Z')
+                RoleInfo(
+                    id=71,
+                    role='manager',
+                    created_at='2019-12-10T14:31:41.878Z',
+                    updated_at='2019-12-10T14:31:41.878Z'
+                )
         """
         return [ApiField.ID, ApiField.ROLE, ApiField.CREATED_AT, ApiField.UPDATED_AT]
 
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **RoleInfo**.
+        Name of the tuple that represents RoleInfo.
         """
         return "RoleInfo"
 
     def get_list(self, filters: Optional[List[Dict[str, str]]] = None) -> List[RoleInfo]:
         """
-        List of all roles that are available on private Supervisely instance.
+        List of all roles that are available on the Supervisely instance.
 
         :param filters: List of params to sort output Roles.
-        :type filters: list
-        :return: List of all roles with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[RoleInfo]`
-        :Usage example:
+        :type filters: List[Dict[str, str]]
+        :returns: List of all roles with information.
+        :rtype: List[:class:`~supervisely.api.role_api.RoleInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            roles = api.role.get_list()
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                roles = api.role.get_list()
         """
         return self.get_list_all_pages("roles.list", {ApiField.FILTER: filters or []})
 

@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import copy
 import enum
+import functools
 import json
 import os
 import queue
@@ -11,10 +12,20 @@ import threading
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, Union
 
 import jsonpatch
+import jsonpointer
 from fastapi import Request
 
+try:  # requires python >= 3.9
+    import patchdiff
+    from patchdiff.serialize import to_str_paths
+except ImportError:
+    patchdiff = None
+    to_str_paths = None
+
+import supervisely.app.fastapi.multi_user as multi_user
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.fastapi import run_sync
@@ -30,7 +41,9 @@ _pool = ThreadPoolExecutor()
 @contextlib.asynccontextmanager
 async def async_lock(lock: threading.Lock):
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(_pool, lock.acquire)
+    # poll with timeout: avoids deadlock when nested locks compete for _pool slots
+    while not await loop.run_in_executor(_pool, functools.partial(lock.acquire, timeout=0.1)):
+        pass
     try:
         yield  # the lock is held
     finally:
@@ -38,6 +51,8 @@ async def async_lock(lock: threading.Lock):
 
 
 class Field(str, enum.Enum):
+    """Top-level JSON sections used by the app protocol (`state`, `data`, `context`)."""
+
     STATE = "state"
     DATA = "data"
     CONTEXT = "context"
@@ -87,8 +102,87 @@ def get_synced_data_dir():
     return dir
 
 
+def _resolve_append_tokens(src: dict, ops: list) -> list:
+    """Rewrite the RFC 6902 array-append token '-' into an explicit index.
+
+    patchdiff emits {"op": "add", "path": ".../-"} for a push to the end of a
+    list. The token is valid RFC 6902, but the frontend patch appliers shipped
+    with older instances choke on it and drop the whole websocket message, so
+    the UI silently stops updating (issues#5992). Indices are resolved against
+    the document as it looks when the op is applied, not against `src`.
+    """
+    doc = None
+    resolved = []
+    for op in ops:
+        path = op.get("path", "")
+        if path.endswith("/-") and op.get("op") == "add":
+            if doc is None:
+                doc = copy.deepcopy(src)
+                for previous in resolved:
+                    jsonpatch.JsonPatch([previous]).apply(doc, in_place=True)
+            target = jsonpointer.JsonPointer(path[: -len("/-")]).resolve(doc)
+            if not isinstance(target, list):
+                raise ValueError(f"append token on a non-list path: {path}")
+            op = dict(op, path=f"{path[: -len('-')]}{len(target)}")
+        resolved.append(op)
+        if doc is not None:
+            jsonpatch.JsonPatch([op]).apply(doc, in_place=True)
+    return resolved
+
+
+def _diff(src: dict, dst: dict) -> jsonpatch.JsonPatch:
+    """Minimal RFC 6902 diff of `src` -> `dst`.
+
+    patchdiff never emits 'move' ops (jsonpatch's move-folding corrupts
+    patches across subtrees). Without patchdiff (python 3.8) jsonpatch's
+    from_diff is used and its result is verified; a broken patch raises.
+    """
+    if patchdiff is not None:
+        ops, _ = patchdiff.diff(src, dst)
+        return jsonpatch.JsonPatch(_resolve_append_tokens(src, to_str_paths(ops)))
+    patch = jsonpatch.JsonPatch.from_diff(src, dst)
+    if patch.apply(src) != dst:
+        raise ValueError("jsonpatch.from_diff produced an invalid patch")
+    return patch
+
+
+def _fallback_patch(src: dict, dst: dict) -> jsonpatch.JsonPatch:
+    """Valid but non-minimal diff: replace/add/remove of changed top-level keys."""
+    ops = []
+    for key in src:
+        if key not in dst:
+            path = jsonpointer.JsonPointer.from_parts([key]).path
+            ops.append({"op": "remove", "path": path})
+    for key, value in dst.items():
+        path = jsonpointer.JsonPointer.from_parts([key]).path
+        if key not in src:
+            ops.append({"op": "add", "path": path, "value": copy.deepcopy(value)})
+        elif src[key] != value:
+            ops.append({"op": "replace", "path": path, "value": copy.deepcopy(value)})
+    return jsonpatch.JsonPatch(ops)
+
+
+def _safe_diff(src: dict, dst: dict) -> jsonpatch.JsonPatch:
+    """RFC 6902 diff of `src` -> `dst`: if the minimal diff fails, falls back
+    to an explicit replace of changed top-level keys."""
+    try:
+        return _diff(src, dst)
+    except Exception:
+        return _fallback_patch(src, dst)
+
+
 class _PatchableJson(dict):
+    """Base dict that can compute JSON patches and broadcast changes via websockets."""
+
     def __init__(self, field: Field, *args, **kwargs):
+        """
+        :param field: Field enum (STATE, DATA, or CONTEXT).
+        :type field: :class:`~supervisely.app.content.Field`, optional
+        :param args: Passed to dict().
+        :type args: tuple, optional
+        :param kwargs: Passed to dict().
+        :type kwargs: dict, optional
+        """
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()
         self._last = copy.deepcopy(dict(self))
@@ -100,25 +194,49 @@ class _PatchableJson(dict):
             patch = self._get_patch()
         return {self._field: json.loads(patch.to_string())}
 
+    # legacy; kept for external callers
     def _get_patch(self):
         patch = jsonpatch.JsonPatch.from_diff(self._last, self)
         return patch
 
+    # legacy; kept for external callers
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
 
-    async def synchronize_changes(self):
-        patch = self._get_patch()
-        await self._apply_patch(patch)
-        await self._ws.broadcast(self.get_changes(patch))
+    async def _apply_snapshot(self, snapshot: dict, patch: jsonpatch.JsonPatch):
+        # called under self._lock; must not re-acquire it
+        self._last = snapshot
+
+    async def _synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
+        # hold lock through snapshot→patch→broadcast: prevents stale-baseline races
+        # and ensures patches reach the frontend in order
+        async with async_lock(self._lock):
+            snapshot = copy.deepcopy(dict(self))
+            patch = _safe_diff(self._last, snapshot)
+            await self._apply_snapshot(snapshot, patch)
+            if patch.patch:
+                await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
+
+    async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
+        if user_id is not None:
+            async with multi_user.async_session_context(user_id):
+                await self._synchronize_changes(user_id)
+        else:
+            await self._synchronize_changes()
 
     async def send_changes_async(self):
-        await self.synchronize_changes()
+        user_id = None
+        if sly_env.is_multiuser_mode_enabled():
+            user_id = sly_env.user_from_multiuser_app()
+        await self.synchronize_changes(user_id=user_id)
 
     def send_changes(self):
-        run_sync(self.synchronize_changes())
+        user_id = None
+        if sly_env.is_multiuser_mode_enabled():
+            user_id = sly_env.user_from_multiuser_app()
+        run_sync(self.synchronize_changes(user_id=user_id))
 
     def raise_for_key(self, key: str):
         if key in self:
@@ -126,6 +244,8 @@ class _PatchableJson(dict):
 
 
 class StateJson(_PatchableJson, metaclass=Singleton):
+    """Singleton state store synchronized between backend and frontend via JSON patches."""
+
     _global_lock: threading.Lock = None
 
     def __init__(self, *args, **kwargs):
@@ -133,13 +253,20 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             StateJson._global_lock = threading.Lock()
         super().__init__(Field.STATE, *args, **kwargs)
 
+    # legacy; kept for external callers
     async def _apply_patch(self, patch):
         await super()._apply_patch(patch)
         # @TODO: _replace_global to patching for optimization
         await StateJson._replace_global(dict(self))
 
+    async def _apply_snapshot(self, snapshot: dict, patch: jsonpatch.JsonPatch):
+        await super()._apply_snapshot(snapshot, patch)
+        # deepcopy(snapshot), not dict(self): avoids overwriting concurrent mutations;
+        # _replace_global is still used by the from_request path
+        ContentOrigin().update(state=copy.deepcopy(snapshot))
+
     @classmethod
-    async def from_request(cls, request: Request) -> StateJson:
+    async def from_request(cls, request: Request, local: bool = True) -> StateJson:
         if "application/json" not in request.headers.get("Content-Type", ""):
             return None
         content = await request.json()
@@ -149,7 +276,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
         # TODO: should we always replace STATE with {}?
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
-        return cls(d, __local__=True)
+
+        return cls(d, __local__=local)
 
     @classmethod
     async def _replace_global(cls, d: dict):
@@ -164,17 +292,26 @@ class StateJson(_PatchableJson, metaclass=Singleton):
 
 
 class DataJson(_PatchableJson, metaclass=Singleton):
+    """Singleton data store synchronized between backend and frontend via JSON patches."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(Field.DATA, *args, **kwargs)
 
+    # legacy; kept for external callers
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
             ContentOrigin().update(data_patch=copy.deepcopy(patch))
 
+    async def _apply_snapshot(self, snapshot: dict, patch: jsonpatch.JsonPatch):
+        await super()._apply_snapshot(snapshot, patch)
+        ContentOrigin().update(data_patch=copy.deepcopy(patch))
+
 
 class ContentOrigin(metaclass=Singleton):
+    """Background synchronizer that periodically pushes `StateJson`/`DataJson` changes to the server."""
+
     def __init__(self):
         self._SLEEP_TIME = sly_env.content_origin_update_interval()
         self._data_patch_queue = queue.Queue()
@@ -227,7 +364,7 @@ class ContentOrigin(metaclass=Singleton):
                         if patch is None:
                             continue
                         patch.apply(data, in_place=True)
-                    merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
+                    merged_patch = _safe_diff(self._last_sent_data, data)
                     self._send(data_patch=merged_patch, state=last_state)
                     self._last_sent_data = copy.deepcopy(data)
                     failed_patch = None

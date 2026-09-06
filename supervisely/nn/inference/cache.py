@@ -23,9 +23,15 @@ from supervisely.video.video import VideoFrameReader
 
 
 class PersistentImageLRUCache(LRUCache):
+    """LRU cache that persists image values to disk and loads them on access."""
+
     __marker = object()
 
     def __init__(self, maxsize, filepath: Path, getsizeof=None):
+        """:param maxsize: Max cache size.
+        :param filepath: Directory for persisted images.
+        :param getsizeof: Optional size function for cache eviction.
+        """
         super().__init__(maxsize)
         self._base_dir = filepath
 
@@ -65,7 +71,13 @@ class PersistentImageLRUCache(LRUCache):
 
 
 class PersistentImageTTLCache(TTLCache):
+    """TTL cache that persists cached file paths on disk and deletes expired items' files."""
+
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
+        """:param maxsize: Max cache size.
+        :param ttl: Time-to-live in seconds.
+        :param filepath: Directory for persisted files.
+        """
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
@@ -73,7 +85,7 @@ class PersistentImageTTLCache(TTLCache):
         try:
             super().pop(*args, **kwargs)
         except Exception:
-            sly.logger.warn("Cache data corrupted. Cleaning the cache...", exc_info=True)
+            sly.logger.warning("Cache data corrupted. Cleaning the cache...", exc_info=True)
 
             def _delitem(self, key):
                 try:
@@ -133,6 +145,7 @@ class PersistentImageTTLCache(TTLCache):
         super().expire(time)
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
+            sly.logger.debug("Deleting expired items")
             for key in deleted:
                 try:
                     silent_remove(existing_items[key])
@@ -205,7 +218,11 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class InferenceImageCache:
+    """Disk-backed cache used by inference apps to store images/frames/videos and related metadata."""
+
     class _LoadType(Enum):
+        """Internal enum describing how a cached image should be loaded (by ID/hash/frame/video)."""
+
         ImageId: str = "IMAGE"
         ImageHash: str = "HASH"
         Frame: str = "FRAME"
@@ -219,6 +236,12 @@ class InferenceImageCache:
         base_folder: str = env.smart_cache_container_dir(),
         log_progress: bool = False,
     ) -> None:
+        """:param maxsize: Max cache size.
+        :param ttl: Time-to-live in seconds.
+        :param is_persistent: If True, persist to disk.
+        :param base_folder: Directory for persisted cache.
+        :param log_progress: If True, log cache operations.
+        """
         self.is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
@@ -239,18 +262,22 @@ class InferenceImageCache:
             self._cache.clear(False)
 
     def download_image(self, api: sly.Api, image_id: int, related: bool = False):
+        api.logger.debug(f"Download image #{image_id} to cache started")
         name = self._image_name(image_id)
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
+            api.logger.debug(f"Adding image #{image_id} to cache")
             self._load_queue.set(name, image_id)
-            api.logger.debug(f"Add image #{image_id} to cache")
             if not related:
                 img = api.image.download_np(image_id)
             else:
                 img = api.pointcloud.download_related_image(image_id)
             self._add_to_cache(name, img)
+            api.logger.debug(f"Added image #{image_id} to cache")
             return img
+        else:
+            api.logger.debug(f"Image #{image_id} found in cache")
 
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache.get_image(name)
@@ -641,7 +668,7 @@ class InferenceImageCache:
         Run cache_task in new thread.
 
         :param api: supervisely api
-        :type api: sly.Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param list_of_ids_ranges_or_hashes: information abount images/frames need to be loaded;
         to download images, pass list of integer IDs (`dataset_id` requires)
         or list of hash strings (`dataset_id` could be None);
@@ -771,7 +798,7 @@ class InferenceImageCache:
     def _download_many(
         self,
         indexes: List[Union[int, str]],
-        name_cunstructor: Callable[[int], str],
+        name_constructor: Callable[[int], str],
         load_generator: Callable[
             [List[int]],
             Generator[Tuple[Union[int, str], np.ndarray], None, None],
@@ -785,24 +812,42 @@ class InferenceImageCache:
         all_frames = [None for _ in range(len(indexes))]
 
         def get_one_image(item):
-            pos, index = item
+            pos, hash_or_id = item
             if video_id in self._cache:
-                return pos, self.get_frame_from_cache(video_id, index)
-            return pos, self._cache.get_image(name_cunstructor(index))
+                try:
+                    frame = self.get_frame_from_cache(video_id, hash_or_id)
+                except Exception as e:
+                    logger.error(
+                        f"Error retrieving frame from cache: {repr(e)}. Frame will be re-downloaded",
+                        exc_info=True,
+                    )
+                    ids_to_load.append(hash_or_id)
+                    return pos, None
+                return pos, frame
+            try:
+                image = self._cache.get_image(name_constructor(hash_or_id))
+            except Exception as e:
+                logger.error(
+                    f"Error retrieving image from cache: {repr(e)}. Image will be re-downloaded",
+                    exc_info=True,
+                )
+                ids_to_load.append(hash_or_id)
+                return pos, None
+            return pos, image
 
         position = 0
         batch_size = 4
         for batch in batched(indexes, batch_size):
-            indexes_to_load = []
+            ids_to_load = []
             items = []
             for hash_or_id in batch:
-                name = name_cunstructor(hash_or_id)
+                name = name_constructor(hash_or_id)
                 self._wait_if_in_queue(name, logger)
-
+                pos_by_name[name] = position
                 if name not in self._cache and video_id not in self._cache:
                     self._load_queue.set(name, hash_or_id)
-                    indexes_to_load.append(hash_or_id)
-                    pos_by_name[name] = position
+                    ids_to_load.append(hash_or_id)
+
                 elif return_images is True:
                     items.append((position, hash_or_id))
                 position += 1
@@ -810,14 +855,16 @@ class InferenceImageCache:
             if len(items) > 0:
                 with ThreadPoolExecutor(min(64, len(items))) as executor:
                     for pos, image in executor.map(get_one_image, items):
+                        if image is None:
+                            continue
                         all_frames[pos] = image
                         if progress_cb is not None:
                             progress_cb()
 
             download_time = time.monotonic()
-            if len(indexes_to_load) > 0:
-                for id_or_hash, image in load_generator(indexes_to_load):
-                    name = name_cunstructor(id_or_hash)
+            if len(ids_to_load) > 0:
+                for id_or_hash, image in load_generator(ids_to_load):
+                    name = name_constructor(id_or_hash)
                     self._add_to_cache(name, image)
 
                     if return_images:
@@ -828,13 +875,13 @@ class InferenceImageCache:
             download_time = time.monotonic() - download_time
 
             # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-            if indexes_to_load:
-                indexes_to_load = list(indexes_to_load)
+            if ids_to_load:
+                ids_to_load = list(ids_to_load)
                 logger.debug(
-                    f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
-                    extra={"indexes": indexes_to_load, "download_time": download_time},
+                    f"Images/Frames added to cache: {ids_to_load} in {download_time:.2f} sec",
+                    extra={"indexes": ids_to_load, "download_time": download_time},
                 )
-            found = set(batch).difference(indexes_to_load)
+            found = set(batch).difference(ids_to_load)
             if found:
                 logger.debug(f"Images/Frames found in cache: {list(found)}")
 

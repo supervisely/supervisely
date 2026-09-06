@@ -84,8 +84,8 @@ def set_download(local_path: str):
 
     :param local_path: path to the local file or directory, which will be uploaded to the teamfiles
     :type local_path: str
-    :return: FileInfo object
-    :rtype: FileInfo
+    :returns: FileInfo object
+    :rtype: :class:`~supervisely.api.file_api.FileInfo`
     """
     if os.path.isdir(local_path):
         archive_path = f"{local_path}.tar"

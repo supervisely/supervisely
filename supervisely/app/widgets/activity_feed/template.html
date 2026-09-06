@@ -1,0 +1,22 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/activity_feed/style.css" />
+
+<div class="sly-activity-feed">
+  {% for item in widget._items %}
+  <div class="sly-activity-feed-item" v-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}]">
+    <div class="sly-activity-feed-marker">
+      <div class="sly-activity-feed-circle" :class="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status">
+        <i v-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status === 'completed'" class="el-icon-check"></i>
+        <i v-else-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status === 'failed'"
+          class="el-icon-close"></i>
+        <i v-else-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status === 'in_progress'"
+          class="el-icon-loading"></i>
+        <i v-else class="el-icon-time"></i>
+      </div>
+      <div class="sly-activity-feed-line"></div>
+    </div>
+    <div class="sly-activity-feed-content">
+      {{{item.content}}}
+    </div>
+  </div>
+  {% endfor %}
+</div>

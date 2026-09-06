@@ -13,6 +13,7 @@ from supervisely.convert.image.high_color.high_color_depth import (
     HighColorDepthImageConverter,
 )
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.mesh.mesh_converter import MeshConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
@@ -38,6 +39,7 @@ from supervisely.task.progress import Progress
 
 
 class ImportManager:
+    """Manages import of external data (archives, folders) into Supervisely projects via modality-specific converters."""
 
     def __init__(
         self,
@@ -47,6 +49,19 @@ class ImportManager:
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
+        """:param input_data: Path(s) to input data (archives or directories).
+        :type input_data: Union[str, List[str]]
+        :param project_type: Project modality (IMAGES, VIDEOS, etc.).
+        :type project_type: ProjectType
+        :param team_id: Team ID for upload. Defaults to env.
+        :type team_id: int, optional
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface
+        :param upload_as_links: If True, upload as links.
+        :type upload_as_links: bool
+
+        :raises ValueError: If team_id invalid or project type unsupported.
+        """
         self._api = Api.from_env()
         if team_id is not None:
             team_info = self._api.team.get_info_by_id(team_id)
@@ -59,12 +74,13 @@ class ImportManager:
         self._labeling_interface = labeling_interface
         self._upload_as_links = upload_as_links
         self._remote_files_map = {}
+        self._team_files_id_map: dict = {}
         self._modality = project_type
 
         if isinstance(input_data, str):
             input_data = [input_data]
 
-        self._input_data = get_data_dir()
+        self._input_data = os.path.abspath(get_data_dir())
         for data in input_data:
             self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
@@ -93,6 +109,7 @@ class ImportManager:
             ProjectType.POINT_CLOUDS.value: PointcloudConverter,
             ProjectType.VOLUMES.value: VolumeConverter,
             ProjectType.POINT_CLOUD_EPISODES.value: PointcloudEpisodeConverter,
+            ProjectType.MESHES.value: MeshConverter,
         }
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
@@ -102,12 +119,13 @@ class ImportManager:
             self._labeling_interface,
             self._upload_as_links,
             self._remote_files_map,
+            self._team_files_id_map,
         )
         return modality_converter.detect_format()
 
-    def upload_dataset(self, dataset_id):
+    def upload_dataset(self, dataset_id) -> Optional[int]:
         """Upload converted data to Supervisely"""
-        self.converter.upload_dataset(self._api, dataset_id)
+        return self.converter.upload_dataset(self._api, dataset_id)
 
     # def validate_format(self):
     #     raise NotImplementedError
@@ -128,6 +146,7 @@ class ImportManager:
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
+                ProjectType.MESHES.value,
             ]:
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data)
@@ -135,11 +154,19 @@ class ImportManager:
                 if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
                     self._scan_remote_files(input_data)
                 logger.info(f"Input data is a remote file: {input_data}. Downloading...")
-                return self._download_input_data(input_data)
+                local_path = self._download_input_data(input_data)
+                if self._is_team_files_path(input_data) and str(self._modality) in [
+                    ProjectType.POINT_CLOUDS.value,
+                    ProjectType.POINT_CLOUD_EPISODES.value,
+                ]:
+                    self._build_team_files_id_map(input_data, local_path, is_dir=False)
+                return local_path
         elif self._api.storage.dir_exists(self._team_id, input_data):
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
+                ProjectType.POINT_CLOUDS.value,
+                ProjectType.MESHES.value,
             ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)
@@ -147,9 +174,38 @@ class ImportManager:
                 if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
                     self._scan_remote_files(input_data, is_dir=True)
                 logger.info(f"Input data is a remote directory: {input_data}. Downloading...")
-                return self._download_input_data(input_data, is_dir=True)
+                local_path = self._download_input_data(input_data, is_dir=True)
+                if self._is_team_files_path(input_data) and str(self._modality) in [
+                    ProjectType.POINT_CLOUDS.value,
+                    ProjectType.POINT_CLOUD_EPISODES.value,
+                ]:
+                    self._build_team_files_id_map(input_data, local_path, is_dir=True)
+                return local_path
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
+
+    _CLOUD_STORAGE_PREFIXES = ("s3://", "azure://", "google://", "agent://", "fs://")
+
+    def _is_team_files_path(self, path: str) -> bool:
+        return not any(path.startswith(prefix) for prefix in self._CLOUD_STORAGE_PREFIXES)
+
+    def _build_team_files_id_map(self, remote_path: str, local_path: str, is_dir: bool = False):
+        """Build {local_abs_path: (file_id, remote_path)} for all files from Team Files."""
+        if is_dir:
+            files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
+            dir_path = remote_path.rstrip("/")
+            for file in files:
+                if not hasattr(file, "id") or file.id is None:
+                    continue
+                new_local = os.path.abspath(file.path.replace(dir_path, local_path))
+                self._team_files_id_map[new_local] = (file.id, file.path)
+        else:
+            file_info = self._api.storage.get_info_by_path(self._team_id, remote_path)
+            if file_info and hasattr(file_info, "id") and file_info.id is not None:
+                self._team_files_id_map[os.path.abspath(local_path)] = (
+                    file_info.id,
+                    remote_path,
+                )
 
     def _download_input_data(self, remote_path, is_dir=False):
         """Download input data from Supervisely"""
@@ -191,7 +247,7 @@ class ImportManager:
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
 
-        local_path = os.path.join(get_data_dir(), dir_name)
+        local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
@@ -217,7 +273,7 @@ class ImportManager:
         dir_name = os.path.basename(dir_path)
 
         local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
-        mkdir(local_path, remove_content_if_exists=True)
+        mkdir(local_path, remove_content_if_exists=False)
 
         if is_dir:
             files = self._api.storage.list(self._team_id, remote_path, include_folders=False)

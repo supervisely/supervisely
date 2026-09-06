@@ -1,8 +1,6 @@
 # coding: utf-8
 
 from supervisely.project.project import Project
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
-from supervisely.annotation.tag_meta import TagValueType
 from supervisely.sly_logger import logger
 
 

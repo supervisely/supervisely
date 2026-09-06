@@ -1,7 +1,11 @@
-from typing import Any, Dict
+import os
+from typing import Any, Dict, List
 
 # Safe optional import for torch to prevent pylint import-error when the library is absent.
+if "LOGLEVEL" in os.environ:
+    os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
 try:
+
     import torch  # type: ignore
 except ImportError:  # pragma: no cover
     torch = None  # type: ignore
@@ -19,11 +23,16 @@ from supervisely.app.widgets import (
 
 
 class TrainingProcess:
+    """TrainApp GUI component for managing the training process."""
     title = "Training Process"
     description = "Manage training process"
     lock_message = "Select previous step to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
+        """
+        :param app_options: App options.
+        :type app_options: Dict[str, Any]
+        """
         # Initialize widgets to None
         self.select_device = None
         self.select_device_field = None
@@ -31,6 +40,8 @@ class TrainingProcess:
         self.experiment_name_field = None
         self.start_button = None
         self.stop_button = None
+        self.resume_button = None
+        self.resume_info_text = None
         self.validator_text = None
         self.container = None
         self.card = None
@@ -40,11 +51,22 @@ class TrainingProcess:
         self.app_options = app_options
 
         # GUI Components
+        self.is_multi_gpu = self.app_options.get("multi_gpu", False)
         if self.app_options.get("device_selector", False):
-            self.select_device = SelectCudaDevice()
+            self.select_device = SelectCudaDevice(
+                sort_by_free_ram=True, multiple=self.is_multi_gpu, width_px=275
+            )
+            select_device_field_title = None
+            select_device_field_description = None
+            if self.is_multi_gpu:
+                select_device_field_title = "Select CUDA devices"
+                select_device_field_description = "The devices on which the model will be trained."
+            else:
+                select_device_field_title = "Select CUDA device"
+                select_device_field_description = "The device on which the model will be trained."
             self.select_device_field = Field(
-                title="Select CUDA device",
-                description="The device on which the model will be trained",
+                title=select_device_field_title,
+                description=select_device_field_description,
                 content=self.select_device,
             )
             self.display_widgets.extend([self.select_device_field])
@@ -59,11 +81,18 @@ class TrainingProcess:
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
+        # shown when the task is relaunched after a failed upload; Start is disabled then
+        self.resume_button = Button(
+            "Resume Upload", button_type="success", icon="zmdi zmdi-cloud-upload"
+        )
+        self.resume_button.hide()
+        self.resume_info_text = Text("")
+        self.resume_info_text.hide()
         button_container = Container(
-            [self.start_button, self.stop_button, Empty()],
+            [self.start_button, self.resume_button, self.stop_button, Empty()],
             "horizontal",
             overflow="wrap",
-            fractions=[1, 1, 10],
+            fractions=[1, 1, 1, 10],
             gap=1,
         )
 
@@ -71,7 +100,12 @@ class TrainingProcess:
         self.validator_text.hide()
 
         self.display_widgets.extend(
-            [self.experiment_name_field, button_container, self.validator_text]
+            [
+                self.experiment_name_field,
+                self.resume_info_text,
+                button_container,
+                self.validator_text,
+            ]
         )
 
         self.container = Container(self.display_widgets)
@@ -99,8 +133,16 @@ class TrainingProcess:
         else:
             return "cuda:0"
 
+    def get_devices(self) -> List:
+        if self.app_options.get("device_selector", False):
+            return self.select_device.get_devices()
+        else:
+            return ["cuda:0"]
+
     def get_device_name(self) -> str:
         device = self.get_device()
+        if isinstance(device, list):
+            device = device[0]
 
         if torch is not None and device.startswith("cuda"):
             device_name = torch.cuda.get_device_name(device)
@@ -108,6 +150,17 @@ class TrainingProcess:
             device_name = "CPU"
 
         return device_name
+
+    def get_device_names(self) -> List[str]:
+        devices = self.get_devices()
+        if torch is None:
+            return ["CPU"]
+        device_names = []
+        for device in devices:
+            if device.startswith("cuda"):
+                device_name = torch.cuda.get_device_name(device)
+                device_names.append(device_name)
+        return device_names
 
     def get_experiment_name(self) -> str:
         return self.experiment_name_input.get_value()

@@ -29,8 +29,20 @@ except ImportError:
 
 
 class InteractiveSegmentation(Inference):
+    """Inference server base for click-based interactive segmentation (smart tool) backends."""
+
     class Click:
+        """Single user click point (x/y) with positive/negative flag."""
+
         def __init__(self, x, y, is_positive):
+            """
+            :param x: X coordinate.
+            :type x: int
+            :param y: Y coordinate.
+            :type y: int
+            :param is_positive: True for foreground.
+            :type is_positive: bool
+            """
             self.x = x
             self.y = y
             self.is_positive = is_positive
@@ -45,6 +57,7 @@ class InteractiveSegmentation(Inference):
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
+        """See :class:`~supervisely.nn.inference.inference.Inference` for params."""
         _smart_cache_ttl = sly_env.smart_cache_ttl()
         _fast_cache_ttl = max(1, _smart_cache_ttl // 2)
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
@@ -60,7 +73,7 @@ class InteractiveSegmentation(Inference):
                 self.load_on_device(model_dir, "cuda")
             except RuntimeError:
                 self.load_on_device(model_dir, "cpu")
-                logger.warn("Failed to load model on CUDA device.")
+                logger.warning("Failed to load model on CUDA device.")
 
         logger.debug(
             "Smart cache params",
@@ -124,7 +137,7 @@ class InteractiveSegmentation(Inference):
                     smtool_state["negative"],
                 )
                 if len(positive_clicks) + len(negative_clicks) == 0:
-                    logger.warn("No clicks received.")
+                    logger.warning("No clicks received.")
                     response = {
                         "origin": None,
                         "bitmap": None,
@@ -133,7 +146,7 @@ class InteractiveSegmentation(Inference):
                     }
                     return response
             except Exception as exc:
-                logger.warn("Error parsing request:" + str(exc), exc_info=True)
+                logger.warning("Error parsing request:" + str(exc), exc_info=True)
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "400: Bad request.", "success": False}
 
@@ -143,7 +156,7 @@ class InteractiveSegmentation(Inference):
             clicks = functional.transform_clicks_to_crop(crop, clicks)
             is_in_bbox = functional.validate_click_bounds(crop, clicks)
             if not is_in_bbox:
-                logger.warn(f"Invalid value: click is out of bbox bounds.")
+                logger.warning(f"Invalid value: click is out of bbox bounds.")
                 return {
                     "origin": None,
                     "bitmap": None,
@@ -240,7 +253,7 @@ class InteractiveSegmentation(Inference):
                 api = request.state.api
                 smtool_states = request.state.context.get("states", [])
             except Exception as exc:
-                logger.warn("Error parsing request:" + str(exc), exc_info=True)
+                logger.warning("Error parsing request:" + str(exc), exc_info=True)
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "400: Bad request.", "success": False}
 
@@ -251,7 +264,7 @@ class InteractiveSegmentation(Inference):
                     smtool_state["negative"],
                 )
                 if len(positive_clicks) + len(negative_clicks) == 0:
-                    logger.warn("No clicks received.")
+                    logger.warning("No clicks received.")
                     result.append(
                         {
                             "origin": None,
@@ -268,7 +281,7 @@ class InteractiveSegmentation(Inference):
                 clicks = functional.transform_clicks_to_crop(crop, clicks)
                 is_in_bbox = functional.validate_click_bounds(crop, clicks)
                 if not is_in_bbox:
-                    logger.warn(f"Invalid value: click is out of bbox bounds.")
+                    logger.warning(f"Invalid value: click is out of bbox bounds.")
                     result.append(
                         {
                             "origin": None,
@@ -380,7 +393,7 @@ class InteractiveSegmentation(Inference):
                         smtool_state["negative"],
                     )
                     if len(positive_clicks) + len(negative_clicks) == 0:
-                        logger.warn("No clicks received.")
+                        logger.warning("No clicks received.")
                         result.append(
                             {
                                 "origin": None,
@@ -391,7 +404,7 @@ class InteractiveSegmentation(Inference):
                         )
                         continue
                 except Exception as exc:
-                    logger.warn("Error parsing request:" + str(exc), exc_info=True)
+                    logger.warning("Error parsing request:" + str(exc), exc_info=True)
                     return JSONResponse(
                         {"message": "400: Bad request.", "success": False}, status_code=400
                     )
@@ -402,7 +415,7 @@ class InteractiveSegmentation(Inference):
                 clicks = functional.transform_clicks_to_crop(crop, clicks)
                 is_in_bbox = functional.validate_click_bounds(crop, clicks)
                 if not is_in_bbox:
-                    logger.warn(f"Invalid value: click is out of bbox bounds.")
+                    logger.warning(f"Invalid value: click is out of bbox bounds.")
                     result.append(
                         {
                             "origin": None,

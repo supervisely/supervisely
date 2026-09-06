@@ -123,21 +123,12 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
 def get_scores_from_table(csv_file_path: str, plane: str) -> dict:
     """Get scores from CSV table and return nested dictionary structure.
 
-    Args:
-        csv_file_path: Path to the CSV file containing layer scores
-
-    Returns:
-        Nested dictionary with structure:
-        {
-            "label_index": {
-                "slice_index": {
-                    "127": {
-                        "score": float_value,
-                        "comment": ""
-                    }
-                }
-            }
-        }
+    :param csv_file_path: Path to the CSV file containing layer scores
+    :type csv_file_path: str
+    :param plane: Plane prefix
+    :type plane: str
+    :returns: Nested dictionary with structure:
+    :rtype: dict
     """
     import csv
 
@@ -213,7 +204,12 @@ def get_class_id_to_pixel_value_map(meta: ProjectMeta) -> dict:
 
 
 class AnnotationMatcher:
+    """Maps NIfTI annotation filenames to volume items for matching masks/labels during NIfTI import."""
+
     def __init__(self, items, dataset_id):
+        """:param items: List of NIfTI items with ann_data paths.
+        :param dataset_id: Target dataset ID for volume matching.
+        """
         self._ann_paths = defaultdict(list)
         self._item_by_filename = {}
         self._item_by_path = {}

@@ -12,6 +12,8 @@ except ImportError:
 
 
 class SlyCOCOeval(COCOeval):
+    """COCO evaluation wrapper with customized summarize output for Supervisely benchmark reports."""
+
     def summarize(self):
         """
         Compute and display summary metrics for evaluation results.

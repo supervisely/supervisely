@@ -17,7 +17,7 @@ from supervisely.labeling_jobs import constants as constants
 
 def total_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of Labeling Jobs
+    :returns: Description about total number of Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return "TOTAL", "the total number of jobs in current team"
@@ -25,7 +25,7 @@ def total_desc() -> Tuple[str, str]:
 
 def is_completed_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of completed Labeling Jobs
+    :returns: Description about total number of completed Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return "COMPLETED", "the number of completed jobs"
@@ -33,8 +33,8 @@ def is_completed_desc() -> Tuple[str, str]:
 
 def is_completed(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is completed, otherwise None
-    :rtype: :class:`bool` or :class:`None`
+    :returns: True if Labeling Job is completed, otherwise None
+    :rtype: bool or None
     """
     if job_info.status == str(Status.COMPLETED):
         return True
@@ -42,7 +42,7 @@ def is_completed(job_info: NamedTuple) -> bool:
 
 def is_stopped_desc() -> Tuple[str, str]:
     """
-    :return: Description about number of stopped Labeling Jobs
+    :returns: Description about number of stopped Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return "STOPPED", "the number of stopped jobs"
@@ -50,8 +50,8 @@ def is_stopped_desc() -> Tuple[str, str]:
 
 def is_stopped(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is stopped, otherwise None
-    :rtype: :class:`bool` or :class:`None`
+    :returns: True if Labeling Job is stopped, otherwise None
+    :rtype: bool or None
     """
     if job_info.status == str(Status.STOPPED):
         return True
@@ -59,7 +59,7 @@ def is_stopped(job_info: NamedTuple) -> bool:
 
 def is_not_started_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of pending Labeling Jobs
+    :returns: Description about total number of pending Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return "PENDING", "the number of jobs labeler haven't even opened yet (created but not started)"
@@ -67,8 +67,8 @@ def is_not_started_desc() -> Tuple[str, str]:
 
 def is_not_started(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is not started, otherwise None
-    :rtype: :class:`bool` or :class:`None`
+    :returns: True if Labeling Job is not started, otherwise None
+    :rtype: bool or None
     """
     if job_info.status == str(Status.PENDING):
         return True
@@ -76,7 +76,7 @@ def is_not_started(job_info: NamedTuple) -> bool:
 
 def total_items_count_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of items in all Labeling Jobs
+    :returns: Description about total number of items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return "TOTAL", "the total number of items in all labeling jobs"
@@ -84,15 +84,15 @@ def total_items_count_desc() -> Tuple[str, str]:
 
 def total_items_count(job_info: NamedTuple) -> int:
     """
-    :return: Number of total items count in Labeling Jobs
-    :rtype: :class:`int`
+    :returns: Number of total items count in Labeling Jobs
+    :rtype: int
     """
     return job_info.images_count
 
 
 def labeled_items_count_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of labeled items in all Labeling Jobs
+    :returns: Description about total number of labeled items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return (
@@ -104,8 +104,8 @@ def labeled_items_count_desc() -> Tuple[str, str]:
 # cnt images, that labeler marked as done
 def labeled_items_count(job_info: NamedTuple) -> int:
     """
-    :return: Number of Images, that labeler marked as done
-    :rtype: :class:`int`
+    :returns: Number of Images, that labeler marked as done
+    :rtype: int
     """
     if is_on_labeling(job_info):
         return job_info.finished_images_count
@@ -115,7 +115,7 @@ def labeled_items_count(job_info: NamedTuple) -> int:
 
 def reviewed_items_count_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of reviewed items in all Labeling Jobs
+    :returns: Description about total number of reviewed items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return (
@@ -127,15 +127,15 @@ def reviewed_items_count_desc() -> Tuple[str, str]:
 # cnt images, that reviewer accepted or rejected
 def reviewed_items_count(job_info: NamedTuple) -> int:
     """
-    :return: Number of reviewed Images(accepted and rejected)
-    :rtype: :class:`int`
+    :returns: Number of reviewed Images(accepted and rejected)
+    :rtype: int
     """
     return job_info.accepted_images_count + job_info.rejected_images_count
 
 
 def accepted_items_count_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of accepted items in all Labeling Jobs
+    :returns: Description about total number of accepted items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return (
@@ -146,15 +146,15 @@ def accepted_items_count_desc() -> Tuple[str, str]:
 
 def accepted_items_count(job_info: NamedTuple) -> int:
     """
-    :return: Number of accepted images in all Labeling Jobs
-    :rtype: :class:`int`
+    :returns: Number of accepted images in all Labeling Jobs
+    :rtype: int
     """
     return job_info.accepted_images_count
 
 
 def rejected_items_count_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of rejected items in Labeling Jobs
+    :returns: Description about total number of rejected items in Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
     return (
@@ -165,21 +165,24 @@ def rejected_items_count_desc() -> Tuple[str, str]:
 
 def rejected_items_count(job_info: NamedTuple) -> int:
     """
-    :return: Number of rejected images in all Labeling Jobs
-    :rtype: :class:`int`
+    :returns: Number of rejected images in all Labeling Jobs
+    :rtype: int
     """
     return job_info.rejected_images_count
 
 
 def is_on_labeling_desc() -> str:
+    """
+    Description about number of Labeling Jobs with status 'IN PROGRESS'
+    """
     return "LABELING IN PROGRESS", "the number of jobs with status IN_PROGRESS"
 
 
 # labeling is in progress
 def is_on_labeling(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is in progress, False otherwise
-    :rtype: :class:`bool`
+    :returns: True if Labeling Job is in progress, False otherwise
+    :rtype: bool
     """
     if job_info.status == str(Status.IN_PROGRESS):
         return True
@@ -188,7 +191,7 @@ def is_on_labeling(job_info: NamedTuple) -> bool:
 
 def is_labeling_started_desc() -> Tuple[str, str]:
     """
-    :return: Description about total number of Labeling Jobs that are started by labeler
+    :returns: Description about total number of Labeling Jobs that are started by labeler
     :rtype: :class:`Tuple[str, str]`
     """
     return (
@@ -200,8 +203,8 @@ def is_labeling_started_desc() -> Tuple[str, str]:
 # cnt jobs that are started by labeler and with at least one image that marked "done" by labeler
 def is_labeling_started(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is started, False otherwise
-    :rtype: :class:`bool`
+    :returns: True if Labeling Job is started, False otherwise
+    :rtype: bool
     """
     if is_on_labeling(job_info) and labeled_items_count(job_info) != 0:
         return True
@@ -210,7 +213,7 @@ def is_labeling_started(job_info: NamedTuple) -> bool:
 
 def is_on_review_desc() -> Tuple[str, str]:
     """
-    :return: Description about number of Labeling Jobs with status 'ON REVIEW'
+    :returns: Description about number of Labeling Jobs with status 'ON REVIEW'
     :rtype: :class:`Tuple[str, str]`
     """
     return "ON REVIEW", "the number of jobs with status ON_REVIEW"
@@ -219,8 +222,8 @@ def is_on_review_desc() -> Tuple[str, str]:
 # cnt jobs with "on review" status
 def is_on_review(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is in 'ON REVIEW' status , False otherwise
-    :rtype: :class:`bool`
+    :returns: True if Labeling Job is in 'ON REVIEW' status , False otherwise
+    :rtype: bool
     """
     if job_info.status == str(Status.ON_REVIEW):
         return True
@@ -229,7 +232,7 @@ def is_on_review(job_info: NamedTuple) -> bool:
 
 def is_review_started_desc() -> Tuple[str, str]:
     """
-    :return: Description about number of Labeling Jobs that are started by reviewer
+    :returns: Description about number of Labeling Jobs that are started by reviewer
     :rtype: :class:`Tuple[str, str]`
     """
     return (
@@ -241,8 +244,8 @@ def is_review_started_desc() -> Tuple[str, str]:
 # cnt jobs with at least one reviewed (accepted or rejected) item
 def is_review_started(job_info: NamedTuple) -> bool:
     """
-    :return: True if Labeling Job is in 'review' status and there are Images that reviewer accepted or rejected, False otherwise
-    :rtype: :class:`bool`
+    :returns: True if Labeling Job is in 'review' status and there are Images that reviewer accepted or rejected, False otherwise
+    :rtype: bool
     """
     if is_on_review(job_info) and reviewed_items_count(job_info) != 0:
         return True
@@ -251,7 +254,7 @@ def is_review_started(job_info: NamedTuple) -> bool:
 
 def is_zero_labeling_desc() -> Tuple[str, str]:
     """
-    :return: Description about number of Labeling Jobs with status "IN PROGRESS" with zero labeled items
+    :returns: Description about number of Labeling Jobs with status "IN PROGRESS" with zero labeled items
     :rtype: :class:`Tuple[str, str]`
     """
     return "ZERO LABELED", 'the number of jobs with status "IN PROGRESS" with zero labeled items'
@@ -259,7 +262,7 @@ def is_zero_labeling_desc() -> Tuple[str, str]:
 
 def is_zero_reviewed_desc() -> Tuple[str, str]:
     """
-    :return: Description about number of Labeling Jobs with status "ON REVIEW" with zero reviewed items
+    :returns: Description about number of Labeling Jobs with status "ON REVIEW" with zero reviewed items
     :rtype: :class:`Tuple[str, str]`
     """
     return "ZERO REVIEWED", 'the number of jobs with status "ON REVIEW" with zero reviewed items'
@@ -273,22 +276,30 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
     :type server_address: str
     :param job: Information about labeling job.
     :type job: NamedTuple
-    :return: Labeling job url
-    :rtype: :class:`str`
-    :Usage example:
+    :returns: Labeling job url
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        address = 'https://app.supervisely.com'
-        os.environ['SERVER_ADDRESS'] = address
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
-        job_info = api.labeling_job.get_info_by_id(2)
+        .. code-block:: python
 
-        from supervisely.labeling_jobs.utils import get_job_url
-        job_url = get_job_url(address, job_info)
-        print(job_url)
-        # Output: https://app.supervisely.com/app/images/4/8/58/54?jobId=2
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+            from supervisely.labeling_jobs.utils import get_job_url
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            job_info = api.labeling_job.get_info_by_id(2)
+            job_url = get_job_url(api.server_address, job_info)
+            print(job_url)
+            # Output: https://app.supervisely.com/app/images/4/8/58/54?jobId=2
     """
     result = urllib.parse.urljoin(
         server_address,
@@ -310,27 +321,36 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
     :type jobs: List[NamedTuple]
     :param stats:
     :type stats: list
-    :return: Statistics about Labeling Jobs items as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
+    :returns: Statistics about Labeling Jobs items as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
     :rtype: :class:`pd.DataFrame`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+        .. code-block:: python
 
-        job_info1 = api.labeling_job.get_info_by_id(2)
-        job_info2 = api.labeling_job.get_info_by_id(3)
-        address = https://app.supervisely.com
+            import os
+            from dotenv import load_dotenv
 
-        from supervisely.labeling_jobs.utils import jobs_stats
-        result = jobs_stats(address, [job_info1, job_info2], [1, 2])
-        print(result)
-        # Output:
-        #    ID                                               NAME     STATUS  TOTAL  LABELED  REVIEWED  ACCEPTED  REJECTED        CREATED_AT
-        # 0   2  <a href="https://app.supervisely.com/app/images/...  completed      3        3         3         2         1  08/04/2020 15:10
-        # 1   3  <a href="https://app.supervisely.com/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
+            import supervisely as sly
+            from supervisely.labeling_jobs.utils import jobs_stats
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            address = api.server_address
+            job_info1 = api.labeling_job.get_info_by_id(2)
+            job_info2 = api.labeling_job.get_info_by_id(3)
+
+            result = jobs_stats(address, [job_info1, job_info2], [1, 2])
+            print(result)
+            # Output:
+            #    ID                                               NAME     STATUS  TOTAL  LABELED  REVIEWED  ACCEPTED  REJECTED        CREATED_AT
+            # 0   2  <a href="https://app.supervisely.com/app/images/...  completed      3        3         3         2         1  08/04/2020 15:10
+            # 1   3  <a href="https://app.supervisely.com/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
     """
     import pandas as pd
 
@@ -396,34 +416,43 @@ def jobs_summary(jobs: List[NamedTuple]) -> DataFrame:
 
     :param jobs: List of information about Labeling Jobs.
     :type jobs: List[NamedTuple]
-    :return: Statistics about Labeling Jobs as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
+    :returns: Statistics about Labeling Jobs as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
     :rtype: :class:`pd.DataFrame`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+        .. code-block:: python
 
-        job_info1 = api.labeling_job.get_info_by_id(2)
-        job_info2 = api.labeling_job.get_info_by_id(3)
+            import os
+            from dotenv import load_dotenv
 
-        from supervisely.labeling_jobs.utils import jobs_summary
-        result = jobs_summary([job_info1, job_info2])
-        print(result)
-        # Output:
-        #                 JOB STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
-        # 0  0                 TOTAL         2   100.00 %           the total number of jobs in current team
-        # 1  1             COMPLETED         2   100.00 %                       the number of completed jobs
-        # 2  2               STOPPED         0     0.00 %                         the number of stopped jobs
-        # 3  3               PENDING         0     0.00 %  the number of jobs labeler haven't even opened...
-        # 4  4  LABELING IN PROGRESS         0     0.00 %         the number of jobs with status IN_PROGRESS
-        # 5  5      LABELING STARTED         0     0.00 %  the number of jobs that are started by labeler...
-        # 6  6          ZERO LABELED         0     0.00 %  the number of jobs with status "IN PROGRESS" w...
-        # 7  7             ON REVIEW         0     0.00 %           the number of jobs with status ON_REVIEW
-        # 8  8        REVIEW STARTED         0     0.00 %  the number of jobs that are started by reviewe...
-        # 9  9         ZERO REVIEWED         0     0.00 %  the number of jobs with status "ON REVIEW" wit...
+            import supervisely as sly
+            from supervisely.labeling_jobs.utils import jobs_summary
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            job_info1 = api.labeling_job.get_info_by_id(2)
+            job_info2 = api.labeling_job.get_info_by_id(3)
+
+            result = jobs_summary([job_info1, job_info2])
+            print(result)
+            # Output:
+            #                 JOB STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
+            # 0  0                 TOTAL         2   100.00 %           the total number of jobs in current team
+            # 1  1             COMPLETED         2   100.00 %                       the number of completed jobs
+            # 2  2               STOPPED         0     0.00 %                         the number of stopped jobs
+            # 3  3               PENDING         0     0.00 %  the number of jobs labeler haven't even opened...
+            # 4  4  LABELING IN PROGRESS         0     0.00 %         the number of jobs with status IN_PROGRESS
+            # 5  5      LABELING STARTED         0     0.00 %  the number of jobs that are started by labeler...
+            # 6  6          ZERO LABELED         0     0.00 %  the number of jobs with status "IN PROGRESS" w...
+            # 7  7             ON REVIEW         0     0.00 %           the number of jobs with status ON_REVIEW
+            # 8  8        REVIEW STARTED         0     0.00 %  the number of jobs that are started by reviewe...
+            # 9  9         ZERO REVIEWED         0     0.00 %  the number of jobs with status "ON REVIEW" wit...
     """
     import pandas as pd
 
@@ -512,29 +541,38 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
 
     :param jobs: List of information about Labeling Jobs.
     :type jobs: List[NamedTuple]
-    :return: Statistics about Labeling Jobs images
+    :returns: Statistics about Labeling Jobs images
     :rtype: :class:`pd.DataFrame`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+        .. code-block:: python
 
-        job_info1 = api.labeling_job.get_info_by_id(2)
-        job_info2 = api.labeling_job.get_info_by_id(3)
+            import os
+            from dotenv import load_dotenv
 
-        from supervisely.labeling_jobs.utils import images_summary
-        result = images_summary([job_info1, job_info2])
-        print(result)
-        # Output:
-        #    # ITEM STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
-        # 0  0       TOTAL         5   100.00 %     the total number of items in all labeling jobs
-        # 1  1     LABELED         5   100.00 %  the total number of labeled items (labelers ma...
-        # 2  2    REVIEWED         5   100.00 %  the total number of reviewed items (reviewers ...
-        # 3  3    ACCEPTED         4    80.00 %  the total number of accepted items (reviewers ...
-        # 4  4    REJECTED         1    20.00 %  the total number of rejected items (reviewers ...
+            import supervisely as sly
+            from supervisely.labeling_jobs.utils import images_summary
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            job_info1 = api.labeling_job.get_info_by_id(2)
+            job_info2 = api.labeling_job.get_info_by_id(3)
+
+            result = images_summary([job_info1, job_info2])
+            print(result)
+            # Output:
+            #    # ITEM STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
+            # 0  0       TOTAL         5   100.00 %     the total number of items in all labeling jobs
+            # 1  1     LABELED         5   100.00 %  the total number of labeled items (labelers ma...
+            # 2  2    REVIEWED         5   100.00 %  the total number of reviewed items (reviewers ...
+            # 3  3    ACCEPTED         4    80.00 %  the total number of accepted items (reviewers ...
+            # 4  4    REJECTED         1    20.00 %  the total number of rejected items (reviewers ...
     """
     import pandas as pd
 
@@ -593,6 +631,9 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
 
 
 def classes_summary(stats: List) -> DataFrame:
+    """
+    Get summary statistics about given Labeling Jobs classes.
+    """
     import pandas as pd
 
     class_id_stats = {}
@@ -641,6 +682,9 @@ def classes_summary(stats: List) -> DataFrame:
 
 
 def tags_summary(stats: List) -> DataFrame:
+    """
+    Get summary statistics about given Labeling Jobs tags.
+    """
     import pandas as pd
 
     tag_id_stats = {}

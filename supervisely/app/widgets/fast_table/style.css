@@ -694,3 +694,57 @@
 		 padding-right: 1.5rem;
 	}
 }
+
+.ellipsis {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.row-radio .el-radio__inner {
+	border-width: 1px;
+}
+
+.tailwind .el-checkbox__inner {
+	--tw-border-opacity: 1;
+	border-width: 1px;
+	border-color: rgb(226 232 240 / var(--tw-border-opacity));
+}
+.tailwind .el-checkbox__input.is-checked .el-checkbox__inner,
+.tailwind .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+	--tw-bg-opacity: 1;
+	background-color: rgb(14 165 233 / var(--tw-bg-opacity));
+	border-color: rgb(14 165 233 / var(--tw-bg-opacity));
+}
+/* refine the checkmark so it's thinner and not a full box */
+.tailwind .el-checkbox__inner::after {
+	border-left: 0 !important;
+	border-top: 0 !important;
+}
+.tailwind .el-checkbox__input.is-checked .el-checkbox__inner::after {
+	border-right: 1.5px solid #fff;
+	border-bottom: 1.5px solid #fff;
+	border-left: 0 !important;
+	border-top: 0 !important;
+}
+.tailwind .el-checkbox__input.is-indeterminate .el-checkbox__inner::before {
+	background-color: #fff;
+	height: 2px;
+}
+
+.tailwind .el-checkbox__inner::after {
+	left: 4px;
+	top: 1px;
+	width: 4px;
+	height: 8px;
+}
+
+.sly-fast-table-disable-overlay {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	right: 0px;
+	bottom: 0px;
+	z-index: 2000;
+	background-color: rgba(227, 230, 236, 0.5);
+	border-radius: 0.5rem;
+}

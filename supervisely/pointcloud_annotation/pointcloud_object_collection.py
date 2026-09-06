@@ -11,8 +11,8 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class PointcloudObjectCollection(VideoObjectCollection):
     """
-    Collection with :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject>` instances.
-    :class:`PointcloudObjectCollection<PointcloudObjectCollection>` object is immutable.
+    Collection with :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` instances.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection` object is immutable.
     """
 
     item_type = PointcloudObject
@@ -29,38 +29,32 @@ class PointcloudObjectCollection(VideoObjectCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: PointcloudObjectCollection object
-        :rtype: :class:`PointcloudObjectCollection`
+        :param project_meta: Input project metadata.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud object collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d
-            from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d
+                from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
 
-            obj_collection_json = [
-                {
-                    "classTitle": "car",
-                    "tags": []
-                },
-                {
-                    "classTitle": "bus",
-                    "tags": []
-                }
-            ]
+                obj_collection_json = [
+                    {"classTitle": "car", "tags": []},
+                    {"classTitle": "bus", "tags": []}
+                ]
 
-            class_car = sly.ObjClass('car', Cuboid3d)
-            class_bus = sly.ObjClass('bus', Cuboid3d)
-            classes = sly.ObjClassCollection([class_car, class_bus])
-            meta = sly.ProjectMeta(obj_classes=classes)
+                class_car = sly.ObjClass('car', Cuboid3d)
+                class_bus = sly.ObjClass('bus', Cuboid3d)
+                classes = sly.ObjClassCollection([class_car, class_bus])
+                meta = sly.ProjectMeta(obj_classes=classes)
 
-            pointcloud_obj_collection = sly.PointcloudObjectCollection.from_json(obj_collection_json, meta)
+                pointcloud_obj_collection = sly.PointcloudObjectCollection.from_json(obj_collection_json, meta)
         """
 
         return super().from_json(data, project_meta, key_id_map=key_id_map)

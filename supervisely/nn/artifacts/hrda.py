@@ -4,9 +4,12 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class HRDA(BaseTrainArtifacts):
+    """Placeholder for HRDA semantic segmentation artifacts (not yet implemented)."""
+
     # not enough info to implement
 
     def __init__(self, team_id: int):
+        """See BaseTrainArtifacts for params. Not fully implemented."""
         raise NotImplementedError
         # super().__init__(team_id)
         # self._app_name = "Train HRDA"
@@ -20,6 +23,7 @@ class HRDA(BaseTrainArtifacts):
         # self._config_file = "config.py"
         # self._available_task_types: List[str] = ["semantic segmentation"]
         # self._require_runtime = False
+        # self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         raise NotImplementedError

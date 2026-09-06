@@ -9,7 +9,11 @@ except ImportError:
 
 
 class Pagination(Widget):
+    """Pagination widget that manages current page and page size and emits change callbacks."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CURRENT_CHANGE = "current_change"
         SIZE_CHANGE = "size_change"
 
@@ -25,6 +29,21 @@ class Pagination(Widget):
         page_size_options: List[int] = [10, 20, 30, 40, 50, 100],
         widget_id: str = None,
     ):
+        """:param total: Total number of items.
+        :type total: int
+        :param page_size: Items per page.
+        :type page_size: int
+        :param current_page: Initially selected page (1-based).
+        :type current_page: int
+        :param layout: Layout string or list of components: sizes, prev, pager, next, jumper, total, etc.
+        :type layout: Union[str, List[Literal]]
+        :param compact: If True, use compact style.
+        :type compact: bool
+        :param page_size_options: Available page size options.
+        :type page_size_options: List[int]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._total = total
         self._page_size = page_size
         self._current_page = current_page

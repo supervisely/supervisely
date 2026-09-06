@@ -13,7 +13,12 @@ RAW_COUNTERS = [TRUE_POSITIVE, TRUE_NEGATIVE, FALSE_POSITIVE, FALSE_NEGATIVE]
 
 
 class ClassificationMetrics(MetricsBase):
+    """Computes precision, recall, and F1 for image-level classification tags."""
+
     def __init__(self, tags_mapping, confidence_threshold=0):
+        """:param tags_mapping: Dict mapping ground-truth tag names to prediction tag names.
+        :param confidence_threshold: Min confidence for prediction tags (number type).
+        """
         if len(tags_mapping) < 1:
             raise RuntimeError('At least one tags pair should be defined!')
         self._tags_mapping = tags_mapping.copy()
@@ -28,7 +33,11 @@ class ClassificationMetrics(MetricsBase):
                 return True
             elif tag.meta.value_type == TagValueType.ANY_NUMBER:
                 return tag.value >= self._confidence_threshold
-            elif tag.meta.value_type == TagValueType.ANY_STRING or tag.meta.value_type == TagValueType.ONEOF_STRING:
+            elif tag.meta.value_type in [
+                TagValueType.ANY_STRING,
+                TagValueType.ONEOF_STRING,
+                TagValueType.DATE,
+            ]:
                 logger.warning("Classification tag '{}'".format(tag.name))
                 return True
 
@@ -118,4 +127,3 @@ class ClassificationMetrics(MetricsBase):
         log_line()
 
         log_line(c='*')
-

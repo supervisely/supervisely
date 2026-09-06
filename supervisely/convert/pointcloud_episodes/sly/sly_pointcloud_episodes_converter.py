@@ -1,4 +1,3 @@
-import imghdr
 import os
 
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
@@ -13,6 +12,7 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
+    """Imports Supervisely point cloud episode project format (PCD sequences + JSON annotations) from local folder."""
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY
@@ -38,6 +38,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             self._annotation = ann
             return True
         except Exception as e:
+            logger.warning(f"Failed to parse annotation file '{ann_path}': {e}")
             return False
 
     def validate_key_file(self, key_file_path: str) -> bool:
@@ -71,7 +72,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                     continue
 
                 ext = get_file_ext(full_path)
-                recognized_ext = imghdr.what(full_path)
+                recognized_ext = self._get_image_subtype(full_path)
                 if file in JUNK_FILES:
                     continue
                 elif ext == self.ann_ext:
@@ -118,7 +119,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             if pcd_name in pcd_dict:
                 updated_frames_pcd_map[i] = pcd_name
                 item = self.Item(pcd_dict[pcd_name], i)
-                rimg_dir_name = pcd_name.replace(".pcd", "_pcd")
+                rimg_dir_name = pcd_name.replace(".", "_")
                 rimgs = rimg_dict.get(rimg_dir_name, [])
                 for rimg_path in rimgs:
                     rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"

@@ -6,6 +6,8 @@ from supervisely.app.widgets.empty.empty import Empty
 
 
 class Grid(Widget):
+    """Layout widget that arranges child widgets in a multi-column grid with configurable gap."""
+
     def __init__(
         self,
         widgets: List[Widget],
@@ -13,6 +15,16 @@ class Grid(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
+        """
+        :param widgets: List of child widgets.
+        :type widgets: List[:class:`~supervisely.app.widgets.widget.Widget`]
+        :param columns: Number of columns in the grid.
+        :type columns: int
+        :param gap: Gap between widgets in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._widgets = widgets
         self._columns = columns
         self._gap = gap
@@ -20,7 +32,7 @@ class Grid(Widget):
         if self._columns < 1:
             raise ValueError(f"columns ({self._columns}) < 1")
         if self._columns > len(self._widgets):
-            logger.warn(
+            logger.warning(
                 f"Number of columns ({self._columns}) > number of widgets ({len(self._widgets)}). Columns are set to {len(self._widgets)}"
             )
             self._columns = len(self._widgets)

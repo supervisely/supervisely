@@ -11,6 +11,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class LocalizationAccuracyIoU(BaseVisMetrics):
+    """Visualizes IoU-based localization accuracy for detection comparison reports."""
+
     @property
     def header_md(self) -> MarkdownWidget:
         title = "Localization Accuracy (IoU)"

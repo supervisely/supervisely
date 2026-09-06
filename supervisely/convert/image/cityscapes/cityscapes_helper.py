@@ -77,7 +77,7 @@ def create_ann_from_file(
         else:
             polygon = obj["polygon"]
             if len(polygon) < 3:
-                logger.warn(
+                logger.warning(
                     "Polygon must contain at least 3 points in ann {}, obj_class {}".format(
                         ann_path, class_name
                     )

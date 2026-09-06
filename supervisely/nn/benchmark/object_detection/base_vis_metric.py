@@ -7,6 +7,7 @@ from supervisely.nn.benchmark.object_detection.evaluator import (
 
 
 class DetectionVisMetric(BaseVisMetric):
+    """Base visualization metric for object/instance detection reports with detection-specific click data."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

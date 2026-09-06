@@ -7,6 +7,8 @@ from supervisely.app.widgets import Widget
 
 
 class ProjectSelector(Widget):
+    """Selector for team, workspace, project and optionally datasets; returns selected IDs from state."""
+
     # @TODO: add Routes project changes events
     # class Routes:
     #     def __init__(self,
@@ -22,7 +24,19 @@ class ProjectSelector(Widget):
                  team_is_selectable: bool = True,
                  datasets_is_selectable: bool = True,
                  widget_id: str = None):
-
+        """:param team_id: Initial team ID.
+        :type team_id: int, optional
+        :param workspace_id: Initial workspace ID.
+        :type workspace_id: int, optional
+        :param project_id: Initial project ID.
+        :type project_id: int, optional
+        :param team_is_selectable: If True, team can be changed.
+        :type team_is_selectable: bool
+        :param datasets_is_selectable: If True, datasets can be selected.
+        :type datasets_is_selectable: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._team_id = team_id
         self._workspace_id = workspace_id
         self._project_id = project_id

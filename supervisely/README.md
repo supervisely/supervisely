@@ -7,7 +7,7 @@ in the platform.
 
 The SDK is a product of our experience developind Supervisely plugins and
 contains functionality that we have found helpful and frequently needed for
-pluginc development. The key areas covered by the SDK are
+plugin development. The key areas covered by the SDK are
  * Reading, modifying and writing Supervisely projects on disk.
  * Working with labeling data: geometric objects and tags.
  * Common functionality for developing Supervisely plugins, such as neural

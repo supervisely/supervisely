@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict
-from supervisely.app import StateJson
-from supervisely.app.widgets import Widget
 import traceback
-from supervisely import logger
+from typing import Dict, List, Optional
 
+from supervisely import logger
+from supervisely.app import StateJson
+from supervisely.app.content import DataJson
+from supervisely.app.widgets import Widget
 
 try:
     from typing import Literal
@@ -12,11 +13,22 @@ except ImportError:
 
 
 class Tabs(Widget):
+    """Tabs widget that shows one of several content panes and supports click callbacks."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CLICK = "tab_clicked_cb"
 
     class TabPane:
+        """One tab pane (label + content widget)."""
+
         def __init__(self, label: str, content: Widget):
+            """:param label: Tab label.
+            :type label: str
+            :param content: Widget to display when tab is active.
+            :type content: Widget
+            """
             self.label = label
             self.name = label  # identifier corresponding to the active tab
             self.content = content
@@ -28,13 +40,23 @@ class Tabs(Widget):
         type: Optional[Literal["card", "border-card"]] = "border-card",
         widget_id=None,
     ):
+        """:param labels: List of tab labels (unique, max 10).
+        :type labels: List[str]
+        :param contents: List of widgets, one per tab.
+        :type contents: List[Widget]
+        :param type: Style: "card" or "border-card".
+        :type type: Literal["card", "border-card"], optional
+        :param widget_id: Unique widget identifier.
+
+        :raises ValueError: If labels/contents lengths differ, or labels not unique.
+        """
         if len(labels) != len(contents):
             raise ValueError("labels length must be equal to contents length in Tabs widget.")
         if len(labels) > 10:
             raise ValueError("You can specify up to 10 tabs.")
         if len(set(labels)) != len(labels):
             raise ValueError("All of tab labels should be unique.")
-        self._items = []
+        self._items: List[Tabs.TabPane] = []
         for label, widget in zip(labels, contents):
             self._items.append(Tabs.TabPane(label=label, content=widget))
         self._value = labels[0]
@@ -43,7 +65,10 @@ class Tabs(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        return {"type": self._type}
+        return {
+            "type": self._type,
+            "tabsOptions": {item.name: {"disabled": False} for item in self._items},
+        }
 
     def get_json_state(self) -> Dict:
         return {"value": self._value}
@@ -55,6 +80,18 @@ class Tabs(Widget):
 
     def get_active_tab(self) -> str:
         return StateJson()[self.widget_id]["value"]
+
+    def disable_tab(self, tab_name: str):
+        if tab_name not in [item.name for item in self._items]:
+            raise ValueError(f"Tab with name '{tab_name}' does not exist.")
+        DataJson()[self.widget_id]["tabsOptions"][tab_name]["disabled"] = True
+        DataJson().send_changes()
+
+    def enable_tab(self, tab_name: str):
+        if tab_name not in [item.name for item in self._items]:
+            raise ValueError(f"Tab with name '{tab_name}' does not exist.")
+        DataJson()[self.widget_id]["tabsOptions"][tab_name]["disabled"] = False
+        DataJson().send_changes()
 
     def click(self, func):
         route_path = self.get_route_path(Tabs.Routes.CLICK)

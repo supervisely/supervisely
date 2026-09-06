@@ -11,6 +11,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Overview(BaseVisMetrics):
+    """Overview section with model info and key metrics for segmentation comparison."""
 
     MARKDOWN_OVERVIEW = "markdown_overview"
     MARKDOWN_OVERVIEW_INFO = "markdown_overview_info"
@@ -18,6 +19,7 @@ class Overview(BaseVisMetrics):
     CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
+        """See :class:`~supervisely.nn.benchmark.base_visualizer.BaseVisMetrics` for params."""
         super().__init__(vis_texts, eval_results)
 
     @property
@@ -26,7 +28,7 @@ class Overview(BaseVisMetrics):
         model_names = []
         for eval_result in self.eval_results:
             model_name = eval_result.name or "Custom"
-            model_name = model_name.replace("_", "\_")
+            model_name = model_name.replace("_", r"\_")
             model_names.append(model_name)
 
             info.append(
@@ -61,7 +63,7 @@ class Overview(BaseVisMetrics):
             link_text = eval_result.inference_info.get("custom_checkpoint_path")
             if link_text is None:
                 link_text = url
-            link_text = link_text.replace("_", "\_")
+            link_text = link_text.replace("_", r"\_")
 
             checkpoint_name = eval_result.checkpoint_name
             model_name = eval_result.inference_info.get("model_name") or "Custom"
@@ -71,8 +73,8 @@ class Overview(BaseVisMetrics):
 
             formats = [
                 checkpoint_name,
-                model_name.replace("_", "\_"),
-                checkpoint_name.replace("_", "\_"),
+                model_name.replace("_", r"\_"),
+                checkpoint_name.replace("_", r"\_"),
                 eval_result.inference_info.get("architecture"),
                 eval_result.inference_info.get("runtime"),
                 url,

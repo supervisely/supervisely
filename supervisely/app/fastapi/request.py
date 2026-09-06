@@ -4,11 +4,15 @@ from supervisely.api.api import Api
 
 
 class Request(BaseModel):
+    """Pydantic request model for Supervisely app endpoints (state/context + auto-created API client)."""
+
     state: dict = {}
     context: dict = {}
     api: Api
 
     class Config:
+        """Pydantic configuration for allowing custom (non-pydantic) field types."""
+
         arbitrary_types_allowed = True
 
     @root_validator(pre=True)

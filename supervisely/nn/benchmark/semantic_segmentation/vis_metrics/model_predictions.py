@@ -10,6 +10,8 @@ from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget, Table
 
 
 class ModelPredictions(SemanticSegmVisMetric):
+    """Per-image prediction metrics table for semantic segmentation reports."""
+
     MARKDOWN = "model_predictions"
     TABLE = "model_predictions"
 

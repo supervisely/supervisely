@@ -1,3 +1,7 @@
+"""
+Streaming inference sessions for deployed models.
+"""
+
 import json
 import time
 from os import PathLike
@@ -30,14 +34,35 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 def value_generator(value):
+    """
+    Yield the same value forever.
+
+    Used internally to provide per-item kwargs during iteration.
+    """
     while True:
         yield value
 
 
 class PredictionSession:
+    """
+    Asynchronous inference session that yields :class:`~supervisely.nn.model.prediction.Prediction`.
+
+    The session starts inference immediately during construction and becomes an iterator.
+    Use it directly when you need streaming results or progress control, or use higher-level helpers
+    like :meth:`~supervisely.nn.model.model_api.ModelAPI.predict_detached` method.
+    """
 
     class Iterator:
+        """Internal iterator that fetches pending results in chunks."""
         def __init__(self, total, session: "PredictionSession", tqdm: tqdm = None):
+            """
+            :param total: Total items.
+            :type total: int
+            :param session: PredictionSession.
+            :type session: :class:`~supervisely.nn.model.prediction_session.PredictionSession`
+            :param tqdm: Optional progress bar.
+            :type tqdm: tqdm
+            """
             self.total = total
             self.session = session
             self.results_queue = []
@@ -67,8 +92,66 @@ class PredictionSession:
         dataset_id: Union[List[int], int] = None,
         project_id: Union[List[int], int] = None,
         api: "Api" = None,
+        tracking: bool = None,
+        tracking_config: dict = None,
         **kwargs: dict,
-    ):
+    ): 
+        """
+        Exactly one of the following inputs must be provided: ``input``, ``image_id``, ``video_id``,
+        ``dataset_id``, ``project_id`` (or their plural forms in ``kwargs``: ``image_ids`` etc.).
+
+        :param url: Deployment base URL (e.g. ``https://.../net/<sessionToken>``).
+        :type url: str
+        :param input: Local input (NumPy image, image/video path, directory, or list of them).
+        :type input: numpy.ndarray or str or PathLike or list, optional
+        :param image_id: Image id (or list in ``image_ids`` kwarg).
+        :type image_id: int or List[int], optional
+        :param video_id: Video id (single video supported).
+        :type video_id: int or List[int], optional
+        :param dataset_id: Dataset id(s). Requires ``api`` to resolve datasets/projects.
+        :type dataset_id: int or List[int], optional
+        :param project_id: Project id (single project supported).
+        :type project_id: int or List[int], optional
+        :param api: API client used for downloading by id / resolving datasets/projects.
+        :type api: :class:`~supervisely.api.api.Api`, optional
+        :param tracking: Enable video tracking (if supported by deployment).
+        :type tracking: bool, optional
+        :param tracking_config: Tracking configuration dict (may include ``tracker`` key).
+        :type tracking_config: dict, optional
+        :param kwargs: Additional inference settings (confidence, classes, batch size, etc.).
+        :type kwargs: dict
+        :raises AssertionError: If more than one input source is provided.
+        :raises ValueError: For unsupported inputs or invalid combinations.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.nn.model.prediction_session import PredictionSession
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                session = PredictionSession(
+                    url='https://app.supervisely.com/net/<sessionToken>',
+                    image_id=123,
+                    api=api,
+                    conf=0.25,
+                )
+
+                for pred in session:
+                    _ = pred.boxes
+                    _ = pred.scores
+        """
+
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
             sum(
@@ -112,6 +195,30 @@ class PredictionSession:
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
         }
 
+        if tracking is True:
+            model_info = self._get_session_info()
+            if not model_info.get("tracking_on_videos_support", False):
+                raise ValueError("Tracking is not supported by this model")
+
+            if tracking_config is None:
+                self.tracker = "botsort"
+                self.tracker_settings = {}
+            else:
+                cfg = dict(tracking_config)
+                self.tracker = cfg.pop("tracker", "botsort")
+                self.tracker_settings = cfg
+        else:
+            self.tracker = None
+            self.tracker_settings = None
+
+        if "classes" in kwargs:
+            self.inference_settings["classes"] = kwargs["classes"]
+        # TODO: remove "settings", it is the same as inference_settings
+        if "settings" in kwargs:
+            self.inference_settings.update(kwargs["settings"])
+        if "inference_settings" in kwargs:
+            self.inference_settings.update(kwargs["inference_settings"])
+
         # extra input args
         image_ids = self._set_var_from_kwargs("image_ids", kwargs, image_id)
         video_ids = self._set_var_from_kwargs("video_ids", kwargs, video_id)
@@ -139,7 +246,6 @@ class PredictionSession:
             input = [input]
         if isinstance(input[0], np.ndarray):
             # input is numpy array
-            kwargs = get_valid_kwargs(kwargs, self._predict_images, exclude=["images"])
             self._predict_images(input, **kwargs)
         elif isinstance(input[0], (str, PathLike)):
             if len(input) > 1:
@@ -180,7 +286,7 @@ class PredictionSession:
                         self._iterator = self._predict_images(input, **kwargs)
                     elif ext.lower() in ALLOWED_VIDEO_EXTENSIONS:
                         kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
-                        self._iterator = self._predict_videos(input, **kwargs)
+                        self._iterator = self._predict_videos(input, tracker=self.tracker, tracker_settings=self.tracker_settings, **kwargs)
                     else:
                         raise ValueError(
                             f"Unsupported file extension: {ext}. Supported extensions are: {SUPPORTED_IMG_EXTS + ALLOWED_VIDEO_EXTENSIONS}"
@@ -193,7 +299,7 @@ class PredictionSession:
             if len(video_ids) > 1:
                 raise ValueError("Only one video id can be provided.")
             kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
-            self._iterator = self._predict_videos(video_ids, **kwargs)
+            self._iterator = self._predict_videos(video_ids, tracker=self.tracker, tracker_settings=self.tracker_settings, **kwargs)
         elif dataset_ids is not None:
             kwargs = get_valid_kwargs(
                 kwargs,
@@ -268,6 +374,8 @@ class PredictionSession:
             body["state"]["settings"] = self.inference_settings
         if self.api_token is not None:
             body["api_token"] = self.api_token
+        if "model_prediction_suffix" in self.kwargs:
+            body["state"]["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return body
 
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
@@ -303,6 +411,11 @@ class PredictionSession:
                 if retry_idx + 1 == retries:
                     raise exc
 
+    def _get_session_info(self) -> Dict[str, Any]:
+        method = "get_session_info"
+        r = self._post(method, json=self._get_json_body())
+        return r.json()
+
     def _get_inference_progress(self):
         method = "get_inference_progress"
         r = self._post(method, json=self._get_json_body())
@@ -331,13 +444,31 @@ class PredictionSession:
         logger.info("Inference request will be cleared on the server")
         return r.json()
 
+    def _get_final_result(self):
+        method = "get_inference_result"
+        r = self._post(
+            method,
+            json=self._get_json_body(),
+        )
+        return r.json()
+
     def _on_infernce_end(self):
         if self.inference_request_uuid is None:
             return
+        try:
+            self.final_result = self._get_final_result()
+        except Exception as e:
+            logger.debug("Failed to get final result:", exc_info=True)
         self._clear_inference_request()
 
     @property
     def model_meta(self) -> ProjectMeta:
+        """
+        Lazily fetch output :class:`~supervisely.project.project_meta.ProjectMeta` from the deployment.
+
+        :returns: Model meta.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
+        """
         if self._model_meta is None:
             self._model_meta = ProjectMeta.from_json(
                 self._post("get_model_meta", json=self._get_json_body()).json()
@@ -345,6 +476,11 @@ class PredictionSession:
         return self._model_meta
 
     def stop(self):
+        """
+        Stop the current inference request on the server (if running).
+
+        Also tries to fetch final result metadata and clears the server-side request state.
+        """
         if self.inference_request_uuid is None:
             logger.debug("No active inference request to stop.")
             return
@@ -352,6 +488,13 @@ class PredictionSession:
         self._on_infernce_end()
 
     def is_done(self):
+        """
+        Check whether server-side inference is finished.
+
+        :returns: True if finished.
+        :rtype: bool
+        :raises RuntimeError: If inference has not been started yet.
+        """
         if self.inference_request_uuid is None:
             raise RuntimeError(
                 "Inference is not started. Please start inference before checking the status."
@@ -359,6 +502,13 @@ class PredictionSession:
         return not self._get_inference_progress()["is_inferring"]
 
     def progress(self):
+        """
+        Return numeric progress of the current inference request.
+
+        :returns: Progress value as returned by the backend.
+        :rtype: Any
+        :raises RuntimeError: If inference has not been started yet.
+        """
         if self.inference_request_uuid is None:
             raise RuntimeError(
                 "Inference is not started. Please start inference before checking the status."
@@ -366,6 +516,13 @@ class PredictionSession:
         return self._get_inference_progress()["progress"]
 
     def status(self):
+        """
+        Return raw status JSON for the current inference request.
+
+        :returns: Status dict.
+        :rtype: dict
+        :raises RuntimeError: If inference has not been started yet.
+        """
         if self.inference_request_uuid is None:
             raise RuntimeError(
                 "Inference is not started. Please start inference before checking the status."
@@ -478,18 +635,16 @@ class PredictionSession:
                 "Inference is already running. Please stop it before starting a new one."
             )
         resp = self._post(method, **kwargs).json()
-
         self.inference_request_uuid = resp["inference_request_uuid"]
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
         try:
             resp, has_started = self._wait_for_inference_start(tqdm=self.tqdm)
         except:
             self.stop()
             raise
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
         frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=self.tqdm)
         return frame_iterator
 
@@ -537,7 +692,11 @@ class PredictionSession:
         return self._predict_images_bytes(images, batch_size=batch_size)
 
     def _predict_images_ids(
-        self, images: List[int], batch_size: int = None, upload_mode: str = None
+        self,
+        images: List[int],
+        batch_size: int = None,
+        upload_mode: str = None,
+        output_project_id: int = None,
     ):
         method = "inference_batch_ids_async"
         json_body = self._get_json_body()
@@ -547,6 +706,8 @@ class PredictionSession:
             state["batch_size"] = batch_size
         if upload_mode is not None:
             state["upload_mode"] = upload_mode
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_videos(
@@ -558,7 +719,8 @@ class PredictionSession:
         end_frame=None,
         duration=None,
         direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort"] = None,
+        tracker_settings: dict = None,
         batch_size: int = None,
     ):
         if len(videos) != 1:
@@ -573,6 +735,7 @@ class PredictionSession:
             ("duration", duration),
             ("direction", direction),
             ("tracker", tracker),
+            ("tracker_settings", tracker_settings), 
             ("batch_size", batch_size),
         ):
             if value is not None:
@@ -594,8 +757,11 @@ class PredictionSession:
                 encoder = MultipartEncoder(fields)
                 if self.tqdm is not None:
 
+                    bytes_read = 0
                     def _callback(monitor):
-                        self.tqdm.update(monitor.bytes_read)
+                        nonlocal bytes_read
+                        self.tqdm.update(monitor.bytes_read - bytes_read)
+                        bytes_read = monitor.bytes_read
 
                     video_size = get_file_size(video_path)
                     self._update_progress(self.tqdm, "Uploading video", 0, video_size, is_size=True)
@@ -620,6 +786,7 @@ class PredictionSession:
         upload_mode: str = None,
         iou_merge_threshold: float = None,
         cache_project_on_model: bool = None,
+        output_project_id: int = None,
     ):
         if len(project_ids) != 1:
             raise ValueError("Only one project can be processed at a time.")
@@ -637,7 +804,8 @@ class PredictionSession:
             state["iou_merge_threshold"] = iou_merge_threshold
         if cache_project_on_model is not None:
             state["cache_project_on_model"] = cache_project_on_model
-
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_datasets(

@@ -4,6 +4,7 @@ from supervisely.nn.artifacts import (
     YOLOv5v2,
     YOLOv8,
     MMClassification,
+    MMPretrain,
     MMSegmentation,
     MMDetection,
     MMDetection3,
@@ -15,10 +16,13 @@ from supervisely.nn.artifacts import (
 
 
 class FrameworkName:
+    """String constants for supported training frameworks."""
+
     YOLOV5 = "YOLOv5"
     YOLOV5V2 = "YOLOv5 2.0"
     YOLOV8 = "YOLOv8+"
     MMCLASSIFICATION = "MMClassification"
+    MMPRETRAIN = "MMPretrain"
     MMSEGMENTATION = "MMSegmentation"
     MMDETECTION = "MMDetection"
     MMDETECTION3 = "MMDetection 3.0"
@@ -29,11 +33,14 @@ class FrameworkName:
 
 
 class FrameworkMapper:
+    """Factory that maps a framework name to its :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` class."""
+
     _map = {
         FrameworkName.YOLOV5: YOLOv5,
         FrameworkName.YOLOV5V2: YOLOv5v2,
         FrameworkName.YOLOV8: YOLOv8,
         FrameworkName.MMCLASSIFICATION: MMClassification,
+        FrameworkName.MMPRETRAIN: MMPretrain,
         FrameworkName.MMSEGMENTATION: MMSegmentation,
         FrameworkName.MMDETECTION: MMDetection,
         FrameworkName.MMDETECTION3: MMDetection3,

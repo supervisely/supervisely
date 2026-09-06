@@ -7,6 +7,8 @@ from supervisely.nn.benchmark.visualization.widgets import GalleryWidget, Markdo
 
 
 class ExplorePredictions(SemanticSegmVisMetric):
+    """Gallery and widgets to explore predictions vs ground truth in segmentation reports."""
+
     MARKDOWN = "explore_predictions"
     GALLERY = "explore_predictions"
 

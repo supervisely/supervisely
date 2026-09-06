@@ -49,6 +49,8 @@ from supervisely.sly_logger import logger
 
 
 class ObjectDetectionVisualizer(BaseVisualizer):
+    """Visualizer for object detection model evaluation reports."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

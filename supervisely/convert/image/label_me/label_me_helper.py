@@ -109,7 +109,7 @@ def convert_labelme_to_sly(shape: Dict, obj_cls: ObjClass) -> Optional[Label]:
             geometry = convert_func(coords)
         return Label(geometry, obj_cls)
     except Exception as e:
-        logger.warn(f"Failed to convert shape: {shape_type}. Reason: {repr(e)}")
+        logger.warning(f"Failed to convert shape: {shape_type}. Reason: {repr(e)}")
         return None
 
 
@@ -171,7 +171,7 @@ def update_meta_from_labelme_annotation(meta: ProjectMeta, ann_path: str) -> Pro
         shape_type = shape.get("shape_type")
         geometry_type = labelme_shape_types_to_sly_map.get(shape_type)
         if geometry_type is None:
-            logger.warn(f"Unsupported shape type: {shape_type}. Please, contact support.")
+            logger.warning(f"Unsupported shape type: {shape_type}. Please, contact support.")
         if not cls_name or not shape_type:
             continue
         obj_cls = meta.get_obj_class(cls_name)
@@ -181,7 +181,7 @@ def update_meta_from_labelme_annotation(meta: ProjectMeta, ann_path: str) -> Pro
         elif obj_cls.geometry_type != geometry_type:
             new_cls_name = generate_new_cls_name(meta, cls_name, geometry_type)
             if new_cls_name != cls_name:
-                logger.warn(
+                logger.warning(
                     f"{ann_path}: shape type mismatch for class '{cls_name}'. Renamed to '{new_cls_name}'"
                 )
                 shape["label"] = new_cls_name
@@ -206,7 +206,7 @@ def create_supervisely_annotation(
         return ann
     raw_json = load_json_file(item.ann_data)
     if raw_json.get("imageHeight") != h or raw_json.get("imageWidth") != w:
-        logger.warn("Image size in annotation does not match the actual image size. Skipping.")
+        logger.warning("Image size in annotation does not match the actual image size. Skipping.")
         return ann
 
     shapes = raw_json.get("shapes")
@@ -216,7 +216,7 @@ def create_supervisely_annotation(
         cls_name = renamed_classes.get(cls_name, cls_name)
         obj_class = project_meta.get_obj_class(cls_name)
         if obj_class is None:
-            logger.warn(f"Object class '{cls_name}' not found in project meta. Skipping.")
+            logger.warning(f"Object class '{cls_name}' not found in project meta. Skipping.")
             continue
 
         label = convert_labelme_to_sly(shape, obj_class)

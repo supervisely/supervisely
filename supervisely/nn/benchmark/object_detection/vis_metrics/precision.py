@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Precision(DetectionVisMetric):
+    """Precision metrics and per-class precision chart for detection reports."""
+
     MARKDOWN = "precision"
     MARKDOWN_PER_CLASS = "precision_per_class"
     NOTIFICATION = "precision"

@@ -1,6 +1,6 @@
 # coding: utf-8
+"""Work with point cloud annotations via the Supervisely API."""
 
-# docs
 import asyncio
 from typing import Callable, Dict, List, Optional, Union
 
@@ -17,113 +17,126 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudAnnotationAPI(EntityAnnotationAPI):
-    """
-    :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` for a single point cloud. :class:`PointcloudAnnotationAPI<PointcloudAnnotationAPI>` object is immutable.
+    """API for working with PointcloudAnnotation."""
 
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+        :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+            .. code-block:: python
 
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        pointcloud_id = 19618685
-        ann_info = api.pointcloud.annotation.download(src_pointcloud_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_info = api.pointcloud.annotation.download(pointcloud_id)
+        """
+        super().__init__(api)
 
     _method_download_bulk = "point-clouds.annotations.bulk.info"
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
-    def download(self, pointcloud_id: int) -> List[Dict]:
+    def download(self, pointcloud_id: int) -> Dict:
         """
-        Download information about PointcloudAnnotation by point cloud ID from API.
+        Download information about PointcloudAnnotation by point cloud ID from the Supervisely instance.
 
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
-        :return: Information about PointcloudAnnotation in json format
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Information about PointcloudAnnotation in JSON format
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            pointcloud_id = 19618685
-            ann_info = api.pointcloud.annotation.download(src_pointcloud_id)
-            print(ann_info)
+                import supervisely as sly
 
-            # Output: {
-            #     'datasetId': 62664,
-            #     'description': '',
-            #     'frames': [{'figures': [{'classId': None,
-            #                             'createdAt': '2023-04-05T08:55:52.526Z',
-            #                             'description': '',
-            #                             'geometry': {'dimensions': {'x': 1.6056261,
-            #                                                         'y': 3.8312221,
-            #                                                         'z': 1.8019634},
-            #                                         'position': {'x': 10.181290418102629,
-            #                                                     'y': 9.033275311626847,
-            #                                                     'z': -0.9065660704238034},
-            #                                         'rotation': {'x': 0,
-            #                                                     'y': 0,
-            #                                                     'z': 1.5985649758590998}},
-            #                             'geometryType': 'cuboid_3d',
-            #                             'id': 87830573,
-            #                             'labelerLogin': 'almaz',
-            #                             'objectId': 5565738,
-            #                             'updatedAt': '2023-04-05T08:55:52.526Z'},
-            #                             {'classId': None,
-            #                             'createdAt': '2023-04-05T08:55:52.526Z',
-            #                             'description': '',
-            #                             'geometry': {'dimensions': {'x': 2.3652234,
-            #                                                         'y': 23.291742,
-            #                                                         'z': 3.326648},
-            #                                         'position': {'x': 77.40255111910977,
-            #                                                     'y': -9.582723835261527,
-            #                                                     'z': 1.0131292020311293},
-            #                                         'rotation': {'x': 0,
-            #                                                     'y': 0,
-            #                                                     'z': -1.5823898471886868}},
-            #                             'geometryType': 'cuboid_3d',
-            #                             'id': 87830574,
-            #                             'labelerLogin': 'almaz',
-            #                             'objectId': 5565741,
-            #                             'updatedAt': '2023-04-05T08:55:52.526Z'}],
-            #                 'index': 0,
-            #                 'pointCloudId': 19618685}],
-            #     'framesCount': 1,
-            #     'objects': [{'classId': 683259,
-            #                 'classTitle': 'Car',
-            #                 'createdAt': '2023-04-05T08:55:52.384Z',
-            #                 'datasetId': 62664,
-            #                 'entityId': None,
-            #                 'id': 5565737,
-            #                 'labelerLogin': 'almaz',
-            #                 'tags': [],
-            #                 'updatedAt': '2023-04-05T08:55:52.384Z'}],
-            #     'tags': []
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pointcloud_id = 19618685
+                ann_info = api.pointcloud.annotation.download(src_pointcloud_id)
+                print(ann_info)
+
+                # Output: {
+                #     'datasetId': 62664,
+                #     'description': '',
+                #     'frames': [{'figures': [{'classId': None,
+                #                             'createdAt': '2023-04-05T08:55:52.526Z',
+                #                             'description': '',
+                #                             'geometry': {'dimensions': {'x': 1.6056261,
+                #                                                         'y': 3.8312221,
+                #                                                         'z': 1.8019634},
+                #                                         'position': {'x': 10.181290418102629,
+                #                                                     'y': 9.033275311626847,
+                #                                                     'z': -0.9065660704238034},
+                #                                         'rotation': {'x': 0,
+                #                                                     'y': 0,
+                #                                                     'z': 1.5985649758590998}},
+                #                             'geometryType': 'cuboid_3d',
+                #                             'id': 87830573,
+                #                             'labelerLogin': 'almaz',
+                #                             'objectId': 5565738,
+                #                             'updatedAt': '2023-04-05T08:55:52.526Z'},
+                #                             {'classId': None,
+                #                             'createdAt': '2023-04-05T08:55:52.526Z',
+                #                             'description': '',
+                #                             'geometry': {'dimensions': {'x': 2.3652234,
+                #                                                         'y': 23.291742,
+                #                                                         'z': 3.326648},
+                #                                         'position': {'x': 77.40255111910977,
+                #                                                     'y': -9.582723835261527,
+                #                                                     'z': 1.0131292020311293},
+                #                                         'rotation': {'x': 0,
+                #                                                     'y': 0,
+                #                                                     'z': -1.5823898471886868}},
+                #                             'geometryType': 'cuboid_3d',
+                #                             'id': 87830574,
+                #                             'labelerLogin': 'almaz',
+                #                             'objectId': 5565741,
+                #                             'updatedAt': '2023-04-05T08:55:52.526Z'}],
+                #                 'index': 0,
+                #                 'pointCloudId': 19618685}],
+                #     'framesCount': 1,
+                #     'objects': [{'classId': 683259,
+                #                 'classTitle': 'Car',
+                #                 'createdAt': '2023-04-05T08:55:52.384Z',
+                #                 'datasetId': 62664,
+                #                 'entityId': None,
+                #                 'id': 5565737,
+                #                 'labelerLogin': 'almaz',
+                #                 'tags': [],
+                #                 'updatedAt': '2023-04-05T08:55:52.384Z'}],
+                #     'tags': []
+                # }
         """
 
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
         return self._download(info.dataset_id, pointcloud_id)
+
+    def download_bulk(self, dataset_id: int, entity_ids: List[int]) -> List[Dict]:
+        """
+        Download point cloud annotation JSONs in bulk and inject ``point_cloud`` geometries
+        that are stored separately (new format). Inline geometries (old format) are kept as is.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param entity_ids: Point cloud IDs.
+        :type entity_ids: List[int]
+        :returns: List of annotation JSONs.
+        :rtype: List[dict]
+        """
+        anns_json = super().download_bulk(dataset_id, entity_ids)
+        self._api.pointcloud.figure.inject_geometries_into_annotations(anns_json)
+        return anns_json
 
     def append(
         self,
@@ -137,24 +150,30 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
         :param ann: PointcloudAnnotation object.
-        :type ann: PointcloudAnnotation
+        :type ann: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: None
-        :rtype: :class:`NoneType`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            pointcloud_id = 198704259
-            api.pointcloud.annotation.append(pointcloud_id, pointcloud_ann)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pointcloud_id = 198704259
+                api.pointcloud.annotation.append(pointcloud_id, pointcloud_ann)
         """
 
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
@@ -194,22 +213,28 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :type semaphore: asyncio.Semaphore, optional
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: Information about PointcloudAnnotation in json format
-        :rtype: :class:`dict`
+        :returns: Information about PointcloudAnnotation in json format
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            pointcloud_id = 198702499
-            loop = sly.utils.get_or_create_event_loop()
-            ann_info = loop.run_until_complete(api.pointcloud.annotation.download_async(pointcloud_id))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pointcloud_id = 198702499
+                loop = sly.utils.get_or_create_event_loop()
+                ann_info = loop.run_until_complete(api.pointcloud.annotation.download_async(pointcloud_id))
         """
         return await self.download_bulk_async(
             pointcloud_ids=[pointcloud_id],
@@ -232,22 +257,28 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :type semaphore: asyncio.Semaphore, optional
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: Information about PointcloudAnnotations in json format
-        :rtype: :class:`list`
+        :returns: Information about PointcloudAnnotations in json format
+        :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            pointcloud_ids = [198702499, 198702500, 198702501]
-            loop = sly.utils.get_or_create_event_loop()
-            ann_infos = loop.run_until_complete(api.pointcloud.annotation.download_bulk_async(pointcloud_ids))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pointcloud_ids = [198702499, 198702500, 198702501]
+                loop = sly.utils.get_or_create_event_loop()
+                ann_infos = loop.run_until_complete(api.pointcloud.annotation.download_bulk_async(pointcloud_ids))
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
@@ -266,4 +297,5 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         tasks = [fetch_with_semaphore(batch) for batch in batched(pointcloud_ids)]
         responses = await asyncio.gather(*tasks)
         json_response = [item for response in responses for item in response]
+        self._api.pointcloud.figure.inject_geometries_into_annotations(json_response)
         return json_response

@@ -5,12 +5,14 @@ import asyncio
 import inspect
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
 import tempfile
 import threading
 import time
+import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
@@ -19,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
+import _pickle
 import numpy as np
 import requests
 import uvicorn
@@ -34,7 +37,6 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely.nn.experiments import ExperimentInfo
 from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
@@ -45,13 +47,14 @@ from supervisely._utils import (
     rand_str,
 )
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.content import get_data_dir
 from supervisely.app.fastapi.subapp import (
     Application,
@@ -67,15 +70,17 @@ from supervisely.decorators.inference import (
     process_images_batch_sliding_window,
 )
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.geometry import Geometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
-from supervisely.nn.inference.uploader import Uploader
-from supervisely.nn.model.model_api import Prediction
+from supervisely.nn.inference.uploader import Downloader, Uploader
+from supervisely.nn.model.model_api import ModelAPI, Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
@@ -93,7 +98,17 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
-from supervisely.nn.model.model_api import ModelAPI
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import (
+    VideoObject,
+    VideoObjectCollection,
+)
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 try:
     from typing import Literal
@@ -104,9 +119,13 @@ except ImportError:
 
 @dataclass
 class AutoRestartInfo:
+    """Parsed autorestart information returned by the deployment endpoint (used to detect deploy param changes)."""
+
     deploy_params: dict
 
     class Fields:
+        """JSON field names used to store autorestart info in API payloads."""
+
         AUTO_RESTART_INFO = "autoRestartInfo"
         DEPLOY_PARAMS = "deployParams"
 
@@ -130,6 +149,8 @@ class AutoRestartInfo:
 
 
 class Inference:
+    """Base inference app/server implementation used by framework-specific inference integrations."""
+
     FRAMEWORK_NAME: str = None
     """Name of framework to register models in Supervisely"""
     MODELS: str = None
@@ -140,6 +161,8 @@ class Inference:
     """Default batch size for inference"""
     INFERENCE_SETTINGS: str = None
     """Path to file with custom inference settings"""
+    DEFAULT_IOU_MERGE_THRESHOLD: float = 0.9
+    """Default IOU merge threshold for inference"""
 
     def __init__(
         self,
@@ -155,7 +178,26 @@ class Inference:
         device: Optional[str] = None,
         runtime: Optional[str] = None,
     ):
-
+        """
+        :param model_dir: Path to model directory.
+        :type model_dir: str
+        :param custom_inference_settings: Dict or path to .yml with inference settings.
+        :type custom_inference_settings: Dict[str, Any] or str
+        :param sliding_window_mode: 'basic', 'advanced', or 'none'.
+        :type sliding_window_mode: Literal["basic", "advanced", "none"]
+        :param use_gui: Enable GUI.
+        :type use_gui: bool
+        :param multithread_inference: Allow multi-threaded inference.
+        :type multithread_inference: bool
+        :param use_serving_gui_template: Use serving GUI template.
+        :type use_serving_gui_template: bool
+        :param model: Deploy model name.
+        :type model: str
+        :param device: Deploy device.
+        :type device: str
+        :param runtime: Deploy runtime.
+        :type runtime: str
+        """
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
         if model_dir is None:
@@ -193,7 +235,6 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker = None
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -373,7 +414,9 @@ class Inference:
                 elif runtime.lower() in ["trt", RuntimeType.TENSORRT.lower()]:
                     runtime = RuntimeType.TENSORRT
                 else:
-                    raise ValueError(f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}.")
+                    raise ValueError(
+                        f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}."
+                    )
             return runtime
 
         def get_pretrained_model(model: str) -> dict:
@@ -383,7 +426,7 @@ class Inference:
                     if m_name and m_name.lower() == model.lower():
                         return m
             return None
-        
+
         runtime = get_runtime(runtime)
         logger.debug(f"Runtime: {runtime}")
 
@@ -409,7 +452,9 @@ class Inference:
         # Custom Models
         checkpoint_path = model
         checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
-        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
+        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(
+            checkpoint_path, device, runtime
+        )
         logger.debug(f"Deploying custom model '{checkpoint_name}'...")
         self._load_model_headless(**deploy_params)
         self._schedule_freeze_on_inactivity()
@@ -427,7 +472,7 @@ class Inference:
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
-                logger.warn(
+                logger.warning(
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
@@ -734,15 +779,15 @@ class Inference:
         for model in self.pretrained_models:
             model_meta = model.get("meta")
             if model_meta is not None:
-                model_name = model_meta.get("model_name")
-                if model_name is not None:
-                    if model_name.lower() == model_name.lower():
+                this_model_name = model_meta.get("model_name")
+                if this_model_name is not None:
+                    if this_model_name.lower() == model_name.lower():
                         selected_model = model
                         break
                 else:
-                    model_name = model.get("model_name")
-                    if model_name is not None:
-                        if model_name.lower() == model_name.lower():
+                    this_model_name = model.get("model_name")
+                    if this_model_name is not None:
+                        if this_model_name.lower() == model_name.lower():
                             selected_model = model
                             break
 
@@ -797,6 +842,10 @@ class Inference:
                         )
                         logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
             return self._download_custom_model(deploy_params["model_files"], log_progress)
+        elif deploy_params["model_source"] == ModelSource.EXTERNAL:
+            return self._download_custom_model(
+                deploy_params["model_files"], log_progress, ModelSource.EXTERNAL
+            )
 
     def _download_pretrained_model(
         self, model_files: dict, log_progress: bool = True, headless: bool = False
@@ -863,13 +912,64 @@ class Inference:
                 self.gui.download_progress.hide()
         return local_model_files
 
-    def _download_custom_model(self, model_files: dict, log_progress: bool = True):
+    def _fallback_download_custom_model_pt(self, deploy_params: dict):
+        """
+        Downloads the PyTorch checkpoint from Team Files if TensorRT is failed to load.
+        """
+        team_id = sly_env.team_id()
+
+        checkpoint_name = sly_fs.get_file_name(deploy_params["model_files"]["checkpoint"])
+        artifacts_dir = deploy_params["model_info"]["artifacts_dir"]
+        checkpoints_dir = os.path.join(artifacts_dir, "checkpoints")
+        checkpoint_ext = sly_fs.get_file_ext(deploy_params["model_info"]["checkpoints"][0])
+
+        pt_checkpoint_name = f"{checkpoint_name}{checkpoint_ext}"
+        remote_checkpoint_path = os.path.join(checkpoints_dir, pt_checkpoint_name)
+        local_checkpoint_path = os.path.join(self.model_dir, pt_checkpoint_name)
+
+        file_info = self.api.file.get_info_by_path(team_id, remote_checkpoint_path)
+        file_size = file_info.sizeb
+        if self.gui is not None:
+            with self.gui.download_progress(
+                message=f"Fallback. Downloading PyTorch checkpoint: '{pt_checkpoint_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(
+                    team_id,
+                    remote_checkpoint_path,
+                    local_checkpoint_path,
+                    progress_cb=download_pbar.update,
+                )
+                self.gui.download_progress.hide()
+        else:
+            self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path)
+
+        return local_checkpoint_path
+
+    def _remove_exported_checkpoints(self, checkpoint_path: str):
+        """
+        Removes the exported checkpoints for provided PyTorch checkpoint path.
+        """
+        checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+        onnx_path = checkpoint_path.replace(checkpoint_ext, ".onnx")
+        engine_path = checkpoint_path.replace(checkpoint_ext, ".engine")
+        if os.path.exists(onnx_path):
+            sly_fs.silent_remove(onnx_path)
+        if os.path.exists(engine_path):
+            sly_fs.silent_remove(engine_path)
+
+    def _download_custom_model(
+        self, model_files: dict, log_progress: bool = True, model_source: str = ModelSource.CUSTOM
+    ):
         """
         Downloads the custom model data.
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-        
+
         # Sort files to download 'checkpoint' first
         files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
         for file in files_order:
@@ -898,25 +998,37 @@ class Inference:
             else:
                 self.api.file.download(team_id, file_url, file_path)
 
-            if file == "checkpoint":
+            if file == "checkpoint" and model_source == ModelSource.CUSTOM:
                 try:
                     extracted_files = self._extract_model_files_from_checkpoint(file_path)
                     local_model_files.update(extracted_files)
                     if extracted_files:
                         local_model_files[file] = file_path
                         return local_model_files
-                except Exception as e:
-                    logger.debug(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
-                    logger.debug("Model files will be downloaded from Team Files")
+                except _pickle.UnpicklingError as e:
+                    # TODO: raise error - checkpoint is corrupted
+                    logger.warning(
+                        f"Couldn't load '{file_name}'. Checkpoint might be corrupted. Error: {repr(e)}"
+                    )
+                    logger.warning("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
-            
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}"
+                    )
+                    logger.warning("Model files will be downloaded from Team Files")
+                    local_model_files[file] = file_path
+                    continue
+
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
-    
-    def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
+
+    def _get_deploy_parameters_from_custom_checkpoint(
+        self, checkpoint_path: str, device: str, runtime: str
+    ) -> dict:
         def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
             exp_path = os.path.join(artifacts_dir, "experiment_info.json")
             if sly_fs.file_exists(exp_path):
@@ -966,7 +1078,9 @@ class Inference:
             # model files
             logger.debug("Getting model files...")
             remote_files_rel = experiment_info.get("model_files", {})
-            remote_files_full = _compose_model_files(artifacts_dir, checkpoint_path, remote_files_rel)
+            remote_files_full = _compose_model_files(
+                artifacts_dir, checkpoint_path, remote_files_rel
+            )
             local_model_files = self._download_custom_model(remote_files_full, False)
             model_files = local_model_files
             model_info = experiment_info
@@ -976,8 +1090,7 @@ class Inference:
             # --- LOCAL ---
             try:
                 logger.debug("Reading state dict...")
-                import torch  # pylint: disable=import-error
-                ckpt = torch.load(checkpoint_path, map_location="cpu")
+                ckpt = torch_load_safe(checkpoint_path)
                 model_info = ckpt.get("model_info", {})
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_files["checkpoint"] = checkpoint_path
@@ -986,20 +1099,28 @@ class Inference:
                     model_info["model_meta"] = self._load_json_file(meta_path)
                 logger.debug("Deploy parameters extracted from state dict successfully")
             except:
-                logger.debug(f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files...")
+                logger.debug(
+                    f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files..."
+                )
                 experiment_info = _read_experiment_info(artifacts_dir)
                 if experiment_info:
                     logger.debug("Reading experiment_info.json...")
-                    model_files = _compose_model_files(artifacts_dir, checkpoint_path, experiment_info.get("model_files", {}))
+                    model_files = _compose_model_files(
+                        artifacts_dir, checkpoint_path, experiment_info.get("model_files", {})
+                    )
                     meta_name = experiment_info.get("model_meta") or "model_meta.json"
                     meta_path = os.path.join(artifacts_dir, meta_name)
                     if not sly_fs.file_exists(meta_path):
                         raise FileNotFoundError(f"Model meta file not found: '{meta_path}'")
                     experiment_info["model_meta"] = self._load_json_file(meta_path)
                     model_info = experiment_info
-                    logger.debug("Deploy parameters extracted from experiment_info.json successfully")
+                    logger.debug(
+                        "Deploy parameters extracted from experiment_info.json successfully"
+                    )
                 else:
-                    raise FileNotFoundError(f"'experiment_info.json' not found in '{artifacts_dir}'")
+                    raise FileNotFoundError(
+                        f"'experiment_info.json' not found in '{artifacts_dir}'"
+                    )
 
         deploy_params = {
             "model_source": ModelSource.CUSTOM,
@@ -1017,10 +1138,8 @@ class Inference:
         if file_ext not in (".pth", ".pt"):
             return extracted_files
 
-        import torch  # pylint: disable=import-error
         logger.debug(f"Reading checkpoint: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
-
+        checkpoint = torch_load_safe(checkpoint_path)
         # 1. Extract additional model files embedded into checkpoint (if any)
         ckpt_files = checkpoint.get("model_files", None)
         if ckpt_files and isinstance(ckpt_files, dict):
@@ -1057,7 +1176,41 @@ class Inference:
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
-        self.load_model(**deploy_params)
+
+        model_files = deploy_params.get("model_files", None)
+        if model_files is not None:
+            checkpoint_path = deploy_params["model_files"]["checkpoint"]
+            checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+            if self.runtime == RuntimeType.TENSORRT and checkpoint_ext == ".engine":
+                try:
+                    self.load_model(**deploy_params)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}"
+                    )
+                    checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    self.load_model(**deploy_params)
+            if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
+                if self.runtime == RuntimeType.ONNXRUNTIME:
+                    logger.info("Exporting PyTorch model to ONNX...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_onnx(deploy_params)
+                elif self.runtime == RuntimeType.TENSORRT:
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                self.load_model(**deploy_params)
+            else:
+                self.load_model(**deploy_params)
+        else:
+            self.load_model(**deploy_params)
+
         self._model_served = True
         self._deploy_params = deploy_params
         if self._task_id is not None and is_production():
@@ -1096,20 +1249,20 @@ class Inference:
         :type: device: str
         :param: kwargs: additional parameters will be passed to load_model method.
         :type: kwargs: dict
-        :return: None
+        :returns: None
         :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            model_files = {
-                "checkpoint": "supervisely_integration/serve/best.pth",
-                "config": "supervisely_integration/serve/model_config.yml",
-            }
-            model_meta = sly.json.load_json_file("model_meta.json")
+                model_files = {
+                    "checkpoint": "supervisely_integration/serve/best.pth",
+                    "config": "supervisely_integration/serve/model_config.yml",
+                }
+                model_meta = sly.json.load_json_file("model_meta.json")
 
-            model.load_custom_checkpoint(model_files, model_meta)
+                model.load_custom_checkpoint(model_files, model_meta)
         """
 
         checkpoint = model_files.get("checkpoint")
@@ -1156,9 +1309,14 @@ class Inference:
             "runtime": runtime,
             **kwargs,
         }
-        if model_source == ModelSource.CUSTOM:
+        if model_source == ModelSource.PRETRAINED:
+            self._set_checkpoint_info_pretrained(deploy_params)
+        elif model_source == ModelSource.CUSTOM:
             self._set_model_meta_custom_model(model_info)
             self._set_checkpoint_info_custom_model(deploy_params)
+        elif model_source == ModelSource.EXTERNAL:
+            self._set_model_meta_external_model(model_files.get("classes"))
+            self._set_checkpoint_info_external_model(deploy_params)
 
         try:
             if is_production():
@@ -1204,6 +1362,49 @@ class Inference:
         self._get_confidence_tag_meta()
         self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
 
+    def _set_model_meta_external_model(self, classes_path: Optional[str] = None):
+        if classes_path is None:
+            # Some frameworks can derive classes from the checkpoint itself.
+            return
+        if not os.path.isfile(classes_path):
+            raise ValueError(f"Classes file not found: '{classes_path}'")
+
+        classes_data = sly_json.load_json_file(classes_path)
+        class_names = self._extract_external_class_names(classes_data)
+        if len(class_names) == 0:
+            raise ValueError(f"No classes found in file: '{classes_path}'")
+
+        classes = [ObjClass(name, self._get_obj_class_shape()) for name in class_names]
+        self._model_meta = ProjectMeta(classes)
+        self._get_confidence_tag_meta()
+        self.classes = class_names
+
+    def _extract_external_class_names(self, classes_data: Any) -> List[str]:
+        if not isinstance(classes_data, dict):
+            raise ValueError(
+                "Invalid classes format. Expected mapping like {'0': 'person', '1': 'car'}"
+            )
+
+        def _sort_key(item):
+            key = item[0]
+            try:
+                return (0, int(key))
+            except (TypeError, ValueError):
+                return (1, str(key))
+
+        class_names = []
+        seen_names = set()
+        for _, value in sorted(classes_data.items(), key=_sort_key):
+            if isinstance(value, str) and value:
+                if value in seen_names:
+                    logger.warning(
+                        f"Duplicate class name '{value}' found in classes mapping. Skipping duplicate."
+                    )
+                    continue
+                seen_names.add(value)
+                class_names.append(value)
+        return class_names
+
     def _set_checkpoint_info_custom_model(self, deploy_params: dict):
         model_info = deploy_params.get("model_info", {})
         model_files = deploy_params.get("model_files", {})
@@ -1232,6 +1433,34 @@ class Inference:
                 model_source=ModelSource.CUSTOM,
             )
 
+    def _set_checkpoint_info_pretrained(self, deploy_params: dict):
+        checkpoint_name = os.path.basename(deploy_params["model_files"]["checkpoint"])
+        model_name = _get_model_name(deploy_params["model_info"])
+        checkpoint_url = deploy_params["model_info"]["meta"]["model_files"]["checkpoint"]
+        model_source = ModelSource.PRETRAINED
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=checkpoint_name,
+            model_name=model_name,
+            architecture=self.FRAMEWORK_NAME,
+            checkpoint_url=checkpoint_url,
+            model_source=model_source,
+        )
+
+    def _set_checkpoint_info_external_model(self, deploy_params: dict):
+        model_files = deploy_params.get("model_files", {})
+        checkpoint_path = model_files.get("checkpoint")
+        if checkpoint_path is None:
+            return
+
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=os.path.basename(checkpoint_path),
+            model_name="External Model",
+            architecture=self.FRAMEWORK_NAME,
+            checkpoint_url=None,
+            custom_checkpoint_path=checkpoint_path,
+            model_source=ModelSource.EXTERNAL,
+        )
+
     def shutdown_model(self):
         self._model_served = False
         self._model_frozen = False
@@ -1252,6 +1481,26 @@ class Inference:
     def get_classes(self) -> List[str]:
         return self.classes
 
+    def _tracker_init(self, tracker: str, tracker_settings: dict):
+        # Check if tracking is supported for this model
+        info = self.get_info()
+        tracking_support = info.get("tracking_on_videos_support", False)
+
+        if not tracking_support:
+            logger.debug("Tracking is not supported for this model")
+            return None
+
+        if tracker == "botsort":
+            from supervisely.nn.tracker import BotSortTracker
+
+            device = tracker_settings.get("device", self.device)
+            logger.debug(f"Initializing BotSort tracker with device: {device}")
+            return BotSortTracker(settings=tracker_settings, device=device)
+        else:
+            if tracker is not None:
+                logger.warning(f"Unknown tracking type: {tracker}. Tracking is disabled.")
+            return None
+
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
         classes = None
@@ -1260,15 +1509,15 @@ class Inference:
             if classes is not None:
                 num_classes = len(classes)
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
+            logger.warning(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warning("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
-            logger.warn("Unknown exception. Please, contact support")
+            logger.warning("Unknown exception. Please, contact support")
             logger.exception(exc)
 
         if num_classes is None:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warning(f"get_classes() function return {classes}; skip classes processing.")
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
@@ -1277,14 +1526,50 @@ class Inference:
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
-            "tracking_on_videos_support": True,
+            "tracking_on_videos_support": False,
             "async_image_inference_support": True,
-            "tracking_algorithms": ["bot", "deepsort"],
+            "tracking_algorithms": ["botsort"],
             "batch_inference_support": self.is_batch_inference_supported(),
             "max_batch_size": self.max_batch_size,
         }
 
     # pylint: enable=method-hidden
+
+    def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get default parameters for all available tracking algorithms.
+
+        Returns:
+            {"botsort": {"track_high_thresh": 0.6, ...}}
+            Empty dict if tracking not supported.
+        """
+        info = self.get_info()
+        trackers_params = {}
+
+        tracking_support = info.get("tracking_on_videos_support")
+        if not tracking_support:
+            return trackers_params
+
+        tracking_algorithms = info.get("tracking_algorithms", [])
+
+        for tracker_name in tracking_algorithms:
+            try:
+                if tracker_name == "botsort":
+                    from supervisely.nn.tracker import BotSortTracker
+
+                    trackers_params[tracker_name] = BotSortTracker.get_default_params()
+                # Add other trackers here as elif blocks
+                else:
+                    logger.debug(f"Tracker '{tracker_name}' not implemented")
+            except Exception as e:
+                logger.warning(f"Failed to get params for '{tracker_name}': {e}")
+
+        INTERNAL_FIELDS = {"device", "fps"}
+        for tracker_name, params in trackers_params.items():
+            trackers_params[tracker_name] = {
+                k: v for k, v in params.items() if k not in INTERNAL_FIELDS
+            }
+        return trackers_params
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
         hr_info = {}
@@ -1401,8 +1686,12 @@ class Inference:
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
+
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution
@@ -1447,7 +1736,7 @@ class Inference:
         if api is None:
             api = self.api
         return api
-        
+
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
@@ -1461,13 +1750,15 @@ class Inference:
         is_predict_batch_raw_implemented = (
             type(self).predict_batch_raw != Inference.predict_batch_raw
         )
-        if (not use_raw and self.is_batch_inference_supported()) or (
-            use_raw and is_predict_batch_raw_implemented
-        ):
-            result = self._inference_batched_wrapper(source, settings)
-        else:
-            result = self._inference_one_by_one_wrapper(source, settings)
-        self._schedule_freeze_on_inactivity()
+        try:
+            if (not use_raw and self.is_batch_inference_supported()) or (
+                use_raw and is_predict_batch_raw_implemented
+            ):
+                result = self._inference_batched_wrapper(source, settings)
+            else:
+                result = self._inference_one_by_one_wrapper(source, settings)
+        finally:
+            self._schedule_freeze_on_inactivity()
         return result
 
     def inference(
@@ -1482,15 +1773,15 @@ class Inference:
         :type: source: Union[str, int, np.ndarray, List[str], List[int], List[np.ndarray]]
         :param: settings: inference settings
         :type: settings: dict
-        :return: annotation or list of annotations
-        :rtype: Union[Annotation, List[Annotation]]
+        :returns: annotation or list of annotations
+        :rtype: Union[:class:`~supervisely.annotation.annotation.Annotation`, List[:class:`~supervisely.annotation.annotation.Annotation`]]
 
         :Usage Example:
 
             .. code-block:: python
 
-            image_path = "/root/projects/demo/img/sample.jpg"
-            ann = model.inference(image_path)
+                image_path = "/root/projects/demo/img/sample.jpg"
+                ann = model.inference(image_path)
         """
         input_is_list = True
         if not isinstance(source, list):
@@ -1668,7 +1959,7 @@ class Inference:
         :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
 
-        :return: tuple of annotation and benchmark dict with speedtest results in milliseconds.
+        :returns: tuple of annotation and benchmark dict with speedtest results in milliseconds.
             The benchmark dict should contain the following keys (all values in milliseconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
@@ -1729,6 +2020,12 @@ class Inference:
                 )
                 settings[key] = value
         return settings
+
+    @staticmethod
+    def _get_single_inference_result(results: List[Dict]):
+        if len(results) == 0:
+            raise RuntimeError("Inference finished without returning any results.")
+        return results[0]
 
     def _get_batch_size_from_state(self, state: dict):
         batch_size = state.get("batch_size", None)
@@ -1833,24 +2130,14 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        if tracking == "bot":
-            from supervisely.nn.tracker import BoTTracker
-
-            tracker = BoTTracker(state)
-        elif tracking == "deepsort":
-            from supervisely.nn.tracker import DeepSortTracker
-
-            tracker = DeepSortTracker(state)
-        else:
-            if tracking is not None:
-                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
-            tracker = None
+        inference_request.tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
 
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
         results = []
-        tracks_data = {}
         for batch in batched(
             range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
@@ -1870,28 +2157,30 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
+
+            if inference_request.tracker is not None:
+                anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
+
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
             ]
+
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            if tracker is not None:
-                for frame_index, frame, ann in zip(batch, frames, anns):
-                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if tracker is not None:
+        if inference_request.tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = tracker.get_annotation(
-                tracks_data, (video_height, video_witdth), n_frames
-            ).to_json()
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
+        return video_ann_json
 
     def _inference_image_ids(
         self,
@@ -1915,10 +2204,11 @@ class Inference:
             raise ValueError("Image ids are not provided")
         if not isinstance(image_ids, list):
             image_ids = [image_ids]
+        model_prediction_suffix = state.get("model_prediction_suffix", None)
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD  # TODO: change to 0.9
 
         images_infos = api.image.get_info_by_id_batch(image_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -1960,14 +2250,9 @@ class Inference:
                 output_dataset_id
             ] = output_dataset_info
 
-        # start download to cache in background
-        dataset_image_infos: Dict[int, List[ImageInfo]] = defaultdict(list)
-        for image_info in images_infos:
-            dataset_image_infos[image_info.dataset_id].append(image_info)
-        for dataset_id, ds_image_infos in dataset_image_infos.items():
-            self.cache.run_cache_task_manually(
-                api, [info.id for info in ds_image_infos], dataset_id=dataset_id
-            )
+        def download_f(item: int):
+            self.cache.download_image(api, item)
+            return item
 
         _upload_predictions = partial(
             self.upload_predictions,
@@ -1979,10 +2264,13 @@ class Inference:
             progress_cb=inference_request.done,
             iou_merge_threshold=iou_merge_threshold,
             inference_request=inference_request,
+            model_prediction_suffix=model_prediction_suffix,
         )
 
         _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
+            self.add_results_to_request,
+            inference_request=inference_request,
+            progress_cb=inference_request.done,
         )
 
         if upload_mode is None:
@@ -1991,40 +2279,60 @@ class Inference:
             upload_f = _upload_predictions
 
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(image_ids))
+        download_workers = max(8, min(batch_size, 64))
         with Uploader(upload_f, logger=logger) as uploader:
-            for image_ids_batch in batched(image_ids, batch_size=batch_size):
-                if uploader.has_exception():
-                    exception = uploader.exception()
-                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
-                if inference_request.is_stopped():
-                    logger.debug(
-                        f"Cancelling inference project...",
-                        extra={"inference_request_uuid": inference_request.uuid},
+            with Downloader(download_f, max_workers=download_workers, logger=logger) as downloader:
+                for image_id in image_ids:
+                    downloader.put(image_id)
+                downloader.next(100)
+                for image_ids_batch in batched(image_ids, batch_size=batch_size):
+                    if uploader.has_exception():
+                        exception = uploader.exception
+                        raise exception
+                    if inference_request.is_stopped():
+                        logger.debug(
+                            f"Cancelling inference...",
+                            extra={"inference_request_uuid": inference_request.uuid},
+                        )
+                        break
+                    if inference_request.is_paused():
+                        logger.info("Inference request is paused. Waiting...")
+                        while inference_request.is_paused():
+                            if (
+                                inference_request.paused_for()
+                                > inference_request.PAUSE_SLEEP_MAX_WAIT
+                            ):
+                                logger.info(
+                                    "Inference request has been paused for too long. Cancelling..."
+                                )
+                                raise RuntimeError("Inference request cancelled due to long pause.")
+                            time.sleep(inference_request.PAUSE_SLEEP_INTERVAL)
+
+                    images_nps = [
+                        self.cache.download_image(api, img_id) for img_id in image_ids_batch
+                    ]
+                    downloader.next(len(image_ids_batch))
+                    anns, slides_data = self._inference_auto(
+                        source=images_nps,
+                        settings=inference_settings,
                     )
-                    break
 
-                images_nps = [self.cache.download_image(api, img_id) for img_id in image_ids_batch]
-                anns, slides_data = self._inference_auto(
-                    source=images_nps,
-                    settings=inference_settings,
-                )
+                    batch_predictions = []
+                    for image_id, ann, this_slides_data in zip(image_ids_batch, anns, slides_data):
+                        image_info: ImageInfo = images_infos_dict[image_id]
+                        dataset_info = dataset_infos_dict[image_info.dataset_id]
+                        prediction = Prediction(
+                            ann,
+                            model_meta=self.model_meta,
+                            name=image_info.name,
+                            image_id=image_info.id,
+                            dataset_id=image_info.dataset_id,
+                            project_id=dataset_info.project_id,
+                        )
+                        prediction.extra_data["slides_data"] = this_slides_data
+                        batch_predictions.append(prediction)
 
-                batch_predictions = []
-                for image_id, ann, this_slides_data in zip(image_ids_batch, anns, slides_data):
-                    image_info: ImageInfo = images_infos_dict[image_id]
-                    dataset_info = dataset_infos_dict[image_info.dataset_id]
-                    prediction = Prediction(
-                        ann,
-                        model_meta=self.model_meta,
-                        name=image_info.name,
-                        image_id=image_info.id,
-                        dataset_id=image_info.dataset_id,
-                        project_id=dataset_info.project_id,
-                    )
-                    prediction.extra_data["slides_data"] = this_slides_data
-                    batch_predictions.append(prediction)
-
-                uploader.put(batch_predictions)
+                    uploader.put(batch_predictions)
 
     def _inference_video_id(
         self,
@@ -2039,7 +2347,7 @@ class Inference:
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
-        video_info = api.video.get_info_by_id(video_id)
+        video_info = api.video.get_info_by_id(video_id, force_metadata_for_links=True)
         start_frame_index = get_value_for_keys(
             state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
         )
@@ -2069,18 +2377,10 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        if tracking == "bot":
-            from supervisely.nn.tracker import BoTTracker
+        inference_request.tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
 
-            tracker = BoTTracker(state)
-        elif tracking == "deepsort":
-            from supervisely.nn.tracker import DeepSortTracker
-
-            tracker = DeepSortTracker(state)
-        else:
-            if tracking is not None:
-                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
-            tracker = None
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -2097,7 +2397,6 @@ class Inference:
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
-        tracks_data = {}
         for batch in batched(
             range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
@@ -2116,6 +2415,10 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
+
+            if inference_request.tracker is not None:
+                anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
+
             predictions = [
                 Prediction(
                     ann,
@@ -2130,20 +2433,179 @@ class Inference:
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            if tracker is not None:
-                for frame_index, frame, ann in zip(batch, frames, anns):
-                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if tracker is not None:
-            inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = tracker.get_annotation(
-                tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
+        if inference_request.tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, progress_total)
+
+            video_ann_json = inference_request.tracker.create_video_annotation(
+                video_info.frames_count,
+                start_frame_index,
+                step=step,
+                progress_cb=inference_request.done,
             ).to_json()
+        inference_request.final_result = {"video_ann": video_ann_json}
+        return video_ann_json
+
+    def _tracking_by_detection(self, api: Api, state: dict, inference_request: InferenceRequest):
+        logger.debug("Inferring video_id...", extra={"state": state})
+        inference_settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=inference_settings)
+        batch_size = self._get_batch_size_from_state(state)
+        video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
+        if video_id is None:
+            raise ValueError("Video id is not provided")
+        video_info = api.video.get_info_by_id(video_id)
+        start_frame_index = get_value_for_keys(
+            state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        step = get_value_for_keys(state, ["stride", "step"], ignore_none=True)
+        if step is None:
+            step = 1
+        end_frame_index = get_value_for_keys(
+            state, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+        )
+        duration = state.get("duration", None)
+        frames_count = get_value_for_keys(
+            state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
+        )
+        tracking = state.get("tracker", None)
+        direction = state.get("direction", "forward")
+        direction = 1 if direction == "forward" else -1
+        track_id = get_value_for_keys(state, ["trackId", "track_id"], ignore_none=True)
+
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index
+        elif duration is not None:
+            fps = video_info.frames_count / video_info.duration
+            n_frames = int(duration * fps)
+        else:
+            n_frames = video_info.frames_count
+
+        inference_request.tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
+
+        logger.debug(
+            f"Video info:",
+            extra=dict(
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                start_frame_index=start_frame_index,
+                n_frames=n_frames,
+            ),
+        )
+
+        # start downloading video in background
+        self.cache.run_cache_task_manually(api, None, video_id=video_id)
+
+        progress_total = (n_frames + step - 1) // step
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
+
+        _upload_f = partial(
+            self.upload_predictions_to_video,
+            api=api,
+            video_info=video_info,
+            track_id=track_id,
+            context=inference_request.context,
+            progress_cb=inference_request.done,
+            inference_request=inference_request,
+        )
+
+        _range = (start_frame_index, start_frame_index + direction * n_frames)
+        if _range[0] > _range[1]:
+            _range = (_range[1], _range[0])
+
+        def _notify_f(predictions: List[Prediction]):
+            logger.debug(
+                "Notifying tracking progress...",
+                extra={
+                    "track_id": track_id,
+                    "range": _range,
+                    "current": inference_request.progress.current,
+                    "total": inference_request.progress.total,
+                },
+            )
+            stopped = self.api.video.notify_progress(
+                track_id=track_id,
+                video_id=video_info.id,
+                frame_start=_range[0],
+                frame_end=_range[1],
+                current=inference_request.progress.current,
+                total=inference_request.progress.total,
+            )
+            if stopped:
+                inference_request.stop()
+                logger.info("Tracking has been stopped by user", extra={"track_id": track_id})
+
+        def _exception_handler(e: Exception):
+            self.api.video.notify_tracking_error(
+                track_id=track_id,
+                error=str(type(e)),
+                message=str(e),
+            )
+            raise e
+
+        with Uploader(
+            upload_f=_upload_f,
+            notify_f=_notify_f,
+            exception_handler=_exception_handler,
+            logger=logger,
+        ) as uploader:
+            for batch in batched(
+                range(
+                    start_frame_index, start_frame_index + direction * n_frames, direction * step
+                ),
+                batch_size,
+            ):
+                if inference_request.is_stopped():
+                    logger.debug(
+                        f"Cancelling inference video...",
+                        extra={"inference_request_uuid": inference_request.uuid},
+                    )
+                    break
+                logger.debug(
+                    f"Inferring frames {batch[0]}-{batch[-1]}:",
+                )
+                frames = self.cache.download_frames(
+                    api, video_info.id, batch, redownload_video=True
+                )
+                anns, slides_data = self._inference_auto(
+                    source=frames,
+                    settings=inference_settings,
+                )
+
+                if inference_request.tracker is not None:
+                    anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
+
+                predictions = [
+                    Prediction(
+                        ann,
+                        model_meta=self.model_meta,
+                        frame_index=frame_index,
+                        video_id=video_info.id,
+                        dataset_id=video_info.dataset_id,
+                        project_id=video_info.project_id,
+                    )
+                    for ann, frame_index in zip(anns, batch)
+                ]
+                for pred, this_slides_data in zip(predictions, slides_data):
+                    pred.extra_data["slides_data"] = this_slides_data
+                uploader.put(predictions)
+        video_ann_json = None
+        if inference_request.tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, 1)
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
+        return video_ann_json
 
     def _inference_project_id(self, api: Api, state: dict, inference_request: InferenceRequest):
         """Inference project images.
@@ -2161,13 +2623,14 @@ class Inference:
         project_info = api.project.get_info_by_id(project_id)
         if project_info.type != str(ProjectType.IMAGES):
             raise ValueError("Only images projects are supported.")
+
+        model_prediction_suffix = state.get("model_prediction_suffix", None)
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD
         cache_project_on_model = state.get("cache_project_on_model", False)
 
-        project_info = api.project.get_info_by_id(project_id)
         inference_request.context.setdefault("project_info", {})[project_id] = project_info
         dataset_ids = state.get("dataset_ids", None)
         if dataset_ids is None:
@@ -2202,7 +2665,11 @@ class Inference:
 
         if cache_project_on_model:
             download_to_cache(
-                api, project_info.id, datasets_infos, progress_cb=inference_request.done
+                api,
+                project_info.id,
+                datasets_infos,
+                progress_cb=inference_request.done,
+                skip_create_readme=True,
             )
 
         images_infos_dict = {}
@@ -2211,20 +2678,9 @@ class Inference:
             if not cache_project_on_model:
                 inference_request.done(dataset_info.items_count)
 
-        def _download_images(datasets_infos: List[DatasetInfo]):
-            for dataset_info in datasets_infos:
-                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
-                    for image_id in image_ids:
-                        executor.submit(
-                            self.cache.download_image,
-                            api,
-                            image_id,
-                        )
-
-        if not cache_project_on_model:
-            # start downloading in parallel
-            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+        def download_f(item: int):
+            self.cache.download_image(api, item)
+            return item
 
         _upload_predictions = partial(
             self.upload_predictions,
@@ -2235,10 +2691,13 @@ class Inference:
             progress_cb=inference_request.done,
             iou_merge_threshold=iou_merge_threshold,
             inference_request=inference_request,
+            model_prediction_suffix=model_prediction_suffix,
         )
 
         _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
+            self.add_results_to_request,
+            inference_request=inference_request,
+            progress_cb=inference_request.done,
         )
 
         if upload_mode is None:
@@ -2246,57 +2705,78 @@ class Inference:
         else:
             upload_f = _upload_predictions
 
+        download_workers = max(8, min(batch_size, 64))
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
         with Uploader(upload_f, logger=logger) as uploader:
-            for dataset_info in datasets_infos:
-                for images_infos_batch in batched(
-                    images_infos_dict[dataset_info.id], batch_size=batch_size
-                ):
-                    if inference_request.is_stopped():
-                        logger.debug(
-                            f"Cancelling inference project...",
-                            extra={"inference_request_uuid": inference_request.uuid},
-                        )
-                        return
-                    if uploader.has_exception():
-                        exception = uploader.exception
-                        raise RuntimeError(f"Error in upload loop: {exception}") from exception
-                    if cache_project_on_model:
-                        images_paths, _ = zip(
-                            *read_from_cached_project(
-                                project_info.id,
-                                dataset_info.name,
-                                [ii.name for ii in images_infos_batch],
+            with Downloader(download_f, max_workers=download_workers, logger=logger) as downloader:
+                for images in images_infos_dict.values():
+                    for image in images:
+                        downloader.put(image.id)
+                downloader.next(100)
+                for dataset_info in datasets_infos:
+                    for images_infos_batch in batched(
+                        images_infos_dict[dataset_info.id], batch_size=batch_size
+                    ):
+                        if uploader.has_exception():
+                            exception = uploader.exception
+                            raise exception
+                        if inference_request.is_stopped():
+                            logger.debug(
+                                f"Cancelling inference project...",
+                                extra={"inference_request_uuid": inference_request.uuid},
                             )
+                            return
+                        if inference_request.is_paused():
+                            logger.info("Inference request is paused. Waiting...")
+                            while inference_request.is_paused():
+                                if (
+                                    inference_request.paused_for()
+                                    > inference_request.PAUSE_SLEEP_MAX_WAIT
+                                ):
+                                    logger.info(
+                                        "Inference request has been paused for too long. Cancelling..."
+                                    )
+                                    raise RuntimeError(
+                                        "Inference request cancelled due to long pause."
+                                    )
+                                time.sleep(inference_request.PAUSE_SLEEP_INTERVAL)
+                        if cache_project_on_model:
+                            images_paths, _ = zip(
+                                *read_from_cached_project(
+                                    project_info.id,
+                                    dataset_info.name,
+                                    [ii.name for ii in images_infos_batch],
+                                )
+                            )
+                            images_nps = [sly_image.read(img_path) for img_path in images_paths]
+                        else:
+                            images_nps = self.cache.download_images(
+                                api,
+                                dataset_info.id,
+                                [info.id for info in images_infos_batch],
+                                return_images=True,
+                            )
+                            downloader.next(len(images_infos_batch))
+                        anns, slides_data = self._inference_auto(
+                            source=images_nps,
+                            settings=inference_settings,
                         )
-                        images_nps = [sly_image.read(img_path) for img_path in images_paths]
-                    else:
-                        images_nps = self.cache.download_images(
-                            api,
-                            dataset_info.id,
-                            [info.id for info in images_infos_batch],
-                            return_images=True,
-                        )
-                    anns, slides_data = self._inference_auto(
-                        source=images_nps,
-                        settings=inference_settings,
-                    )
-                    predictions = [
-                        Prediction(
-                            ann,
-                            model_meta=self.model_meta,
-                            image_id=image_info.id,
-                            name=image_info.name,
-                            dataset_id=dataset_info.id,
-                            project_id=dataset_info.project_id,
-                            image_name=image_info.name,
-                        )
-                        for ann, image_info in zip(anns, images_infos_batch)
-                    ]
-                    for pred, this_slides_data in zip(predictions, slides_data):
-                        pred.extra_data["slides_data"] = this_slides_data
+                        predictions = [
+                            Prediction(
+                                ann,
+                                model_meta=self.model_meta,
+                                image_id=image_info.id,
+                                name=image_info.name,
+                                dataset_id=dataset_info.id,
+                                project_id=dataset_info.project_id,
+                                image_name=image_info.name,
+                            )
+                            for ann, image_info in zip(anns, images_infos_batch)
+                        ]
+                        for pred, this_slides_data in zip(predictions, slides_data):
+                            pred.extra_data["slides_data"] = this_slides_data
 
-                    uploader.put(predictions)
+                        uploader.put(predictions)
 
     def _run_speedtest(
         self,
@@ -2339,7 +2819,13 @@ class Inference:
             inference_request.done()
 
         if cache_project_on_model:
-            download_to_cache(api, project_id, datasets_infos, progress_cb=inference_request.done)
+            download_to_cache(
+                api,
+                project_id,
+                datasets_infos,
+                progress_cb=inference_request.done,
+                skip_create_readme=True,
+            )
 
         inference_request.set_stage("warmup", 0, num_warmup)
 
@@ -2389,7 +2875,7 @@ class Inference:
                     return
                 if uploader.has_exception():
                     exception = uploader.exception
-                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                    raise exception
                 if i == num_warmup:
                     inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, num_iterations)
 
@@ -2454,11 +2940,17 @@ class Inference:
                 # raise DialogWindowError(title="Call undeployed model.", description=msg)
                 raise RuntimeError(msg)
             return func(*args, **kwargs)
+
         return wrapper
 
     def _freeze_model(self):
         if self._model_frozen or not self._model_served:
             return
+
+        if not self._deploy_params:
+            logger.warning("Deploy params are not set, cannot freeze the model.")
+            return
+
         logger.debug("Freezing model...")
         runtime = self._deploy_params.get("runtime")
         if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():
@@ -2498,7 +2990,6 @@ class Inference:
         timer.daemon = True
         timer.start()
         self._freeze_timer = timer
-        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
 
     def _set_served_callback(self):
         self._model_served = True
@@ -2605,10 +3096,15 @@ class Inference:
         progress_cb=None,
         iou_merge_threshold: float = None,
         inference_request: InferenceRequest = None,
+        model_prediction_suffix: str = None,
     ):
         ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
+
+        def update_labeling_status(ann: Annotation) -> Annotation:
+            for label in ann.labels:
+                label.status = LabelingStatus.AUTO
 
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
@@ -2642,10 +3138,10 @@ class Inference:
             context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
             return created_dataset.id
 
-        created_names = []
         if context is None:
             context = {}
         for dataset_id, preds in ds_predictions.items():
+            created_names = set()
             if dst_project_id is not None:
                 # upload to the destination project
                 dst_dataset_id = _get_or_create_dataset(
@@ -2666,7 +3162,9 @@ class Inference:
                 meta_changed = False
                 for pred in preds:
                     ann = pred.annotation
-                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(
+                        project_meta, ann, model_prediction_suffix
+                    )
                     meta_changed = meta_changed or meta_changed_
                     pred.annotation = ann
                     prediction.model_meta = project_meta
@@ -2683,8 +3181,15 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Update labeling status of new predictions before upload
+                anns_with_nn_flags = []
                 for pred, ann in zip(preds, anns):
+                    update_labeling_status(ann)
                     pred.annotation = ann
+                    anns_with_nn_flags.append(ann)
+
+                anns = anns_with_nn_flags
 
                 context.setdefault("image_info", {})
                 missing = [
@@ -2712,7 +3217,7 @@ class Inference:
                     with_annotations=False,
                     save_source_date=False,
                 )
-                created_names.extend([image_info.name for image_info in dst_image_infos])
+                created_names.update([image_info.name for image_info in dst_image_infos])
                 api.annotation.upload_anns([image_info.id for image_info in dst_image_infos], anns)
             else:
                 # upload to the source dataset
@@ -2730,7 +3235,9 @@ class Inference:
                 meta_changed = False
                 for pred in preds:
                     ann = pred.annotation
-                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(
+                        project_meta, ann, model_prediction_suffix
+                    )
                     meta_changed = meta_changed or meta_changed_
                     pred.annotation = ann
                     prediction.model_meta = project_meta
@@ -2747,7 +3254,10 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Update labeling status of predicted labels before optional merge
                 for pred, ann in zip(preds, anns):
+                    update_labeling_status(ann)
                     pred.annotation = ann
 
                 if upload_mode in ["iou_merge", "append"]:
@@ -2783,11 +3293,89 @@ class Inference:
             inference_request.add_results(results)
 
     def add_results_to_request(
-        self, predictions: List[Prediction], inference_request: InferenceRequest
+        self, predictions: List[Prediction], inference_request: InferenceRequest, progress_cb=None
     ):
         results = self._format_output(predictions)
         inference_request.add_results(results)
-        inference_request.done(len(results))
+        if progress_cb:
+            progress_cb(len(results))
+
+    def upload_predictions_to_video(
+        self,
+        predictions: List[Prediction],
+        api: Api,
+        video_info: VideoInfo,
+        track_id: str,
+        context: Dict,
+        progress_cb=None,
+        inference_request: InferenceRequest = None,
+    ):
+        key_id_map = KeyIdMap()
+        project_meta = context.get("project_meta", None)
+        if project_meta is None:
+            project_meta = ProjectMeta.from_json(api.project.get_meta(video_info.project_id))
+            context["project_meta"] = project_meta
+        meta_changed = False
+        for prediction in predictions:
+            project_meta, ann, meta_changed_ = update_meta_and_ann(
+                project_meta, prediction.annotation, None
+            )
+            prediction.annotation = ann
+            meta_changed = meta_changed or meta_changed_
+        if meta_changed:
+            project_meta = api.project.update_meta(video_info.project_id, project_meta)
+            context["project_meta"] = project_meta
+
+        figure_data_by_object_id = defaultdict(list)
+
+        tracks_to_object_ids = context.setdefault("tracks_to_object_ids", {})
+        new_tracks: Dict[int, VideoObject] = {}
+        for prediction in predictions:
+            annotation = prediction.annotation
+            tracks = annotation.custom_data
+            for track, label in zip(tracks, annotation.labels):
+                if track not in tracks_to_object_ids and track not in new_tracks:
+                    video_object = VideoObject(obj_class=label.obj_class)
+                    new_tracks[track] = video_object
+        if new_tracks:
+            tracks, video_objects = zip(*new_tracks.items())
+            added_object_ids = api.video.object.append_bulk(
+                video_info.id, VideoObjectCollection(video_objects), key_id_map=key_id_map
+            )
+            for track, object_id in zip(tracks, added_object_ids):
+                tracks_to_object_ids[track] = object_id
+        for prediction in predictions:
+            annotation = prediction.annotation
+            tracks = annotation.custom_data
+            for track, label in zip(tracks, annotation.labels):
+                object_id = tracks_to_object_ids[track]
+                figure_data_by_object_id[object_id].append(
+                    {
+                        ApiField.OBJECT_ID: object_id,
+                        ApiField.GEOMETRY_TYPE: label.geometry.geometry_name(),
+                        ApiField.GEOMETRY: label.geometry.to_json(),
+                        ApiField.META: {ApiField.FRAME: prediction.frame_index},
+                        ApiField.TRACK_ID: track_id,
+                    }
+                )
+
+        for object_id, figures_data in figure_data_by_object_id.items():
+            figures_keys = [uuid.uuid4() for _ in figures_data]
+            api.video.figure._append_bulk(
+                entity_id=video_info.id,
+                figures_json=figures_data,
+                figures_keys=figures_keys,
+                key_id_map=key_id_map,
+            )
+            logger.debug(f"Added {len(figures_data)} geometries to object #{object_id}")
+        if progress_cb:
+            progress_cb(len(predictions))
+        if inference_request is not None:
+            results = self._format_output(predictions)
+            for result in results:
+                result["annotation"] = None
+                result["data"] = None
+            inference_request.add_results(results)
 
     def serve(self):
         if not self._use_gui and not self._is_cli_deploy:
@@ -2812,18 +3400,20 @@ class Inference:
             # Predict and shutdown
             if self._args.mode == "predict":
                 if any(
-                [
-                    self._args.input,
-                    self._args.project_id,
-                    self._args.dataset_id,
-                    self._args.image_id,
-                ]
+                    [
+                        self._args.input,
+                        self._args.project_id,
+                        self._args.dataset_id,
+                        self._args.image_id,
+                    ]
                 ):
                     self._parse_inference_settings_from_args()
                     self._inference_by_cli_deploy_args()
                     exit(0)
                 else:
-                    logger.error("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
+                    logger.error(
+                        "Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id"
+                    )
                     exit(0)
 
         if isinstance(self.gui, GUI.InferenceGUI):
@@ -2871,7 +3461,7 @@ class Inference:
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
-        else:
+        elif self.api is not None:
             autostart_func()
 
         @server.exception_handler(HTTPException)
@@ -2898,6 +3488,11 @@ class Inference:
         def get_session_info(response: Response):
             return self.get_info()
 
+        @server.post("/get_tracking_settings")
+        @self._check_serve_before_call
+        def get_tracking_settings(response: Response):
+            return self.get_tracking_settings()
+
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
             return {"settings": self.custom_inference_settings}
@@ -2913,7 +3508,8 @@ class Inference:
             logger.debug("Received a request to '/inference_image_id'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
-            return self.inference_requests_manager.run(self._inference_image_ids, api, state)[0]
+            results = self.inference_requests_manager.run(self._inference_image_ids, api, state)
+            return self._get_single_inference_result(results)
 
         @server.post("/inference_image_id_async")
         def inference_image_id_async(request: Request):
@@ -2964,7 +3560,10 @@ class Inference:
                     self._inference_images, [image], state, inference_request=inference_request
                 )
                 future.result()
-                return inference_request.pop_pending_results()[0]
+                if inference_request.exception is not None:
+                    raise inference_request.exception
+                results = inference_request.pop_pending_results()
+                return self._get_single_inference_result(results)
             except sly_image.UnsupportedImageFormat:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -2984,7 +3583,8 @@ class Inference:
                 response.raise_for_status()
                 response.raw.decode_content = True
                 image = self.cache.add_image_to_cache(image_url, response.raw, ext=ext)
-            return self.inference_requests_manager.run(self._inference_images, [image], state)[0]
+            results = self.inference_requests_manager.run(self._inference_images, [image], state)
+            return self._get_single_inference_result(results)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(request: Request):
@@ -3181,6 +3781,22 @@ class Inference:
                 "inference_request_uuid": inference_request.uuid,
             }
 
+        @server.post("/tracking_by_detection")
+        def tracking_by_detection(response: Response, request: Request):
+            state = request.state.state
+            context = request.state.context
+            state.update(context)
+            if state.get("tracker") is None:
+                state["tracker"] = "botsort"
+
+            logger.debug("Received a request to 'tracking_by_detection'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, future = self.inference_requests_manager.schedule_task(
+                self._tracking_by_detection, api, state
+            )
+            return {"message": "Track task started."}
+
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
             state = request.state.state
@@ -3244,10 +3860,7 @@ class Inference:
             data = {**inference_request.to_json(), **log_extra}
             if inference_request.stage != InferenceRequest.Stage.INFERENCE:
                 data["progress"] = {"current": 0, "total": 1}
-            logger.debug(
-                f"Sending inference progress with uuid:",
-                extra=data,
-            )
+            logger.debug(f"Sending inference progress with uuid:", extra=data)
             return data
 
         @server.post(f"/pop_inference_results")
@@ -3671,6 +4284,7 @@ class Inference:
 
     def _parse_inference_settings_from_args(self):
         logger.debug("Parsing inference settings from args")
+
         def parse_value(value: str):
             if value.lower() in ("true", "false"):
                 return value.lower() == "true"
@@ -3785,7 +4399,9 @@ class Inference:
                     "Team ID not found in env. Required for remote custom checkpoints."
                 )
             if self.api is None:
-                raise ValueError("API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables.")
+                raise ValueError(
+                    "API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables."
+                )
             file_info = self.api.file.get_info_by_path(team_id, checkpoint_path)
             if not file_info:
                 raise ValueError(
@@ -3797,8 +4413,7 @@ class Inference:
             try:
                 # Read data from checkpoint
                 logger.debug(f"Reading data from checkpoint: {checkpoint_path}")
-                import torch  # pylint: disable=import-error
-                checkpoint = torch.load(checkpoint_path)
+                checkpoint = torch_load_safe(checkpoint_path)
                 model_info = checkpoint["model_info"]
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_meta = os.path.join(self.model_dir, "model_meta.json")
@@ -3924,7 +4539,9 @@ class Inference:
                 raise ValueError("Draw visualization is not supported for project inference")
 
             if dataset_ids:
-                logger.info(f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'")
+                logger.info(
+                    f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'"
+                )
             else:
                 logger.info(f"Predicting Project by ID: {project_id}")
 
@@ -3966,7 +4583,9 @@ class Inference:
             draw: bool = False,
             upload: bool = False,
         ):
-            logger.info(f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}")
+            logger.info(
+                f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}"
+            )
             if draw:
                 raise ValueError("Draw visualization is not supported for dataset inference")
             if self.api is None:
@@ -4028,6 +4647,7 @@ class Inference:
             draw: bool = False,
         ):
             logger.info(f"Predicting Local Data: {input_path}")
+
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
                 if pred_dir is not None:
@@ -4103,6 +4723,17 @@ class Inference:
                 self._args.draw,
             )
 
+    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation], tracker):
+        updated_anns = []
+        for frame, ann in zip(frames, anns):
+            matches = tracker.update(frame, ann)
+            track_ids = [match["track_id"] for match in matches]
+            tracked_labels = [match["label"] for match in matches]
+
+            filtered_annotation = ann.clone(labels=tracked_labels, custom_data=track_ids)
+            updated_anns.append(filtered_annotation)
+        return updated_anns
+
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
@@ -4131,18 +4762,22 @@ class Inference:
 
     def _set_checkpoint_from_experiment_info(self, experiment_info: ExperimentInfo):
         try:
-            if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+            if (
+                not isinstance(self.gui, GUI.ServingGUITemplate)
+                or self.gui.experiment_selector is None
+            ):
                 return
 
             task_id = experiment_info.task_id
             self.gui.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.gui.experiment_selector.set_by_task_id(task_id)
+            self.gui.experiment_selector.set_selected_row_by_task_id(task_id)
 
             best_ckpt = experiment_info.best_checkpoint
             if best_ckpt:
-                row = self.gui.experiment_selector.get_by_task_id(task_id)
+                row = self.gui.experiment_selector.get_selected_row_by_task_id(task_id)
                 if row is not None:
                     row.set_selected_checkpoint_by_name(best_ckpt)
+
         except Exception as e:
             logger.warning(f"Failed to set checkpoint from experiment info: {repr(e)}")
 
@@ -4150,6 +4785,150 @@ class Inference:
         if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
             return
         self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
+
+    def export_onnx(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def export_tensorrt(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+
+def _filter_duplicated_predictions_from_ann_cpu(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+):
+    """
+    Filter out predicted labels whose bboxes have IoU > iou_threshold with any GT label.
+    Uses Shapely for geometric operations.
+
+    :param pred_ann: Predicted annotation object
+    :type pred_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param gt_ann: Ground truth annotation object
+    :type gt_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param iou_threshold: IoU threshold for filtering
+    :type iou_threshold: float
+    :returns: New annotation with filtered labels
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    from shapely.geometry import box
+
+    def calculate_iou(geom1: Geometry, geom2: Geometry):
+        """Calculate IoU between two geometries using Shapely."""
+        bbox1 = geom1.to_bbox()
+        bbox2 = geom2.to_bbox()
+
+        box1 = box(bbox1.left, bbox1.top, bbox1.right, bbox1.bottom)
+        box2 = box(bbox2.left, bbox2.top, bbox2.right, bbox2.bottom)
+
+        intersection = box1.intersection(box2).area
+        union = box1.union(box2).area
+
+        return intersection / union if union > 0 else 0.0
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[name_shape].append(label)
+
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+
+        for pred_label in pred:
+            # Check if this prediction has IoU < threshold with ALL GT boxes
+            keep = True
+            for gt_label in gt:
+                iou = calculate_iou(pred_label.geometry, gt_label.geometry)
+                if iou >= iou_threshold:
+                    keep = False
+                    break
+
+            if keep:
+                new_labels.append(pred_label)
+
+    return pred_ann.clone(labels=new_labels)
+
+
+def _filter_duplicated_predictions_from_ann(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+) -> Annotation:
+    """
+    Filter out predictions that significantly overlap with ground truth annotations.
+
+    This function compares each prediction with ground truth annotations of the same class
+    and removes predictions that have an IoU (Intersection over Union) greater than or equal
+    to the specified threshold with any ground truth annotation. This is useful for identifying
+    new objects that aren't already annotated in the ground truth.
+
+    :param gt_ann: :class:`~supervisely.annotation.annotation.Annotation` object containing ground truth labels
+    :type gt_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param pred_ann: :class:`~supervisely.annotation.annotation.Annotation` object containing prediction labels to be filtered
+    :type pred_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                            ground truth box of the same class will be removed
+    :type iou_threshold: float
+    :returns: A new annotation object containing only predictions that don't significantly
+                overlap with ground truth annotations
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+
+
+    Notes:
+    ------
+    - Predictions with classes not present in ground truth will be kept
+    - Requires PyTorch and torchvision for IoU calculations
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    try:
+        import torch
+        from torchvision.ops import box_iou
+
+    except ImportError:
+        return _filter_duplicated_predictions_from_ann_cpu(gt_ann, pred_ann, iou_threshold)
+
+    def _to_tensor(geom):
+        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[name_shape].append(label)
+
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
+        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+        iou_matrix = iou_matrix.cpu().numpy()
+        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+        new_labels.extend([pred[i] for i in keep_indices])
+
+    return pred_ann.clone(labels=new_labels)
+
 
 def _exclude_duplicated_predictions(
     api: Api,
@@ -4169,9 +4948,9 @@ def _exclude_duplicated_predictions(
     - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
 
     :param api: Supervisely API object
-    :type api: Api
-    :param pred_anns: List of Annotation objects containing predictions
-    :type pred_anns: List[Annotation]
+    :type api: :class:`~supervisely.api.api.Api`
+    :param pred_anns: List of annotation objects containing predictions
+    :type pred_anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
     :param dataset_id: ID of the dataset containing the images
     :type dataset_id: int
     :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
@@ -4179,10 +4958,10 @@ def _exclude_duplicated_predictions(
     :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
                     ground truth box of the same class will be removed. None if no filtering is needed
     :type iou: Optional[float]
-    :param meta: ProjectMeta object
-    :type meta: Optional[ProjectMeta]
-    :return: List of Annotation objects containing filtered predictions
-    :rtype: List[Annotation]
+    :param meta: Project meta
+    :type meta: Optional[:class:`~supervisely.project.project_meta.ProjectMeta`]
+    :returns: List of annotation objects containing filtered predictions
+    :rtype: List[:class:`~supervisely.annotation.annotation.Annotation`]
 
     Notes:
     ------
@@ -4206,71 +4985,6 @@ def _exclude_duplicated_predictions(
                 f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
             )
     return pred_anns
-
-
-def _filter_duplicated_predictions_from_ann(
-    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
-) -> Annotation:
-    """
-    Filter out predictions that significantly overlap with ground truth annotations.
-
-    This function compares each prediction with ground truth annotations of the same class
-    and removes predictions that have an IoU (Intersection over Union) greater than or equal
-    to the specified threshold with any ground truth annotation. This is useful for identifying
-    new objects that aren't already annotated in the ground truth.
-
-    :param gt_ann: Annotation object containing ground truth labels
-    :type gt_ann: Annotation
-    :param pred_ann: Annotation object containing prediction labels to be filtered
-    :type pred_ann: Annotation
-    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
-                            ground truth box of the same class will be removed
-    :type iou_threshold: float
-    :return: A new annotation object containing only predictions that don't significantly
-                overlap with ground truth annotations
-    :rtype: Annotation
-
-
-    Notes:
-    ------
-    - Predictions with classes not present in ground truth will be kept
-    - Requires PyTorch and torchvision for IoU calculations
-    """
-
-    try:
-        import torch
-        from torchvision.ops import box_iou
-
-    except ImportError:
-        raise ImportError("Please install PyTorch and torchvision to use this feature.")
-
-    def _to_tensor(geom):
-        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
-
-    new_labels = []
-    pred_cls_bboxes = defaultdict(list)
-    for label in pred_ann.labels:
-        pred_cls_bboxes[label.obj_class.name].append(label)
-
-    gt_cls_bboxes = defaultdict(list)
-    for label in gt_ann.labels:
-        if label.obj_class.name not in pred_cls_bboxes:
-            continue
-        gt_cls_bboxes[label.obj_class.name].append(label)
-
-    for name, pred in pred_cls_bboxes.items():
-        gt = gt_cls_bboxes[name]
-        if len(gt) == 0:
-            new_labels.extend(pred)
-            continue
-        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
-        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
-        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
-        iou_matrix = iou_matrix.cpu().numpy()
-        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
-        new_labels.extend([pred[i] for i in keep_indices])
-
-    return pred_ann.clone(labels=new_labels)
 
 
 def _get_log_extra_for_inference_request(
@@ -4299,8 +5013,8 @@ def _get_log_extra_for_inference_request(
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        "result": inference_request._final_result,
         "preparing_progress": progress,
+        "result": inference_request.final_result is not None,  # for backward compatibility
     }
     return log_extra
 
@@ -4329,16 +5043,17 @@ def _create_notify_after_complete_decorator(
         If an argument can be both positional and keyword,
         it is preferable to declare both 'arg_pos' and 'arg_key'
     :type arg_key: Optional[str]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
-        def wrapped_function(arg1, kwarg1)
-            return
+        .. code-block:: python
 
-        wrapped_function("pos_arg", kwarg1="key_arg")
-        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
+            @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+            def wrapped_function(arg1, kwarg1)
+                return
+
+            wrapped_function("pos_arg", kwarg1="key_arg")
+            # Info    2023.07.04 11:37:59     Print arg1: pos_arg
     """
 
     def decorator(func):
@@ -4380,7 +5095,7 @@ def get_gpu_count():
         gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
+        logger.warning("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
 
 
@@ -4426,7 +5141,7 @@ def _fix_classes_names(meta: ProjectMeta, ann: Annotation):
     return meta, ann, replaced_classes_in_meta, list(replaced_classes_in_ann)
 
 
-def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
+def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suffix: str = None):
     """Update project meta and annotation to match each other
     If obj class or tag meta from annotation conflicts with project meta
     add suffix to obj class or tag meta.
@@ -4434,8 +5149,13 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     """
     obj_classes_suffixes = ["_nn"]
     tag_meta_suffixes = ["_nn"]
-    ann_obj_classes = {}
-    ann_tag_metas = {}
+    if model_prediction_suffix is not None:
+        obj_classes_suffixes = [model_prediction_suffix]
+        tag_meta_suffixes = [model_prediction_suffix]
+        logger.debug(
+            f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
+        )
+    logger.debug("source meta", extra={"meta": meta.to_json()})
     meta_changed = False
 
     meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
@@ -4446,91 +5166,289 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
             extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
         )
 
-    # get all obj classes and tag metas from annotation
+    updated_labels = []
+    any_label_updated = False
     for label in ann.labels:
-        ann_obj_classes[label.obj_class.name] = label.obj_class
+        original_obj_class_name = label.obj_class.name
+        suffix_found = False
+        for suffix in ["", *obj_classes_suffixes]:
+            label_obj_class = label.obj_class
+            label_obj_class_name = label_obj_class.name + suffix
+            if suffix:
+                label_obj_class = label_obj_class.clone(name=label_obj_class_name)
+                label = label.clone(obj_class=label_obj_class)
+                any_label_updated = True
+            meta_obj_class = meta.get_obj_class(label_obj_class_name)
+            if meta_obj_class is None:
+                # if obj class is not in meta, add it with suffix
+                meta = meta.add_obj_class(label_obj_class)
+                updated_labels.append(label)
+                meta_changed = True
+                suffix_found = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == label.geometry.geometry_name():
+                # if label geometry is the same as in meta, use meta obj class
+                label = label.clone(obj_class=meta_obj_class)
+                updated_labels.append(label)
+                suffix_found = True
+                any_label_updated = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == AnyGeometry.geometry_name():
+                # if meta obj class is AnyGeometry, use it in label
+                label = label.clone(obj_class=meta_obj_class)
+                updated_labels.append(label)
+                suffix_found = True
+                any_label_updated = True
+                break
+        if not suffix_found:
+            # if no suffix found, raise error
+            raise ValueError(
+                f"Can't add obj class {original_obj_class_name} to project meta. "
+                "Tried with suffixes: " + ", ".join(obj_classes_suffixes) + ". "
+                "Please check if model geometry type is compatible with existing obj classes."
+            )
+    if any_label_updated:
+        ann = ann.clone(labels=updated_labels)
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    ann_tag_metas = {}
+    for label in ann.labels:
         for tag in label.tags:
             ann_tag_metas[tag.meta.name] = tag.meta
     for tag in ann.img_tags:
         ann_tag_metas[tag.meta.name] = tag.meta
 
-    # check if obj classes are in project meta
-    # if not, add them.
-    # if shape is different, add them with suffix
-    changed_obj_classes = {}
-    for ann_obj_class in ann_obj_classes.values():
-        if meta.get_obj_class(ann_obj_class.name) is None:
-            meta = meta.add_obj_class(ann_obj_class)
+    changed_tag_metas = {}
+    for ann_tag_meta in ann_tag_metas.values():
+        meta_tag_meta = meta.get_tag_meta(ann_tag_meta.name)
+        if meta_tag_meta is None:
+            meta = meta.add_tag_meta(ann_tag_meta)
             meta_changed = True
-        elif (
-            meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type
-            and meta.get_obj_class(ann_obj_class.name).geometry_type != AnyGeometry
-        ):
-            found = False
-            for suffix in obj_classes_suffixes:
-                new_obj_class_name = ann_obj_class.name + suffix
-                meta_obj_class = meta.get_obj_class(new_obj_class_name)
-                if meta_obj_class is None:
-                    new_obj_class = ann_obj_class.clone(name=new_obj_class_name)
-                    meta = meta.add_obj_class(new_obj_class)
+        elif not meta_tag_meta.is_compatible(ann_tag_meta):
+            suffix_found = False
+            for suffix in tag_meta_suffixes:
+                new_tag_meta_name = ann_tag_meta.name + suffix
+                meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
+                if meta_tag_meta is None:
+                    new_tag_meta = ann_tag_meta.clone(name=new_tag_meta_name)
+                    meta = meta.add_tag_meta(new_tag_meta)
+                    changed_tag_metas[ann_tag_meta.name] = new_tag_meta
                     meta_changed = True
-                    changed_obj_classes[ann_obj_class.name] = new_obj_class
-                    found = True
+                    suffix_found = True
                     break
-                if meta_obj_class.geometry_type == ann_obj_class.geometry_type:
-                    changed_obj_classes[ann_obj_class.name] = meta_obj_class
-                    found = True
+                if meta_tag_meta.is_compatible(ann_tag_meta):
+                    changed_tag_metas[ann_tag_meta.name] = meta_tag_meta
+                    suffix_found = True
                     break
-            if not found:
-                raise ValueError(f"Can't add obj class {ann_obj_class.name} to project meta")
+            if not suffix_found:
+                raise ValueError(f"Can't add tag meta {ann_tag_meta.name} to project meta")
+
+    if changed_tag_metas:
+        labels = []
+        any_label_updated = False
+        for label in ann.labels:
+            any_tag_updated = False
+            label_tags = []
+            for tag in label.tags:
+                if tag.meta.name in changed_tag_metas:
+                    label_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                    any_tag_updated = True
+                else:
+                    label_tags.append(tag)
+            if any_tag_updated:
+                label = label.clone(tags=TagCollection(label_tags))
+                any_label_updated = True
+            labels.append(label)
+        img_tags = []
+        any_tag_updated = False
+        for tag in ann.img_tags:
+            if tag.meta.name in changed_tag_metas:
+                img_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                any_tag_updated = True
+            else:
+                img_tags.append(tag)
+        if any_tag_updated or any_label_updated:
+            if any_tag_updated:
+                img_tags = TagCollection(img_tags)
+            else:
+                img_tags = None
+            if not any_label_updated:
+                labels = None
+            ann = ann.clone(img_tags=img_tags)
+    return meta, ann, meta_changed
+
+
+def update_meta_and_ann_for_video_annotation(
+    meta: ProjectMeta, ann: VideoAnnotation, model_prediction_suffix: str = None
+):
+    """Update project meta and annotation to match each other
+    If obj class or tag meta from annotation conflicts with project meta
+    add suffix to obj class or tag meta.
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed.
+    """
+    obj_classes_suffixes = ["_nn"]
+    tag_meta_suffixes = ["_nn"]
+    if model_prediction_suffix is not None:
+        obj_classes_suffixes = [model_prediction_suffix]
+        tag_meta_suffixes = [model_prediction_suffix]
+        logger.debug(
+            f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
+        )
+    logger.debug("source meta", extra={"meta": meta.to_json()})
+    meta_changed = False
+
+    # meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    # if replaced_classes_in_meta:
+    #     meta_changed = True
+    #     logger.warning(
+    #         "Some classes names were fixed in project meta",
+    #         extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
+    #     )
+
+    new_objects: List[VideoObject] = []
+    new_figures: List[VideoFigure] = []
+    any_object_updated = False
+    for video_object in ann.objects:
+        this_object_figures = [
+            figure for figure in ann.figures if figure.video_object.key() == video_object.key()
+        ]
+        this_object_changed = False
+        original_obj_class_name = video_object.obj_class.name
+        suffix_found = False
+        for suffix in ["", *obj_classes_suffixes]:
+            obj_class = video_object.obj_class
+            obj_class_name = obj_class.name + suffix
+            if suffix:
+                obj_class = obj_class.clone(name=obj_class_name)
+                video_object = video_object.clone(obj_class=obj_class)
+                any_object_updated = True
+                this_object_changed = True
+            meta_obj_class = meta.get_obj_class(obj_class_name)
+            if meta_obj_class is None:
+                # obj class is not in meta, add it with suffix
+                meta = meta.add_obj_class(obj_class)
+                new_objects.append(video_object)
+                meta_changed = True
+                suffix_found = True
+                break
+            elif (
+                meta_obj_class.geometry_type.geometry_name()
+                == video_object.obj_class.geometry_type.geometry_name()
+            ):
+                # if object geometry is the same as in meta, use meta obj class
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == AnyGeometry.geometry_name():
+                # if meta obj class is AnyGeometry, use it in object
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+        if not suffix_found:
+            # if no suffix found, raise error
+            raise ValueError(
+                f"Can't add obj class {original_obj_class_name} to project meta. "
+                "Tried with suffixes: " + ", ".join(obj_classes_suffixes) + ". "
+                "Please check if model geometry type is compatible with existing obj classes."
+            )
+        elif this_object_changed:
+            this_object_figures = [
+                figure.clone(video_object=video_object) for figure in this_object_figures
+            ]
+        new_figures.extend(this_object_figures)
+    if any_object_updated:
+        frames_figures = {}
+        for figure in new_figures:
+            frames_figures.setdefault(figure.frame_index, []).append(figure)
+        new_frames = FrameCollection(
+            [
+                Frame(index=frame_index, figures=figures)
+                for frame_index, figures in frames_figures.items()
+            ]
+        )
+        ann = ann.clone(objects=new_objects, frames=new_frames)
 
     # check if tag metas are in project meta
     # if not, add them with suffix
+    ann_tag_metas: Dict[str, TagMeta] = {}
+    for video_object in ann.objects:
+        for tag in video_object.tags:
+            tag_name = tag.meta.name
+            if tag_name not in ann_tag_metas:
+                ann_tag_metas[tag_name] = tag.meta
+    for tag in ann.tags:
+        tag_name = tag.meta.name
+        if tag_name not in ann_tag_metas:
+            ann_tag_metas[tag_name] = tag.meta
+
     changed_tag_metas = {}
-    for tag_meta in ann_tag_metas.values():
-        if meta.get_tag_meta(tag_meta.name) is None:
-            meta = meta.add_tag_meta(tag_meta)
+    for ann_tag_meta in ann_tag_metas.values():
+        meta_tag_meta = meta.get_tag_meta(ann_tag_meta.name)
+        if meta_tag_meta is None:
+            meta = meta.add_tag_meta(ann_tag_meta)
             meta_changed = True
-        elif not meta.get_tag_meta(tag_meta.name).is_compatible(tag_meta):
-            found = False
+        elif not meta_tag_meta.is_compatible(ann_tag_meta):
+            suffix_found = False
             for suffix in tag_meta_suffixes:
-                new_tag_meta_name = tag_meta.name + suffix
+                new_tag_meta_name = ann_tag_meta.name + suffix
                 meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
                 if meta_tag_meta is None:
-                    new_tag_meta = tag_meta.clone(name=new_tag_meta_name)
+                    new_tag_meta = ann_tag_meta.clone(name=new_tag_meta_name)
                     meta = meta.add_tag_meta(new_tag_meta)
-                    changed_tag_metas[tag_meta.name] = new_tag_meta
+                    changed_tag_metas[ann_tag_meta.name] = new_tag_meta
                     meta_changed = True
-                    found = True
+                    suffix_found = True
                     break
-                if meta_tag_meta.is_compatible(tag_meta):
-                    changed_tag_metas[tag_meta.name] = meta_tag_meta
-                    found = True
+                if meta_tag_meta.is_compatible(ann_tag_meta):
+                    changed_tag_metas[ann_tag_meta.name] = meta_tag_meta
+                    suffix_found = True
                     break
-            if not found:
-                raise ValueError(f"Can't add tag meta {tag_meta.name} to project meta")
+            if not suffix_found:
+                raise ValueError(f"Can't add tag meta {ann_tag_meta.name} to project meta")
 
-    labels = []
-    for label in ann.labels:
-        if label.obj_class.name in changed_obj_classes:
-            label = label.clone(obj_class=changed_obj_classes[label.obj_class.name])
+    if changed_tag_metas:
+        objects = []
+        any_object_updated = False
+        for video_object in ann.objects:
+            any_tag_updated = False
+            object_tags = []
+            for tag in video_object.tags:
+                if tag.meta.name in changed_tag_metas:
+                    object_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                    any_tag_updated = True
+                else:
+                    object_tags.append(tag)
+            if any_tag_updated:
+                video_object = video_object.clone(tags=TagCollection(object_tags))
+                any_object_updated = True
+            objects.append(video_object)
 
-        label_tags = []
-        for tag in label.tags:
+        video_tags = []
+        any_tag_updated = False
+        for tag in ann.tags:
             if tag.meta.name in changed_tag_metas:
-                label_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                video_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                any_tag_updated = True
             else:
-                label_tags.append(tag)
+                video_tags.append(tag)
+        if any_tag_updated or any_object_updated:
+            if any_tag_updated:
+                video_tags = VideoTagCollection(video_tags)
+            else:
+                video_tags = None
+            if any_object_updated:
+                objects = VideoObjectCollection(objects)
+            else:
+                objects = None
+            ann = ann.clone(tags=video_tags, objects=objects)
 
-        labels.append(label.clone(tags=TagCollection(label_tags)))
-    img_tags = []
-    for tag in ann.img_tags:
-        if tag.meta.name in changed_tag_metas:
-            img_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
-        else:
-            img_tags.append(tag)
-
-    ann = ann.clone(labels=labels, img_tags=TagCollection(img_tags))
     return meta, ann, meta_changed
 
 
@@ -4549,6 +5467,8 @@ def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int
 
 
 class Timer:
+    """Context manager for measuring elapsed time (milliseconds)."""
+
     def __enter__(self):
         self.start = time.time()
         return self
@@ -4562,7 +5482,13 @@ class Timer:
 
 
 class TempImageWriter:
+    """Write temporary images into a per-instance temp directory and clean it up when done."""
+
     def __init__(self, format: str = "png"):
+        """
+        :param format: Image format (e.g. 'png').
+        :type format: str
+        """
         self.format = format
         self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
         sly_fs.mkdir(self.temp_dir)
@@ -4643,3 +5569,22 @@ def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
                 continue
             return data[key]
     return None
+
+
+def torch_load_safe(checkpoint_path: str, device: str = "cpu"):
+    import torch  # pylint: disable=import-error
+
+    # TODO: handle torch.load(weights_only=True) - change in torch 2.6.0
+    try:
+        logger.debug(f"Loading checkpoint from {checkpoint_path} on {device}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        logger.debug(f"Checkpoint loaded from {checkpoint_path} on {device}")
+    except:
+        logger.debug(
+            f"Failed to load checkpoint from {checkpoint_path} on {device}. Trying again with weights_only=False"
+        )
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        logger.debug(
+            f"Checkpoint loaded from {checkpoint_path} on {device} with weights_only=False"
+        )
+    return checkpoint

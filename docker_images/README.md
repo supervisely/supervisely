@@ -8,7 +8,7 @@ Docker images are automatically updated through the [GitHub action](.github/work
 ## Available Dockerfiles
 
 * [Collaboration](collaboration/Dockerfile)
-* [Data Operations](data-operations/Dockerfile)
+* [Data Operations](data_operations/Dockerfile)
 * [Development](development/Dockerfile)
 * [Import-Export](import-export/Dockerfile)
 * [Labeling](labeling/Dockerfile)

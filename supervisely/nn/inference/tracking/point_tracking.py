@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Geometry, Label
+from supervisely.annotation.label import Geometry, Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
@@ -33,6 +33,8 @@ from supervisely.task.progress import Progress
 
 
 class PointTracking(BaseTracking):
+    """Video tracking for point-based geometries (Point, GraphNodes); propagates keypoints across frames."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
@@ -430,9 +432,9 @@ class PointTracking(BaseTracking):
         :param settings: model parameters
         :type settings: Dict[str, Any]
         :param start_object: point to track on the initial frame
-        :type start_object: PredictionPoint
-        :return: predicted points for frame range (0, m]; `m-1` prediction in total
-        :rtype: List[PredictionPoint]
+        :type start_object: :class:`~supervisely.nn.prediction_dto.PredictionPoint`
+        :returns: predicted points for frame range (0, m]; `m-1` prediction in total
+        :rtype: List[:class:`~supervisely.nn.prediction_dto.PredictionPoint`]
         """
         raise NotImplementedError
 
@@ -450,9 +452,9 @@ class PointTracking(BaseTracking):
         :param settings: model parameters
         :type settings: Dict[str, Any]
         :param start_objects: points to track on the initial frame
-        :type start_objects: List[PredictionPoint]
-        :return: predicted points for frame range (0, m]; `m-1` prediction in total
-        :rtype: List[List[PredictionPoint]]
+        :type start_objects: List[:class:`~supervisely.nn.prediction_dto.PredictionPoint`]
+        :returns: predicted points for frame range (0, m]; `m-1` prediction in total
+        :rtype: List[List[:class:`~supervisely.nn.prediction_dto.PredictionPoint`]]
         """
         raise NotImplementedError
 
@@ -610,8 +612,12 @@ class PointTracking(BaseTracking):
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
+
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution

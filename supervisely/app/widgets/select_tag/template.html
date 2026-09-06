@@ -1,0 +1,64 @@
+<el-select v-model="state.{{{widget.widget_id}}}.value" {% if widget._changes_handled==true %}
+	@change="post('/{{{widget.widget_id}}}/value_changed')" {% endif %}
+	:placeholder="data.{{{widget.widget_id}}}.placeholder" :filterable="data.{{{widget.widget_id}}}.filterable"
+	:multiple="data.{{{widget.widget_id}}}.multiple" :size="data.{{{widget.widget_id}}}.size">
+	<el-option v-for="item in data.{{{widget.widget_id}}}.items" :key="item.value" :label="item.label"
+		:value="item.value">
+		<i class="zmdi zmdi-circle"
+			:style="{color: 'rgb(' + item.color[0] + ',' + item.color[1] + ',' + item.color[2] + ')'}"></i>
+		{{ item.label }}
+		<span v-if="item.valueType" style="float: right; color: #8492a6; font-size: 12px; margin-right: 20px;">
+			{{ item.valueType }}
+		</span>
+	</el-option>
+	<el-option v-if="data.{{{widget.widget_id}}}.showAddNewTag" value="__add_new_tag__" label="+ Add new tag" disabled
+		@click.native.stop="state.{{{widget.widget_id}}}.createTagDialog.visible = true" style="cursor: pointer;">
+		<span style="color: #409EFF; font-weight: 500;">+ Add new tag</span>
+	</el-option>
+</el-select>
+
+
+<!-- Dialog for creating new tag -->
+<el-dialog title="Create New Tag" :visible.sync="state.{{{widget.widget_id}}}.createTagDialog.visible" width="500px"
+	:close-on-click-modal="false" @open="state.{{{widget.widget_id}}}.createTagDialog.showError = false">
+	<el-form label-width="140px" label-position="left">
+		<el-form-item label="Tag Name">
+			<el-input v-model="state.{{{widget.widget_id}}}.createTagDialog.tagName" placeholder="Enter tag name"
+				@input="state.{{{widget.widget_id}}}.createTagDialog.showError = false"
+				@keyup.enter.native="post('/{{{widget.widget_id}}}/tag_created_cb')"></el-input>
+		</el-form-item>
+		<el-form-item label="Value Type">
+			<el-select v-model="state.{{{widget.widget_id}}}.createTagDialog.valueType"
+				@change="state.{{{widget.widget_id}}}.createTagDialog.showPossibleValues = (state.{{{widget.widget_id}}}.createTagDialog.valueType === 'oneof_string')"
+				placeholder="Select value type" style="width: 100%">
+				<el-option v-for="vtype in data.{{{widget.widget_id}}}.availableValueTypes" :key="vtype.value"
+					:label="vtype.label" :value="vtype.value">
+				</el-option>
+			</el-select>
+		</el-form-item>
+		<el-form-item v-if="state.{{{widget.widget_id}}}.createTagDialog.showPossibleValues" label="Possible Values">
+			<el-input v-model="state.{{{widget.widget_id}}}.createTagDialog.possibleValues" type="textarea" :rows="3"
+				placeholder="red, green, blue"></el-input>
+			<div style="color: #909399; font-size: 11px; margin-top: 5px;">
+				Comma-separated values
+			</div>
+		</el-form-item>
+		<div v-show="state.{{{widget.widget_id}}}.createTagDialog.showError" style="margin-top: 10px;">
+			{{{widget._error_message}}}
+		</div>
+	</el-form>
+	<span slot="footer" class="dialog-footer">
+		<el-button @click="state.{{{widget.widget_id}}}.createTagDialog.visible = false">
+			Cancel
+		</el-button>
+		<el-button type="primary" @click="post('/{{{widget.widget_id}}}/tag_created_cb')">
+			Create
+		</el-button>
+	</span>
+</el-dialog>
+
+<style scoped>
+	.el-select-dropdown__item.is-disabled {
+		cursor: pointer !important;
+	}
+</style>

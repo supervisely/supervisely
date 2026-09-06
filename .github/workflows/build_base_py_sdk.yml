@@ -11,28 +11,19 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
 
     steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
       - name: Build and Push Docker Image
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/base-py-sdk
-          tags: ${{ github.event.inputs.tag_version }}
-          addLatest: false
-          dockerfile: "base_images/py_sdk/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ github.event.inputs.tag_version }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/base_images/py_sdk \
+            --opt build-arg:tag_ref_name=${{ github.event.inputs.tag_version }} \
+            --output type=image,name=docker.io/supervisely/base-py-sdk:${{ github.event.inputs.tag_version }},push=true \
+            --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk:buildcache

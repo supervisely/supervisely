@@ -5,29 +5,10 @@ from supervisely.app.widgets import Widget
 
 
 class Dialog(Widget):
-    """Dialog is a widget that allows to show a dialog window that contain any other widgets.
-    It can be used to show a message to the user or to ask for confirmation.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/dialog>`_
-        (including screenshots and examples).
-
-    :param title: Dialog title
-    :type title: str
-    :param content: Dialog content
-    :type content: Widget
-    :param size: Dialog size, one of: tiny, small, large, full
-    :type size: Literal["tiny", "small", "large", "full"]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Dialog, Input, Button
-
-        dialog = Dialog(title="Dialog title", content=Input("Input"), size="large")
-        dialog.show()
-    """
+    """Dialog window that can contain any other widgets."""
+    class Routes:
+        """Route name constants for this widget."""
+        ON_CLOSE = "close_cb"
 
     def __init__(
         self,
@@ -36,10 +17,38 @@ class Dialog(Widget):
         size: Optional[Literal["tiny", "small", "large", "full"]] = "small",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param title: Dialog title.
+        :type title: Optional[str]
+        :param content: Content widget.
+        :type content: Optional[Widget]
+        :param size: Dialog size, one of: tiny, small, large, full.
+        :type size: Optional[Literal["tiny", "small", "large", "full"]]
+        :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Dialog, Input
+                dialog = Dialog(title="Title", content=Input(""), size="large")
+                dialog.show()
+        """
         self._title = title
         self._content = content
         self._size = size
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+        server = self._sly_app.get_server()
+        route = self.get_route_path(Dialog.Routes.ON_CLOSE)
+        @server.post(route)
+        def _on_close():
+            # * Change visibility state to False when dialog is closed on client side
+            visible = StateJson()[self.widget_id]["visible"]
+            if visible is True:
+                StateJson()[self.widget_id]["visible"] = False
+                # * no need to call send_changes(), as it is already changed on client side
 
     def get_json_data(self) -> Dict[str, str]:
         """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
@@ -48,7 +57,7 @@ class Dialog(Widget):
             - title: Dialog title
             - size: Dialog size, one of: tiny, small, large, full
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, str]
         """
         return {
@@ -62,7 +71,7 @@ class Dialog(Widget):
         Dictionary contains the following fields:
             - visible: Dialog visibility
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, bool]
         """
         return {
@@ -83,7 +92,7 @@ class Dialog(Widget):
     def title(self) -> str:
         """Returns dialog title.
 
-        :return: Dialog title
+        :returns: Dialog title
         :rtype: str
         """
         return self._title

@@ -7,6 +7,8 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class VideoAnnotationToolAction(StrEnum):
+    """Action names supported by the Video Annotation Tool for remote UI control."""
+
     JOBS_DISABLE_CONTROLS = "jobs/disableControls"
     """"""
     JOBS_ENABLE_CONTROLS = "jobs/enableControls"
@@ -22,15 +24,19 @@ class VideoAnnotationToolAction(StrEnum):
     ENTITIES_SET_INTITY = "entities/setEntity"
     """"""
     DIRECT_TRACKING_PROGRESS = "figures/setDirectTrackingProgress"
+    """"""
+    JOBS_CONFIRM_AND_PULL_NEXT = "jobs/confirmAndPullNext"
 
 
 class VideoAnnotationToolApi(ModuleApiBase):
+    """API wrapper for sending actions/commands to a running Video Annotation Tool session."""
+
     def disable_job_controls(self, session_id: str) -> Dict[str, Any]:
         """Disables controls of the labeling jobs. Buttons: Sumbit job, Confirm video.
 
         :param session_id: ID of the session in the Video Labeling Tool which controls should be disabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -44,7 +50,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which controls should be enabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -58,7 +64,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which submit button should be disabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -72,7 +78,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which submit button should be enabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -86,7 +92,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which confirm button should be disabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -100,7 +106,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which confirm button should be enabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -120,7 +126,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
         :type video_id: int
         :param frame: Frame number which should be set, defaults to 0.
         :type frame: Optional[int]
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
 
@@ -182,6 +188,24 @@ class VideoAnnotationToolApi(ModuleApiBase):
             ApiField.MESSAGE: message,
         }
         return self._act(session_id, VideoAnnotationToolAction.DIRECT_TRACKING_PROGRESS, payload)
+
+    def confirm_and_pull_next(self, session_id: str, entity_id: int) -> Dict[str, Any]:
+        """Confirms the current entity in a labeling job/queue and pulls the next one.
+        Use when the native CONFIRM & PULL NEXT button is disabled and confirmation is
+        driven programmatically from a custom app after validation.
+
+        :param session_id: ID of the session in the Video Labeling Tool.
+        :type session_id: str
+        :param entity_id: Video id to confirm.
+        :type entity_id: int
+        :returns: Response from API server in JSON format.
+        :rtype: Dict[str, Any]
+        """
+        return self._act(
+            session_id,
+            VideoAnnotationToolAction.JOBS_CONFIRM_AND_PULL_NEXT,
+            {ApiField.ENTITY_ID: entity_id},
+        )
 
     def _act(self, session_id: int, action: VideoAnnotationToolAction, payload: dict):
         data = {

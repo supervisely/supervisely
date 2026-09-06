@@ -4,25 +4,30 @@ from typing import Dict, Optional, Union
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, ProjectMeta
-from supervisely.sly_logger import logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
 from supervisely.project.project_settings import LabelingInterface
-
+from supervisely.sly_logger import logger
 
 COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
+    """Imports COCO detection/segmentation format (images + annotations JSON) into Supervisely image project."""
+
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, str]] = None,
     ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
 
         self._coco_categories = []
         self._supports_links = True
@@ -58,7 +63,7 @@ class COCOConverter(ImageConverter):
     def validate_format(self) -> bool:
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        if self.upload_as_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
@@ -129,7 +134,7 @@ class COCOConverter(ImageConverter):
 
         if len(warnings) > 0:
             for warning, failed_items in warnings.items():
-                logger.warn(f"{warning}: {failed_items}")
+                logger.warning(f"{warning}: {failed_items}")
         return detected_ann_cnt > 0
 
     def get_meta(self) -> ProjectMeta:

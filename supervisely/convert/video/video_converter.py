@@ -28,11 +28,15 @@ from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
 class VideoConverter(BaseConverter):
+    """Base converter for video projects (uploads videos and optional video annotations to Supervisely)."""
+
     allowed_exts = ALLOWED_VIDEO_EXTENSIONS + [".mpg"]
     base_video_extension = ".mp4"
     modality = "videos"
 
     class Item(BaseConverter.BaseItem):
+        """Video item with cached shape/frame count and optional annotation/meta for upload."""
+
         def __init__(
             self,
             item_path,
@@ -40,10 +44,26 @@ class VideoConverter(BaseConverter):
             shape=None,
             custom_data=None,
             frame_count=None,
+            metadata=None,
         ):
+            """
+            :param item_path: Path to video file.
+            :type item_path: str
+            :param ann_data: Annotation path or data.
+            :type ann_data: str, optional
+            :param shape: (height, width). Inferred from video if None.
+            :type shape: tuple, optional
+            :param custom_data: Extra data.
+            :type custom_data: dict, optional
+            :param frame_count: Frame count. Inferred if None.
+            :type frame_count: int, optional
+            :param metadata: Optional metadata path.
+            :type metadata: str, optional
+            """
             self._path = item_path
             self._name: str = None
             self._ann_data = ann_data
+            self._metadata = metadata
             self._type = "video"
             if shape is None:
                 vcap = cv2.VideoCapture(item_path)
@@ -83,6 +103,14 @@ class VideoConverter(BaseConverter):
         def name(self, name: str):
             self._name = name
 
+        @property
+        def metadata(self) -> Optional[str]:
+            return self._metadata
+
+        @metadata.setter
+        def metadata(self, metadata: Optional[str]):
+            self._metadata = metadata
+
         def create_empty_annotation(self) -> VideoAnnotation:
             return VideoAnnotation(self._shape, self._frame_count)
 
@@ -92,8 +120,12 @@ class VideoConverter(BaseConverter):
         labeling_interface: Optional[Union[LabelingInterface, str]],
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
+        team_files_id_map: Optional[Dict[str, Tuple[int, str]]] = None,
     ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        super().__init__(
+            input_data, labeling_interface, upload_as_links, remote_files_map, team_files_id_map
+        )
         self._key_id_map: KeyIdMap = None
 
     @property
@@ -120,9 +152,7 @@ class VideoConverter(BaseConverter):
         log_progress=True,
     ):
         """Upload converted data to Supervisely"""
-
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
-
         videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
         existing_names = {video_info.name for video_info in videos_in_dataset}
 
@@ -149,13 +179,13 @@ class VideoConverter(BaseConverter):
                     [self._check_video_file_size(file_size) for file_size in file_sizes]
                 )
                 if has_large_files:
-                    upload_progress = []
-                    size_progress_cb = self._get_video_upload_progress(upload_progress)
+                    size_progress_cb = self._get_video_upload_progress()
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
+            item_metas = []
             anns = []
             figures_cnt = 0
             for item in batch:
@@ -164,6 +194,15 @@ class VideoConverter(BaseConverter):
                 )
                 item_paths.append(item.path)
                 item_names.append(item.name)
+
+                if isinstance(item.metadata, str):  # path to file
+                    from supervisely.io.json import load_json_file
+
+                    item_metas.append(load_json_file(item.metadata))
+                elif isinstance(item.metadata, dict):
+                    item_metas.append(item.metadata)
+                else:
+                    item_metas.append({})
 
                 ann = None
                 if not self.upload_as_links or self.supports_links:
@@ -177,6 +216,7 @@ class VideoConverter(BaseConverter):
                     dataset_id,
                     item_paths,
                     item_names,
+                    metas=item_metas,
                     skip_download=True,
                     progress_cb=progress_cb if log_progress else None,
                     force_metadata_for_links=False,
@@ -188,6 +228,7 @@ class VideoConverter(BaseConverter):
                     item_paths,
                     progress_cb=progress_cb if log_progress else None,
                     item_progress=(size_progress_cb if log_progress and has_large_files else None),
+                    metas=item_metas,
                 )
             vid_ids = [vid_info.id for vid_info in vid_infos]
 
@@ -266,8 +307,8 @@ class VideoConverter(BaseConverter):
             if codec_type not in ["video", "audio"]:
                 continue
             codec_name = stream["codecName"]
-            if codec_type == "video" and codec_name != "h264":
-                logger.info(f"Video codec is not h264, transcoding is required: {codec_name}")
+            if codec_type == "video" and codec_name not in ["h264", "h265", "hevc", "av1"]:
+                logger.info(f"Video codec is not h264/h265/hevc/av1, transcoding is required: {codec_name}")
                 need_video_transc = True
             elif codec_type == "audio" and codec_name != "aac":
                 logger.info(f"Audio codec is not aac, transcoding is required: {codec_name}")
@@ -295,10 +336,11 @@ class VideoConverter(BaseConverter):
     def _check_video_file_size(self, file_size):
         return file_size > 20 * 1024 * 1024  # 20 MB
 
-    def _get_video_upload_progress(self, upload_progress):
+    def _get_video_upload_progress(self):
+        """Byte progress bar shared by every video of the upload, for large files."""
         upload_progress = []
 
-        def _print_progress(monitor, upload_progress):
+        def _print_progress(delta, upload_progress):
             if len(upload_progress) == 0:
                 upload_progress.append(
                     Progress(
@@ -307,6 +349,8 @@ class VideoConverter(BaseConverter):
                         is_size=True,
                     )
                 )
-            upload_progress[0].set_current_value(monitor)
+            # increments add up across videos; a large upload sends one video per request,
+            # and every request brings its own monitor whose bytes_read starts at zero
+            upload_progress[0].iters_done_report(int(delta))
 
         return lambda m: _print_progress(m, upload_progress)

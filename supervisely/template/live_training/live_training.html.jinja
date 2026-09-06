@@ -1,0 +1,51 @@
+## About Live Training
+
+Live Training is a novel data annotation paradigm where the model trains in parallel with the annotation process, rather than after it. Each newly labeled sample is immediately added to the training set, and the model adapts in real-time, providing progressively more accurate predictions for subsequent images.
+This creates a synergistic human-AI collaboration: the growing dataset improves the model → the improved model accelerates annotation → faster annotation expands the dataset. Unlike traditional workflows where annotators wait for training to complete and GPUs sit idle during labeling, Live Training utilizes resources continuously and efficiently. 
+
+---
+## Training Results
+
+{{ widgets.training_plot | safe }}
+
+## Checkpoints
+
+[📂 Open in Team Files]({{ session.artifacts_url }}){:target="_blank"}
+
+<details>
+    <summary>📋 Checkpoints</summary>
+
+{% if widgets.tables.checkpoints %}
+{{ widgets.tables.checkpoints | safe }}
+{% else %}
+No checkpoints available.
+{% endif %}
+
+</details>
+
+## Classes
+
+The model can predict {{ model.num_classes }} classes. Here is the full list of classes:
+
+<details>
+    <summary>Classes</summary>
+    {{ widgets.tables.classes }}
+
+</details>
+
+
+{# ## Hyperparameters
+
+{% if hyperparameters %}
+| Parameter | Value |
+|-----------|-------|
+{% for key, value in hyperparameters.items() %}
+| {{ key }} | {{ value }} |
+{% endfor %}
+{% else %}
+No hyperparameters available.
+{% endif %}
+
+## Configuration
+
+**Config file:** `{{ model.config_file }}` #}

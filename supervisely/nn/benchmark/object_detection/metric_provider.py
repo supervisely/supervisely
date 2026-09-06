@@ -57,6 +57,8 @@ def filter_by_conf(matches: list, conf: float):
 
 
 class MetricProvider:
+    """High-level metrics API built on COCO eval results and match lists (tables, curves, confusion matrix)."""
+
     def __init__(self, eval_data: dict, cocoGt, cocoDt):
         """
         Main class for calculating prediction metrics.
@@ -266,6 +268,8 @@ class MetricProvider:
 
 
 class _MetricProvider:
+    """Internal metrics engine operating on a (possibly confidence-filtered) match list."""
+
     def __init__(self, matches: list, eval_data: dict, cocoGt, cocoDt):
         """
         type cocoGt: COCO

@@ -31,7 +31,15 @@ UNITS = ["B", "KB", "MB", "GB", "TB"]
 
 
 class _slyProgressBarIO:
+    """File-like adapter used by tqdm to report progress into Supervisely `DataJson` and logs."""
+
     def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None):
+        """:param widget_id: Progress widget ID.
+        :param message: Progress message.
+        :param total: Total iterations/size.
+        :param unit: Unit string (e.g. "it", "B").
+        :param unit_scale: If True, scale units (B, KB, MB...).
+        """
         self.widget_id = widget_id
 
         self.progress = {
@@ -120,7 +128,7 @@ class _slyProgressBarIO:
     def get_unit(self) -> str:
         """Returns the unit of the progress bar according to the total number of bytes.
 
-        :return: unit of the progress bar
+        :returns: unit of the progress bar
         :rtype: str
         """
         total = self.total
@@ -135,7 +143,7 @@ class _slyProgressBarIO:
 
         :param bytes: number of bytes
         :type bytes: int
-        :return: converted size from bytes to self.unit
+        :returns: converted size from bytes to self.unit
         :rtype: Union[float, Any]
         """
         if not isinstance(bytes, int) or self.unit not in UNITS:
@@ -147,7 +155,14 @@ class _slyProgressBarIO:
 
 
 class CustomTqdm(tqdm):
+    """tqdm subclass that streams progress updates to a Supervisely progress-bar widget."""
+
     def __init__(self, widget_id, message, *args, **kwargs):
+        """:param widget_id: Progress widget ID to sync with.
+        :param message: Progress message.
+        :param args: Passed to tqdm (e.g. iterable).
+        :param kwargs: Passed to tqdm (e.g. total, unit, unit_scale).
+        """
         extracted_total = copy.copy(
             tqdm(iterable=kwargs["iterable"], total=kwargs["total"], disable=True).total
         )
@@ -228,6 +243,8 @@ class CustomTqdm(tqdm):
 
 
 class SlyTqdm(Widget):
+    """Widget wrapper around tqdm that renders progress in the Supervisely UI."""
+
     # @TODO: track all active sessions for one object and close them if new object inited
     def __init__(self, message: str = None, show_percents: bool = False, widget_id: str = None):
         """
@@ -331,6 +348,8 @@ class SlyTqdm(Widget):
 
 
 class Progress(SlyTqdm):
+    """Convenience progress widget that can automatically hide itself when finished."""
+
     def __init__(
         self,
         message: str = None,
@@ -338,6 +357,15 @@ class Progress(SlyTqdm):
         hide_on_finish=True,
         widget_id: str = None,
     ):
+        """:param message: Progress message.
+        :type message: str, optional
+        :param show_percents: If True, show percentage.
+        :type show_percents: bool
+        :param hide_on_finish: If True, hide widget when done.
+        :type hide_on_finish: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self.hide_on_finish = hide_on_finish
         super().__init__(message=message, show_percents=show_percents, widget_id=widget_id)
 

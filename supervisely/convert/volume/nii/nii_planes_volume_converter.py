@@ -56,6 +56,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
     """
 
     class Item(VolumeConverter.BaseItem):
+        """Volume item extended with NIfTI-specific flags and a prepared ``volume_meta`` for annotations."""
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
@@ -219,10 +221,12 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
 
 class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     """
-    Upload NIfTI Annotations
+    Converter for NIfTI-based 3D mask annotations stored as plane-structured volumes.
     """
 
     class Item(VolumeConverter.BaseItem):
+        """Annotation item for a single plane-structured NIfTI mask (or scores table) with conversion flags."""
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
