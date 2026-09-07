@@ -4,6 +4,7 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
 from cacheout import Cache
 from cachetools import LRUCache
 from fastapi import Form, Request, Response, UploadFile, status
@@ -113,6 +114,38 @@ class InteractiveSegmentation(Inference):
     def get_classes(self) -> List[str]:
         return self._class_names
 
+    def _prepare_init_mask(self, api, smtool_state: Dict[str, Any], crop) -> Optional[np.ndarray]:
+        """Builds the initial mask of a Smart Tool request, cropped like the request image.
+
+        The figure is downloaded and normalized once per ``init_figure`` request and reused
+        from the cache for the following clicks on the same figure.
+
+        :param api: Supervisely API.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param smtool_state: Smart Tool request context.
+        :type smtool_state: Dict[str, Any]
+        :param crop: Crop of the request as a pair of x/y points.
+        :type crop: list
+        :returns: Cropped initial mask, or None if the request has no initial figure.
+        :rtype: np.ndarray, optional
+        :raises functional.InitMaskError: if the initial figure can not be normalized.
+        """
+        figure_id = smtool_state.get("figure_id")
+        image_id = smtool_state.get("image_id")
+        if smtool_state.get("init_figure") is True and image_id is not None:
+            # Download and save in Cache
+            init_mask = functional.download_init_mask(api, figure_id, image_id)
+            self._init_mask_cache[figure_id] = init_mask
+        elif self._init_mask_cache.get(figure_id) is not None:
+            # Load from Cache
+            init_mask = self._init_mask_cache[figure_id]
+        else:
+            return None
+        img_info = api.image.get_info_by_id(image_id)
+        h, w = img_info.height, img_info.width
+        init_mask = functional.bitmap_to_mask(init_mask, h, w)
+        return functional.crop_image(crop, init_mask)
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -188,22 +221,18 @@ class InteractiveSegmentation(Inference):
             sly_image.write(image_path, image_np)
 
             # Prepare init_mask (only for images)
-            figure_id = smtool_state.get("figure_id")
-            image_id = smtool_state.get("image_id")
-            if smtool_state.get("init_figure") is True and image_id is not None:
-                # Download and save in Cache
-                init_mask = functional.download_init_mask(api, figure_id, image_id)
-                self._init_mask_cache[figure_id] = init_mask
-            elif self._init_mask_cache.get(figure_id) is not None:
-                # Load from Cache
-                init_mask = self._init_mask_cache[figure_id]
-            else:
-                init_mask = None
+            try:
+                init_mask = self._prepare_init_mask(api, smtool_state, crop)
+            except functional.InitMaskError as exc:
+                logger.warning(f"Failed to prepare the initial mask: {exc}", exc_info=True)
+                silent_remove(image_path)
+                return {
+                    "origin": None,
+                    "bitmap": None,
+                    "success": False,
+                    "error": str(exc),
+                }
             if init_mask is not None:
-                img_info = api.image.get_info_by_id(image_id)
-                h, w = img_info.height, img_info.width
-                init_mask = functional.bitmap_to_mask(init_mask, h, w)
-                init_mask = functional.crop_image(crop, init_mask)
                 assert init_mask.shape[:2] == image_np.shape[:2]
             settings["init_mask"] = init_mask
 
@@ -316,22 +345,21 @@ class InteractiveSegmentation(Inference):
                 sly_image.write(image_path, image_np)
 
                 # Prepare init_mask (only for images)
-                figure_id = smtool_state.get("figure_id")
-                image_id = smtool_state.get("image_id")
-                if smtool_state.get("init_figure") is True and image_id is not None:
-                    # Download and save in Cache
-                    init_mask = functional.download_init_mask(api, figure_id, image_id)
-                    self._init_mask_cache[figure_id] = init_mask
-                elif self._init_mask_cache.get(figure_id) is not None:
-                    # Load from Cache
-                    init_mask = self._init_mask_cache[figure_id]
-                else:
-                    init_mask = None
+                try:
+                    init_mask = self._prepare_init_mask(api, smtool_state, crop)
+                except functional.InitMaskError as exc:
+                    logger.warning(f"Failed to prepare the initial mask: {exc}", exc_info=True)
+                    silent_remove(image_path)
+                    result.append(
+                        {
+                            "origin": None,
+                            "bitmap": None,
+                            "success": False,
+                            "error": str(exc),
+                        }
+                    )
+                    continue
                 if init_mask is not None:
-                    img_info = api.image.get_info_by_id(image_id)
-                    h, w = img_info.height, img_info.width
-                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
-                    init_mask = functional.crop_image(crop, init_mask)
                     assert init_mask.shape[:2] == image_np.shape[:2]
                 settings["init_mask"] = init_mask
 
