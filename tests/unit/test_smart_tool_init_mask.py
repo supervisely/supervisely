@@ -108,6 +108,10 @@ class _FakeAnnotationApi:
         self.downloads.append(image_id)
         return self._ann_json
 
+    def set_ann(self, ann_json):
+        """Stands in for the figure being edited on the platform between two requests."""
+        self._ann_json = ann_json
+
 
 class _FakeImageApi:
     def __init__(self, image_np):
@@ -268,6 +272,17 @@ def test_polygon_without_interior_field_is_accepted():
     np.testing.assert_array_equal(_full_mask(result), expected)
 
 
+def test_polygon_with_fractional_coordinates_is_accepted():
+    """The platform stores polygon points as numbers, not necessarily as integers."""
+    label = _polygon_label([(1.4, 1.6), (4.2, 1.6), (4.2, 4.9), (1.4, 4.9)])
+
+    result = functional.label_to_init_bitmap(label, (IMG_H, IMG_W))
+
+    expected = np.zeros((IMG_H, IMG_W), bool)
+    expected[1:5, 1:5] = True
+    np.testing.assert_array_equal(_full_mask(result), expected)
+
+
 def test_multipolygon_unions_disconnected_parts_and_keeps_holes():
     label = _multipolygon_label(
         [
@@ -325,6 +340,23 @@ def test_polygon_is_clipped_to_the_image_bounds():
     expected[8:IMG_H, 0:6] = True
     np.testing.assert_array_equal(_full_mask(result), expected)
     assert (result.origin.row, result.origin.col) == (8, 0)
+
+
+def test_multipolygon_part_outside_of_the_image_is_dropped():
+    """Clipping happens per image, so the parts that survive it are kept as they are."""
+    label = _multipolygon_label(
+        [
+            (_rect_points(2, 2, 4, 4), []),
+            (_rect_points(IMG_W + 8, IMG_H + 8, IMG_W + 12, IMG_H + 12), []),
+        ]
+    )
+
+    result = functional.label_to_init_bitmap(label, (IMG_H, IMG_W))
+
+    expected = np.zeros((IMG_H, IMG_W), bool)
+    expected[2:5, 2:5] = True
+    np.testing.assert_array_equal(_full_mask(result), expected)
+    assert (result.origin.row, result.origin.col) == (2, 2)
 
 
 def test_bitmap_is_clipped_to_the_image_bounds():
@@ -543,6 +575,38 @@ def test_smart_segmentation_reuses_the_cached_init_mask_for_the_next_clicks(
     assert model.predict_calls[1]["init_mask"].any()
 
 
+def test_smart_segmentation_refreshes_the_cache_on_a_new_init_figure_request(
+    image_np, pred_mask, serve_routes
+):
+    """A re-entered figure is downloaded again, so an edited source never serves a stale mask."""
+    api = _FakeApi(_ann_json(_polygon_label(_rect_points(2, 2, 4, 4))), image_np)
+    model = _StubSegmentation(image_np, pred_mask)
+    route = serve_routes(model)["/smart_segmentation"]
+
+    route(
+        response=SimpleNamespace(status_code=200),
+        request=_request(_context(init_figure=True), api),
+    )
+    api.annotation.set_ann(_ann_json(_polygon_label(_rect_points(5, 5, 8, 8))))
+    route(
+        response=SimpleNamespace(status_code=200),
+        request=_request(_context(init_figure=True, request_uid="uid-2"), api),
+    )
+
+    assert api.annotation.downloads == [IMAGE_ID, IMAGE_ID]
+    expected_first = np.zeros((IMG_H, IMG_W), bool)
+    expected_first[2:5, 2:5] = True
+    expected_second = np.zeros((IMG_H, IMG_W), bool)
+    expected_second[5:9, 5:9] = True
+    crop = _context()["crop"]
+    np.testing.assert_array_equal(
+        model.predict_calls[0]["init_mask"], _expected_cropped_init_mask(expected_first, crop)
+    )
+    np.testing.assert_array_equal(
+        model.predict_calls[1]["init_mask"], _expected_cropped_init_mask(expected_second, crop)
+    )
+
+
 def test_smart_segmentation_without_an_init_figure_passes_no_init_mask(
     image_np, pred_mask, serve_routes
 ):
@@ -638,6 +702,29 @@ def test_smart_segmentation_batch_normalizes_every_state(image_np, pred_mask, se
     expected = _expected_cropped_init_mask(expected_full, states[0]["crop"])
     for call in model.predict_calls:
         np.testing.assert_array_equal(call["init_mask"], expected)
+
+
+def test_smart_segmentation_batch_does_not_leak_an_init_mask_between_states(
+    image_np, pred_mask, serve_routes
+):
+    """The batch route reuses one settings dict, so a figure-less state must reset init_mask."""
+    label = _polygon_label(_rect_points(2, 2, 8, 8))
+    api = _FakeApi(_ann_json(label), image_np)
+    model = _StubSegmentation(image_np, pred_mask)
+    route = serve_routes(model)["/smart_segmentation_batch"]
+    states = [
+        _context(init_figure=True),
+        _context(figure_id=None, request_uid="uid-no-figure"),
+    ]
+    request = SimpleNamespace(
+        state=SimpleNamespace(context={"states": states}, state={"settings": {}}, api=api)
+    )
+
+    results = route(response=SimpleNamespace(status_code=200), request=request)
+
+    assert all(item["success"] is True for item in results)
+    assert model.predict_calls[0]["init_mask"].any()
+    assert model.predict_calls[1]["init_mask"] is None
 
 
 def test_smart_segmentation_batch_reports_a_broken_state_without_failing_the_rest(
