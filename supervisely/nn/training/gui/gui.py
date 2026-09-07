@@ -15,7 +15,7 @@ import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 from supervisely import Api, ProjectMeta, logger
 from supervisely._utils import is_production
-from supervisely.app.widgets import Button, Card, Stepper, Widget
+from supervisely.app.widgets import Button, Card, SplitMethod, Stepper, Widget
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
@@ -744,7 +744,11 @@ class TrainGUI:
 
         # Check train val splits
         train_val_splits_settings = app_state.get("train_val_split")
-        if train_val_splits_settings.get("method") == "datasets":
+        # An app state without a split method is valid: the defaults are applied later
+        app_state_split_method = None
+        if train_val_splits_settings.get("method") is not None:
+            app_state_split_method = SplitMethod.parse(train_val_splits_settings["method"])
+        if app_state_split_method == SplitMethod.DATASETS:
             dataset_ids = []
             for parents, dataset in self._api.dataset.tree(self.project_id):
                 dataset_ids.append(dataset.id)
@@ -762,19 +766,19 @@ class TrainGUI:
                 raise ValueError(
                     f"Datasets with ids: {missing_datasets_text} not found in the project"
                 )
-        elif train_val_splits_settings.get("method") == "tags":
+        elif app_state_split_method == SplitMethod.TAGS:
             train_tag = train_val_splits_settings.get("train_tag")
             val_tag = train_val_splits_settings.get("val_tag")
             if not train_tag or not val_tag:
                 raise ValueError("train_tag and val_tag must be specified in tags split method")
-        elif train_val_splits_settings.get("method") == "random":
+        elif app_state_split_method == SplitMethod.RANDOM:
             split = train_val_splits_settings.get("split")
             percent = train_val_splits_settings.get("percent")
             if split not in ["train", "val"]:
                 raise ValueError("split must be 'train' or 'val'")
             if not isinstance(percent, int) or not 0 < percent < 100:
                 raise ValueError("percent must be an integer in range 1 to 99")
-        elif train_val_splits_settings.get("method") == "collections":
+        elif app_state_split_method == SplitMethod.COLLECTIONS:
             train_collections = train_val_splits_settings.get("train_collections", [])
             val_collections = train_val_splits_settings.get("val_collections", [])
             collection_ids = set()
@@ -1062,47 +1066,54 @@ class TrainGUI:
             return True  # Selector disabled by app options
 
         if train_val_splits_settings == {}:
-            available_methods = self.app_options.get("train_val_splits_methods", [])
-            if available_methods == []:
-                method = "random"
-                train_val_splits_settings = {"method": method, "split": "train", "percent": 80}
+            available_methods = self.train_val_splits_selector.available_split_methods
+            method = available_methods[0] if available_methods else SplitMethod.RANDOM
+            short_method = SplitMethod.to_short(method)
+            if method == SplitMethod.TAGS:
+                train_val_splits_settings = {
+                    "method": short_method,
+                    "train_tag": "train",
+                    "val_tag": "val",
+                    "untagged_action": "ignore",
+                }
+            elif method == SplitMethod.DATASETS:
+                train_val_splits_settings = {
+                    "method": short_method,
+                    "train_datasets": [],
+                    "val_datasets": [],
+                }
+            elif method == SplitMethod.COLLECTIONS:
+                train_val_splits_settings = {
+                    "method": short_method,
+                    "train_collections": [],
+                    "val_collections": [],
+                }
             else:
-                method = available_methods[0]
-                if method == "random":
-                    train_val_splits_settings = {"method": method, "split": "train", "percent": 80}
-                elif method == "tags":
-                    train_val_splits_settings = {
-                        "method": method,
-                        "train_tag": "train",
-                        "val_tag": "val",
-                        "untagged_action": "ignore",
-                    }
-                elif method == "datasets":
-                    train_val_splits_settings = {
-                        "method": method,
-                        "train_datasets": [],
-                        "val_datasets": [],
-                    }
+                train_val_splits_settings = {
+                    "method": SplitMethod.to_short(SplitMethod.RANDOM),
+                    "split": "train",
+                    "percent": 80,
+                }
 
-        split_method = train_val_splits_settings["method"]
-        if split_method == "random":
+        split_method = SplitMethod.parse(train_val_splits_settings["method"])
+        if split_method == SplitMethod.RANDOM:
             split = train_val_splits_settings["split"]
             percent = train_val_splits_settings["percent"]
             self.train_val_splits_selector.train_val_splits.set_random_splits(split, percent)
-        elif split_method == "tags":
+        elif split_method == SplitMethod.TAGS:
             train_tag = train_val_splits_settings["train_tag"]
             val_tag = train_val_splits_settings["val_tag"]
             untagged_action = train_val_splits_settings["untagged_action"]
             self.train_val_splits_selector.train_val_splits.set_tags_splits(
                 train_tag, val_tag, untagged_action
             )
-        elif split_method == "datasets":
+        elif split_method == SplitMethod.DATASETS:
             train_datasets = train_val_splits_settings["train_datasets"]
             val_datasets = train_val_splits_settings["val_datasets"]
             self.train_val_splits_selector.train_val_splits.set_datasets_splits(
                 train_datasets, val_datasets
             )
-        elif split_method == "collections":
+        elif split_method == SplitMethod.COLLECTIONS:
             train_collections = train_val_splits_settings["train_collections"]
             val_collections = train_val_splits_settings["val_collections"]
             self.train_val_splits_selector.train_val_splits.set_project_id_for_collections(
