@@ -28,6 +28,7 @@ class PointcloudEpisodeTag(VideoTag):
         created_at=None,
         is_finished=None,
         non_final_value=None,
+        custom_data=None,
     ):
         """
         Tag on point cloud episode or frame range.
@@ -76,6 +77,7 @@ class PointcloudEpisodeTag(VideoTag):
             created_at,
             is_finished=is_finished,
             non_final_value=non_final_value,
+            custom_data=custom_data,
         )
 
     @classmethod
@@ -131,6 +133,7 @@ class PointcloudEpisodeTag(VideoTag):
             created_at=temp.created_at,
             is_finished=is_finished,
             non_final_value=non_final_value,
+            custom_data=temp.custom_data,
         )
 
     def __eq__(self, other: PointcloudEpisodeTag) -> bool:
@@ -148,6 +151,7 @@ class PointcloudEpisodeTag(VideoTag):
         created_at: Optional[str] = None,
         is_finished: Optional[bool] = None,
         non_final_value: Optional[bool] = None,
+        custom_data: Optional[Dict] = None,
     ) -> PointcloudEpisodeTag:
         """
         Makes a copy of PointcloudEpisodeTag with new fields, if fields are given, otherwise it will use fields of the original PointcloudEpisodeTag.
@@ -205,4 +209,5 @@ class PointcloudEpisodeTag(VideoTag):
             created_at=take_with_default(created_at, self.created_at),
             is_finished=take_with_default(is_finished, self.is_finished),
             non_final_value=take_with_default(non_final_value, self.non_final_value),
+            custom_data=take_with_default(custom_data, self.custom_data),
         )

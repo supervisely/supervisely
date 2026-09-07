@@ -23,6 +23,7 @@ class PointcloudTag(Tag):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[Dict] = None,
     ):
         """
         Tag on point cloud annotation.
@@ -62,6 +63,7 @@ class PointcloudTag(Tag):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
         self._key = take_with_default(key, uuid.uuid4())
@@ -265,6 +267,7 @@ class PointcloudTag(Tag):
             labeler_login=temp.labeler_login,
             updated_at=temp.updated_at,
             created_at=temp.created_at,
+            custom_data=temp.custom_data,
         )
 
     def clone(
@@ -276,6 +279,7 @@ class PointcloudTag(Tag):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[Dict] = None,
     ) -> PointcloudTag:
         """
         Clone makes a copy of pointcloud tag with new fields, if fields are given, otherwise it will use original tag fields.
@@ -325,4 +329,5 @@ class PointcloudTag(Tag):
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            custom_data=take_with_default(custom_data, self.custom_data),
         )
