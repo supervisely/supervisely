@@ -4690,7 +4690,10 @@ def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> G
     for path in paths:
         if get_file_name_with_ext(path) == "meta.json":
             parent_dir = os.path.dirname(path)
-            project_dir = os.path.join(dir, parent_dir)
+            # A trailing separator makes Project() fail to determine the project name, so it
+            # cannot be left on the path. That happens when dir is the project dir itself:
+            # os.path.join(dir, "") appends one, and dir may already carry one of its own.
+            project_dir = os.path.join(dir, parent_dir) if parent_dir else os.path.normpath(dir)
             try:
                 project_class(project_dir, OpenMode.READ)
                 yield project_dir
@@ -5081,7 +5084,10 @@ def upload_project(
                 # Dataset is empty
                 continue
 
-            meta_dir = os.path.join(dir, ds_fs.name, "meta")
+            # Resolve from the dataset itself: dir may be an ancestor of the project dir, and
+            # ds_fs.name is relative to the project, so joining them missed the meta dir and
+            # silently dropped every image meta.
+            meta_dir = ds_fs.meta_dir
             if os.path.isdir(meta_dir):
                 metas = []
                 for name in names:
