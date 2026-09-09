@@ -10,6 +10,7 @@ Supervisely SDK for Python
    :caption: Python API
 
    sdk_packages
+   cli
    Public REST API ⬀             <https://api.docs.supervisely.com/>
 
 
