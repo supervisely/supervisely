@@ -26,6 +26,7 @@ class Phase:
     WAITING_FOR_SAMPLES = "waiting_for_samples"
     INITIAL_TRAINING = "initial_training"
     TRAINING = "training"
+    STOPPING = "stopping"
 
 class LiveTraining:
     """Base implementation of an interactive/live training loop driven by requests (start/add sample/predict/status)."""
@@ -637,6 +638,7 @@ class LiveTraining:
 
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
+            self.phase = Phase.STOPPING
             self._process_requests_while_finishing("Training was stopped by user.")
             self._save_and_upload()
             sys.exit(0)
