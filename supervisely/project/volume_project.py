@@ -174,12 +174,18 @@ class VolumeProject(VideoProject):
         item_type = VolumeDataset
 
     _SERIALIZATION_MAGIC = b"SLYVOLPAR"
-    _SERIALIZATION_VERSION = 1
+    # 1: annotations carry uuid keys only. 2: they carry the server's ids as well, which
+    # is what makes two versions comparable. Both are readable.
+    _SERIALIZATION_VERSION = 2
+    _SUPPORTED_SERIALIZATION_VERSIONS = (1, 2)
     _SECTION_PROJECT_INFO = 1
     _SECTION_PROJECT_META = 2
     _SECTION_DATASETS = 3
     _SECTION_VOLUMES = 4
     _SECTION_ANNOTATIONS = 5
+    # Not a section in the file - the parser reports the header version under this key so
+    # a reader can tell which annotation shape it is looking at.
+    _SECTION_HEADER_VERSION = -1
 
     def __init__(self, directory: str, mode: OpenMode):
         """
@@ -862,10 +868,10 @@ class VolumeProject(VideoProject):
         offset = len(magic)
         version = view[offset]
         offset += 1
-        if version != VolumeProject._SERIALIZATION_VERSION:
+        if version not in VolumeProject._SUPPORTED_SERIALIZATION_VERSIONS:
             logger.warning(
-                "VolumeProject binary payload version mismatch. expected=%d found=%d total_bytes=%d",
-                VolumeProject._SERIALIZATION_VERSION,
+                "VolumeProject binary payload version mismatch. expected=%s found=%d total_bytes=%d",
+                VolumeProject._SUPPORTED_SERIALIZATION_VERSIONS,
                 version,
                 len(view),
             )
@@ -887,6 +893,7 @@ class VolumeProject(VideoProject):
                 raise RuntimeError("Corrupted VolumeProject binary payload")
             sections[section_type] = view[offset : offset + length].tobytes()
             offset += length
+        sections[VolumeProject._SECTION_HEADER_VERSION] = version
         return sections
 
     @staticmethod

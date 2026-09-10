@@ -1,3 +1,7 @@
+from supervisely.project.versioning.image_schema import (
+    _IMAGE_SCHEMAS,
+    ImageSnapshotSchema,
+)
 from supervisely.project.versioning.video_schema import (
     _VIDEO_SCHEMAS,
     VideoSnapshotSchema,
@@ -7,9 +11,26 @@ from supervisely.project.versioning.volume_schema import (
     VolumeSnapshotSchema,
 )
 
-DEFAULT_IMAGE_SCHEMA_VERSION = "v1.0.0"
-DEFAULT_VOLUME_SCHEMA_VERSION = "v2.0.0"
-DEFAULT_VIDEO_SCHEMA_VERSION = "v2.0.0"
+# Pickle. Predates the Parquet container. Nothing writes it any more, and everything
+# still reads it: archives created before the switch have to stay restorable for as
+# long as their versions exist.
+IMAGE_SCHEMA_VERSION_V1 = "v1.0.0"
+
+# Parquet, same container as video and volume snapshots.
+IMAGE_SCHEMA_VERSION_V2 = "v2.0.0"
+
+# Which format new image versions are written in. Changing it is safe in both
+# directions: a snapshot says what it is (a zstd frame with a manifest, or a pickle),
+# so the reader picks the right path per archive rather than per SDK version.
+DEFAULT_IMAGE_SCHEMA_VERSION = IMAGE_SCHEMA_VERSION_V2
+VOLUME_SCHEMA_VERSION_V2 = "v2.0.0"
+VOLUME_SCHEMA_VERSION_V2_1 = "v2.1.0"
+
+DEFAULT_VOLUME_SCHEMA_VERSION = VOLUME_SCHEMA_VERSION_V2_1
+VIDEO_SCHEMA_VERSION_V2 = "v2.0.0"
+VIDEO_SCHEMA_VERSION_V2_1 = "v2.1.0"
+
+DEFAULT_VIDEO_SCHEMA_VERSION = VIDEO_SCHEMA_VERSION_V2_1
 HIDDEN_WORKSPACE_NAME = "[Do Not Modify] Instant Versions Storage"
 PREVIEW_NAME_TEMPLATE = "{project_name}, preview for ver. {version_num}"
 PREVIEW_DESCRIPTION_TEMPLATE = (
@@ -18,6 +39,13 @@ PREVIEW_DESCRIPTION_TEMPLATE = (
 )
 CUSTOM_DATA_VERSION_PREVIEW_KEY = "sly_version_preview"
 CUSTOM_DATA_VERSION_RESTORED_KEY = "restored_from"
+
+
+def get_image_snapshot_schema(schema_version: str) -> ImageSnapshotSchema:
+    schema = _IMAGE_SCHEMAS.get(schema_version)
+    if schema is None:
+        raise RuntimeError(f"Unsupported image snapshot schema_version: {schema_version!r}")
+    return schema
 
 
 def get_video_snapshot_schema(schema_version: str) -> VideoSnapshotSchema:
