@@ -26,6 +26,8 @@ from typing import (
     Union,
 )
 
+from concurrent.futures import ThreadPoolExecutor
+
 import aiofiles
 import numpy as np
 from PIL import Image as PILImage
@@ -90,6 +92,7 @@ from supervisely.project.versioning.common import (
     DEFAULT_IMAGE_SCHEMA_VERSION,
     IMAGE_SCHEMA_VERSION_V1,
     IMAGE_SCHEMA_VERSION_V2,
+    IMAGE_SCHEMA_VERSION_V2_1,
     get_image_snapshot_schema,
 )
 from supervisely.project.versioning.tag_schema import OWNER_FIGURE, OWNER_ITEM
@@ -246,6 +249,12 @@ def _get_effective_ann_name(img_name, ann_names):
     else:
         old_format_name = os.path.splitext(img_name)[0] + ANN_EXT
         return old_format_name if (old_format_name in ann_names) else None
+
+
+# How many annotation batches a snapshot reads at once. The work is round trips, not
+# CPU, so a handful of workers is what turns a long serial wait into a short one; the
+# writer that consumes them stays single-threaded.
+SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
 class Dataset(KeyObject):
@@ -3756,6 +3765,7 @@ class Project:
         progress_cb: Optional[Callable] = None,
         return_bytesio: Optional[bool] = False,
         schema_version: str = DEFAULT_IMAGE_SCHEMA_VERSION,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> Union[str, io.BytesIO]:
         """
         Download project to the local directory in binary format. Faster than downloading project in the usual way.
@@ -3825,7 +3835,7 @@ class Project:
                 "Local save directory dest_dir must be specified if return_bytesio is False"
             )
 
-        if schema_version == IMAGE_SCHEMA_VERSION_V2:
+        if schema_version in (IMAGE_SCHEMA_VERSION_V2, IMAGE_SCHEMA_VERSION_V2_1):
             snapshot_io = Project.build_snapshot(
                 api,
                 project_id=project_id,
@@ -3833,6 +3843,7 @@ class Project:
                 batch_size=batch_size,
                 log_progress=log_progress,
                 progress_cb=progress_cb,
+                fetch_workers=fetch_workers,
             )
             if return_bytesio:
                 snapshot_io.seek(0)
@@ -3924,7 +3935,8 @@ class Project:
         batch_size: Optional[int] = 100,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        schema_version: str = IMAGE_SCHEMA_VERSION_V2,
+        schema_version: str = IMAGE_SCHEMA_VERSION_V2_1,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> io.BytesIO:
         """
         Create an image project snapshot in Parquet + ``tar.zst`` format and return it as BytesIO.
@@ -4022,12 +4034,16 @@ class Project:
                                 tag_json, owner_type=OWNER_ITEM, owner_id=image_info.id
                             )
 
-                    for batch in batched(page, batch_size):
+                    # Two bulk calls per batch, each a round trip: run the batches of a
+                    # page concurrently and let the writer consume them in order. The
+                    # writer stays single-threaded - Parquet writers are not reentrant -
+                    # so only the waiting overlaps, which is where the time went.
+                    def _fetch_batch(batch, ds_id=ds_info.id):
                         image_ids = [image_info.id for image_info in batch]
                         # integer_coords=False keeps exact subpixel coordinates so that a
                         # restore puts figures back without a half-pixel shift
                         ds_figures = api.image.figure.download(
-                            ds_info.id, image_ids, integer_coords=False
+                            ds_id, image_ids, integer_coords=False
                         )
                         # figures.list renders a figure tag as {id, tagId, value}; the
                         # annotation endpoint renders the same row with its name, its
@@ -4036,49 +4052,55 @@ class Project:
                         # first - so the tags come from a second bulk call per batch.
                         figure_tags = {}
                         try:
-                            for ann_info in api.annotation.download_batch(
-                                ds_info.id, image_ids
-                            ):
+                            for ann_info in api.annotation.download_batch(ds_id, image_ids):
                                 for obj in ann_info.annotation.get("objects", []):
                                     if obj.get("tags"):
                                         figure_tags[obj["id"]] = obj["tags"]
                         except Exception:
                             logger.warning(
-                                f"Could not read annotations of dataset {ds_info.id} for "
+                                f"Could not read annotations of dataset {ds_id} for "
                                 "figure tags; storing what figures.list returned instead"
                             )
                             figure_tags = None
+                        return batch, ds_figures, figure_tags
 
-                        alpha_ids = []
-                        for src_image_id, image_figures in ds_figures.items():
-                            for figure in image_figures:
-                                is_alpha = figure.geometry_type == alpha_mask_name
-                                if is_alpha:
-                                    alpha_ids.append(figure.id)
-                                writer.add_figure(
-                                    figure,
-                                    src_image_id=src_image_id,
-                                    class_name=class_name_by_id.get(figure.class_id),
-                                    store_geometry=not is_alpha,
-                                )
-                                tags = (
-                                    figure_tags.get(figure.id, [])
-                                    if figure_tags is not None
-                                    else (getattr(figure, "tags", None) or [])
-                                )
-                                for tag_json in tags:
-                                    writer.add_tag(
-                                        tag_json,
-                                        owner_type=OWNER_FIGURE,
-                                        owner_id=figure.id,
-                                        src_item_id=src_image_id,
+                    page_batches = list(batched(page, batch_size))
+                    with ThreadPoolExecutor(max_workers=fetch_workers) as fetch_pool:
+                        for batch, ds_figures, figure_tags in fetch_pool.map(
+                            _fetch_batch, page_batches
+                        ):
+                            alpha_ids = []
+                            for src_image_id, image_figures in ds_figures.items():
+                                for figure in image_figures:
+                                    is_alpha = figure.geometry_type == alpha_mask_name
+                                    if is_alpha:
+                                        alpha_ids.append(figure.id)
+                                    writer.add_figure(
+                                        figure,
+                                        src_image_id=src_image_id,
+                                        class_name=class_name_by_id.get(figure.class_id),
+                                        store_geometry=not is_alpha,
                                     )
-                        if alpha_ids:
-                            geometries = api.image.figure.download_geometries_batch(alpha_ids)
-                            for figure_id, geometry in zip(alpha_ids, geometries):
-                                writer.add_alpha_geometry(figure_id, geometry)
-                        if ds_progress is not None:
-                            ds_progress(len(batch))
+                                    tags = (
+                                        figure_tags.get(figure.id, [])
+                                        if figure_tags is not None
+                                        else (getattr(figure, "tags", None) or [])
+                                    )
+                                    for tag_json in tags:
+                                        writer.add_tag(
+                                            tag_json,
+                                            owner_type=OWNER_FIGURE,
+                                            owner_id=figure.id,
+                                            src_item_id=src_image_id,
+                                        )
+                            if alpha_ids:
+                                geometries = api.image.figure.download_geometries_batch(
+                                    alpha_ids
+                                )
+                                for figure_id, geometry in zip(alpha_ids, geometries):
+                                    writer.add_alpha_geometry(figure_id, geometry)
+                            if ds_progress is not None:
+                                ds_progress(len(batch))
 
                 if ds_progress is not None and ds_progress is not progress_cb:
                     ds_progress.close()
@@ -4088,7 +4110,7 @@ class Project:
     @staticmethod
     def repack_snapshot(
         source: Union[str, io.BytesIO],
-        schema_version: str = IMAGE_SCHEMA_VERSION_V2,
+        schema_version: str = IMAGE_SCHEMA_VERSION_V2_1,
     ) -> io.BytesIO:
         """
         Convert an image snapshot of any supported format into the Parquet container.

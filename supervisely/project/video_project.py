@@ -6,6 +6,7 @@ import asyncio
 import io
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 import shutil
 import tempfile
 from collections import namedtuple
@@ -14,7 +15,7 @@ from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 from tqdm import tqdm
 
 from supervisely._utils import batched, logger
-from supervisely.api.api import Api
+from supervisely.api.api import ApiContext, Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
@@ -65,6 +66,12 @@ class VideoItemPaths(NamedTuple):
     # Full video file path of item
     ann_path: str
     # Full annotation file path of item
+
+
+# Restoring an annotation is a handful of round trips per item; running a few items at
+# once is what turns a restore of tens of thousands of videos from hours into minutes.
+RESTORE_WORKERS = int(os.environ.get("SLY_RESTORE_WORKERS", "8"))
+SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
 class VideoDataset(Dataset):
@@ -1472,6 +1479,7 @@ class VideoProject(Project):
         workspace_id: int,
         project_name: Optional[str] = None,
         with_custom_data: bool = True,
+        restore_workers: int = RESTORE_WORKERS,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
@@ -1517,6 +1525,7 @@ class VideoProject(Project):
             progress_cb=progress_cb,
             skip_missed=skip_missed,
             project_description=project_description,
+            restore_workers=restore_workers,
         )
 
     @staticmethod
@@ -1528,6 +1537,7 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         schema_version: str = DEFAULT_VIDEO_SCHEMA_VERSION,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> io.BytesIO:
         """
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.
@@ -1639,11 +1649,23 @@ class VideoProject(Project):
                     if not batch:
                         continue
                     video_ids = [v.id for v in batch]
+                    # One request per chunk, each a round trip; fetching the chunks of a
+                    # page concurrently keeps the order (pool.map yields in order) while
+                    # the writer below stays single-threaded.
+                    chunks = list(batched(video_ids, batch_size))
                     ann_jsons = []
-                    for chunk in batched(video_ids, batch_size):
-                        ann_jsons.extend(
-                            api.video.annotation.download_bulk(ds_info.id, chunk)
-                        )
+                    if len(chunks) > 1 and fetch_workers > 1:
+                        with ThreadPoolExecutor(max_workers=fetch_workers) as fetch_pool:
+                            for part in fetch_pool.map(
+                                lambda c: api.video.annotation.download_bulk(ds_info.id, c),
+                                chunks,
+                            ):
+                                ann_jsons.extend(part)
+                    else:
+                        for chunk in chunks:
+                            ann_jsons.extend(
+                                api.video.annotation.download_bulk(ds_info.id, chunk)
+                            )
 
                     for video_info, ann_json in zip(batch, ann_jsons):
                         if video_info.name != ann_json[ApiField.VIDEO_NAME]:
@@ -1905,6 +1927,7 @@ class VideoProject(Project):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
         project_description: Optional[str] = None,
+        restore_workers: int = RESTORE_WORKERS,
     ) -> ProjectInfo:
         """
         Restore a video project from a snapshot and return ProjectInfo.
@@ -2236,7 +2259,8 @@ class VideoProject(Project):
                     )
                 multiview_key_id_map = KeyIdMap()
 
-                for vid_id, ann_path in zip(video_ids, ann_paths):
+                def _restore_one(pair, ds_info=ds_info, new_meta=new_meta):
+                    vid_id, ann_path = pair
                     try:
                         ann_json = load_json_file(ann_path)
                         # A v2.0.0 annotation is the server's: figures point at their
@@ -2254,7 +2278,7 @@ class VideoProject(Project):
                         logger.warning(
                             f"Failed to deserialize annotation for restored video id={vid_id}: {e}"
                         )
-                        continue
+                        return
 
                     try:
                         if not is_multiview:
@@ -2270,7 +2294,25 @@ class VideoProject(Project):
                             f"Failed to upload annotation for dataset '{ds_info.name}', "
                             f"video id={vid_id}: {e}"
                         )
-                        continue
+
+                # One annotation is several round trips and they do not depend on each
+                # other, so the videos of a dataset go up in parallel. Multi-view shares
+                # one KeyIdMap across the call and has to stay serial.
+                pairs = list(zip(video_ids, ann_paths))
+                # ApiContext keeps the per-project tag and class lookups out of every
+                # single append - they were more than half of its time.
+                with ApiContext(
+                    api,
+                    project_id=project.id,
+                    dataset_id=ds_info.id,
+                    project_meta=new_meta,
+                ):
+                    if is_multiview or restore_workers <= 1:
+                        for pair in pairs:
+                            _restore_one(pair)
+                    else:
+                        with ThreadPoolExecutor(max_workers=restore_workers) as pool:
+                            list(pool.map(_restore_one, pairs))
 
             return project
 
