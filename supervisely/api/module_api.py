@@ -523,6 +523,8 @@ class ApiField:
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
     """"""
+    ARCHIVED = "archived"
+    """"""
     GPU_INFO = "gpuInfo"
     """"""
     IS_PUBLIC = "isPublic"
