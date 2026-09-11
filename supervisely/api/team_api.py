@@ -202,12 +202,23 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         """
         return "TeamInfo"
 
-    def get_list(self, filters: List[Dict[str, str]] = None) -> List[TeamInfo]:
+    def get_list(
+        self,
+        filters: List[Dict[str, str]] = None,
+        archived: Optional[Union[bool, str]] = None,
+    ) -> List[TeamInfo]:
         """
         List of all Teams on the Supervisely instance.
 
         :param filters: List of params to sort output Teams.
         :type filters: list, optional
+        :param archived: Which rows to return. ``None`` (default) omits the parameter
+                         entirely and keeps the server default of live entities only.
+                         ``True`` returns archived (Trash Bin) entities instead.
+                         ``'forever'`` also includes entities already queued for permanent
+                         removal, where the entity has that state; it is root only.
+                         Requires Supervisely instance 6.17.22 or newer.
+        :type archived: Optional[Union[bool, str]]
         :returns: List of all Teams with information.
         :rtype: List[:class:`~supervisely.api.team_api.TeamInfo`]
 
@@ -266,7 +277,10 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 #                  UsageInfo(plan='free')               )
                 # ]
         """
-        return self.get_list_all_pages("teams.list", {ApiField.FILTER: filters or []})
+        data = {ApiField.FILTER: filters or []}
+        if archived is not None:
+            data[ApiField.ARCHIVED] = archived
+        return self.get_list_all_pages("teams.list", data)
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> TeamInfo:
         """

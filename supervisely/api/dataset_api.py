@@ -175,6 +175,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         recursive: Optional[bool] = False,
         parent_id: Optional[int] = None,
         include_custom_data: Optional[bool] = False,
+        archived: Optional[Union[bool, str]] = None,
     ) -> List[DatasetInfo]:
         """
         Returns list of dataset in the given project, or list of nested datasets
@@ -193,6 +194,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type parent_id: Union[int, None], optional
         :param include_custom_data: If True, the response will include the `custom_data` field for each :class:`~supervisely.project.project.Dataset`.
         :type include_custom_data: bool, optional
+        :param archived: Which rows to return. ``None`` (default) omits the parameter
+                         entirely and keeps the server default of live entities only.
+                         ``True`` returns archived (Trash Bin) entities instead.
+                         ``'forever'`` also includes entities already queued for permanent
+                         removal, where the entity has that state; it is root only.
+                         Requires Supervisely instance 6.17.22 or newer.
+        :type archived: Optional[Union[bool, str]]
         :returns: List of all Datasets with information for the given Project.
         :rtype: :class:`List[DatasetInfo]`
 
@@ -254,6 +262,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         }
         if include_custom_data:
             data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
+        if archived is not None:
+            data[ApiField.ARCHIVED] = archived
 
         return self.get_list_all_pages(method, data)
 
