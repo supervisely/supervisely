@@ -53,7 +53,10 @@ class VolumeSnapshotSchema:
     def volume_row_from_record(self, volume_record: dict) -> Dict[str, Any]:
         return {
             VersionSchemaField.SRC_VOLUME_ID: volume_record.get(ApiField.ID),
-            VersionSchemaField.SRC_DATASET_ID: volume_record.get(ApiField.DATASET_ID),
+            # volume_record comes from VolumeInfo._asdict(), whose keys are snake_case
+            VersionSchemaField.SRC_DATASET_ID: volume_record.get(
+                ApiField.DATASET_ID, volume_record.get("dataset_id")
+            ),
             VersionSchemaField.JSON: json.dumps(volume_record, ensure_ascii=False),
         }
 
