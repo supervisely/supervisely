@@ -6,7 +6,8 @@ import asyncio
 import io
 import json
 import os
-import tarfile
+from concurrent.futures import ThreadPoolExecutor
+import shutil
 import tempfile
 from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
@@ -14,7 +15,7 @@ from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 from tqdm import tqdm
 
 from supervisely._utils import batched, logger
-from supervisely.api.api import Api
+from supervisely.api.api import ApiContext, Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
@@ -27,12 +28,31 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
+from supervisely.project.versioning.container import (
+    ParquetTableWriter,
+    pack_payload_dir,
+    table_meta,
+    unpack_snapshot,
+)
 from supervisely.project.versioning.common import (
     DEFAULT_VIDEO_SCHEMA_VERSION,
     get_video_snapshot_schema,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
+from supervisely.annotation.label import LabelJsonFields
+from supervisely.project.versioning.tag_schema import (
+    OWNER_ITEM,
+    OWNER_OBJECT,
+    get_tag_schema,
+    tag_json_from_row,
+)
+from supervisely.project.versioning.video_schema import annotation_json_from_rows
+from supervisely.video_annotation import constants as video_constants
 from supervisely.task.progress import tqdm_sly
+
+# Videos per listing request when building a snapshot, independent of the annotation
+# batch size (which the annotations endpoint caps at 100).
+LIST_PAGE_SIZE = 500
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -46,6 +66,12 @@ class VideoItemPaths(NamedTuple):
     # Full video file path of item
     ann_path: str
     # Full annotation file path of item
+
+
+# Restoring an annotation is a handful of round trips per item; running a few items at
+# once is what turns a restore of tens of thousands of videos from hours into minutes.
+RESTORE_WORKERS = int(os.environ.get("SLY_RESTORE_WORKERS", "8"))
+SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
 class VideoDataset(Dataset):
@@ -1453,6 +1479,7 @@ class VideoProject(Project):
         workspace_id: int,
         project_name: Optional[str] = None,
         with_custom_data: bool = True,
+        restore_workers: int = RESTORE_WORKERS,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
@@ -1498,6 +1525,7 @@ class VideoProject(Project):
             progress_cb=progress_cb,
             skip_missed=skip_missed,
             project_description=project_description,
+            restore_workers=restore_workers,
         )
 
     @staticmethod
@@ -1509,6 +1537,7 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         schema_version: str = DEFAULT_VIDEO_SCHEMA_VERSION,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> io.BytesIO:
         """
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.
@@ -1530,8 +1559,6 @@ class VideoProject(Project):
         :returns: In-memory snapshot stream (io.BytesIO).
         :rtype: io.BytesIO
         """
-        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
-
         try:
             import pyarrow  # pylint: disable=import-error
             import pyarrow.parquet as parquet  # pylint: disable=import-error
@@ -1548,8 +1575,8 @@ class VideoProject(Project):
 
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
-        key_id_map = KeyIdMap()
         snapshot_schema = get_video_snapshot_schema(schema_version)
+        tag_schema = get_tag_schema()
 
         tmp_root = tempfile.mkdtemp()
         payload_dir = os.path.join(tmp_root, "payload")
@@ -1563,10 +1590,22 @@ class VideoProject(Project):
             proj_meta_path = os.path.join(payload_dir, "project_meta.json")
             dump_json_file(meta.to_json(), proj_meta_path)
 
-            datasets_rows: List[dict] = []
-            videos_rows: List[dict] = []
-            objects_rows: List[dict] = []
-            figures_rows: List[dict] = []
+            snapshot_schema_pa = {
+                "datasets": snapshot_schema.datasets_schema(pyarrow),
+                "videos": snapshot_schema.videos_schema(pyarrow),
+                "objects": snapshot_schema.objects_schema(pyarrow),
+                "figures": snapshot_schema.figures_schema(pyarrow),
+                "tags": tag_schema.tags_schema(pyarrow),
+            }
+            # Written in row groups as they are collected. Accumulating every row first
+            # and building one table per kind at the end held the whole project: 1.9 GB
+            # of Python row dicts for a 14k-video project, before a byte was written.
+            writers = {
+                name: ParquetTableWriter(
+                    pyarrow, parquet, os.path.join(payload_dir, f"{name}.parquet"), table_schema
+                )
+                for name, table_schema in snapshot_schema_pa.items()
+            }
 
             dataset_ids_filter = set(dataset_ids) if dataset_ids is not None else None
 
@@ -1587,23 +1626,46 @@ class VideoProject(Project):
 
                 full_path = Dataset._get_dataset_path(ds_info.name, parents)
                 ds_custom_data = ds_custom_data_by_id.get(ds_info.id)
-                datasets_rows.append(
+                writers["datasets"].add(
                     snapshot_schema.dataset_row_from_ds_info(
                         ds_info, full_path=full_path, custom_data=ds_custom_data
                     )
                 )
 
-                videos = api.video.get_list(ds_info.id)
                 ds_progress = progress_cb
                 if log_progress and progress_cb is None:
                     ds_progress = tqdm_sly(
                         desc=f"Collecting videos from '{ds_info.name}'",
-                        total=len(videos),
+                        total=getattr(ds_info, "items_count", None),
                     )
 
-                for batch in batched(videos, batch_size):
+                # Listed page by page. Holding one dataset's VideoInfo list is not cheap
+                # here: frames_to_timecodes is one float per frame, so a dataset of 13k
+                # videos carried five million of them - measured at ~380 MB, most of this
+                # writer's peak, for a list that is walked once.
+                for batch in api.video.get_list_generator(
+                    ds_info.id, batch_size=max(batch_size or 1, LIST_PAGE_SIZE)
+                ):
+                    if not batch:
+                        continue
                     video_ids = [v.id for v in batch]
-                    ann_jsons = api.video.annotation.download_bulk(ds_info.id, video_ids)
+                    # One request per chunk, each a round trip; fetching the chunks of a
+                    # page concurrently keeps the order (pool.map yields in order) while
+                    # the writer below stays single-threaded.
+                    chunks = list(batched(video_ids, batch_size))
+                    ann_jsons = []
+                    if len(chunks) > 1 and fetch_workers > 1:
+                        with ThreadPoolExecutor(max_workers=fetch_workers) as fetch_pool:
+                            for part in fetch_pool.map(
+                                lambda c: api.video.annotation.download_bulk(ds_info.id, c),
+                                chunks,
+                            ):
+                                ann_jsons.extend(part)
+                    else:
+                        for chunk in chunks:
+                            ann_jsons.extend(
+                                api.video.annotation.download_bulk(ds_info.id, chunk)
+                            )
 
                     for video_info, ann_json in zip(batch, ann_jsons):
                         if video_info.name != ann_json[ApiField.VIDEO_NAME]:
@@ -1611,147 +1673,248 @@ class VideoProject(Project):
                                 "Error in api.video.annotation.download_bulk: broken order"
                             )
 
-                        videos_rows.append(
-                            snapshot_schema.video_row_from_video_info(
-                                video_info, src_dataset_id=ds_info.id, ann_json=ann_json
+                        if snapshot_schema.stores_ann_json:
+                            writers["videos"].add(
+                                snapshot_schema.video_row_from_video_info(
+                                    video_info, src_dataset_id=ds_info.id, ann_json=ann_json
+                                )
                             )
-                        )
-
-                        video_ann = VideoAnnotation.from_json(ann_json, meta, key_id_map)
-                        obj_key_to_src_id: Dict[str, int] = {}
-                        for obj in video_ann.objects:
-                            src_obj_id = len(objects_rows) + 1
-                            obj_key_to_src_id[obj.key().hex] = src_obj_id
-                            objects_rows.append(
-                                snapshot_schema.object_row_from_object(
-                                    obj, src_object_id=src_obj_id, src_video_id=video_info.id
+                        else:
+                            writers["videos"].add(
+                                snapshot_schema.video_row_from_json(
+                                    video_info, src_dataset_id=ds_info.id, ann_json=ann_json
                                 )
                             )
 
-                        for frame in video_ann.frames:
-                            for fig in frame.figures:
-                                parent_key = fig.parent_object.key().hex
-                                src_obj_id = obj_key_to_src_id.get(parent_key)
-                                if src_obj_id is None:
-                                    logger.warning(
-                                        f"Figure parent object with key '{parent_key}' "
-                                        f"not found in objects for video '{video_info.name}'"
+                        for tag_json in ann_json.get(video_constants.TAGS) or []:
+                            writers["tags"].add(
+                                tag_schema.tag_row(
+                                    tag_json, owner_type=OWNER_ITEM, owner_id=video_info.id
+                                )
+                            )
+
+                        # Read as the server sent it. Going through VideoAnnotation meant
+                        # inventing a uuid per object and per figure just so figures could
+                        # find their parent, then keeping a project-wide map from those
+                        # uuids back to the real ids - which is what made a large snapshot
+                        # expensive and left nothing stable to compare two versions on.
+                        # The server already links a figure to its object by id.
+                        for obj_json in ann_json.get(video_constants.OBJECTS, []):
+                            writers["objects"].add(
+                                snapshot_schema.object_row_from_json(
+                                    obj_json, src_video_id=video_info.id
+                                )
+                            )
+                            for tag_json in obj_json.get(LabelJsonFields.TAGS) or []:
+                                writers["tags"].add(
+                                    tag_schema.tag_row(
+                                        tag_json,
+                                        owner_type=OWNER_OBJECT,
+                                        owner_id=obj_json.get(video_constants.ID),
+                                        src_item_id=video_info.id,
                                     )
-                                    continue
-                                figures_rows.append(
-                                    snapshot_schema.figure_row_from_figure(
-                                        fig,
-                                        figure_row_idx=len(figures_rows),
-                                        src_object_id=src_obj_id,
+                                )
+                        for frame_json in ann_json.get(video_constants.FRAMES, []):
+                            frame_index = frame_json.get(video_constants.INDEX)
+                            for figure_json in frame_json.get(video_constants.FIGURES, []):
+                                writers["figures"].add(
+                                    snapshot_schema.figure_row_from_json(
+                                        figure_json,
                                         src_video_id=video_info.id,
-                                        frame_index=frame.index,
+                                        frame_index=frame_index,
                                     )
                                 )
 
                     if ds_progress is not None:
                         ds_progress(len(batch))
 
-            # key_id_map.json
-            key_id_map_path = os.path.join(payload_dir, "key_id_map.json")
-            key_id_map.dump_json(key_id_map_path)
 
-            # Arrow schemas
             tables_meta = []
-            datasets_schema = snapshot_schema.datasets_schema(pyarrow)
-            videos_schema = snapshot_schema.videos_schema(pyarrow)
-            objects_schema = snapshot_schema.objects_schema(pyarrow)
-            figures_schema = snapshot_schema.figures_schema(pyarrow)
-
-            if datasets_rows:
-                ds_table = pyarrow.Table.from_pylist(datasets_rows, schema=datasets_schema)
-                ds_path = os.path.join(payload_dir, "datasets.parquet")
-                parquet.write_table(ds_table, ds_path)
-                tables_meta.append(
-                    {
-                        "name": "datasets",
-                        "path": "datasets.parquet",
-                        "row_count": ds_table.num_rows,
-                    }
-                )
-
-            if videos_rows:
-                v_table = pyarrow.Table.from_pylist(videos_rows, schema=videos_schema)
-                v_path = os.path.join(payload_dir, "videos.parquet")
-                parquet.write_table(v_table, v_path)
-                tables_meta.append(
-                    {
-                        "name": "videos",
-                        "path": "videos.parquet",
-                        "row_count": v_table.num_rows,
-                    }
-                )
-
-            if objects_rows:
-                o_table = pyarrow.Table.from_pylist(objects_rows, schema=objects_schema)
-                o_path = os.path.join(payload_dir, "objects.parquet")
-                parquet.write_table(o_table, o_path)
-                tables_meta.append(
-                    {
-                        "name": "objects",
-                        "path": "objects.parquet",
-                        "row_count": o_table.num_rows,
-                    }
-                )
-
-            if figures_rows:
-                f_table = pyarrow.Table.from_pylist(figures_rows, schema=figures_schema)
-                f_path = os.path.join(payload_dir, "figures.parquet")
-                parquet.write_table(f_table, f_path)
-                tables_meta.append(
-                    {
-                        "name": "figures",
-                        "path": "figures.parquet",
-                        "row_count": f_table.num_rows,
-                    }
-                )
+            for name, writer in writers.items():
+                row_count = writer.close()
+                if row_count > 0:
+                    tables_meta.append(table_meta(name, f"{name}.parquet", row_count))
 
             manifest = {
                 VersionSchemaField.SCHEMA_VERSION: schema_version,
                 VersionSchemaField.TABLES: tables_meta,
             }
-            manifest_path = os.path.join(payload_dir, "manifest.json")
-            dump_json_file(manifest, manifest_path)
+            dump_json_file(manifest, os.path.join(payload_dir, "manifest.json"))
 
-            tar_path = os.path.join(tmp_root, "snapshot.tar")
-            with tarfile.open(tar_path, "w") as tar:
-                tar.add(payload_dir, arcname=".")
-
-            chunk_size = 1024 * 1024 * 50  # 50 MiB
-            zst_path = os.path.join(tmp_root, "snapshot.tar.zst")
-            # Try streaming compression first, fallback to single-shot
-            try:
-                cctx = zstd.ZstdCompressor()
-                with open(tar_path, "rb") as src, open(zst_path, "wb") as dst:
-                    try:
-                        stream = cctx.stream_writer(dst, closefd=False)
-                    except TypeError:
-                        stream = cctx.stream_writer(dst)
-                    with stream as compressor:
-                        while True:
-                            chunk = src.read(chunk_size)
-                            if not chunk:
-                                break
-                            compressor.write(chunk)
-            # Fallback: single-shot compression
-            except Exception:
-                with open(tar_path, "rb") as src, open(zst_path, "wb") as dst:
-                    dst.write(zstd.compress(src.read()))
-
-            with open(zst_path, "rb") as f:
-                outio = io.BytesIO(f.read())
-            outio.seek(0)
-            return outio
+            return pack_payload_dir(payload_dir, tmp_root)
 
         finally:
             try:
                 clean_dir(tmp_root)
             except Exception:
                 pass
+
+    @staticmethod
+    def repack_snapshot(
+        source: Union[str, io.BytesIO],
+        schema_version: str = DEFAULT_VIDEO_SCHEMA_VERSION,
+    ) -> io.BytesIO:
+        """
+        Convert a video snapshot to the current schema, locally.
+
+        Versions written as ``v2.0.0`` numbered their objects and figures by position in
+        the table, so two of them cannot be compared - a row that shifted looks like a
+        different object. The real ids were never lost, though: every video row carries
+        the server's annotation verbatim in ``ann_json``, and that is where the ids are.
+        So an old snapshot can be brought onto the current schema without touching the
+        API, and a comparison between an old version and a new one becomes possible.
+
+        :param source: Snapshot file path or in-memory snapshot stream.
+        :type source: Union[str, io.BytesIO]
+        :param schema_version: Target schema version.
+        :type schema_version: str
+        :returns: In-memory snapshot stream in the target schema.
+        :rtype: io.BytesIO
+        """
+        try:
+            import pyarrow  # pylint: disable=import-error
+            import pyarrow.parquet as parquet  # pylint: disable=import-error
+        except Exception as e:
+            raise RuntimeError(
+                "pyarrow is required to repack a video snapshot. Please install pyarrow."
+            ) from e
+
+        snapshot_bytes = (
+            source.getvalue() if isinstance(source, io.BytesIO) else open(source, "rb").read()
+        )
+        snapshot_schema = get_video_snapshot_schema(schema_version)
+        tag_schema = get_tag_schema()
+
+        src_root = tempfile.mkdtemp()
+        out_root = tempfile.mkdtemp()
+        try:
+            src_payload = os.path.join(src_root, "payload")
+            mkdir(src_payload)
+            unpack_snapshot(snapshot_bytes, src_payload)
+
+            out_payload = os.path.join(out_root, "payload")
+            mkdir(out_payload)
+            for name in ("project_info.json", "project_meta.json", "datasets.parquet"):
+                src_file = os.path.join(src_payload, name)
+                if os.path.isfile(src_file):
+                    shutil.copy(src_file, out_payload)
+
+            videos_schema = snapshot_schema.videos_schema(pyarrow)
+            writers = {
+                "videos": ParquetTableWriter(
+                    pyarrow, parquet, os.path.join(out_payload, "videos.parquet"), videos_schema
+                ),
+                "objects": ParquetTableWriter(
+                    pyarrow,
+                    parquet,
+                    os.path.join(out_payload, "objects.parquet"),
+                    snapshot_schema.objects_schema(pyarrow),
+                ),
+                "figures": ParquetTableWriter(
+                    pyarrow,
+                    parquet,
+                    os.path.join(out_payload, "figures.parquet"),
+                    snapshot_schema.figures_schema(pyarrow),
+                ),
+                "tags": ParquetTableWriter(
+                    pyarrow,
+                    parquet,
+                    os.path.join(out_payload, "tags.parquet"),
+                    tag_schema.tags_schema(pyarrow),
+                ),
+            }
+
+            videos_path = os.path.join(src_payload, "videos.parquet")
+            video_rows = 0
+            if os.path.isfile(videos_path):
+                parquet_file = parquet.ParquetFile(videos_path)
+                try:
+                    for batch in parquet_file.iter_batches(batch_size=200):
+                        for row in batch.to_pylist():
+                            video_rows += 1
+                            src_video_id = row.get(VersionSchemaField.SRC_VIDEO_ID)
+                            raw = row.get(VersionSchemaField.ANN_JSON)
+                            ann_json = json.loads(raw) if raw else {}
+                            # The target schema has no ann_json and two columns the old
+                            # one did not: copying the row verbatim would drop the video's
+                            # tags and its annotation description.
+                            new_row = {
+                                k: v
+                                for k, v in row.items()
+                                if k != VersionSchemaField.ANN_JSON
+                            }
+                            new_row[VersionSchemaField.DESCRIPTION] = ann_json.get(
+                                video_constants.DESCRIPTION
+                            )
+                            new_row[VersionSchemaField.TAGS_JSON] = json.dumps(
+                                ann_json.get(video_constants.TAGS) or []
+                            )
+                            writers["videos"].add(new_row)
+                            for tag_json in ann_json.get(video_constants.TAGS) or []:
+                                writers["tags"].add(
+                                    tag_schema.tag_row(
+                                        tag_json, owner_type=OWNER_ITEM, owner_id=src_video_id
+                                    )
+                                )
+                            for obj_json in ann_json.get(video_constants.OBJECTS, []):
+                                writers["objects"].add(
+                                    snapshot_schema.object_row_from_json(
+                                        obj_json, src_video_id=src_video_id
+                                    )
+                                )
+                                for tag_json in obj_json.get(LabelJsonFields.TAGS) or []:
+                                    writers["tags"].add(
+                                        tag_schema.tag_row(
+                                            tag_json,
+                                            owner_type=OWNER_OBJECT,
+                                            owner_id=obj_json.get(video_constants.ID),
+                                            src_item_id=src_video_id,
+                                        )
+                                    )
+                            for frame_json in ann_json.get(video_constants.FRAMES, []):
+                                frame_index = frame_json.get(video_constants.INDEX)
+                                for figure_json in frame_json.get(
+                                    video_constants.FIGURES, []
+                                ):
+                                    writers["figures"].add(
+                                        snapshot_schema.figure_row_from_json(
+                                            figure_json,
+                                            src_video_id=src_video_id,
+                                            frame_index=frame_index,
+                                        )
+                                    )
+                finally:
+                    parquet_file.close()
+
+            tables_meta = []
+            datasets_path = os.path.join(out_payload, "datasets.parquet")
+            if os.path.isfile(datasets_path):
+                tables_meta.append(
+                    table_meta(
+                        "datasets",
+                        "datasets.parquet",
+                        parquet.ParquetFile(datasets_path).metadata.num_rows,
+                    )
+                )
+            for name, writer in writers.items():
+                row_count = writer.close()
+                if row_count > 0:
+                    tables_meta.append(table_meta(name, f"{name}.parquet", row_count))
+
+            dump_json_file(
+                {
+                    VersionSchemaField.SCHEMA_VERSION: schema_version,
+                    VersionSchemaField.TABLES: tables_meta,
+                },
+                os.path.join(out_payload, "manifest.json"),
+            )
+            return pack_payload_dir(out_payload, out_root)
+        finally:
+            for root in (src_root, out_root):
+                try:
+                    clean_dir(root)
+                except Exception:
+                    pass
 
     @staticmethod
     def restore_snapshot(
@@ -1764,12 +1927,11 @@ class VideoProject(Project):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
         project_description: Optional[str] = None,
+        restore_workers: int = RESTORE_WORKERS,
     ) -> ProjectInfo:
         """
         Restore a video project from a snapshot and return ProjectInfo.
         """
-        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
-
         try:
             import pyarrow  # pylint: disable=import-error
             import pyarrow.parquet as parquet  # pylint: disable=import-error
@@ -1783,19 +1945,12 @@ class VideoProject(Project):
         mkdir(payload_dir)
 
         try:
-            try:
-                dctx = zstd.ZstdDecompressor()
-                with dctx.stream_reader(io.BytesIO(snapshot_bytes)) as reader:
-                    with tarfile.open(fileobj=reader, mode="r|") as tar:
-                        tar.extractall(payload_dir)
-            except Exception:
-                tar_bytes = zstd.decompress(snapshot_bytes)
-                with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r") as tar:
-                    tar.extractall(payload_dir)
+            # Handles both container shapes: snapshots written before the codec change
+            # are zstd-wrapped, newer ones are a plain tar of already-compressed Parquet.
+            unpack_snapshot(snapshot_bytes, payload_dir)
 
             proj_info_path = os.path.join(payload_dir, "project_info.json")
             proj_meta_path = os.path.join(payload_dir, "project_meta.json")
-            key_id_map_path = os.path.join(payload_dir, "key_id_map.json")
             manifest_path = os.path.join(payload_dir, "manifest.json")
 
             project_info_json = load_json_file(proj_info_path)
@@ -1803,13 +1958,15 @@ class VideoProject(Project):
             manifest = load_json_file(manifest_path)
 
             meta = ProjectMeta.from_json(meta_json)
-            _ = KeyIdMap().load_json(key_id_map_path)
+            # key_id_map.json was written by v2.0.0 and read by nothing; v2.1.0 does not
+            # write it at all. The restore below rebuilds annotations from ann_json, which
+            # is what it always did.
 
             schema_version = manifest.get(VersionSchemaField.SCHEMA_VERSION) or manifest.get(
                 "schema_version"
             )
             try:
-                _ = get_video_snapshot_schema(schema_version)
+                snapshot_schema = get_video_snapshot_schema(schema_version)
             except Exception:
                 raise RuntimeError(f"Unsupported video snapshot schema_version: {schema_version}")
 
@@ -2020,14 +2177,61 @@ class VideoProject(Project):
             ann_temp_dir = os.path.join(tmp_root, "anns")
             mkdir(ann_temp_dir)
 
-            anns_by_dataset: Dict[int, List[Tuple[int, str]]] = {}
+            # v2.0.0 carried each annotation as a string on the video row. v2.1.0 does
+            # not: the tables hold the same information, so the annotation is rebuilt
+            # from them rather than stored a second time.
+            objects_by_video: Dict[int, List[dict]] = {}
+            figures_by_video: Dict[int, List[dict]] = {}
+            item_tags: Dict[int, List[dict]] = {}
+            object_tags: Dict[int, List[dict]] = {}
+            if not snapshot_schema.stores_ann_json:
+                for table, sink in (
+                    ("objects.parquet", objects_by_video),
+                    ("figures.parquet", figures_by_video),
+                ):
+                    table_path = os.path.join(payload_dir, table)
+                    if not os.path.exists(table_path):
+                        continue
+                    for row in parquet.read_table(table_path).to_pylist():
+                        sink.setdefault(row[VersionSchemaField.SRC_VIDEO_ID], []).append(row)
+
+                tags_path = os.path.join(payload_dir, "tags.parquet")
+                if os.path.exists(tags_path):
+                    for row in parquet.read_table(tags_path).to_pylist():
+                        sink = (
+                            item_tags
+                            if row[VersionSchemaField.OWNER_TYPE] == OWNER_ITEM
+                            else object_tags
+                        )
+                        sink.setdefault(row[VersionSchemaField.OWNER_ID], []).append(
+                            tag_json_from_row(row)
+                        )
+
+            anns_by_dataset: Dict[int, List[Tuple[int, dict]]] = {}
             for row in v_rows:
                 src_vid = row["src_video_id"]
                 new_info = src_to_new_video.get(src_vid)
                 if new_info is None:
                     continue
                 src_ds_id = row["src_dataset_id"]
-                anns_by_dataset.setdefault(src_ds_id, []).append((new_info.id, row["ann_json"]))
+                if snapshot_schema.stores_ann_json:
+                    try:
+                        ann_json = json.loads(row["ann_json"])
+                    except Exception:
+                        logger.warning(
+                            f"Failed to parse ann_json for video {src_vid}, "
+                            "skipping its annotation."
+                        )
+                        continue
+                else:
+                    ann_json = annotation_json_from_rows(
+                        row,
+                        objects_by_video.get(src_vid, []),
+                        figures_by_video.get(src_vid, []),
+                        item_tags=item_tags.get(src_vid, []),
+                        object_tags=object_tags,
+                    )
+                anns_by_dataset.setdefault(src_ds_id, []).append((new_info.id, ann_json))
 
             for src_ds_id, items in anns_by_dataset.items():
                 ds_info = dataset_mapping.get(src_ds_id)
@@ -2037,18 +2241,10 @@ class VideoProject(Project):
                 video_ids: List[int] = []
                 ann_paths: List[str] = []
 
-                for vid_id, ann_json_str in items:
+                for vid_id, ann_json in items:
                     video_ids.append(vid_id)
                     ann_path = os.path.join(ann_temp_dir, f"{vid_id}.json")
-                    try:
-                        parsed = json.loads(ann_json_str)
-                    except Exception:
-                        logger.warning(
-                            f"Failed to parse ann_json for restored video id={vid_id}, "
-                            f"skipping its annotation."
-                        )
-                        continue
-                    dump_json_file(parsed, ann_path)
+                    dump_json_file(ann_json, ann_path)
                     ann_paths.append(ann_path)
 
                 if not video_ids:
@@ -2061,22 +2257,28 @@ class VideoProject(Project):
                         total=len(video_ids),
                         leave=False,
                     )
-                key_id_map = KeyIdMap()
                 multiview_key_id_map = KeyIdMap()
 
-                for vid_id, ann_path in zip(video_ids, ann_paths):
+                def _restore_one(pair, ds_info=ds_info, new_meta=new_meta):
+                    vid_id, ann_path = pair
                     try:
                         ann_json = load_json_file(ann_path)
+                        # A v2.0.0 annotation is the server's: figures point at their
+                        # object by id, so the parser needs a map to resolve them - one
+                        # per video, since ids only have to be distinct within one.
+                        # A rebuilt annotation links by key and needs no map at all, and
+                        # must not be given one: it carries keys without ids, and the map
+                        # refuses to record a second missing id.
                         ann = VideoAnnotation.from_json(
                             ann_json,
                             new_meta,
-                            key_id_map=key_id_map,
+                            key_id_map=KeyIdMap() if snapshot_schema.stores_ann_json else None,
                         )
                     except Exception as e:
                         logger.warning(
                             f"Failed to deserialize annotation for restored video id={vid_id}: {e}"
                         )
-                        continue
+                        return
 
                     try:
                         if not is_multiview:
@@ -2092,7 +2294,25 @@ class VideoProject(Project):
                             f"Failed to upload annotation for dataset '{ds_info.name}', "
                             f"video id={vid_id}: {e}"
                         )
-                        continue
+
+                # One annotation is several round trips and they do not depend on each
+                # other, so the videos of a dataset go up in parallel. Multi-view shares
+                # one KeyIdMap across the call and has to stay serial.
+                pairs = list(zip(video_ids, ann_paths))
+                # ApiContext keeps the per-project tag and class lookups out of every
+                # single append - they were more than half of its time.
+                with ApiContext(
+                    api,
+                    project_id=project.id,
+                    dataset_id=ds_info.id,
+                    project_meta=new_meta,
+                ):
+                    if is_multiview or restore_workers <= 1:
+                        for pair in pairs:
+                            _restore_one(pair)
+                    else:
+                        with ThreadPoolExecutor(max_workers=restore_workers) as pool:
+                            list(pool.map(_restore_one, pairs))
 
             return project
 

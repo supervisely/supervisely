@@ -162,8 +162,18 @@ class ObjectClassApi(ModuleApi):
                 print(obj_class_map)
                 # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
         """
+        context = getattr(self._api, "optimization_context", None) or {}
+        cache = context.setdefault("obj_class_name_to_id", {}) if context else {}
+        if project_id in cache:
+            return cache[project_id]
+
         objects_infos = self.get_list(project_id)
-        return {object_info.name: object_info.id for object_info in objects_infos}
+        mapping = {object_info.name: object_info.id for object_info in objects_infos}
+        if context:
+            # same reasoning as the tag map: classes are fixed for the duration of a
+            # bulk upload, so an ApiContext reads them once instead of per item
+            cache[project_id] = mapping
+        return mapping
 
     def _get_info_by_id(self, id, method, fields=None):
         response = self._get_response_by_id(id, method, id_field=ApiField.ID, fields=fields)

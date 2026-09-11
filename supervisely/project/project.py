@@ -10,6 +10,7 @@ import os
 import pickle
 import random
 import shutil
+import tempfile
 from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
@@ -24,6 +25,8 @@ from typing import (
     Tuple,
     Union,
 )
+
+from concurrent.futures import ThreadPoolExecutor
 
 import aiofiles
 import numpy as np
@@ -83,11 +86,32 @@ from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_
 from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.project.versioning.common import CUSTOM_DATA_VERSION_RESTORED_KEY
+from supervisely.project.versioning import image_snapshot_io
+from supervisely.project.versioning.common import (
+    CUSTOM_DATA_VERSION_RESTORED_KEY,
+    DEFAULT_IMAGE_SCHEMA_VERSION,
+    IMAGE_SCHEMA_VERSION_V1,
+    IMAGE_SCHEMA_VERSION_V2,
+    IMAGE_SCHEMA_VERSION_V2_1,
+    get_image_snapshot_schema,
+)
+from supervisely.project.versioning.tag_schema import OWNER_FIGURE, OWNER_ITEM
+from supervisely.project.versioning.container import (
+    SNIFF_SIZE,
+    is_snapshot_container,
+    read_manifest_schema_version,
+    unpack_snapshot,
+)
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 TF_BLOB_DIR = "blob-files"  # directory for project blob files in team files
+
+# Images per listing request when building a snapshot. Independent of the figures batch
+# size, which is bounded by what the figures endpoint accepts: an ImageInfo costs a few
+# kilobytes, so a larger page trades negligible memory for far fewer round trips.
+# Measured on a 40k-image dataset, one list request per figures request cost 105 s.
+LIST_PAGE_SIZE = 1000
 
 
 class CustomUnpickler(BaseRestrictedUnpickler):
@@ -225,6 +249,12 @@ def _get_effective_ann_name(img_name, ann_names):
     else:
         old_format_name = os.path.splitext(img_name)[0] + ANN_EXT
         return old_format_name if (old_format_name in ann_names) else None
+
+
+# How many annotation batches a snapshot reads at once. The work is round trips, not
+# CPU, so a handful of workers is what turns a long serial wait into a short one; the
+# writer that consumes them stays single-threaded.
+SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
 class Dataset(KeyObject):
@@ -3734,19 +3764,29 @@ class Project:
         log_progress: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
         return_bytesio: Optional[bool] = False,
+        schema_version: str = DEFAULT_IMAGE_SCHEMA_VERSION,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> Union[str, io.BytesIO]:
         """
         Download project to the local directory in binary format. Faster than downloading project in the usual way.
         This type of project download is more suitable for creating local backups.
         It is also suitable for cases where you don't need access to individual project files, such as images or annotations.
 
-        Binary file contains the following data:
+        The default format (``schema_version="v2.0.0"``) is a ``.tar.zst`` holding
+        ``project_info.json``, ``project_meta.json``, ``manifest.json`` and Parquet tables
+        for datasets, images, figures and alpha-mask geometries - the same container video
+        and volume projects use. It needs the ``versioning`` extra (pyarrow).
+
+        ``schema_version="v1.0.0"`` is the older format, a single pickle of:
         - ProjectInfo
         - ProjectMeta
         - List of DatasetInfo
         - List of ImageInfo
         - Dict of Figures
         - Dict of AlphaGeometries
+
+        Nothing needs to be told which one a file is: ``upload_bin`` reads both, deciding
+        per archive.
 
         :param api: Supervisely API address and token.
         :type api: :class:`~supervisely.api.api.Api`
@@ -3764,6 +3804,8 @@ class Project:
         :type progress_cb: tqdm or callable, optional
         :param return_bytesio: If True, returns BytesIO object instead of saving it to the disk.
         :type return_bytesio: bool, optional
+        :param schema_version: Snapshot format, ``"v2.0.0"`` (default) or ``"v1.0.0"`` - see above.
+        :type schema_version: str, optional
         :returns: Path to the binary file or BytesIO object.
         :rtype: str or io.BytesIO
 
@@ -3792,6 +3834,32 @@ class Project:
             raise ValueError(
                 "Local save directory dest_dir must be specified if return_bytesio is False"
             )
+
+        if schema_version in (IMAGE_SCHEMA_VERSION_V2, IMAGE_SCHEMA_VERSION_V2_1):
+            snapshot_io = Project.build_snapshot(
+                api,
+                project_id=project_id,
+                dataset_ids=dataset_ids,
+                batch_size=batch_size,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+                fetch_workers=fetch_workers,
+            )
+            if return_bytesio:
+                snapshot_io.seek(0)
+                return snapshot_io
+
+            project_info = api.project.get_info_by_id(project_id)
+            os.makedirs(dest_dir, exist_ok=True)
+            out_path = os.path.join(
+                dest_dir, f"{project_info.id}_{project_info.name}.tar.zst"
+            )
+            with open(out_path, "wb") as dst:
+                dst.write(snapshot_io.read())
+            return out_path
+
+        if schema_version != IMAGE_SCHEMA_VERSION_V1:
+            raise RuntimeError(f"Unsupported image snapshot schema_version: {schema_version!r}")
 
         ds_filters = (
             [{"field": "id", "operator": "in", "value": dataset_ids}]
@@ -3850,11 +3918,326 @@ class Project:
 
         if isinstance(file, io.BytesIO):
             pickle.dump(data, file)
+            # Rewound, like the v2.0.0 path: a returned stream is one to read, and a
+            # caller passing it straight to upload_bin should not have to know that.
+            file.seek(0)
         else:
             with file as f:
                 pickle.dump(data, f)
 
         return file if return_bytesio else file.name
+
+    @staticmethod
+    def build_snapshot(
+        api: sly.Api,
+        project_id: int,
+        dataset_ids: Optional[List[int]] = None,
+        batch_size: Optional[int] = 100,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        schema_version: str = IMAGE_SCHEMA_VERSION_V2_1,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
+    ) -> io.BytesIO:
+        """
+        Create an image project snapshot in Parquet + ``tar.zst`` format and return it as BytesIO.
+
+        Archive contents:
+            - project_info.json
+            - project_meta.json
+            - manifest.json
+            - datasets.parquet
+            - images.parquet
+            - figures.parquet
+            - alpha_geometries.parquet
+
+        Rows are written in row groups as they are collected, so peak memory is bounded by
+        the batch size rather than by the size of the project.
+
+        :param api: Supervisely API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param project_id: Source project ID.
+        :type project_id: int
+        :param dataset_ids: Optional list of dataset IDs to include. Nested datasets must be listed explicitly.
+        :type dataset_ids: Optional[List[int]]
+        :param batch_size: Number of images per figures download call.
+        :type batch_size: Optional[int]
+        :param log_progress: Show progress bars when ``progress_cb`` is not provided.
+        :type log_progress: bool
+        :param progress_cb: Optional progress callback. Has a higher priority than ``log_progress``.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param schema_version: Snapshot schema version. Currently only ``"v2.0.0"``.
+        :type schema_version: str
+        :returns: In-memory snapshot stream.
+        :rtype: io.BytesIO
+        """
+        # Checked before the first API call: a missing extra is a configuration error, and
+        # discovering it after downloading the project meta helps nobody.
+        image_snapshot_io.import_pyarrow()
+
+        alpha_mask_name = sly.AlphaMask.name()
+
+        project_info = api.project.get_info_by_id(project_id)
+        meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+        # Figures carry class_id; a comparison between snapshots matches on the name,
+        # because ids belong to the project the snapshot was taken from.
+        class_name_by_id = {
+            obj_class.sly_id: obj_class.name
+            for obj_class in meta.obj_classes
+            if obj_class.sly_id is not None
+        }
+        dataset_ids_filter = set(dataset_ids) if dataset_ids is not None else None
+
+        with image_snapshot_io.ImageSnapshotWriter(schema_version) as writer:
+            writer.set_project(project_info, meta)
+
+            # api.dataset.tree() gives the parent chain the full path is built from but
+            # not custom_data, so the two are collected separately, as in VideoProject.
+            ds_custom_data_by_id: Dict[int, dict] = {}
+            try:
+                for ds in api.dataset.get_list(
+                    project_id, recursive=True, include_custom_data=True
+                ):
+                    if getattr(ds, "custom_data", None):
+                        ds_custom_data_by_id[ds.id] = ds.custom_data
+            except Exception:
+                logger.warning("Failed to read dataset custom_data; it will not be in the snapshot")
+
+            for parents, ds_info in api.dataset.tree(project_id):
+                if dataset_ids_filter is not None and ds_info.id not in dataset_ids_filter:
+                    continue
+
+                custom_data = ds_custom_data_by_id.get(ds_info.id)
+                if custom_data is not None:
+                    ds_info = ds_info._replace(custom_data=custom_data)
+                writer.add_dataset(ds_info, Dataset._get_dataset_path(ds_info.name, parents))
+
+                ds_progress = progress_cb
+                if log_progress and progress_cb is None:
+                    ds_progress = tqdm_sly(
+                        desc="Downloading dataset: {!r}".format(ds_info.name),
+                        total=getattr(ds_info, "images_count", None),
+                    )
+
+                # Listed page by page rather than all at once: holding every ImageInfo of
+                # a dataset is exactly the kind of whole-project allocation this format
+                # exists to avoid. The page is deliberately larger than the figures batch
+                # - an ImageInfo is small, and one list request per figures request costs
+                # real time on a project with tens of thousands of images.
+                page_size = max(batch_size or 1, LIST_PAGE_SIZE)
+                for page in api.image.get_list_generator(ds_info.id, batch_size=page_size):
+                    if not page:
+                        continue
+                    for image_info in page:
+                        writer.add_image(image_info)
+                        for tag_json in getattr(image_info, "tags", None) or []:
+                            writer.add_tag(
+                                tag_json, owner_type=OWNER_ITEM, owner_id=image_info.id
+                            )
+
+                    # Two bulk calls per batch, each a round trip: run the batches of a
+                    # page concurrently and let the writer consume them in order. The
+                    # writer stays single-threaded - Parquet writers are not reentrant -
+                    # so only the waiting overlaps, which is where the time went.
+                    def _fetch_batch(batch, ds_id=ds_info.id):
+                        image_ids = [image_info.id for image_info in batch]
+                        # integer_coords=False keeps exact subpixel coordinates so that a
+                        # restore puts figures back without a half-pixel shift
+                        ds_figures = api.image.figure.download(
+                            ds_id, image_ids, integer_coords=False
+                        )
+                        # figures.list renders a figure tag as {id, tagId, value}; the
+                        # annotation endpoint renders the same row with its name, its
+                        # timestamps and its customData. Neither endpoint is a superset
+                        # of the other - geometry_meta and priority only come from the
+                        # first - so the tags come from a second bulk call per batch.
+                        figure_tags = {}
+                        try:
+                            for ann_info in api.annotation.download_batch(ds_id, image_ids):
+                                for obj in ann_info.annotation.get("objects", []):
+                                    if obj.get("tags"):
+                                        figure_tags[obj["id"]] = obj["tags"]
+                        except Exception:
+                            logger.warning(
+                                f"Could not read annotations of dataset {ds_id} for "
+                                "figure tags; storing what figures.list returned instead"
+                            )
+                            figure_tags = None
+                        return batch, ds_figures, figure_tags
+
+                    page_batches = list(batched(page, batch_size))
+                    with ThreadPoolExecutor(max_workers=fetch_workers) as fetch_pool:
+                        for batch, ds_figures, figure_tags in fetch_pool.map(
+                            _fetch_batch, page_batches
+                        ):
+                            alpha_ids = []
+                            for src_image_id, image_figures in ds_figures.items():
+                                for figure in image_figures:
+                                    is_alpha = figure.geometry_type == alpha_mask_name
+                                    if is_alpha:
+                                        alpha_ids.append(figure.id)
+                                    writer.add_figure(
+                                        figure,
+                                        src_image_id=src_image_id,
+                                        class_name=class_name_by_id.get(figure.class_id),
+                                        store_geometry=not is_alpha,
+                                    )
+                                    tags = (
+                                        figure_tags.get(figure.id, [])
+                                        if figure_tags is not None
+                                        else (getattr(figure, "tags", None) or [])
+                                    )
+                                    for tag_json in tags:
+                                        writer.add_tag(
+                                            tag_json,
+                                            owner_type=OWNER_FIGURE,
+                                            owner_id=figure.id,
+                                            src_item_id=src_image_id,
+                                        )
+                            if alpha_ids:
+                                geometries = api.image.figure.download_geometries_batch(
+                                    alpha_ids
+                                )
+                                for figure_id, geometry in zip(alpha_ids, geometries):
+                                    writer.add_alpha_geometry(figure_id, geometry)
+                            if ds_progress is not None:
+                                ds_progress(len(batch))
+
+                if ds_progress is not None and ds_progress is not progress_cb:
+                    ds_progress.close()
+
+            return writer.finish()
+
+    @staticmethod
+    def repack_snapshot(
+        source: Union[str, io.BytesIO],
+        schema_version: str = IMAGE_SCHEMA_VERSION_V2_1,
+    ) -> io.BytesIO:
+        """
+        Convert an image snapshot of any supported format into the Parquet container.
+
+        Flipping the writer to ``v2.0.0`` does nothing for versions that already exist -
+        they are pickles, and a reader of two old versions still pays the pickle cost.
+        Converting one on first use and caching the result next to it is what brings
+        those versions onto the fast path, once each.
+
+        The conversion is local: the snapshot is read into the same payload a restore
+        works from and written back out as tables. It does not touch the API, so it
+        cannot recover anything the source did not store.
+
+        :param source: Snapshot file path or in-memory snapshot stream, in either format.
+        :type source: Union[str, io.BytesIO]
+        :param schema_version: Target schema version. Currently only ``"v2.0.0"``.
+        :type schema_version: str
+        :returns: In-memory snapshot stream in the Parquet container.
+        :rtype: io.BytesIO
+        """
+        alpha_mask_name = sly.AlphaMask.name()
+        (
+            project_info,
+            meta,
+            dataset_infos,
+            image_infos,
+            figures,
+            alpha_geometries,
+        ) = Project._read_snapshot(source)
+        restore_legacy_defaults(meta, meta.project_settings, *meta.obj_classes, *meta.tag_metas)
+
+        class_name_by_id = {
+            obj_class.sly_id: obj_class.name
+            for obj_class in meta.obj_classes
+            if obj_class.sly_id is not None
+        }
+        full_paths = image_snapshot_io.dataset_full_paths(dataset_infos)
+
+        with image_snapshot_io.ImageSnapshotWriter(schema_version) as writer:
+            writer.set_project(project_info, meta)
+            for ds_info in dataset_infos:
+                writer.add_dataset(ds_info, full_paths[ds_info.id])
+            for image_info in image_infos:
+                writer.add_image(image_info)
+                for tag_json in getattr(image_info, "tags", None) or []:
+                    writer.add_tag(tag_json, owner_type=OWNER_ITEM, owner_id=image_info.id)
+            written_alpha = set()
+            for src_image_id, image_figures in figures.items():
+                for figure in image_figures:
+                    # Alpha geometry belongs in its own table - unless this payload has
+                    # none for the figure, in which case whatever the figure row carries
+                    # is all there is and dropping it would lose the mask.
+                    out_of_line = (
+                        figure.geometry_type == alpha_mask_name
+                        and alpha_geometries.get(figure.id) is not None
+                    )
+                    writer.add_figure(
+                        figure,
+                        src_image_id=src_image_id,
+                        class_name=class_name_by_id.get(figure.class_id),
+                        store_geometry=not out_of_line,
+                    )
+                    # Written in figure order, not in the payload's own dict order: a
+                    # reader walks the two tables together, and that only works while
+                    # the alpha rows follow the same order as the figures they belong to.
+                    for tag_json in getattr(figure, "tags", None) or []:
+                        writer.add_tag(
+                            tag_json,
+                            owner_type=OWNER_FIGURE,
+                            owner_id=figure.id,
+                            src_item_id=src_image_id,
+                        )
+                    if out_of_line:
+                        writer.add_alpha_geometry(figure.id, alpha_geometries[figure.id])
+                        written_alpha.add(figure.id)
+            for figure_id, geometry in alpha_geometries.items():
+                if figure_id not in written_alpha:
+                    logger.warning(
+                        f"Alpha geometry for figure {figure_id} has no figure in the snapshot; "
+                        "keeping it so the conversion loses nothing"
+                    )
+                    writer.add_alpha_geometry(figure_id, geometry)
+            return writer.finish()
+
+    @staticmethod
+    def _read_snapshot(
+        file: Union[str, io.BytesIO]
+    ) -> Tuple[ProjectInfo, ProjectMeta, list, list, dict, dict]:
+        """Load a snapshot of either format into the payload a restore works from.
+
+        A Parquet snapshot (v2.0.0) is a tar - plain, or zstd-wrapped if it was written
+        before the codec change - and a pickle backup (v1.0.0) starts with the pickle
+        protocol marker, so the head of the file decides which reader runs. Everything
+        after this point is one restore, shared by both formats.
+        """
+        if isinstance(file, io.BytesIO):
+            # A snapshot is always read from its start. Rewinding here rather than
+            # restoring the caller's position is what lets a stream straight out of
+            # download_bin be handed back in without a seek of its own.
+            file.seek(0)
+            head = file.read(SNIFF_SIZE)
+            file.seek(0)
+        else:
+            with open(file, "rb") as f:
+                head = f.read(SNIFF_SIZE)
+
+        if not is_snapshot_container(head):
+            with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
+                return CustomUnpickler(f).load()
+
+        if isinstance(file, io.BytesIO):
+            snapshot_bytes = file.getvalue()
+        else:
+            with open(file, "rb") as f:
+                snapshot_bytes = f.read()
+
+        tmp_root = tempfile.mkdtemp()
+        payload_dir = os.path.join(tmp_root, "payload")
+        mkdir(payload_dir)
+        try:
+            unpack_snapshot(snapshot_bytes, payload_dir)
+            # Raises on a version this SDK does not know, rather than reading whichever
+            # columns happen to match.
+            get_image_snapshot_schema(read_manifest_schema_version(payload_dir))
+            return image_snapshot_io.read_payload(payload_dir)
+        finally:
+            shutil.rmtree(tmp_root, ignore_errors=True)
 
     @staticmethod
     def upload_bin(
@@ -3927,11 +4310,14 @@ class Project:
         image_infos: List[ImageInfo]
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
-        with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
-            unpickler = CustomUnpickler(f)
-            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
-                unpickler.load()
-            )
+        (
+            project_info,
+            meta,
+            dataset_infos,
+            image_infos,
+            figures,
+            alpha_geometries,
+        ) = Project._read_snapshot(file)
         # Backups written by older SDKs predate some attributes of these classes;
         # pickle skips __init__, so they arrive missing and must be backfilled.
         restore_legacy_defaults(meta, meta.project_settings, *meta.obj_classes, *meta.tag_metas)

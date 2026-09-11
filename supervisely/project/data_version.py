@@ -337,6 +337,10 @@ class DataVersion(ModuleApiBase):
                 "updated_at": project_info.updated_at,
                 "previous": latest,
                 "number": version_num,
+                # Per version, unlike the map-level "format" key, which describes
+                # whichever version was written last. A reader deciding whether a
+                # snapshot is worth converting needs to know that without downloading it.
+                "format": self.__version_format,
             }
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
@@ -753,6 +757,136 @@ class DataVersion(ModuleApiBase):
 
         return preview_project_info
 
+    def ensure_preview(
+        self, project: Union[int, ProjectInfo], version_id: int, local_binary_path: str = None
+    ) -> ProjectInfo:
+        """
+        Return the version's preview project, creating it only if there is not one already.
+
+        Unlike :func:`enable_preview`, this also checks that the linked preview project
+        still exists. A version keeps pointing at its preview after someone deletes that
+        project, and ``enable_preview`` hands the dead link straight back as ``None``;
+        here the preview is rebuilt instead.
+
+        :param project: Source project ID or ProjectInfo object
+        :type project: Union[int, :class:`~supervisely.api.project_api.ProjectInfo`]
+        :param version_id: Version ID
+        :type version_id: int
+        :param local_binary_path: Path to a local version.bin file to use instead of downloading from server.
+        :type local_binary_path: Optional[str]
+        :returns: Preview snapshot project information
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
+        """
+        project_id = project if isinstance(project, int) else project.id
+        version_info = self.get_info_by_id(project_id, version_id)
+        if version_info is None:
+            raise ValueError(f"Version with ID {version_id} does not exist")
+
+        if version_info.preview_project_id is not None:
+            preview_project_info = self._api.project.get_info_by_id(
+                version_info.preview_project_id
+            )
+            if preview_project_info is not None:
+                return preview_project_info
+            logger.info(
+                f"Preview project {version_info.preview_project_id} of version {version_id} "
+                "no longer exists. Creating it again."
+            )
+
+        return self.enable_preview(
+            project=project,
+            version_id=version_id,
+            overwrite=True,
+            local_binary_path=local_binary_path,
+        )
+
+    def download_snapshot(
+        self,
+        project_info: Union[ProjectInfo, int],
+        version_id: int,
+        dest_path: Optional[str] = None,
+    ) -> Union[str, io.BytesIO]:
+        """
+        Download a version's snapshot without restoring it.
+
+        The archive stored in Team Files wraps a single ``version.bin`` member, which is
+        the snapshot itself - a pickle for image schema v1.0.0, a Parquet ``tar.zst``
+        for everything else. That member is what this returns.
+
+        Pass ``dest_path`` for anything large: the snapshot is then streamed to that file
+        instead of being held in memory, which is what makes reading two versions at once
+        affordable.
+
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
+        :param version_id: Version ID
+        :type version_id: int
+        :param dest_path: Local path to stream the snapshot into. If None, it is returned in memory.
+        :type dest_path: Optional[str]
+        :returns: Path the snapshot was written to, or the snapshot in memory.
+        :rtype: Union[str, io.BytesIO]
+        """
+        self.initialize(project_info)
+
+        version_entry = self.versions.get(str(version_id))
+        if version_entry is None:
+            raise ValueError(f"Version {version_id} does not exist")
+
+        archive_path = version_entry.get("path")
+        if archive_path is None:
+            raise RuntimeError(f"Version {version_id} has no restore point to download")
+
+        if dest_path is None:
+            return self._download_and_extract(archive_path)
+
+        temp_dir = tempfile.mkdtemp()
+        local_archive = os.path.join(temp_dir, "download.tar.zst")
+        try:
+            self._api.file.download(self.project_info.team_id, archive_path, local_archive)
+            os.makedirs(os.path.dirname(os.path.abspath(dest_path)), exist_ok=True)
+            self._extract_version_bin_to_file(local_archive, dest_path)
+            return dest_path
+        finally:
+            remove_dir(temp_dir)
+
+    @staticmethod
+    def _extract_version_bin_to_file(archive_path: str, dest_path: str) -> None:
+        """Stream the archive's ``version.bin`` member to ``dest_path``."""
+        import shutil
+
+        import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
+
+        def copy_member(tar: tarfile.TarFile, member: tarfile.TarInfo) -> bool:
+            if member.name != "version.bin":
+                return False
+            source = tar.extractfile(member)
+            if source is None:
+                raise RuntimeError("version.bin not found in the archive")
+            with open(dest_path, "wb") as dst:
+                shutil.copyfileobj(source, dst)
+            return True
+
+        try:
+            dctx = zstd.ZstdDecompressor()
+            with open(archive_path, "rb") as zst_f:
+                with dctx.stream_reader(zst_f) as reader:
+                    with tarfile.open(fileobj=reader, mode="r|") as tar:
+                        for member in tar:
+                            if copy_member(tar, member):
+                                return
+            raise RuntimeError("version.bin not found in the archive")
+        except RuntimeError:
+            raise
+        except Exception:
+            # Fallback: one-shot decompress. Some zstd builds have no streaming reader.
+            with open(archive_path, "rb") as zst_f:
+                decompressed_data = zstd.decompress(zst_f.read())
+            with tarfile.open(fileobj=io.BytesIO(decompressed_data), mode="r") as tar:
+                for member in tar:
+                    if copy_member(tar, member):
+                        return
+            raise RuntimeError("version.bin not found in the archive")
+
     def _create_warning_system_file(self):
         """
         Create a file in the system directory to indicate that you cannot manually modify its contents.
@@ -851,8 +985,24 @@ class DataVersion(ModuleApiBase):
         data = None
         version_bin_path = None
         try:
-            data = self.project_cls.download_bin(
-                self._api, self.project_info.id, batch_size=self._batch_size, return_bytesio=True
+            from supervisely.project import Project
+
+            # Reading the property is what resolves the version format and batch size
+            # for this project's type, so it has to happen before both are used.
+            project_cls = self.project_cls
+            kwargs = {}
+            if project_cls is Project:
+                # Only the image writer takes it; video and volume snapshots carry their
+                # schema version as their own default. Passing it keeps the format
+                # recorded in versions.json and the format actually written in step when
+                # DEFAULT_IMAGE_SCHEMA_VERSION moves.
+                kwargs["schema_version"] = self.__version_format
+            data = project_cls.download_bin(
+                self._api,
+                self.project_info.id,
+                batch_size=self._batch_size,
+                return_bytesio=True,
+                **kwargs,
             )
 
             version_bin_path = os.path.join(temp_dir, "version.bin")

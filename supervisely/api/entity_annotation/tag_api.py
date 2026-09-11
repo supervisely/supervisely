@@ -124,8 +124,18 @@ class TagApi(ModuleApi):
         :rtype: dict
         """
 
+        context = getattr(self._api, "optimization_context", None) or {}
+        cache = context.setdefault("tag_name_to_id", {}) if context else {}
+        if project_id in cache:
+            return cache[project_id]
+
         tags_info = self.get_list(project_id)
-        return {tag_info.name: tag_info.id for tag_info in tags_info}
+        mapping = {tag_info.name: tag_info.id for tag_info in tags_info}
+        if context:
+            # project tags do not change while a bulk operation runs, and re-reading them
+            # per item was over a third of the time of an annotation upload
+            cache[project_id] = mapping
+        return mapping
 
     @staticmethod
     def _frame_range_length_settings(

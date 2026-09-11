@@ -129,13 +129,20 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                 api.video.annotation.append(video_id, video_ann)
         """
 
-        info = self._api.video.get_info_by_id(video_id)
+        # In a bulk operation the project and dataset are fixed and already known, so an
+        # ApiContext spares one videos.info round trip per annotation.
+        context = getattr(self._api, "optimization_context", None) or {}
+        if context.get("project_id") is not None and context.get("dataset_id") is not None:
+            project_id, dataset_id = context["project_id"], context["dataset_id"]
+        else:
+            info = self._api.video.get_info_by_id(video_id)
+            project_id, dataset_id = info.project_id, info.dataset_id
         self._append(
             self._api.video.tag,
             self._api.video.object,
             self._api.video.figure,
-            info.project_id,
-            info.dataset_id,
+            project_id,
+            dataset_id,
             video_id,
             ann.tags,
             ann.objects,
