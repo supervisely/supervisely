@@ -360,9 +360,9 @@ class LiveTraining:
                     f"EMA={result['ema_value']:.3f}"
                 )
 
-        status_message = f"Live Training: {len(self.dataset)} images"
+        status_message = f"{len(self.dataset)} images added"
         if self.evaluator and self.evaluator.ema_value is not None:
-            status_message += f" | Quality: {self.evaluator.ema_value:.2f}"
+            status_message += f" | Model Quality: {self.evaluator.ema_value:.2f}"
         logger.info(status_message)
 
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
