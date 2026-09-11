@@ -32,7 +32,10 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.project.project import Project
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.project.versioning.common import IMAGE_SCHEMA_VERSION_V2
+from supervisely.project.versioning.common import (
+    IMAGE_SCHEMA_VERSION_V2,
+    IMAGE_SCHEMA_VERSION_V2_1,
+)
 
 PROJECT_ID = 777
 ALPHA_FIGURE_ID = 9003
@@ -510,7 +513,7 @@ def pickle_reader(tmp_path):
 def test_reader_reports_the_format_it_got(parquet_reader, pickle_reader):
     """A caller budgeting memory has to be able to tell the two apart."""
     assert parquet_reader.is_columnar is True
-    assert parquet_reader.schema_version == IMAGE_SCHEMA_VERSION_V2
+    assert parquet_reader.schema_version == IMAGE_SCHEMA_VERSION_V2_1
     assert pickle_reader.is_columnar is False
     assert pickle_reader.project_type == "images"
 
@@ -688,7 +691,7 @@ def test_new_image_snapshots_are_written_in_the_parquet_container():
     from supervisely.project.versioning.common import DEFAULT_IMAGE_SCHEMA_VERSION
     from supervisely.project.versioning.container import is_snapshot_container, is_tar_container
 
-    assert DEFAULT_IMAGE_SCHEMA_VERSION == IMAGE_SCHEMA_VERSION_V2
+    assert DEFAULT_IMAGE_SCHEMA_VERSION == IMAGE_SCHEMA_VERSION_V2_1
 
     snapshot = Project.download_bin(_FakeApi(), PROJECT_ID, return_bytesio=True, log_progress=False)
     # A plain tar of already-compressed Parquet, not a second compression pass over it.
@@ -903,3 +906,48 @@ def test_figure_timestamps_survive_and_are_readable(parquet_reader):
     figure = next(f for figs in payload_figures.values() for f in figs if f.id == 9001)
     assert figure.created_at == "2026-03-01T00:00:00.000Z"
     assert figure.updated_at == "2026-03-02T00:00:00.000Z"
+
+
+def test_image_snapshots_are_numbered_like_video_and_volume_ones():
+    """One version string, one meaning across modalities - that is what the diff gate reads."""
+    from supervisely.project.versioning.common import (
+        DEFAULT_IMAGE_SCHEMA_VERSION,
+        DEFAULT_VIDEO_SCHEMA_VERSION,
+        DEFAULT_VOLUME_SCHEMA_VERSION,
+    )
+
+    assert DEFAULT_IMAGE_SCHEMA_VERSION == DEFAULT_VIDEO_SCHEMA_VERSION
+    assert DEFAULT_IMAGE_SCHEMA_VERSION == DEFAULT_VOLUME_SCHEMA_VERSION
+    from supervisely.project.versioning.snapshot_reader import VersionSnapshot
+
+    assert DEFAULT_IMAGE_SCHEMA_VERSION == VersionSnapshot.DIFFABLE_SCHEMA_VERSION
+
+
+def test_a_new_snapshot_may_be_diffed_and_a_pickle_may_not(parquet_reader, pickle_reader):
+    """The strict rule: comparison is offered only on the current format."""
+    assert parquet_reader.is_diffable is True
+    assert parquet_reader.diff_unsupported_reason is None
+
+    from supervisely.project.versioning.common import IMAGE_SCHEMA_VERSION_V1
+
+    assert pickle_reader.is_diffable is False
+    assert IMAGE_SCHEMA_VERSION_V1 in pickle_reader.diff_unsupported_reason
+
+
+def test_snapshots_written_before_the_renumbering_still_read(tmp_path):
+    """v2.0.0 and v2.1.0 are the same layout, so the older number stays readable."""
+    from supervisely.project.versioning.snapshot_reader import VersionSnapshot
+
+    path = _write(
+        tmp_path,
+        Project.build_snapshot(
+            _FakeApi(),
+            PROJECT_ID,
+            log_progress=False,
+            schema_version=IMAGE_SCHEMA_VERSION_V2,
+        ),
+    )
+    with VersionSnapshot.open_archive(path) as snap:
+        assert snap.schema_version == IMAGE_SCHEMA_VERSION_V2
+        assert snap.is_diffable is False
+        assert [row["name"] for batch in snap.iter_items() for row in batch]

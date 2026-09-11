@@ -832,7 +832,10 @@ class _VolumeSectionsBackend(_Backend):
                     _select(
                         {
                             SnapshotColumn.ITEM_ID: row.get(VersionSchemaField.SRC_VOLUME_ID),
-                            SnapshotColumn.DATASET_ID: row.get(VersionSchemaField.SRC_DATASET_ID),
+                            # the record is VolumeInfo._asdict() - snake_case keys - and
+                            # snapshots written before the writer fix have no dataset column
+                            SnapshotColumn.DATASET_ID: row.get(VersionSchemaField.SRC_DATASET_ID)
+                            or record.get("dataset_id"),
                             SnapshotColumn.NAME: record.get(ApiField.NAME),
                             SnapshotColumn.HASH: record.get(ApiField.HASH),
                             SnapshotColumn.LINK: record.get(ApiField.LINK),
@@ -840,8 +843,8 @@ class _VolumeSectionsBackend(_Backend):
                             SnapshotColumn.HEIGHT: None,
                             SnapshotColumn.FRAMES_COUNT: None,
                             SnapshotColumn.META: record.get(ApiField.META) or {},
-                            SnapshotColumn.CREATED_AT: record.get(ApiField.CREATED_AT),
-                            SnapshotColumn.UPDATED_AT: record.get(ApiField.UPDATED_AT),
+                            SnapshotColumn.CREATED_AT: record.get("created_at"),
+                            SnapshotColumn.UPDATED_AT: record.get("updated_at"),
                         },
                         columns,
                     )
@@ -1157,6 +1160,41 @@ class VersionSnapshot:
     def is_columnar(self) -> bool:
         """False for the legacy pickle format, whose payload is loaded whole to read anything."""
         return self._backend.is_columnar
+
+    # One number, one meaning, in every modality: a v2.1.0 snapshot is columnar and its
+    # object and figure ids are the server's, so two of them can be compared. Older
+    # formats stored positions or SDK-invented uuids, which differ between two snapshots
+    # of the same unchanged project - a diff over them is noise, not a diff.
+    DIFFABLE_SCHEMA_VERSION = "v2.1.0"
+
+    @staticmethod
+    def _version_tuple(version: str):
+        try:
+            return tuple(int(part) for part in str(version).lstrip("v").split("."))
+        except (AttributeError, ValueError):
+            return (0,)
+
+    @property
+    def is_diffable(self) -> bool:
+        """Whether this snapshot may be compared with another version."""
+        return self.diff_unsupported_reason is None
+
+    @property
+    def diff_unsupported_reason(self) -> Optional[str]:
+        """Why this snapshot cannot be compared, or None when it can."""
+        if self._version_tuple(self.schema_version) < self._version_tuple(
+            self.DIFFABLE_SCHEMA_VERSION
+        ):
+            return (
+                f"snapshot schema is {self.schema_version}, comparison needs "
+                f"{self.DIFFABLE_SCHEMA_VERSION} or newer"
+            )
+        if not self.figure_ids_are_server_ids:
+            return (
+                f"snapshot schema {self.schema_version} does not carry server-side figure "
+                "ids, so figures cannot be matched between versions"
+            )
+        return None
 
     @property
     def figure_ids_are_server_ids(self) -> bool:

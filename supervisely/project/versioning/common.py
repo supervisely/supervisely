@@ -19,10 +19,14 @@ IMAGE_SCHEMA_VERSION_V1 = "v1.0.0"
 # Parquet, same container as video and volume snapshots.
 IMAGE_SCHEMA_VERSION_V2 = "v2.0.0"
 
+# Same layout as v2.0.0, renumbered so that the version string carries one meaning in
+# every modality: columnar, ids are the server's, comparable with another version.
+IMAGE_SCHEMA_VERSION_V2_1 = "v2.1.0"
+
 # Which format new image versions are written in. Changing it is safe in both
 # directions: a snapshot says what it is (a zstd frame with a manifest, or a pickle),
 # so the reader picks the right path per archive rather than per SDK version.
-DEFAULT_IMAGE_SCHEMA_VERSION = IMAGE_SCHEMA_VERSION_V2
+DEFAULT_IMAGE_SCHEMA_VERSION = IMAGE_SCHEMA_VERSION_V2_1
 VOLUME_SCHEMA_VERSION_V2 = "v2.0.0"
 VOLUME_SCHEMA_VERSION_V2_1 = "v2.1.0"
 

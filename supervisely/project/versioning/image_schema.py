@@ -209,6 +209,12 @@ class ImageSnapshotSchema:
         }
 
 
+# Both entries are the same layout. "v2.1.0" is what new snapshots are written as, so
+# that one number means the same thing in every modality: a columnar snapshot whose
+# object and figure ids are the server's, and which can therefore be compared with
+# another version. "v2.0.0" stays readable - image snapshots written before the
+# renumbering carry it, and they are byte-identical in structure.
 _IMAGE_SCHEMAS: Dict[str, ImageSnapshotSchema] = {
     "v2.0.0": ImageSnapshotSchema(schema_version="v2.0.0"),
+    "v2.1.0": ImageSnapshotSchema(schema_version="v2.1.0"),
 }
