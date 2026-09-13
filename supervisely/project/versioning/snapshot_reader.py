@@ -56,11 +56,21 @@ class SnapshotColumn:
     OWNER_TYPE = "owner_type"
     OWNER_ID = "owner_id"
     TAG_ID = "tag_id"
+    # The decoded value, built when a row is built. `VALUE_JSON` is the column as stored -
+    # JSON text, so that a number stays a number - and it is the one the Arrow path can
+    # serve. Comparing two versions is better off with the stored text anyway: it needs
+    # no decoding and two equal values are equal as text.
     VALUE = "value"
+    VALUE_JSON = "value_json"
     FRAME_FROM = "frame_from"
     FRAME_TO = "frame_to"
 
     FIGURE_ID = "figure_id"
+    # The annotation object a figure belongs to, where the modality has one: a video or
+    # volume object spans frames or slices and carries its own class and tags, while an
+    # image figure IS the label and has no object above it. Null there, and the id is
+    # the server's for video, the object key for volumes.
+    OBJECT_ID = "object_id"
     CLASS_NAME = "class_name"
     GEOMETRY_TYPE = "geometry_type"
     GEOMETRY = "geometry"
@@ -84,11 +94,14 @@ ITEM_COLUMNS = (
 FIGURE_COLUMNS = (
     SnapshotColumn.FIGURE_ID,
     SnapshotColumn.ITEM_ID,
+    SnapshotColumn.OBJECT_ID,
     SnapshotColumn.CLASS_NAME,
     SnapshotColumn.GEOMETRY_TYPE,
     SnapshotColumn.GEOMETRY,
     SnapshotColumn.FRAME_INDEX,
     SnapshotColumn.META,
+    SnapshotColumn.CREATED_AT,
+    SnapshotColumn.UPDATED_AT,
 )
 
 # Rows differ by three orders of magnitude in weight - an id and a name against a
@@ -223,6 +236,25 @@ class _PayloadBackend(_Backend):
             yield batch.rename_columns([rename.get(n, n) for n in batch.schema.names])
 
 
+# The shared tags table, the same one for every modality that stores tags as rows. Kept
+# at module level because the image and video backends read the same table through it.
+_TAG_MAP = {
+    SnapshotColumn.TAG_ASSIGNMENT_ID: VersionSchemaField.TAG_ASSIGNMENT_ID,
+    SnapshotColumn.OWNER_TYPE: VersionSchemaField.OWNER_TYPE,
+    SnapshotColumn.OWNER_ID: VersionSchemaField.OWNER_ID,
+    SnapshotColumn.ITEM_ID: VersionSchemaField.SRC_ITEM_ID,
+    SnapshotColumn.TAG_ID: VersionSchemaField.TAG_ID,
+    SnapshotColumn.NAME: VersionSchemaField.NAME,
+    # Decoded when a row is built, so it is not a column anyone can read directly.
+    SnapshotColumn.VALUE: None,
+    SnapshotColumn.VALUE_JSON: VersionSchemaField.VALUE_JSON,
+    SnapshotColumn.FRAME_FROM: VersionSchemaField.FRAME_FROM,
+    SnapshotColumn.FRAME_TO: VersionSchemaField.FRAME_TO,
+    SnapshotColumn.CREATED_AT: VersionSchemaField.CREATED_AT,
+    SnapshotColumn.UPDATED_AT: VersionSchemaField.UPDATED_AT,
+}
+
+
 def _stored_tag(tag_json, owner_type, owner_id, item_id) -> Dict[str, Any]:
     """A tag from an annotation document in the same shape the tags table stores."""
     from supervisely.project.versioning.tag_schema import get_tag_schema
@@ -349,6 +381,8 @@ class _ImagesV2Backend(_PayloadBackend):
     _FIGURE_MAP = {
         SnapshotColumn.FIGURE_ID: VersionSchemaField.SRC_FIGURE_ID,
         SnapshotColumn.ITEM_ID: VersionSchemaField.SRC_IMAGE_ID,
+        # No annotation objects in an image project - the figure is the label.
+        SnapshotColumn.OBJECT_ID: None,
         SnapshotColumn.CLASS_NAME: VersionSchemaField.CLASS_NAME,
         SnapshotColumn.GEOMETRY_TYPE: VersionSchemaField.GEOMETRY_TYPE,
         SnapshotColumn.GEOMETRY: VersionSchemaField.GEOMETRY_JSON,
@@ -365,6 +399,7 @@ class _ImagesV2Backend(_PayloadBackend):
         return {
             "items": (image_snapshot_io.IMAGES_TABLE, self._ITEM_MAP),
             "figures": (image_snapshot_io.FIGURES_TABLE, self._FIGURE_MAP),
+            "tags": (image_snapshot_io.TAGS_TABLE, _TAG_MAP),
         }
 
     def datasets(self) -> List[SnapshotDataset]:
@@ -629,6 +664,7 @@ class _VideoV2Backend(_PayloadBackend):
         return {
             "items": ("videos", self._ITEM_MAP),
             "figures": ("figures", self._FIGURE_MAP),
+            "tags": (image_snapshot_io.TAGS_TABLE, _TAG_MAP),
         }
 
     def datasets(self) -> List[SnapshotDataset]:
@@ -676,6 +712,7 @@ class _VideoV2Backend(_PayloadBackend):
     _FIGURE_MAP = {
         SnapshotColumn.FIGURE_ID: VersionSchemaField.SRC_FIGURE_ID,
         SnapshotColumn.ITEM_ID: VersionSchemaField.SRC_VIDEO_ID,
+        SnapshotColumn.OBJECT_ID: VersionSchemaField.SRC_OBJECT_ID,
         # Not on the figure row - joined from the objects table below.
         SnapshotColumn.CLASS_NAME: None,
         SnapshotColumn.GEOMETRY_TYPE: VersionSchemaField.GEOMETRY_TYPE,
@@ -727,6 +764,7 @@ class _VideoV2Backend(_PayloadBackend):
                         {
                             SnapshotColumn.FIGURE_ID: row.get(VersionSchemaField.SRC_FIGURE_ID),
                             SnapshotColumn.ITEM_ID: row.get(VersionSchemaField.SRC_VIDEO_ID),
+                            SnapshotColumn.OBJECT_ID: row.get(VersionSchemaField.SRC_OBJECT_ID),
                             SnapshotColumn.CLASS_NAME: class_name,
                             SnapshotColumn.GEOMETRY_TYPE: row.get(
                                 VersionSchemaField.GEOMETRY_TYPE
@@ -917,6 +955,7 @@ class _VolumeSectionsBackend(_Backend):
                                 SnapshotColumn.FIGURE_ID: figure.get(volume_constants.ID)
                                 or figure.get(volume_constants.KEY),
                                 SnapshotColumn.ITEM_ID: volume_id,
+                                SnapshotColumn.OBJECT_ID: object_key,
                                 SnapshotColumn.CLASS_NAME: class_by_object_key.get(object_key),
                                 SnapshotColumn.GEOMETRY_TYPE: figure.get(ApiField.GEOMETRY_TYPE),
                                 SnapshotColumn.GEOMETRY: (
@@ -1263,6 +1302,24 @@ class VersionSnapshot:
         :raises ValueError: a requested column is derived rather than stored.
         """
         return self._backend.iter_arrow("items", batch_size, columns)
+
+    def iter_tags_arrow(
+        self,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        columns: Optional[Sequence[str]] = None,
+    ):
+        """
+        Yield tag assignments as ``pyarrow.RecordBatch``. See :func:`iter_items_arrow`.
+
+        ``VALUE`` is not available here - it is decoded when a row is built. Read
+        ``VALUE_JSON``, the column as stored, which is what a comparison wants anyway.
+
+        :param batch_size: Rows per batch.
+        :param columns: Columns to read. None reads every column the reader can surface.
+        :raises NotImplementedError: this snapshot does not store tags as a table.
+        :raises ValueError: a requested column is derived rather than stored.
+        """
+        return self._backend.iter_arrow("tags", batch_size, columns)
 
     def iter_figures_arrow(
         self,

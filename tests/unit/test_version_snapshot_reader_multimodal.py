@@ -180,6 +180,23 @@ def test_video_figures_take_class_and_tags_from_their_object(video_snapshot):
     assert without[SnapshotColumn.GEOMETRY] is None
 
 
+def test_figures_name_the_object_they_belong_to(video_snapshot):
+    """A video figure is one frame of an object that spans frames, and a comparison that
+    wants to report per object rather than per figure needs the link.
+
+    The column was already being read to join the class name; surfacing it costs nothing.
+    """
+    figure = _collect(video_snapshot.iter_figures())[0]
+    assert figure[SnapshotColumn.OBJECT_ID] == 5
+
+    projected = _collect(
+        video_snapshot.iter_figures(
+            columns=[SnapshotColumn.FIGURE_ID, SnapshotColumn.OBJECT_ID], with_geometry=False
+        )
+    )
+    assert projected[0] == {SnapshotColumn.FIGURE_ID: 100, SnapshotColumn.OBJECT_ID: 5}
+
+
 @pytest.fixture
 def volume_snapshot(tmp_path):
     schema = get_volume_snapshot_schema("v2.0.0")
@@ -304,6 +321,12 @@ def test_volume_figures_are_flattened_out_of_the_annotation(volume_snapshot):
     spatial = figures["fig-2"]
     assert spatial[SnapshotColumn.FRAME_INDEX] is None
     assert spatial[SnapshotColumn.CLASS_NAME] == "car"
+
+    # Volume objects have keys rather than ids, and that key is what the object column
+    # carries - the same value the object's own tags are attributed to.
+    assert sliced[SnapshotColumn.OBJECT_ID] == "obj-1"
+    assert spatial[SnapshotColumn.OBJECT_ID] == "obj-1"
+    assert tags[0][SnapshotColumn.OWNER_ID] == "obj-1"
 
 
 # ------------------------------------------------------- the video writer itself
@@ -826,3 +849,43 @@ def test_repack_carries_over_the_video_tags_and_description(tmp_path):
     assert tag["name"] == "reviewed"
     assert tag["frameRange"] == [0, 2]
     assert ann[video_constants.DESCRIPTION] == "checked by hand"
+
+
+def test_tags_can_be_read_as_columns(tmp_path):
+    """The tags table is a table like any other, and a comparison that counts tag
+    assignments over a whole project has no business building a dict per row.
+
+    `value` is the exception: it is decoded when a row is built, so the columnar path
+    serves `value_json` - the column as stored - and says so rather than inventing one.
+    """
+    from supervisely.project.versioning.tag_schema import OWNER_ITEM, get_tag_schema
+
+    schema = get_tag_schema()
+    rows = [
+        schema.tag_row(
+            {"id": 900 + i, "tagId": 7, "name": "reviewed", "value": i},
+            owner_type=OWNER_ITEM,
+            owner_id=10 + i,
+            src_item_id=10 + i,
+        )
+        for i in range(3)
+    ]
+    tables = {"tags": (schema.tags_schema(pyarrow), rows)}
+    path = _write_payload(tmp_path, "images", tables)
+
+    with VersionSnapshot.open_archive(path) as snapshot:
+        batches = list(
+            snapshot.iter_tags_arrow(
+                columns=[SnapshotColumn.ITEM_ID, SnapshotColumn.VALUE_JSON]
+            )
+        )
+        table = pyarrow.Table.from_batches(batches)
+        assert table.column_names == [SnapshotColumn.ITEM_ID, SnapshotColumn.VALUE_JSON]
+        assert table.column(SnapshotColumn.ITEM_ID).to_pylist() == [10, 11, 12]
+        assert table.column(SnapshotColumn.VALUE_JSON).to_pylist() == ["0", "1", "2"]
+
+        with pytest.raises(ValueError, match="derived"):
+            list(snapshot.iter_tags_arrow(columns=[SnapshotColumn.VALUE]))
+
+        # The dict path still hands back the decoded value.
+        assert _collect(snapshot.iter_tags())[0][SnapshotColumn.VALUE] == 0
