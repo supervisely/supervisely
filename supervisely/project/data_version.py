@@ -337,9 +337,10 @@ class DataVersion(ModuleApiBase):
                 "updated_at": project_info.updated_at,
                 "previous": latest,
                 "number": version_num,
-                # Per version, unlike the map-level "format" key, which describes
-                # whichever version was written last. A reader deciding whether a
-                # snapshot is worth converting needs to know that without downloading it.
+                # Per version. The map-level "format" key is stamped once, when the
+                # map is first created, so it says nothing about this snapshot - and a
+                # reader deciding whether one is worth converting needs to know the
+                # format without downloading it.
                 "format": self.__version_format,
             }
             self.versions["latest"] = version_id
