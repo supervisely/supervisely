@@ -18,7 +18,7 @@ import json
 import os
 import shutil
 import tempfile
-from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Sequence, Union
+from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Sequence, Set, Union
 
 from supervisely.api.module_api import ApiField
 from supervisely.project.project_type import ProjectType
@@ -134,6 +134,7 @@ class _Backend:
 
     schema_version: str = ""
     is_columnar: bool = False
+    serves_arrow: bool = False
     # Whether FIGURE_ID and the object id behind CLASS_NAME are the server's own ids.
     # False means they are positions in the table, which shift when anything is inserted
     # or removed - so two versions cannot be matched on them.
@@ -154,11 +155,20 @@ class _Backend:
         raise NotImplementedError
 
     def iter_figures(
-        self, batch_size: int, columns: Optional[Sequence[str]], with_geometry: bool
+        self,
+        batch_size: int,
+        columns: Optional[Sequence[str]],
+        with_geometry: bool,
+        item_ids: Optional[Set[Any]] = None,
     ) -> Iterator[List[dict]]:
         raise NotImplementedError
 
-    def iter_tags(self, batch_size: int, columns: Optional[Sequence[str]]):
+    def iter_tags(
+        self,
+        batch_size: int,
+        columns: Optional[Sequence[str]],
+        item_ids: Optional[Set[Any]] = None,
+    ):
         raise NotImplementedError(f"{type(self).__name__} does not expose tags")
 
     def iter_objects(self, batch_size: int, columns: Optional[Sequence[str]]):
@@ -178,6 +188,8 @@ class _Backend:
 
 class _PayloadBackend(_Backend):
     """Shared plumbing for the Parquet formats: an unpacked payload directory."""
+
+    serves_arrow = True
 
     def __init__(self, payload_dir: str, schema_version: str):
         from supervisely.io.json import load_json_file
@@ -203,12 +215,22 @@ class _PayloadBackend(_Backend):
     def meta(self):
         return self._meta
 
-    def iter_tags(self, batch_size: int, columns: Optional[Sequence[str]]):
+    def iter_tags(
+        self,
+        batch_size: int,
+        columns: Optional[Sequence[str]],
+        item_ids: Optional[Set[Any]] = None,
+    ):
         """Tag assignments, one row each, whatever they hang on."""
         for batch in image_snapshot_io.iter_rows(
             self._payload_dir, image_snapshot_io.TAGS_TABLE, batch_size=batch_size
         ):
-            yield [_tag_row(row, columns) for row in batch]
+            yield [
+                _tag_row(row, columns)
+                for row in batch
+                if item_ids is None
+                or row.get(VersionSchemaField.SRC_ITEM_ID) in item_ids
+            ]
 
     def _iter_table(
         self, table: str, physical_columns: Optional[Sequence[str]], batch_size: int
@@ -452,7 +474,7 @@ class _ImagesV2Backend(_PayloadBackend):
                 for row in batch
             ]
 
-    def iter_figures(self, batch_size, columns, with_geometry):
+    def iter_figures(self, batch_size, columns, with_geometry, item_ids=None):
         from supervisely.geometry.alpha_mask import AlphaMask
 
         wants_geometry = _wants_geometry(columns, with_geometry)
@@ -469,6 +491,8 @@ class _ImagesV2Backend(_PayloadBackend):
         for batch in self._iter_table(image_snapshot_io.FIGURES_TABLE, physical, batch_size):
             rows = []
             for row in batch:
+                if item_ids is not None and row.get(VersionSchemaField.SRC_IMAGE_ID) not in item_ids:
+                    continue
                 geometry = None
                 if wants_geometry:
                     geometry = image_snapshot_io.loads_or(
@@ -577,7 +601,7 @@ class _ImagesV1Backend(_Backend):
         if batch:
             yield batch
 
-    def iter_tags(self, batch_size, columns):
+    def iter_tags(self, batch_size, columns, item_ids=None):
         """A pickle keeps tags on the objects they hang on; the stream is the same."""
         from supervisely.project.versioning.tag_schema import OWNER_FIGURE, OWNER_ITEM
 
@@ -606,9 +630,11 @@ class _ImagesV1Backend(_Backend):
         if batch:
             yield batch
 
-    def iter_figures(self, batch_size, columns, with_geometry):
+    def iter_figures(self, batch_size, columns, with_geometry, item_ids=None):
         batch = []
         for image_id, image_figures in self._figures.items():
+            if item_ids is not None and image_id not in item_ids:
+                continue
             for figure in image_figures:
                 geometry = None
                 if with_geometry:
@@ -757,7 +783,7 @@ class _VideoV2Backend(_PayloadBackend):
         SnapshotColumn.UPDATED_AT: VersionSchemaField.UPDATED_AT,
     }
 
-    def iter_figures(self, batch_size, columns, with_geometry):
+    def iter_figures(self, batch_size, columns, with_geometry, item_ids=None):
         wants_geometry = _wants_geometry(columns, with_geometry)
         wants_object = columns is None or bool(
             {SnapshotColumn.CLASS_NAME} & set(columns)
@@ -791,6 +817,8 @@ class _VideoV2Backend(_PayloadBackend):
         for batch in self._iter_table("figures", physical, batch_size):
             rows = []
             for row in batch:
+                if item_ids is not None and row.get(VersionSchemaField.SRC_VIDEO_ID) not in item_ids:
+                    continue
                 class_name = objects.get(row.get(VersionSchemaField.SRC_OBJECT_ID))
                 rows.append(
                     _select(
@@ -922,8 +950,16 @@ class _VolumeSectionsBackend(_Backend):
                 )
             yield rows
 
-    def iter_annotations(self, batch_size: int = 50) -> Iterator[List[dict]]:
-        """``(volume_id, annotation_json)`` pairs, for callers that want the raw form."""
+    def iter_annotations(
+        self, batch_size: int = 50, item_ids: Optional[Set[Any]] = None
+    ) -> Iterator[List[dict]]:
+        """``(volume_id, annotation_json)`` pairs, for callers that want the raw form.
+
+        `item_ids` is not a convenience: this format stores one whole JSON record per
+        volume, and parsing every record to then throw most of them away is the entire
+        cost of reading it. The volume id is a column beside the record, so a volume
+        nobody asked for never gets parsed.
+        """
         for batch in self._iter_section(self._annotations_section, batch_size):
             yield [
                 {
@@ -933,16 +969,19 @@ class _VolumeSectionsBackend(_Backend):
                     ),
                 }
                 for row in batch
+                if item_ids is None or row.get(VersionSchemaField.SRC_VOLUME_ID) in item_ids
             ]
 
-    def iter_tags(self, batch_size, columns):
+    def iter_tags(self, batch_size, columns, item_ids=None):
         """Volume tags live inside the annotation document, not in a table of their own -
         this format stores whole records - so they are flattened out of it here to keep
         the interface the same as the other backends."""
         from supervisely.volume_annotation import constants as volume_constants
         from supervisely.project.versioning.tag_schema import OWNER_ITEM, OWNER_OBJECT
 
-        for batch in self.iter_annotations(batch_size=max(1, batch_size // 100)):
+        for batch in self.iter_annotations(
+            batch_size=max(1, batch_size // 100), item_ids=item_ids
+        ):
             rows = []
             for entry in batch:
                 volume_id = entry[SnapshotColumn.ITEM_ID]
@@ -991,13 +1030,15 @@ class _VolumeSectionsBackend(_Backend):
                     )
             yield rows
 
-    def iter_figures(self, batch_size, columns, with_geometry):
+    def iter_figures(self, batch_size, columns, with_geometry, item_ids=None):
         from supervisely.annotation.label import LabelJsonFields
         from supervisely.volume_annotation import constants as volume_constants
 
         wants_geometry = _wants_geometry(columns, with_geometry)
 
-        for batch in self.iter_annotations(batch_size=max(1, batch_size // 100)):
+        for batch in self.iter_annotations(
+            batch_size=max(1, batch_size // 100), item_ids=item_ids
+        ):
             rows = []
             for entry in batch:
                 volume_id = entry[SnapshotColumn.ITEM_ID]
@@ -1261,6 +1302,16 @@ class VersionSnapshot:
         """False for the legacy pickle format, whose payload is loaded whole to read anything."""
         return self._backend.is_columnar
 
+    @property
+    def serves_arrow(self) -> bool:
+        """Whether ``iter_*_arrow`` works here, which is not the same as being columnar.
+
+        A volume snapshot streams its sections rather than loading whole - columnar by
+        that measure - and still stores one JSON record per volume, so there is no column
+        to project and no Arrow to hand out.
+        """
+        return self._backend.serves_arrow
+
     # One number, one meaning, in every modality: a v2.1.0 snapshot is columnar and its
     # object and figure ids are the server's, so two of them can be compared. Older
     # formats stored positions or SDK-invented uuids, which differ between two snapshots
@@ -1328,6 +1379,7 @@ class VersionSnapshot:
         self,
         batch_size: int = DEFAULT_BATCH_SIZE,
         columns: Optional[Sequence[str]] = None,
+        item_ids: Optional[Set[Any]] = None,
     ) -> Iterator[List[dict]]:
         """
         Yield tag assignments in batches - items, annotation objects and figures alike.
@@ -1336,8 +1388,10 @@ class VersionSnapshot:
         id and its own timestamps, so additions, removals and changes are the same set
         operation used for every other entity. ``OWNER_TYPE`` says what it is attached to
         and ``OWNER_ID`` which one.
+
+        :param item_ids: Read only these items' tags - see :func:`iter_figures`.
         """
-        return self._backend.iter_tags(batch_size, columns)
+        return self._backend.iter_tags(batch_size, columns, item_ids)
 
     def iter_items_arrow(
         self,
@@ -1353,8 +1407,8 @@ class VersionSnapshot:
         hashes or counts whole columns, and the dict interface where per-row Python
         objects are what you actually want.
 
-        Only available on snapshots that store the data as columns - see
-        :attr:`is_columnar`. Requesting a column that is derived when rows are built
+        Only available where :attr:`serves_arrow` is true - not every columnar snapshot
+        has columns to project. Requesting a column that is derived when rows are built
         (a video figure's class name, for instance) raises rather than lying.
 
         :param batch_size: Rows per batch.
@@ -1420,6 +1474,7 @@ class VersionSnapshot:
         batch_size: int = DEFAULT_BATCH_SIZE,
         columns: Optional[Sequence[str]] = None,
         with_geometry: bool = True,
+        item_ids: Optional[Set[Any]] = None,
     ) -> Iterator[List[dict]]:
         """
         Yield the project's figures in batches, as dicts keyed by :class:`SnapshotColumn`.
@@ -1428,8 +1483,11 @@ class VersionSnapshot:
         :param columns: Columns to read. None reads them all.
         :param with_geometry: Read geometry payloads. Turning it off skips the alpha-mask
             table entirely, which is most of a snapshot's bytes when masks are used.
+        :param item_ids: Read only these items' figures. Pushed down to where the rows
+            come from, so what is filtered out is never built - which is what a
+            comparison of two versions wants, since it only reads the items that moved.
         """
-        return self._backend.iter_figures(batch_size, columns, with_geometry)
+        return self._backend.iter_figures(batch_size, columns, with_geometry, item_ids)
 
     # --------------------------------------------------------------- closing
 

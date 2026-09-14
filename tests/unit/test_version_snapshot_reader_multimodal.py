@@ -360,6 +360,38 @@ def test_volume_figures_are_flattened_out_of_the_annotation(volume_snapshot):
 # ------------------------------------------------------- the video writer itself
 
 
+def test_a_volume_snapshot_is_columnar_without_serving_arrow(volume_snapshot):
+    """Two different questions. The payload streams section by section rather than being
+    loaded whole - columnar by that measure - and still holds one JSON record per volume,
+    so there is no column to project."""
+    assert volume_snapshot.is_columnar is True
+    assert volume_snapshot.serves_arrow is False
+    with pytest.raises(NotImplementedError):
+        _collect(volume_snapshot.iter_items_arrow())
+
+
+def test_reading_one_volume_does_not_parse_the_others(volume_snapshot, monkeypatch):
+    """The cost of this format is parsing the records, so a filter that runs after the
+    parse is no filter at all. Measured on a 3009-volume project: one changed item, and
+    five of the diff's six seconds went on reading the other 3008."""
+    from supervisely.project.versioning import image_snapshot_io
+
+    parsed = []
+    original = image_snapshot_io.loads_or
+
+    def counting(raw, default):
+        parsed.append(raw)
+        return original(raw, default)
+
+    monkeypatch.setattr(image_snapshot_io, "loads_or", counting)
+
+    _collect(volume_snapshot.iter_tags(item_ids={999}))
+    assert parsed == []
+
+    _collect(volume_snapshot.iter_tags(item_ids={20}))
+    assert parsed
+
+
 def test_volume_objects_are_flattened_out_of_the_annotation(volume_snapshot):
     """Same interface, different storage: this format keeps whole records, so the objects
     are read out of the annotation document rather than off a table."""
