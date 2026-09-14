@@ -161,6 +161,14 @@ class _Backend:
     def iter_tags(self, batch_size: int, columns: Optional[Sequence[str]]):
         raise NotImplementedError(f"{type(self).__name__} does not expose tags")
 
+    def iter_objects(self, batch_size: int, columns: Optional[Sequence[str]]):
+        """Annotation objects, for the modalities that have them.
+
+        Nothing here rather than an error: an image figure IS the label, so "this project
+        has no annotation objects" is an answer and not a missing feature.
+        """
+        return iter(())
+
     def iter_arrow(self, kind: str, batch_size: int, columns: Optional[Sequence[str]]):
         raise NotImplementedError(
             f"{type(self).__name__} cannot serve Arrow batches: its {kind} are not stored "
@@ -659,6 +667,14 @@ class _VideoV2Backend(_PayloadBackend):
         SnapshotColumn.UPDATED_AT: VersionSchemaField.UPDATED_AT,
     }
 
+    _OBJECT_MAP = {
+        SnapshotColumn.OBJECT_ID: VersionSchemaField.SRC_OBJECT_ID,
+        SnapshotColumn.ITEM_ID: VersionSchemaField.SRC_VIDEO_ID,
+        SnapshotColumn.CLASS_NAME: VersionSchemaField.CLASS_NAME,
+        SnapshotColumn.CREATED_AT: VersionSchemaField.CREATED_AT,
+        SnapshotColumn.UPDATED_AT: VersionSchemaField.UPDATED_AT,
+    }
+
     @property
     def _ARROW_TABLES(self):
         return {
@@ -666,6 +682,23 @@ class _VideoV2Backend(_PayloadBackend):
             "figures": ("figures", self._FIGURE_MAP),
             "tags": (image_snapshot_io.TAGS_TABLE, _TAG_MAP),
         }
+
+    def iter_objects(self, batch_size, columns):
+        physical = _physical_columns(self._OBJECT_MAP, columns)
+        for batch in self._iter_table("objects", physical, batch_size):
+            yield [
+                _select(
+                    {
+                        SnapshotColumn.OBJECT_ID: row.get(VersionSchemaField.SRC_OBJECT_ID),
+                        SnapshotColumn.ITEM_ID: row.get(VersionSchemaField.SRC_VIDEO_ID),
+                        SnapshotColumn.CLASS_NAME: row.get(VersionSchemaField.CLASS_NAME),
+                        SnapshotColumn.CREATED_AT: row.get(VersionSchemaField.CREATED_AT),
+                        SnapshotColumn.UPDATED_AT: row.get(VersionSchemaField.UPDATED_AT),
+                    },
+                    columns,
+                )
+                for row in batch
+            ]
 
     def datasets(self) -> List[SnapshotDataset]:
         return [
@@ -928,6 +961,34 @@ class _VolumeSectionsBackend(_Backend):
                                 columns,
                             )
                         )
+            yield rows
+
+    def iter_objects(self, batch_size, columns):
+        """Like the tags: flattened out of the annotation document, because this format
+        stores whole records rather than tables. A volume object is identified by its uuid
+        key, which is also what its figures point at."""
+        from supervisely.annotation.label import LabelJsonFields
+        from supervisely.volume_annotation import constants as volume_constants
+
+        for batch in self.iter_annotations(batch_size=max(1, batch_size // 100)):
+            rows = []
+            for entry in batch:
+                volume_id = entry[SnapshotColumn.ITEM_ID]
+                for obj in entry["annotation"].get(volume_constants.OBJECTS, []):
+                    rows.append(
+                        _select(
+                            {
+                                SnapshotColumn.OBJECT_ID: obj.get(volume_constants.KEY),
+                                SnapshotColumn.ITEM_ID: volume_id,
+                                SnapshotColumn.CLASS_NAME: obj.get(
+                                    LabelJsonFields.OBJ_CLASS_NAME
+                                ),
+                                SnapshotColumn.CREATED_AT: None,
+                                SnapshotColumn.UPDATED_AT: None,
+                            },
+                            columns,
+                        )
+                    )
             yield rows
 
     def iter_figures(self, batch_size, columns, with_geometry):
@@ -1333,6 +1394,26 @@ class VersionSnapshot:
         their payloads live in their own table and are joined only when rows are built.
         """
         return self._backend.iter_arrow("figures", batch_size, columns)
+
+    def iter_objects(
+        self,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        columns: Optional[Sequence[str]] = None,
+    ) -> Iterator[List[dict]]:
+        """
+        Yield the project's annotation objects in batches, as dicts keyed by :class:`SnapshotColumn`.
+
+        The object is what carries the class in a video or volume project; a figure only
+        reports one because :func:`iter_figures` joins this table in. So this is the only
+        way to name an object that has no figures - tagged but never drawn - and the table
+        is one row per object, orders of magnitude smaller than the figures.
+
+        An image project has no objects and yields nothing: there the figure IS the label.
+
+        :param batch_size: Rows per batch.
+        :param columns: Columns to read. None reads them all.
+        """
+        return self._backend.iter_objects(batch_size, columns)
 
     def iter_figures(
         self,

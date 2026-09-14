@@ -130,7 +130,16 @@ def video_snapshot(tmp_path):
                     VersionSchemaField.CLASS_NAME: "car",
                     VersionSchemaField.KEY: "abc",
                     VersionSchemaField.TAGS_JSON: json.dumps([{"name": "reviewed"}]),
-                }
+                },
+                # Tagged, never drawn: no figure points at it, so nothing but the objects
+                # table knows it exists or what class it is.
+                {
+                    VersionSchemaField.SRC_OBJECT_ID: 6,
+                    VersionSchemaField.SRC_VIDEO_ID: 10,
+                    VersionSchemaField.CLASS_NAME: "truck",
+                    VersionSchemaField.KEY: "def",
+                    VersionSchemaField.TAGS_JSON: None,
+                },
             ],
         ),
         "figures": (
@@ -195,6 +204,25 @@ def test_figures_name_the_object_they_belong_to(video_snapshot):
         )
     )
     assert projected[0] == {SnapshotColumn.FIGURE_ID: 100, SnapshotColumn.OBJECT_ID: 5}
+
+
+def test_objects_can_be_read_without_going_through_their_figures(video_snapshot):
+    """The class of a video object lives in the objects table; a figure reports one only
+    because iter_figures joins that table in. An object with no figures - tagged but never
+    drawn - is therefore invisible to every other reader, and it is exactly the object a
+    diff has nothing to name."""
+    objects = _collect(video_snapshot.iter_objects())
+
+    assert [obj[SnapshotColumn.OBJECT_ID] for obj in objects] == [5, 6]
+    assert [obj[SnapshotColumn.CLASS_NAME] for obj in objects] == ["car", "truck"]
+    assert objects[0][SnapshotColumn.ITEM_ID] == 10
+
+    projected = _collect(
+        video_snapshot.iter_objects(
+            columns=[SnapshotColumn.OBJECT_ID, SnapshotColumn.CLASS_NAME]
+        )
+    )
+    assert projected[1] == {SnapshotColumn.OBJECT_ID: 6, SnapshotColumn.CLASS_NAME: "truck"}
 
 
 @pytest.fixture
@@ -330,6 +358,17 @@ def test_volume_figures_are_flattened_out_of_the_annotation(volume_snapshot):
 
 
 # ------------------------------------------------------- the video writer itself
+
+
+def test_volume_objects_are_flattened_out_of_the_annotation(volume_snapshot):
+    """Same interface, different storage: this format keeps whole records, so the objects
+    are read out of the annotation document rather than off a table."""
+    objects = _collect(volume_snapshot.iter_objects())
+
+    assert len(objects) == 1
+    assert objects[0][SnapshotColumn.OBJECT_ID] == "obj-1"
+    assert objects[0][SnapshotColumn.CLASS_NAME] == "car"
+    assert objects[0][SnapshotColumn.ITEM_ID] == 20
 
 
 def _video_writer_api(video_count=2, objects=2, frames=3):
