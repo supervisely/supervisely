@@ -607,6 +607,8 @@ class _ImagesV1Backend(_Backend):
 
         batch = []
         for image_info in self._image_infos:
+            if item_ids is not None and image_info.id not in item_ids:
+                continue
             for tag_json in getattr(image_info, "tags", None) or []:
                 batch.append(
                     _tag_row(
@@ -617,6 +619,10 @@ class _ImagesV1Backend(_Backend):
                     yield batch
                     batch = []
         for image_id, image_figures in self._figures.items():
+            # A figure tag is filed under the image the figure is on, which is what the
+            # caller's filter names - see _stored_tag below.
+            if item_ids is not None and image_id not in item_ids:
+                continue
             for figure in image_figures:
                 for tag_json in getattr(figure, "tags", None) or []:
                     batch.append(

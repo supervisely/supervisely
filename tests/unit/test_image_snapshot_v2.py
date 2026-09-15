@@ -562,6 +562,20 @@ def test_both_backends_yield_the_same_canonical_rows(parquet_reader, pickle_read
     assert tags(parquet_reader) == tags(pickle_reader)
     assert {t[SnapshotColumn.OWNER_TYPE] for t in tags(parquet_reader)} == {"item", "figure"}
 
+    # And they agree about reading one item's tags, which is all a comparison of two
+    # versions ever asks for. The pickle used to take the argument and ignore it.
+    def tags_of(reader, item_ids):
+        return sorted(
+            _collect(reader.iter_tags(item_ids=item_ids)),
+            key=lambda r: (r[SnapshotColumn.OWNER_TYPE], r[SnapshotColumn.OWNER_ID]),
+        )
+
+    one = {row[SnapshotColumn.ITEM_ID] for row in tags(parquet_reader)}.pop()
+    assert tags_of(parquet_reader, {one}) == tags_of(pickle_reader, {one})
+    assert tags_of(pickle_reader, {one})
+    assert all(row[SnapshotColumn.ITEM_ID] == one for row in tags_of(pickle_reader, {one}))
+    assert tags_of(pickle_reader, {-1}) == []
+
 
 def test_reader_projects_columns(parquet_reader):
     from supervisely.project.versioning.snapshot_reader import SnapshotColumn
