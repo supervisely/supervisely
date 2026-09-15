@@ -191,6 +191,15 @@ import supervisely._utils as utils
 from supervisely.tiny_timer import TinyTimer
 
 from supervisely.aug import aug
+from supervisely import audio
+from supervisely.audio.audio_io import AudioInfo, get_audio_info, read_audio
+from supervisely.audio.audio_segment import (
+    AudioSegment,
+    samples_to_seconds,
+    seconds_to_samples,
+)
+from supervisely.audio.spectrogram import render_segment, render_spectrogram
+from supervisely.audio.spectrogram_settings import SpectrogramSettings
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 from supervisely.video_annotation.video_annotation import VideoAnnotation
