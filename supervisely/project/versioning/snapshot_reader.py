@@ -1386,6 +1386,18 @@ class VersionSnapshot:
         except (AttributeError, ValueError):
             return (0,)
 
+    @classmethod
+    def format_is_diffable(cls, schema_version: Optional[str]) -> bool:
+        """Whether a version written in this format may be compared with another.
+
+        Decided from the format string alone - the one `versions.json` records per version -
+        so a caller can tell which versions are worth offering without downloading a single
+        snapshot. A version written before the format was recorded has none, and is not.
+        """
+        return cls._version_tuple(schema_version) >= cls._version_tuple(
+            cls.DIFFABLE_SCHEMA_VERSION
+        )
+
     @property
     def is_diffable(self) -> bool:
         """Whether this snapshot may be compared with another version."""
@@ -1394,17 +1406,17 @@ class VersionSnapshot:
     @property
     def diff_unsupported_reason(self) -> Optional[str]:
         """Why this snapshot cannot be compared, or None when it can."""
-        if self._version_tuple(self.schema_version) < self._version_tuple(
-            self.DIFFABLE_SCHEMA_VERSION
-        ):
+        if not self.format_is_diffable(self.schema_version):
             return (
                 f"snapshot schema is {self.schema_version}, comparison needs "
                 f"{self.DIFFABLE_SCHEMA_VERSION} or newer"
             )
         if not self.figure_ids_are_server_ids:
+            # The schema is new enough and the records still have no ids, so naming the
+            # schema here would point at the one thing that is not the problem.
             return (
-                f"snapshot schema {self.schema_version} does not carry server-side figure "
-                "ids, so figures cannot be matched between versions"
+                "this snapshot stores no server-side figure ids, so figures cannot be "
+                "matched between versions"
             )
         return None
 
@@ -1412,11 +1424,10 @@ class VersionSnapshot:
     def figure_ids_are_server_ids(self) -> bool:
         """Whether figure ids in this snapshot can be matched against another version's.
 
-        False for video snapshots written as schema v2.0.0, where the ids are positions
-        in the table rather than the server's - a comparison that matches on them would
-        silently pair unrelated figures. Convert such a snapshot with
-        :func:`~supervisely.project.video_project.VideoProject.repack_snapshot` first,
-        or match on something else.
+        False for video snapshots written as schema v2.0.0, where the ids are positions in
+        the table rather than the server's, and for volume snapshots whose slice figures
+        went in with nothing but a uuid key. Either way a comparison that matched on them
+        would silently pair unrelated figures.
         """
         return self._backend.figure_ids_are_server_ids
 

@@ -948,6 +948,24 @@ def test_a_new_snapshot_may_be_diffed_and_a_pickle_may_not(parquet_reader, pickl
     assert IMAGE_SCHEMA_VERSION_V1 in pickle_reader.diff_unsupported_reason
 
 
+def test_a_version_can_be_judged_from_its_recorded_format_alone():
+    """What the version list is gated on. `versions.json` records the format of every
+    version, so which of them are worth offering for comparison is answered without
+    downloading one - a version written before the format was recorded has none."""
+    from supervisely.project.versioning.common import (
+        DEFAULT_IMAGE_SCHEMA_VERSION,
+        IMAGE_SCHEMA_VERSION_V1,
+        IMAGE_SCHEMA_VERSION_V2,
+    )
+    from supervisely.project.versioning.snapshot_reader import VersionSnapshot
+
+    assert VersionSnapshot.format_is_diffable(DEFAULT_IMAGE_SCHEMA_VERSION) is True
+    assert VersionSnapshot.format_is_diffable(IMAGE_SCHEMA_VERSION_V2) is False
+    assert VersionSnapshot.format_is_diffable(IMAGE_SCHEMA_VERSION_V1) is False
+    assert VersionSnapshot.format_is_diffable(None) is False
+    assert VersionSnapshot.format_is_diffable("") is False
+
+
 def test_snapshots_written_before_the_renumbering_still_read(tmp_path):
     """v2.0.0 and v2.1.0 are the same layout, so the older number stays readable."""
     from supervisely.project.versioning.snapshot_reader import VersionSnapshot
