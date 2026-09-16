@@ -10,8 +10,11 @@ installed as ``.[apps]``, exactly like the SDK profile check does - and then run
   commit (``VERIFY_BASE_SHA``) and on HEAD in one run.
 
 Usage: ``python tests/unit/smart_tool_replay.py [stage]`` from the repository root; with no
-stage every stage runs. The environment is cached between runs, exits nonzero if any stage
-fails, and prints only the tail of each stage so replay output stays small.
+stage every stage runs. Building the test environment installs packages and may therefore
+require network access when that environment is not already present locally; the ``diff``
+stage may likewise need ``git fetch`` to materialize its baseline commit. The environment is
+cached between runs, exits nonzero if any stage fails, and neither script ever exits 0 when a
+stage is skipped.
 """
 
 import os

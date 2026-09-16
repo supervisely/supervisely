@@ -6,9 +6,12 @@ against the sources of this checkout. The baseline must fail by downloading the 
 of the edited figure, this checkout must serve the very same request from its ``mask``.
 
 Usage: ``python tests/unit/smart_tool_baseline_diff.py [baseline-commit]`` from the
-repository root. Exits 0 only if HEAD serves the request and the materialized baseline
-fails on the annotation download; exits 1 for either replay failure, and 2 when the
-baseline sources cannot be materialized.
+repository root. Materializing a baseline may require ``git fetch`` and therefore network
+access when that commit is not already local. The paired replay builds its test environment
+by installing packages, which likewise needs network when that environment is not already
+present. Exits 0 only if HEAD serves the request and the materialized baseline fails on the
+annotation download; exits 1 for either replay failure, and 2 when the baseline sources
+cannot be materialized. A skipped stage never exits 0.
 """
 
 import os
@@ -24,8 +27,8 @@ REPRO = TESTS_DIR / "smart_tool_direct_mask_repro.py"
 HARNESS = TESTS_DIR / "smart_tool_harness.py"
 # The baseline fails inside the deprecated figure-id download; both markers must show up.
 BASELINE_MARKERS = ("download_init_mask", "must not be downloaded")
-# The master commit this work was reproduced on, used when no commit is given.
-DEFAULT_BASELINE = "310d6c3cbd05a21d8c8cae6d986f532e08cd44c4"
+# The master commit this branch is based on and was reproduced on, used when none is given.
+DEFAULT_BASELINE = "efde8255cb54e4dccd69391f7b6210e621e9dc30"
 
 
 def run_repro(repo_root: Path) -> subprocess.CompletedProcess:

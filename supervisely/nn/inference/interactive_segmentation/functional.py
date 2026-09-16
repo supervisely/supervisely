@@ -140,8 +140,14 @@ def _origin_coordinate(value, name: str) -> int:
     return int(value)
 
 
-def _clip_bitmap(bitmap: sly.Bitmap, img_size: Tuple[int, int]) -> sly.Bitmap:
-    """Clips a Bitmap to the image bounds, keeping its origin in image coordinates."""
+def clip_init_mask(bitmap: sly.Bitmap, img_size: Tuple[int, int]) -> sly.Bitmap:
+    """Clips an initial mask to the image bounds, keeping its origin in image coordinates.
+
+    :param bitmap: Initial mask in image coordinates.
+    :param img_size: Image size (height, width).
+    :returns: Initial mask clipped to the image bounds.
+    :raises InitMaskError: if the mask lies outside the image or is empty after clipping.
+    """
     h, w = img_size
     data = bitmap.data
     top, left = bitmap.origin.row, bitmap.origin.col
@@ -201,7 +207,7 @@ def decode_init_mask(mask_json: dict, img_size: Tuple[int, int]) -> sly.Bitmap:
         raise InitMaskError("Initial mask is empty.")
 
     bitmap = sly.Bitmap(mask, origin=sly.PointLocation(row=row, col=col))
-    return _clip_bitmap(bitmap, img_size)
+    return clip_init_mask(bitmap, img_size)
 
 
 def download_init_mask(api: sly.Api, figure_id, image_id) -> sly.Bitmap:

@@ -279,9 +279,14 @@ def test_direct_mask_without_a_figure_id_reaches_the_predictor(image_np, pred_ma
 
     assert "figure_id" not in smtool_state
     assert api.annotation.downloads == []
-    assert result["success"] is True and result["error"] is None
-    assert result["origin"] == {"x": 1 + 3, "y": 1 + 2}  # crop origin + prediction origin
-    assert result["bitmap"] is not None
+    expected_origin, expected_bitmap = functional.format_bitmap(sly.Bitmap(pred_mask), CROP)
+    assert set(result) == {"origin", "bitmap", "success", "error"}
+    assert result == {
+        "origin": expected_origin,
+        "bitmap": expected_bitmap,
+        "success": True,
+        "error": None,
+    }
     np.testing.assert_array_equal(
         model.predict_calls[0]["init_mask"], crop_full_mask(place_mask(mask, x, y))
     )
@@ -368,6 +373,40 @@ def test_continuation_click_reuses_the_mask_by_local_figure_id(image_np, pred_ma
     )
 
 
+def test_continuation_uses_the_full_cached_mask_for_a_different_crop(image_np, pred_mask, routes):
+    mask = holed_mask()
+    other_crop = [{"x": 0, "y": 0}, {"x": 8, "y": 7}]
+    api = FakeApi(image_np, forbid_download=True)
+    model = StubSegmentation(image_np, pred_mask)
+
+    with routes(model) as served:
+        route = served["/smart_segmentation"]
+        route(
+            response=response_stub(),
+            request=request(
+                context(
+                    init_figure=True,
+                    local_figure_id=LOCAL_FIGURE_ID,
+                    mask=mask_payload(mask, 5, 4),
+                ),
+                api,
+            ),
+        )
+        route(
+            response=response_stub(),
+            request=request(
+                context(
+                    crop=other_crop, request_uid="uid-2", local_figure_id=LOCAL_FIGURE_ID
+                ),
+                api,
+            ),
+        )
+
+    np.testing.assert_array_equal(
+        model.predict_calls[1]["init_mask"], crop_full_mask(place_mask(mask, 5, 4), other_crop)
+    )
+
+
 def test_continuation_falls_back_to_the_legacy_figure_id_cache_key(image_np, pred_mask, routes):
     mask = holed_mask()
     api = FakeApi(image_np, forbid_download=True)
@@ -409,7 +448,10 @@ def test_legacy_figure_id_request_still_downloads_and_warns(
 
     assert result["success"] is True
     assert api.annotation.downloads == [IMAGE_ID]
-    assert any("deprecated" in record.getMessage() for record in caplog.records)
+    assert any(
+        record.levelno == logging.WARNING and "deprecated" in record.getMessage()
+        for record in caplog.records
+    )
     np.testing.assert_array_equal(
         model.predict_calls[0]["init_mask"], crop_full_mask(place_mask(mask, 5, 4))
     )
@@ -427,6 +469,50 @@ def test_request_without_any_initial_figure_passes_no_init_mask(image_np, pred_m
     assert result["success"] is True
     assert api.annotation.downloads == []
     assert model.predict_calls[0]["init_mask"] is None
+
+
+def test_hash_only_init_figure_drops_the_cached_mask(
+    image_np, pred_mask, routes, caplog, monkeypatch
+):
+    mask = holed_mask()
+    api = FakeApi(image_np, forbid_download=True)
+    model = StubSegmentation(image_np, pred_mask)
+    monkeypatch.setattr(sly_logger, "propagate", True)
+
+    hash_context = context(
+        image_hash="hash-only-image",
+        init_figure=True,
+        local_figure_id=LOCAL_FIGURE_ID,
+        request_uid="uid-2",
+    )
+    hash_context.pop("image_id")
+    with caplog.at_level(logging.WARNING, logger=sly_logger.name):
+        with routes(model) as served:
+            route = served["/smart_segmentation"]
+            route(
+                response=response_stub(),
+                request=request(
+                    context(
+                        init_figure=True,
+                        local_figure_id=LOCAL_FIGURE_ID,
+                        mask=mask_payload(mask, 5, 4),
+                    ),
+                    api,
+                ),
+            )
+            result = route(response=response_stub(), request=request(hash_context, api))
+
+    expected_origin, expected_bitmap = functional.format_bitmap(sly.Bitmap(pred_mask), CROP)
+    assert result == {
+        "origin": expected_origin,
+        "bitmap": expected_bitmap,
+        "success": True,
+        "error": None,
+    }
+    assert api.annotation.downloads == []
+    assert model.predict_calls[-1]["init_mask"] is None
+    assert LOCAL_FIGURE_ID not in model._init_mask_cache
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 def test_legacy_init_figure_without_a_figure_id_is_reported(image_np, pred_mask, routes):
@@ -520,6 +606,63 @@ def test_legacy_download_failure_drops_the_cached_mask(image_np, pred_mask, rout
     assert len(model.predict_calls) == 2  # the unreadable figure never reached the predictor
 
 
+def test_legacy_out_of_bounds_figure_is_reported_and_drops_the_cached_mask(
+    image_np, pred_mask, routes
+):
+    mask = holed_mask()
+    outside = np.ones((2, 2), bool)
+    api = FakeApi(image_np, annotation=ann_json(bitmap_label(outside, x=IMG_W + 1, y=1)))
+    model = StubSegmentation(image_np, pred_mask)
+
+    with routes(model) as served:
+        route = served["/smart_segmentation"]
+        route(
+            response=response_stub(),
+            request=request(
+                context(
+                    init_figure=True,
+                    local_figure_id=LOCAL_FIGURE_ID,
+                    mask=mask_payload(mask, 5, 4),
+                ),
+                api,
+            ),
+        )
+        broken = route(
+            response=response_stub(),
+            request=request(
+                context(
+                    request_uid="uid-2",
+                    init_figure=True,
+                    figure_id=FIGURE_ID,
+                    local_figure_id=LOCAL_FIGURE_ID,
+                ),
+                api,
+            ),
+        )
+        after = route(
+            response=response_stub(),
+            request=request(context(request_uid="uid-3", local_figure_id=LOCAL_FIGURE_ID), api),
+        )
+
+    assert broken == {
+        "origin": None,
+        "bitmap": None,
+        "success": False,
+        "error": "Initial mask lies completely outside of the image bounds.",
+    }
+    expected_origin, expected_bitmap = functional.format_bitmap(sly.Bitmap(pred_mask), CROP)
+    assert after == {
+        "origin": expected_origin,
+        "bitmap": expected_bitmap,
+        "success": True,
+        "error": None,
+    }
+    assert api.annotation.downloads == [IMAGE_ID]
+    assert len(model.predict_calls) == 2
+    assert model.predict_calls[-1]["init_mask"] is None
+    assert LOCAL_FIGURE_ID not in model._init_mask_cache
+
+
 def test_empty_prediction_keeps_the_response_schema(image_np, routes):
     api = FakeApi(image_np, forbid_download=True)
     model = StubSegmentation(image_np, np.zeros((10, 10), bool))
@@ -548,6 +691,25 @@ def test_request_without_clicks_returns_the_no_result_response(image_np, pred_ma
 
     assert result == {"origin": None, "bitmap": None, "success": True, "error": None}
     assert model.predict_calls == []
+
+
+# ------------------------------------------------------------------ files route geometry
+
+
+def test_files_route_geometry_composition_is_unchanged():
+    files_crop = [{"x": 0, "y": 0}, {"x": 8, "y": 7}]
+    geometry_mask = holed_mask()
+    geometry_json = sly.Bitmap(
+        geometry_mask, origin=sly.PointLocation(row=1, col=2)
+    ).to_json()
+
+    # Mirrors smart_segmentation_files geometry handling after it crops the uploaded image.
+    bitmap = sly.Bitmap.from_json(geometry_json)
+    actual = functional.crop_image(files_crop, functional.bitmap_to_mask(bitmap, 8, 9))
+    expected = crop_full_mask(place_mask(geometry_mask, 2, 1, height=8, width=9), files_crop)
+
+    np.testing.assert_array_equal(actual, expected)
+    assert actual.shape == (8, 9)
 
 
 # ------------------------------------------------------------------ batch route
@@ -599,7 +761,9 @@ def test_batch_route_does_not_leak_an_init_mask_between_states(image_np, pred_ma
         )
 
     assert all(item["success"] is True for item in results)
-    assert model.predict_calls[0]["init_mask"].any()
+    np.testing.assert_array_equal(
+        model.predict_calls[0]["init_mask"], crop_full_mask(place_mask(holed_mask(), 5, 4))
+    )
     assert model.predict_calls[1]["init_mask"] is None
 
 
@@ -652,12 +816,3 @@ def test_batch_route_still_serves_a_legacy_figure_id_state(image_np, pred_mask, 
         np.testing.assert_array_equal(call["init_mask"], expected)
 
 
-def test_crop_conventions_are_unchanged():
-    """Pins the crop the initial mask must match: inclusive x/y bounds of the request crop."""
-    full = np.zeros((IMG_H, IMG_W), bool)
-    full[1:11, 1:11] = True
-
-    cropped = functional.crop_image(CROP, (full * 255).astype(np.uint8))
-
-    assert cropped.shape == (10, 10)
-    assert cropped.all()

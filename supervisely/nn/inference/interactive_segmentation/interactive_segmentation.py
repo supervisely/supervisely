@@ -129,7 +129,8 @@ class InteractiveSegmentation(Inference):
         The initial figure is sent by the client as a ``mask`` (a tight encoded bitmap with
         its origin in image coordinates); it is decoded once and reused from the cache for
         the following clicks on the same figure, which may omit it. Requests that carry no
-        mask fall back to downloading the figure by its ``figure_id``, which is deprecated.
+        mask fall back to downloading and clipping the figure by its ``figure_id``, which is
+        deprecated.
 
         :param api: Supervisely API.
         :type api: :class:`~supervisely.api.api.Api`
@@ -167,8 +168,11 @@ class InteractiveSegmentation(Inference):
                 },
             )
             try:
-                init_mask = functional.download_init_mask(
-                    api, smtool_state.get("figure_id"), smtool_state["image_id"]
+                init_mask = functional.clip_init_mask(
+                    functional.download_init_mask(
+                        api, smtool_state.get("figure_id"), smtool_state["image_id"]
+                    ),
+                    img_size,
                 )
             except functional.InitMaskError:
                 # An unreadable figure must never silently fall back to an outdated mask.
@@ -176,6 +180,15 @@ class InteractiveSegmentation(Inference):
                     self._init_mask_cache.pop(cache_key, None)
                 raise
             self._init_mask_cache[cache_key] = init_mask
+        elif smtool_state.get("init_figure") is True:
+            # The declared initial figure has no supplied mask or image to download it from.
+            if cache_key is not None:
+                self._init_mask_cache.pop(cache_key, None)
+            logger.warning(
+                "Smart Tool request declares an initial figure without a 'mask' or an "
+                "'image_id' to download it from; continuing without an initial mask."
+            )
+            return None
         elif cache_key is not None and self._init_mask_cache.get(cache_key) is not None:
             # Continuation click: the mask decoded for the first request is reused.
             init_mask = self._init_mask_cache[cache_key]

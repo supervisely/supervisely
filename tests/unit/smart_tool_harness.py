@@ -196,11 +196,11 @@ def smart_tool_routes(model: StubSegmentation, data_dir):
         }
 
 
-def context(**overrides) -> dict:
+def context(crop=CROP, **overrides) -> dict:
     """Smart Tool request context; the initial figure fields are set by the caller."""
     request_context = {
         "image_id": IMAGE_ID,
-        "crop": CROP,
+        "crop": crop,
         "positive": [{"x": 3, "y": 3}],
         "negative": [],
         "request_uid": "uid-1",
