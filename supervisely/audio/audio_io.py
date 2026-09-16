@@ -2,9 +2,11 @@
 """Reading audio files into numpy.
 
 The platform does not store sample rate, sample count or channel count -- an
-audio entity's ``fileMeta`` is only ``{mime, size}``. The labeling tool decodes
-the file in the browser to learn them, and the SDK has to do the same. That is
-why every function here takes a local path rather than an entity id.
+audio entity's ``fileMeta`` is only ``{mime, size}``. This is deliberate and
+confirmed: unlike other modalities, audio metadata is not forced server-side,
+and clients derive what they need. The labeling tool decodes the file in the
+browser, and the SDK does the same. That is why every function here takes a
+local path rather than an entity id.
 
 WAV is handled with the standard library so the common case needs no extra
 dependency. Anything else needs ``soundfile`` (``pip install soundfile``),

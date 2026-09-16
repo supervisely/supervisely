@@ -205,8 +205,8 @@ class AudioApi(ModuleApiBase):
     def download_path(self, id: int, path: str) -> None:
         """Download a recording's original file, unmodified.
 
-        The platform stores no sample rate, duration or channel count for
-        audio, so anything needing those has to decode the file locally --
+        The platform deliberately stores no sample rate, duration or channel
+        count for audio, so anything needing those decodes the file locally --
         see :func:`supervisely.audio.get_audio_info`.
 
         :param id: Audio entity id.

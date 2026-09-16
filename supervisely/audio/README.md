@@ -95,8 +95,8 @@ silently drops `meta`, which is exactly where the settings live.
 
 ## Rendering
 
-The platform stores no sample rate, duration or channel count for audio, so the
-file has to be decoded locally.
+The platform deliberately stores no sample rate, duration or channel count for
+audio — clients derive what they need — so the file is decoded locally.
 
 ```python
 api.audio.download_path(recording_id, "/tmp/run1.wav")
@@ -120,6 +120,11 @@ Rendering under `segment.settings` reproduces the analysis the annotator saw.
 > window, hop, frequency mapping and dB range. Whether it is bit-identical to
 > the tool's WASM STFT has not been established. Treat the output as "the same
 > analysis", not "the same bytes", until a golden-file comparison exists.
+>
+> Whether bit-exactness is actually required, or whether storing the rendered
+> spectrogram itself would serve better, is an open product question. Recreating
+> from parameters covers the settings we expose; storing the render would also
+> cover a spectrogram computed some other way.
 
 WAV is decoded with the standard library. Other formats (FLAC, OGG, MP3, M4A)
 need the optional `soundfile` package.

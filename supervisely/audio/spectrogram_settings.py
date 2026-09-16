@@ -124,6 +124,11 @@ class SpectrogramSettings:
             ``False`` to match the labeling tool, which strips it before saving
             because it does not affect which events are visible. Two labels made
             under the same analysis then compare equal regardless of palette.
+
+            This is a confirmed platform decision, not an inference: the
+            colormap is deliberately not persisted. Do not "fix" this by
+            writing it -- SDK-made and toolbox-made labels would stop
+            comparing equal.
         """
         data = {
             "scale": self.scale,
