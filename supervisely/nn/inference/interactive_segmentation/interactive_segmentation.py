@@ -160,7 +160,11 @@ class InteractiveSegmentation(Inference):
         elif smtool_state.get("init_figure") is True and smtool_state.get("image_id") is not None:
             logger.warning(
                 "Smart Tool request initializes the figure by figure_id. This is deprecated: "
-                "send the initial figure as a 'mask' {'origin': [x, y], 'data': <base64>}."
+                "send the initial figure as a 'mask' {'origin': [x, y], 'data': <base64>}.",
+                extra={
+                    "figure_id": smtool_state.get("figure_id"),
+                    "image_id": smtool_state["image_id"],
+                },
             )
             init_mask = functional.download_init_mask(
                 api, smtool_state.get("figure_id"), smtool_state["image_id"]

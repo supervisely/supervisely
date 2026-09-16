@@ -20,7 +20,6 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(_TESTS_DIR))
 # Always exercise the sources of this checkout, never an installed supervisely.
 sys.path.insert(0, _TESTS_DIR)
 sys.path.insert(0, _REPO_ROOT)
-import supervisely as sly  # noqa: E402  (path is set up above)
 from smart_tool_harness import (  # noqa: E402  (path is set up above)
     CROP,
     IMG_H,
@@ -38,6 +37,8 @@ from smart_tool_harness import (  # noqa: E402  (path is set up above)
     sample_prediction,
     smart_tool_routes,
 )
+
+import supervisely as sly  # noqa: E402  (path is set up above)
 
 FAILURES = []
 

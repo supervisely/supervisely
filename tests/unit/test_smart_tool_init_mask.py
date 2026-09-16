@@ -16,10 +16,6 @@ import logging
 
 import numpy as np
 import pytest
-
-import supervisely as sly
-from supervisely.nn.inference.interactive_segmentation import functional
-from supervisely.sly_logger import logger as sly_logger
 from smart_tool_harness import (
     CROP,
     FIGURE_ID,
@@ -44,6 +40,10 @@ from smart_tool_harness import (
     sample_prediction,
     smart_tool_routes,
 )
+
+import supervisely as sly
+from supervisely.nn.inference.interactive_segmentation import functional
+from supervisely.sly_logger import logger as sly_logger
 
 IMG_SIZE = (IMG_H, IMG_W)
 
@@ -140,9 +140,7 @@ def test_mask_with_a_negative_origin_is_clipped_to_the_image():
 
 def test_mask_fully_outside_of_the_image_is_reported():
     with pytest.raises(functional.InitMaskError, match="outside of the image"):
-        functional.decode_init_mask(
-            mask_payload(np.ones((2, 2), bool), x=IMG_W + 4, y=0), IMG_SIZE
-        )
+        functional.decode_init_mask(mask_payload(np.ones((2, 2), bool), x=IMG_W + 4, y=0), IMG_SIZE)
 
 
 def test_empty_mask_is_reported():
@@ -266,7 +264,9 @@ def test_direct_mask_without_a_figure_id_reaches_the_predictor(image_np, pred_ma
     mask = holed_mask()
     api = FakeApi(image_np, forbid_download=True)
     model = StubSegmentation(image_np, pred_mask)
-    smtool_state = context(init_figure=True, local_figure_id=LOCAL_FIGURE_ID, mask=mask_payload(mask, 5, 4))
+    smtool_state = context(
+        init_figure=True, local_figure_id=LOCAL_FIGURE_ID, mask=mask_payload(mask, 5, 4)
+    )
 
     with routes(model) as served:
         result = served["/smart_segmentation"](
@@ -353,9 +353,7 @@ def test_continuation_click_reuses_the_mask_by_local_figure_id(image_np, pred_ma
         )
         route(
             response=response_stub(),
-            request=request(
-                context(request_uid="uid-2", local_figure_id=LOCAL_FIGURE_ID), api
-            ),
+            request=request(context(request_uid="uid-2", local_figure_id=LOCAL_FIGURE_ID), api),
         )
 
     assert list(model._init_mask_cache.keys()) == [LOCAL_FIGURE_ID]
@@ -492,9 +490,7 @@ def test_empty_prediction_keeps_the_response_schema(image_np, routes):
     with routes(model) as served:
         result = served["/smart_segmentation"](
             response=response_stub(),
-            request=request(
-                context(init_figure=True, mask=mask_payload(holed_mask(), 5, 4)), api
-            ),
+            request=request(context(init_figure=True, mask=mask_payload(holed_mask(), 5, 4)), api),
         )
 
     assert result == {"origin": None, "bitmap": None, "success": True, "error": None}
@@ -532,9 +528,7 @@ def test_batch_route_matches_the_single_route(image_np, pred_mask, routes):
 
     with routes(single_model) as served:
         single_results = [
-            served["/smart_segmentation"](
-                response=response_stub(), request=request(state, api)
-            )
+            served["/smart_segmentation"](response=response_stub(), request=request(state, api))
             for state in states
         ]
     with routes(batch_model) as served:
@@ -556,7 +550,9 @@ def test_batch_route_does_not_leak_an_init_mask_between_states(image_np, pred_ma
     api = FakeApi(image_np, forbid_download=True)
     model = StubSegmentation(image_np, pred_mask)
     states = [
-        context(init_figure=True, local_figure_id=LOCAL_FIGURE_ID, mask=mask_payload(holed_mask(), 5, 4)),
+        context(
+            init_figure=True, local_figure_id=LOCAL_FIGURE_ID, mask=mask_payload(holed_mask(), 5, 4)
+        ),
         context(request_uid="uid-no-figure"),
     ]
 
@@ -580,7 +576,9 @@ def test_batch_route_reports_a_broken_state_without_failing_the_rest(image_np, p
             local_figure_id="broken",
             mask={"origin": [0, 0], "data": "not-base64-at-all"},
         ),
-        context(init_figure=True, local_figure_id=LOCAL_FIGURE_ID, mask=mask_payload(holed_mask(), 5, 4)),
+        context(
+            init_figure=True, local_figure_id=LOCAL_FIGURE_ID, mask=mask_payload(holed_mask(), 5, 4)
+        ),
     ]
 
     with routes(model) as served:
@@ -615,7 +613,6 @@ def test_batch_route_still_serves_a_legacy_figure_id_state(image_np, pred_mask, 
     expected = crop_full_mask(place_mask(mask, 5, 4))
     for call in model.predict_calls:
         np.testing.assert_array_equal(call["init_mask"], expected)
-
 
 
 def test_stub_api_download_is_a_visible_failure():
