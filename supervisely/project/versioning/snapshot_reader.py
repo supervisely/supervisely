@@ -854,6 +854,15 @@ class _VideoV2Backend(_PayloadBackend):
             yield rows
 
 
+def _volume_identity(record: dict, id_field: str, key_field: str) -> Any:
+    """The server's id when the record carries it, the uuid key otherwise.
+
+    The key is the annotation's own join field, which restore needs, but the SDK invents
+    it on every parse - two snapshots of an untouched project share no keys at all.
+    """
+    return record.get(id_field) if record.get(id_field) is not None else record.get(key_field)
+
+
 class _VolumeSectionsBackend(_Backend):
     """Volumes.
 
@@ -879,7 +888,7 @@ class _VolumeSectionsBackend(_Backend):
         # so nothing in them survives from one version to the next. Version 2 keeps the
         # server's ids alongside.
         header_version = sections.get(VolumeProject._SECTION_HEADER_VERSION, 1)
-        self.figure_ids_are_server_ids = header_version >= 2
+        self._header_version = header_version
         self.schema_version = "v2.1.0" if header_version >= 2 else "v2.0.0"
         self._project_info = image_snapshot_io.namedtuple_from_dict(
             ProjectInfo,
@@ -888,6 +897,8 @@ class _VolumeSectionsBackend(_Backend):
         self._meta = ProjectMeta.from_json(
             json.loads(sections[VolumeProject._SECTION_PROJECT_META].decode("utf-8"))
         )
+        # Resolved on demand - it costs a read of the annotations section.
+        self._server_figure_ids: Optional[bool] = None
         self._datasets_section = VolumeProject._SECTION_DATASETS
         self._volumes_section = VolumeProject._SECTION_VOLUMES
         self._annotations_section = VolumeProject._SECTION_ANNOTATIONS
@@ -899,6 +910,29 @@ class _VolumeSectionsBackend(_Backend):
     @property
     def meta(self):
         return self._meta
+
+    @property
+    def figure_ids_are_server_ids(self) -> bool:
+        """Answered by the records, not by the header version.
+
+        Snapshots written before `VolumeAnnotation.to_json` handed its key map to the
+        planes say v2.1.0 yet carry nothing but per-parse uuid keys.
+        """
+        if self._server_figure_ids is None:
+            self._server_figure_ids = self._header_version >= 2 and self._figures_carry_ids()
+        return self._server_figure_ids
+
+    def _figures_carry_ids(self) -> bool:
+        from supervisely.volume_annotation import constants as volume_constants
+
+        for batch in self.iter_annotations(batch_size=50):
+            for entry in batch:
+                for plane in entry["annotation"].get(volume_constants.PLANES, []) or []:
+                    for volume_slice in plane.get(volume_constants.SLICES, []) or []:
+                        for figure in volume_slice.get(volume_constants.FIGURES, []) or []:
+                            return figure.get(volume_constants.ID) is not None
+        # No slice figure anywhere: nothing to pair, so nothing to warn about either.
+        return True
 
     def _iter_section(self, section: int, batch_size: int) -> Iterator[List[dict]]:
         blob = self._sections.get(section)
@@ -1001,7 +1035,12 @@ class _VolumeSectionsBackend(_Backend):
                         rows.append(
                             _tag_row(
                                 _stored_tag(
-                                    tag, OWNER_OBJECT, obj.get(volume_constants.KEY), volume_id
+                                    tag,
+                                    OWNER_OBJECT,
+                                    _volume_identity(
+                                        obj, volume_constants.ID, volume_constants.KEY
+                                    ),
+                                    volume_id,
                                 ),
                                 columns,
                             )
@@ -1023,13 +1062,15 @@ class _VolumeSectionsBackend(_Backend):
                     rows.append(
                         _select(
                             {
-                                SnapshotColumn.OBJECT_ID: obj.get(volume_constants.KEY),
+                                SnapshotColumn.OBJECT_ID: _volume_identity(
+                                    obj, volume_constants.ID, volume_constants.KEY
+                                ),
                                 SnapshotColumn.ITEM_ID: volume_id,
                                 SnapshotColumn.CLASS_NAME: obj.get(
                                     LabelJsonFields.OBJ_CLASS_NAME
                                 ),
-                                SnapshotColumn.CREATED_AT: None,
-                                SnapshotColumn.UPDATED_AT: None,
+                                SnapshotColumn.CREATED_AT: obj.get(ApiField.CREATED_AT),
+                                SnapshotColumn.UPDATED_AT: obj.get(ApiField.UPDATED_AT),
                             },
                             columns,
                         )
@@ -1050,27 +1091,41 @@ class _VolumeSectionsBackend(_Backend):
                 volume_id = entry[SnapshotColumn.ITEM_ID]
                 annotation = entry["annotation"]
                 objects = annotation.get(volume_constants.OBJECTS, [])
-                class_by_object_key = {
-                    obj.get(volume_constants.KEY): obj.get(LabelJsonFields.OBJ_CLASS_NAME)
-                    for obj in objects
-                }
+                # Both ways in, because a figure names its object by whichever of the two
+                # it carries and the two need not agree across formats.
+                class_by_object = {}
+                for obj in objects:
+                    class_name = obj.get(LabelJsonFields.OBJ_CLASS_NAME)
+                    for identity in (
+                        obj.get(volume_constants.ID),
+                        obj.get(volume_constants.KEY),
+                    ):
+                        if identity is not None:
+                            class_by_object[identity] = class_name
+
                 def emit(figure, frame_index):
-                    object_key = figure.get(volume_constants.OBJECT_KEY)
+                    object_identity = _volume_identity(
+                        figure, volume_constants.OBJECT_ID, volume_constants.OBJECT_KEY
+                    )
                     rows.append(
                         _select(
                             {
-                                # The id when the snapshot has one, the uuid key otherwise.
-                                SnapshotColumn.FIGURE_ID: figure.get(volume_constants.ID)
-                                or figure.get(volume_constants.KEY),
+                                SnapshotColumn.FIGURE_ID: _volume_identity(
+                                    figure, volume_constants.ID, volume_constants.KEY
+                                ),
                                 SnapshotColumn.ITEM_ID: volume_id,
-                                SnapshotColumn.OBJECT_ID: object_key,
-                                SnapshotColumn.CLASS_NAME: class_by_object_key.get(object_key),
+                                SnapshotColumn.OBJECT_ID: object_identity,
+                                SnapshotColumn.CLASS_NAME: class_by_object.get(object_identity),
                                 SnapshotColumn.GEOMETRY_TYPE: figure.get(ApiField.GEOMETRY_TYPE),
                                 SnapshotColumn.GEOMETRY: (
                                     figure.get(ApiField.GEOMETRY) if wants_geometry else None
                                 ),
                                 SnapshotColumn.FRAME_INDEX: frame_index,
                                 SnapshotColumn.META: figure.get(volume_constants.META) or {},
+                                # The record carries both, and a comparison has nothing
+                                # else to notice an edit by: it never reads geometry.
+                                SnapshotColumn.CREATED_AT: figure.get(ApiField.CREATED_AT),
+                                SnapshotColumn.UPDATED_AT: figure.get(ApiField.UPDATED_AT),
                             },
                             columns,
                         )

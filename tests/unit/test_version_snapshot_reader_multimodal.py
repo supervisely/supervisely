@@ -360,6 +360,148 @@ def test_volume_figures_are_flattened_out_of_the_annotation(volume_snapshot):
 # ------------------------------------------------------- the video writer itself
 
 
+def _volume_path(tmp_path, name, annotation, src_volume_id=20):
+    """The same blob, written where open_archive can read it."""
+    path = os.path.join(str(tmp_path), name)
+    with open(path, "wb") as f:
+        f.write(_volume_blob(annotation, src_volume_id))
+    return path
+
+
+def _volume_blob(annotation, src_volume_id=20):
+    """One volume snapshot blob holding a single annotation record."""
+    from supervisely.project.volume_project import VolumeProject
+
+    schema = get_volume_snapshot_schema("v2.0.0")
+
+    return VolumeProject._assemble_sections(
+        [
+            (
+                VolumeProject._SECTION_PROJECT_INFO,
+                json.dumps({"id": 1, "name": "p", "type": "volumes"}).encode(),
+            ),
+            (VolumeProject._SECTION_PROJECT_META, json.dumps(META.to_json()).encode()),
+            (
+                VolumeProject._SECTION_ANNOTATIONS,
+                _parquet_bytes(
+                    pyarrow.Table.from_pylist(
+                        [
+                            schema.annotation_row_from_dict(
+                                src_volume_id=src_volume_id, annotation=annotation
+                            )
+                        ],
+                        schema=schema.annotations_table_schema(pyarrow),
+                    )
+                ),
+            ),
+        ]
+    )
+
+
+def test_a_volume_annotation_keeps_the_server_ids_of_its_slice_figures(tmp_path):
+    """The identity two versions are compared on. `to_json` handed its key map to the tags,
+    the objects and the spatial figures and not to the planes, so every slice figure went
+    into the snapshot with nothing but the uuid key the SDK invents on each parse - and a
+    diff over that reports every figure of a touched volume as removed and added again."""
+    from supervisely.video_annotation.key_id_map import KeyIdMap
+    from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+
+    annotation = {
+        volume_constants.OBJECTS: [
+            {
+                volume_constants.ID: 1265,
+                LabelJsonFields.OBJ_CLASS_NAME: "car",
+                volume_constants.TAGS: [],
+            }
+        ],
+        volume_constants.PLANES: [
+            {
+                volume_constants.NAME: name,
+                volume_constants.NORMAL: normal,
+                volume_constants.SLICES: (
+                    [
+                        {
+                            volume_constants.INDEX: 3,
+                            volume_constants.FIGURES: [
+                                {
+                                    volume_constants.ID: 3389398,
+                                    volume_constants.OBJECT_ID: 1265,
+                                    ApiField.GEOMETRY_TYPE: Rectangle.geometry_name(),
+                                    ApiField.GEOMETRY: GEOMETRY,
+                                }
+                            ],
+                        }
+                    ]
+                    if name == "axial"
+                    else []
+                ),
+            }
+            for name, normal in (
+                ("sagittal", {"x": 1, "y": 0, "z": 0}),
+                ("coronal", {"x": 0, "y": 1, "z": 0}),
+                ("axial", {"x": 0, "y": 0, "z": 1}),
+            )
+        ],
+        volume_constants.VOLUME_META: {"dimensionsIJK": {"x": 64, "y": 64, "z": 32}},
+        volume_constants.TAGS: [],
+    }
+
+    key_id_map = KeyIdMap()
+    parsed = VolumeAnnotation.from_json(annotation, META, key_id_map)
+    stored = parsed.to_json(key_id_map)
+
+    figure = stored[volume_constants.PLANES][2][volume_constants.SLICES][0][
+        volume_constants.FIGURES
+    ][0]
+    assert figure[volume_constants.ID] == 3389398
+    assert figure[volume_constants.OBJECT_ID] == 1265
+    # The key stays: it is what binds a figure to its object when a version is restored,
+    # and restore parses without a key map to resolve ids through.
+    assert volume_constants.KEY in figure
+    assert volume_constants.OBJECT_KEY in figure
+
+
+def test_a_volume_snapshot_says_when_its_figures_cannot_be_matched(tmp_path):
+    """Written before the fix above: v2.1.0 in the header, and not one figure id in the
+    records. The flag has to follow the records, or a comparison pairs on keys that differ
+    by construction and calls the result a diff."""
+    keyless = {
+        volume_constants.TAGS: [],
+        volume_constants.OBJECTS: [
+            {volume_constants.KEY: "obj-1", LabelJsonFields.OBJ_CLASS_NAME: "car"}
+        ],
+        volume_constants.PLANES: [
+            {
+                volume_constants.NAME: "axial",
+                volume_constants.SLICES: [
+                    {
+                        volume_constants.INDEX: 3,
+                        volume_constants.FIGURES: [
+                            {
+                                volume_constants.KEY: "fig-1",
+                                volume_constants.OBJECT_KEY: "obj-1",
+                                ApiField.GEOMETRY_TYPE: Rectangle.geometry_name(),
+                                ApiField.GEOMETRY: GEOMETRY,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    with VersionSnapshot.open_archive(_volume_path(tmp_path, "keyless.bin", keyless)) as snapshot:
+        assert snapshot.schema_version == "v2.1.0"
+        assert snapshot.figure_ids_are_server_ids is False
+
+    with_ids = json.loads(json.dumps(keyless))
+    figure = with_ids[volume_constants.PLANES][0][volume_constants.SLICES][0][
+        volume_constants.FIGURES
+    ][0]
+    figure[volume_constants.ID] = 5001
+    with VersionSnapshot.open_archive(_volume_path(tmp_path, "with-ids.bin", with_ids)) as snapshot:
+        assert snapshot.figure_ids_are_server_ids is True
+
+
 def test_a_volume_snapshot_is_columnar_without_serving_arrow(volume_snapshot):
     """Two different questions. The payload streams section by section rather than being
     loaded whole - columnar by that measure - and still holds one JSON record per volume,
