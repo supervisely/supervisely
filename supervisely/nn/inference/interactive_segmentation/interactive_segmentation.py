@@ -166,9 +166,15 @@ class InteractiveSegmentation(Inference):
                     "image_id": smtool_state["image_id"],
                 },
             )
-            init_mask = functional.download_init_mask(
-                api, smtool_state.get("figure_id"), smtool_state["image_id"]
-            )
+            try:
+                init_mask = functional.download_init_mask(
+                    api, smtool_state.get("figure_id"), smtool_state["image_id"]
+                )
+            except functional.InitMaskError:
+                # An unreadable figure must never silently fall back to an outdated mask.
+                if cache_key is not None:
+                    self._init_mask_cache.pop(cache_key, None)
+                raise
             self._init_mask_cache[cache_key] = init_mask
         elif cache_key is not None and self._init_mask_cache.get(cache_key) is not None:
             # Continuation click: the mask decoded for the first request is reused.

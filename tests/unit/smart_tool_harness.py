@@ -41,6 +41,14 @@ def encode_mask(mask) -> str:
     return sly.Bitmap.data_2_base64(np.asarray(mask, bool))
 
 
+def holed_mask():
+    """Tight raster with a hole and a disconnected component, as a rasterized polygon has."""
+    mask = np.zeros((5, 6), bool)
+    mask[0:3, 0:5] = True
+    mask[1, 1:3] = False  # hole
+    mask[4, 4:6] = True  # disconnected part
+    return mask
+
 def mask_payload(mask, x: int, y: int) -> dict:
     """Builds the contract mask payload: a tight bitmap placed at (x, y) in image coordinates."""
     return {"origin": [x, y], "data": encode_mask(mask)}
@@ -86,6 +94,10 @@ class _FakeAnnotationApi:
         self._annotation = annotation
         self._forbidden = forbidden
         self.downloads = []
+
+    def set_annotation(self, annotation):
+        """Replays a figure that changed on the instance between two requests."""
+        self._annotation = annotation
 
     def download_json(self, image_id):
         self.downloads.append(image_id)

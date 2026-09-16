@@ -29,6 +29,7 @@ from smart_tool_harness import (  # noqa: E402  (path is set up above)
     StubSegmentation,
     context,
     crop_full_mask,
+    holed_mask,
     mask_payload,
     place_mask,
     request,
@@ -48,14 +49,6 @@ def check(label, condition):
     if not condition:
         FAILURES.append(label)
 
-
-def holed_mask():
-    """Tight raster with a hole and a disconnected component, as a rasterized polygon has."""
-    mask = np.zeros((5, 6), bool)
-    mask[0:3, 0:5] = True
-    mask[1, 1:3] = False  # hole
-    mask[4, 4:6] = True  # disconnected part
-    return mask
 
 
 def run_scenario(name, mask, x, y, continuation):

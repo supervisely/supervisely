@@ -6,8 +6,9 @@ against the sources of this checkout. The baseline must fail by downloading the 
 of the edited figure, this checkout must serve the very same request from its ``mask``.
 
 Usage: ``python tests/unit/smart_tool_baseline_diff.py [baseline-commit]`` from the
-repository root. Exits 0 only if HEAD serves the request and, whenever the baseline
-sources can be materialized from git, the baseline fails on the annotation download.
+repository root. Exits 0 only if HEAD serves the request and the materialized baseline
+fails on the annotation download; exits 1 for either replay failure, and 2 when the
+baseline sources cannot be materialized.
 """
 
 import os
@@ -41,12 +42,33 @@ def run_repro(repo_root: Path) -> subprocess.CompletedProcess:
 
 def materialize_baseline(commit: str, target: Path):
     """Writes the sources of ``commit`` into ``target``, or returns the reason it cannot."""
+    archive_command = ["git", "archive", "--format=tar", commit]
     archive = subprocess.run(
-        ["git", "archive", "--format=tar", commit],
+        archive_command,
         cwd=str(REPO_ROOT),
         capture_output=True,
         timeout=600,
     )
+    if archive.returncode != 0:
+        fetch_command = ["git", "fetch", "--depth=1", "origin", commit]
+        print(f"+ {' '.join(fetch_command)}  (cwd={REPO_ROOT})")
+        fetch = subprocess.run(
+            fetch_command,
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            timeout=300,
+        )
+        print(f"--- git fetch --depth=1 origin {commit}: exit={fetch.returncode}")
+        if fetch.stdout:
+            print(fetch.stdout.decode("utf-8", "replace").strip())
+        if fetch.stderr:
+            print(fetch.stderr.decode("utf-8", "replace").strip())
+        archive = subprocess.run(
+            archive_command,
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            timeout=600,
+        )
     if archive.returncode != 0:
         return archive.stderr.decode("utf-8", "replace").strip() or "git archive failed"
     target.mkdir(parents=True, exist_ok=True)
@@ -72,6 +94,7 @@ def report(title: str, result: subprocess.CompletedProcess):
 def main(argv) -> int:
     commit = argv[1] if len(argv) > 1 else os.environ.get("VERIFY_BASE_SHA") or DEFAULT_BASELINE
     failures = []
+    baseline_skipped = False
 
     head = run_repro(REPO_ROOT)
     report("HEAD", head)
@@ -86,10 +109,11 @@ def main(argv) -> int:
             baseline_root = Path(tmp) / "baseline"
             problem = materialize_baseline(commit, baseline_root)
             if problem:
-                # A shallow clone cannot produce the baseline tree; say so instead of
-                # pretending the comparison happened.
-                print(f"--- BASELINE {commit}: sources unavailable in this checkout: {problem}")
-                print("--- BASELINE: comparison skipped, HEAD assertions above still apply")
+                baseline_skipped = True
+                print(
+                    f"[diff] SKIPPED: baseline {commit} unavailable in this checkout: {problem}; "
+                    "only the HEAD assertions above were checked"
+                )
             else:
                 baseline = run_repro(baseline_root)
                 report(f"BASELINE {commit}", baseline)
@@ -108,6 +132,8 @@ def main(argv) -> int:
     if failures:
         print(f"[diff] FAILED: {failures}")
         return 1
+    if baseline_skipped:
+        return 2
     print("[diff] OK: baseline downloads the annotation, HEAD serves the request from the mask")
     return 0
 
