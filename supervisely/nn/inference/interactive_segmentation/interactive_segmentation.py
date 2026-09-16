@@ -2,7 +2,7 @@ import json
 import os
 import threading
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from cacheout import Cache
@@ -114,11 +114,22 @@ class InteractiveSegmentation(Inference):
     def get_classes(self) -> List[str]:
         return self._class_names
 
-    def _prepare_init_mask(self, api, smtool_state: Dict[str, Any], crop) -> Optional[np.ndarray]:
+    def _init_mask_cache_key(self, smtool_state: Dict[str, Any]):
+        """Cache identity of the edited figure: ``local_figure_id``, legacy ``figure_id`` otherwise."""
+        cache_key = smtool_state.get("local_figure_id")
+        if cache_key is None:
+            cache_key = smtool_state.get("figure_id")
+        return cache_key
+
+    def _prepare_init_mask(
+        self, api, smtool_state: Dict[str, Any], crop, img_size: Tuple[int, int]
+    ) -> Optional[np.ndarray]:
         """Builds the initial mask of a Smart Tool request, cropped like the request image.
 
-        The figure is downloaded and normalized once per ``init_figure`` request and reused
-        from the cache for the following clicks on the same figure.
+        The initial figure is sent by the client as a ``mask`` (a tight encoded bitmap with
+        its origin in image coordinates); it is decoded once and reused from the cache for
+        the following clicks on the same figure, which may omit it. Requests that carry no
+        mask fall back to downloading the figure by its ``figure_id``, which is deprecated.
 
         :param api: Supervisely API.
         :type api: :class:`~supervisely.api.api.Api`
@@ -126,23 +137,41 @@ class InteractiveSegmentation(Inference):
         :type smtool_state: Dict[str, Any]
         :param crop: Crop of the request as a pair of x/y points.
         :type crop: list
+        :param img_size: Size (height, width) of the image the request is made for.
+        :type img_size: Tuple[int, int]
         :returns: Cropped initial mask, or None if the request has no initial figure.
         :rtype: np.ndarray, optional
-        :raises functional.InitMaskError: if the initial figure can not be normalized.
+        :raises functional.InitMaskError: if the initial figure can not be read.
         """
-        figure_id = smtool_state.get("figure_id")
-        image_id = smtool_state.get("image_id")
-        if smtool_state.get("init_figure") is True and image_id is not None:
-            # Download and save in Cache
-            init_mask = functional.download_init_mask(api, figure_id, image_id)
-            self._init_mask_cache[figure_id] = init_mask
-        elif self._init_mask_cache.get(figure_id) is not None:
-            # Load from Cache
-            init_mask = self._init_mask_cache[figure_id]
+        mask_json = smtool_state.get("mask")
+        cache_key = self._init_mask_cache_key(smtool_state)
+        if mask_json is not None:
+            # The mask is supplied by the client: no annotation download, even if the
+            # request also carries a legacy figure_id.
+            try:
+                init_mask = functional.decode_init_mask(mask_json, img_size)
+            except functional.InitMaskError:
+                # A broken mask must never silently fall back to an outdated figure.
+                if cache_key is not None:
+                    self._init_mask_cache.pop(cache_key, None)
+                raise
+            if cache_key is not None:
+                self._init_mask_cache[cache_key] = init_mask
+        elif smtool_state.get("init_figure") is True and smtool_state.get("image_id") is not None:
+            logger.warning(
+                "Smart Tool request initializes the figure by figure_id. This is deprecated: "
+                "send the initial figure as a 'mask' {'origin': [x, y], 'data': <base64>}."
+            )
+            init_mask = functional.download_init_mask(
+                api, smtool_state.get("figure_id"), smtool_state["image_id"]
+            )
+            self._init_mask_cache[cache_key] = init_mask
+        elif cache_key is not None and self._init_mask_cache.get(cache_key) is not None:
+            # Continuation click: the mask decoded for the first request is reused.
+            init_mask = self._init_mask_cache[cache_key]
         else:
             return None
-        img_info = api.image.get_info_by_id(image_id)
-        h, w = img_info.height, img_info.width
+        h, w = img_size
         init_mask = functional.bitmap_to_mask(init_mask, h, w)
         return functional.crop_image(crop, init_mask)
 
@@ -216,13 +245,14 @@ class InteractiveSegmentation(Inference):
                 image_np = self._inference_image_cache.get(hash_str)
 
             # Crop the image
+            img_size = image_np.shape[:2]
             image_np = functional.crop_image(crop, image_np)
             image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
             sly_image.write(image_path, image_np)
 
             # Prepare init_mask (only for images)
             try:
-                init_mask = self._prepare_init_mask(api, smtool_state, crop)
+                init_mask = self._prepare_init_mask(api, smtool_state, crop, img_size)
             except functional.InitMaskError as exc:
                 logger.warning(f"Failed to prepare the initial mask: {exc}", exc_info=True)
                 silent_remove(image_path)
@@ -340,13 +370,14 @@ class InteractiveSegmentation(Inference):
                     image_np = self._inference_image_cache.get(hash_str)
 
                 # Crop the image
+                img_size = image_np.shape[:2]
                 image_np = functional.crop_image(crop, image_np)
                 image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
                 sly_image.write(image_path, image_np)
 
                 # Prepare init_mask (only for images)
                 try:
-                    init_mask = self._prepare_init_mask(api, smtool_state, crop)
+                    init_mask = self._prepare_init_mask(api, smtool_state, crop, img_size)
                 except functional.InitMaskError as exc:
                     logger.warning(f"Failed to prepare the initial mask: {exc}", exc_info=True)
                     silent_remove(image_path)
