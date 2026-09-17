@@ -1,6 +1,6 @@
 import os
 from copy import deepcopy
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -121,6 +121,15 @@ def get_hash_from_context(context: dict):
 
 
 def download_init_mask(api: sly.Api, figure_id, image_id) -> sly.Bitmap:
+    """Download the init mask of a figure by downloading the whole image annotation.
+
+    .. deprecated::
+        Resolving the init mask from ``figure_id``/``init_figure`` is deprecated.
+        Senders should put the mask into the request context instead (see
+        :func:`get_init_mask_from_context`), which needs no annotation download.
+        This path only works for bitmap figures: a polygon, multipolygon or
+        AnyShape figure fails in :meth:`supervisely.Bitmap.from_json` here.
+    """
     ann_json = api.annotation.download_json(image_id)
     labels = [label for label in ann_json["objects"] if label["id"] == figure_id]
     assert len(labels) > 0, f"Label with id {figure_id} not found in image {image_id}."
@@ -134,3 +143,50 @@ def bitmap_to_mask(bitmap: sly.Bitmap, h, w):
     bitmap.to_bbox().get_cropped_numpy_slice(mask)[:] = bitmap.data
     mask = (mask * 255).astype(np.uint8)
     return mask
+
+
+class InitMaskDecodeError(ValueError):
+    """Request context carries an init ``mask`` that cannot be decoded."""
+
+
+def get_init_mask_from_context(context: dict) -> Optional[sly.Bitmap]:
+    """Build the init mask bitmap from the ``mask`` field of the request context.
+
+    The field is optional and has the form
+    ``{"data": <base64 string>, "origin": {"x": <int>, "y": <int>}}``, where
+    ``data`` is the same encoding :class:`supervisely.Bitmap` uses on the wire
+    (base64 of a zlib-compressed PNG, non-zero pixels are foreground) and
+    ``origin`` is the top-left corner of the mask in full image coordinates.
+    When it is present it fully replaces the deprecated ``figure_id`` lookup, so
+    no annotation is downloaded and figures of any geometry can be sent back.
+
+    :param context: Request context of a smart tool request.
+    :type context: dict
+    :returns: Bitmap built from the context, or None if there is no ``mask``.
+    :rtype: :class:`supervisely.Bitmap` or None
+    :raises InitMaskDecodeError: if ``mask`` is present but cannot be decoded.
+    """
+    mask = context.get("mask")
+    if mask is None:
+        return None
+    try:
+        origin = mask["origin"]
+        data = sly.Bitmap.base64_2_data(mask["data"])
+        return sly.Bitmap(
+            data=data,
+            origin=sly.PointLocation(row=int(origin["y"]), col=int(origin["x"])),
+        )
+    except Exception as exc:
+        raise InitMaskDecodeError(f"Can not decode the init mask from request: {exc}") from exc
+
+
+def bitmap_to_mask_in_crop(bitmap: sly.Bitmap, crop) -> np.ndarray:
+    """Rasterize a bitmap into the crop region without knowing the image size.
+
+    Returns exactly what ``crop_image(crop, bitmap_to_mask(bitmap, h, w))``
+    returns for any image that contains both the crop and the bitmap.
+    """
+    bbox = bitmap.to_bbox()
+    h = max(int(crop[1]["y"]) + 1, bbox.bottom + 1)
+    w = max(int(crop[1]["x"]) + 1, bbox.right + 1)
+    return crop_image(crop, bitmap_to_mask(bitmap, h, w))
