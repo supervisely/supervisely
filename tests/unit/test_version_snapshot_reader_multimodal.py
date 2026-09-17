@@ -13,6 +13,7 @@ writers use, so a change to those schemas fails this test instead of failing in 
 
 import json
 import os
+from types import SimpleNamespace
 
 import pytest
 
@@ -204,6 +205,23 @@ def test_figures_name_the_object_they_belong_to(video_snapshot):
         )
     )
     assert projected[0] == {SnapshotColumn.FIGURE_ID: 100, SnapshotColumn.OBJECT_ID: 5}
+
+
+def test_video_item_filter_works_when_item_id_is_not_projected(video_snapshot):
+    """Projection must not remove the physical column used by item_ids filtering."""
+    included = _collect(
+        video_snapshot.iter_figures(
+            columns=[SnapshotColumn.FIGURE_ID], with_geometry=False, item_ids={10}
+        )
+    )
+    excluded = _collect(
+        video_snapshot.iter_figures(
+            columns=[SnapshotColumn.FIGURE_ID], with_geometry=False, item_ids={999}
+        )
+    )
+
+    assert included == [{SnapshotColumn.FIGURE_ID: 100}]
+    assert excluded == []
 
 
 def test_objects_can_be_read_without_going_through_their_figures(video_snapshot):
@@ -899,6 +917,118 @@ def test_volume_snapshots_report_whether_their_ids_are_the_servers(tmp_path):
     with VersionSnapshot.open_archive(current) as snapshot:
         assert snapshot.figure_ids_are_server_ids is True
         assert _collect(snapshot.iter_figures())[0][SnapshotColumn.FIGURE_ID] == 5001
+
+
+class _RestoreProjectApi:
+    def __init__(self):
+        self.created = None
+
+    def exists(self, workspace_id, name):
+        return False
+
+    def create(self, workspace_id, name, *args, **kwargs):
+        self.created = SimpleNamespace(
+            id=900, name=name, custom_data={}, description=kwargs.get("description")
+        )
+        return self.created
+
+    def update_meta(self, project_id, meta):
+        return meta if isinstance(meta, ProjectMeta) else ProjectMeta.from_json(meta)
+
+    def update_custom_data(self, *args, **kwargs):
+        return None
+
+    def get_info_by_id(self, project_id):
+        return self.created
+
+
+class _RestoreDatasetApi:
+    def __init__(self):
+        self.created = []
+
+    def create(self, project_id, name, **kwargs):
+        info = SimpleNamespace(id=1000 + len(self.created), name=name)
+        self.created.append(info)
+        return info
+
+
+def _restore_api():
+    return SimpleNamespace(
+        project=_RestoreProjectApi(), dataset=_RestoreDatasetApi(), optimization_context={}
+    )
+
+
+def test_old_video_v2_snapshot_is_still_restorable(tmp_path):
+    """The old ann_json schema remains a restore input after v2.1 becomes the writer."""
+    from supervisely.project.video_project import VideoProject
+
+    schema = get_video_snapshot_schema("v2.0.0")
+    path = _write_payload(
+        tmp_path,
+        "videos",
+        {
+            "datasets": (
+                schema.datasets_schema(pyarrow),
+                [
+                    schema.dataset_row(
+                        src_dataset_id=1,
+                        parent_src_dataset_id=None,
+                        name="legacy",
+                        full_path="legacy",
+                        description=None,
+                        custom_data=None,
+                    )
+                ],
+            )
+        },
+    )
+    api = _restore_api()
+
+    restored = VideoProject.upload_bin(
+        api, path, workspace_id=1, log_progress=False, restore_workers=1
+    )
+
+    assert restored.id == 900
+    assert [dataset.name for dataset in api.dataset.created] == ["legacy"]
+
+
+def test_old_volume_v2_snapshot_is_still_restorable(tmp_path):
+    """Header version 1 is the deployed volume v2 format and stays accepted by upload_bin."""
+    from supervisely.project.volume_project import VolumeProject
+
+    schema = get_volume_snapshot_schema("v2.0.0")
+    dataset_table = pyarrow.Table.from_pylist(
+        [schema.dataset_row_from_record({"id": 1, "name": "legacy"})],
+        schema=schema.datasets_table_schema(pyarrow),
+    )
+    payload = VolumeProject._assemble_sections(
+        [
+            (
+                VolumeProject._SECTION_PROJECT_INFO,
+                json.dumps({"id": 1, "name": "p", "type": "volumes"}).encode(),
+            ),
+            (VolumeProject._SECTION_PROJECT_META, json.dumps(META.to_json()).encode()),
+            (VolumeProject._SECTION_DATASETS, _parquet_bytes(dataset_table)),
+        ]
+    )
+    magic = VolumeProject._SERIALIZATION_MAGIC
+    payload = payload[: len(magic)] + b"\x01" + payload[len(magic) + 1 :]
+    path = os.path.join(str(tmp_path), "legacy-volume.bin")
+    with open(path, "wb") as stream:
+        stream.write(payload)
+    api = _restore_api()
+
+    restored = VolumeProject.upload_bin(
+        api,
+        path,
+        workspace_id=1,
+        log_progress=False,
+        restore_workers=1,
+        with_custom_data=False,
+    )
+
+    assert restored.id == 900
+    assert [dataset.name for dataset in api.dataset.created] == ["legacy"]
 
 
 def _rebuild_annotations(archive_path):

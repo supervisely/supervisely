@@ -479,6 +479,10 @@ class _ImagesV2Backend(_PayloadBackend):
 
         wants_geometry = _wants_geometry(columns, with_geometry)
         physical = _physical_columns(self._FIGURE_MAP, columns)
+        if item_ids is not None and physical is not None:
+            # Filtering is part of the read contract even when the caller projects the
+            # item id out of the returned rows.
+            physical = sorted(set(physical) | {VersionSchemaField.SRC_IMAGE_ID})
         if wants_geometry and physical is not None:
             # The type decides whether a null geometry means "inline, absent" or "in the
             # alpha table", so it has to be read even when the caller did not ask for it.
@@ -797,6 +801,9 @@ class _VideoV2Backend(_PayloadBackend):
 
         physical = _physical_columns(self._FIGURE_MAP, columns)
         if physical is not None:
+            if item_ids is not None:
+                # The filter key is needed even when it is not part of the projection.
+                physical = sorted(set(physical) | {VersionSchemaField.SRC_VIDEO_ID})
             if not wants_geometry:
                 physical = [c for c in physical if c != VersionSchemaField.GEOMETRY_JSON]
             if wants_object:

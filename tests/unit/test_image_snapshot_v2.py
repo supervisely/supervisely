@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Round-trip tests for the Parquet image snapshot (schema v2.0.0).
+"""Round-trip tests for the Parquet image snapshot schemas v2.0.0 and v2.1.0.
 
 The point of the schema is that a restore cannot tell the two formats apart: both
 ``Project.build_snapshot()`` and the pickle backup are read by
@@ -14,6 +14,7 @@ import io
 import os
 import pickle
 import tempfile
+from types import SimpleNamespace
 
 import pytest
 
@@ -700,14 +701,20 @@ def test_open_without_repack_reads_a_legacy_snapshot_as_is(tmp_path):
         assert len(_collect(snapshot.iter_items())) == 3
 
 
-def test_new_image_snapshots_are_written_in_the_parquet_container():
-    """The writer default. A revert to pickle would silently undo the whole change."""
+def test_new_image_snapshots_are_written_in_the_parquet_container_when_requested():
+    """Data Versioning requests the current format explicitly; the public default stays v1."""
     from supervisely.project.versioning.common import DEFAULT_IMAGE_SCHEMA_VERSION
     from supervisely.project.versioning.container import is_snapshot_container, is_tar_container
 
     assert DEFAULT_IMAGE_SCHEMA_VERSION == IMAGE_SCHEMA_VERSION_V2_1
 
-    snapshot = Project.download_bin(_FakeApi(), PROJECT_ID, return_bytesio=True, log_progress=False)
+    snapshot = Project.download_bin(
+        _FakeApi(),
+        PROJECT_ID,
+        return_bytesio=True,
+        log_progress=False,
+        schema_version=DEFAULT_IMAGE_SCHEMA_VERSION,
+    )
     # A plain tar of already-compressed Parquet, not a second compression pass over it.
     assert is_tar_container(snapshot.getvalue())
     assert is_snapshot_container(snapshot.getvalue())
@@ -727,6 +734,57 @@ def test_the_legacy_writer_is_still_reachable_by_name():
     )
     assert not is_snapshot_container(snapshot.getvalue())
     assert Project._read_snapshot(snapshot)[0].name == "cityscape"
+
+
+def test_the_public_download_default_stays_legacy():
+    """A plain SDK install has no pyarrow, so an unchanged public call must stay usable."""
+    from supervisely.project.versioning.container import is_snapshot_container
+
+    snapshot = Project.download_bin(
+        _FakeApi(), PROJECT_ID, return_bytesio=True, log_progress=False
+    )
+
+    assert not is_snapshot_container(snapshot.getvalue())
+
+
+def test_data_version_explicitly_requests_the_current_image_format(monkeypatch):
+    """Changing the public default back to v1 must not change newly created versions."""
+    from supervisely.project.data_version import DataVersion
+    from supervisely.project.versioning.common import DEFAULT_IMAGE_SCHEMA_VERSION
+
+    requested = []
+
+    def download_bin(*args, **kwargs):
+        requested.append(kwargs.get("schema_version"))
+        return io.BytesIO(b"snapshot")
+
+    monkeypatch.setattr(Project, "download_bin", download_bin)
+    api = SimpleNamespace(
+        file=SimpleNamespace(upload=lambda *args, **kwargs: SimpleNamespace(id=1))
+    )
+    versions = DataVersion(api)
+    versions.project_info = SimpleNamespace(id=PROJECT_ID, team_id=1, type="images")
+
+    versions._compress_and_upload("/versions/test")
+
+    assert requested == [DEFAULT_IMAGE_SCHEMA_VERSION]
+
+
+def test_download_bin_forwards_the_requested_parquet_schema(tmp_path):
+    """Requesting v2.0 must not silently stamp the current v2.1 schema."""
+    from supervisely.project.versioning.snapshot_reader import VersionSnapshot
+
+    snapshot = Project.download_bin(
+        _FakeApi(),
+        PROJECT_ID,
+        return_bytesio=True,
+        log_progress=False,
+        schema_version=IMAGE_SCHEMA_VERSION_V2,
+    )
+    path = _write(tmp_path, snapshot)
+
+    with VersionSnapshot.open_archive(path) as reader:
+        assert reader.schema_version == IMAGE_SCHEMA_VERSION_V2
 
 
 def test_an_unknown_schema_version_is_refused():
@@ -825,6 +883,21 @@ def test_projecting_columns_without_geometry_skips_the_alpha_table(parquet_reade
         ] == ALPHA_GEOMETRY
     finally:
         snapshot_reader._AlphaGeometryCursor = original
+
+
+def test_item_filter_works_when_item_id_is_not_projected(parquet_reader):
+    """The filter key must still be read even when the caller does not return it."""
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    rows = _collect(
+        parquet_reader.iter_figures(
+            columns=[SnapshotColumn.FIGURE_ID],
+            with_geometry=False,
+            item_ids={201},
+        )
+    )
+
+    assert {row[SnapshotColumn.FIGURE_ID] for row in rows} == {9002}
 
 
 def test_zstd_wrapped_snapshots_still_read(tmp_path):

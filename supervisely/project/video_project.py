@@ -1554,7 +1554,9 @@ class VideoProject(Project):
         :type log_progress: bool
         :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from get_video_snapshot_schema (currently: "v2.0.0").
+        :param schema_version: Snapshot schema version. Controls the internal Parquet
+            layout/fields. Supported values are ``"v2.0.0"`` and ``"v2.1.0"``;
+            the default is ``"v2.1.0"``.
         :type schema_version: str
         :returns: In-memory snapshot stream (io.BytesIO).
         :rtype: io.BytesIO

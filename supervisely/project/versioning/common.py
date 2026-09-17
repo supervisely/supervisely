@@ -11,9 +11,10 @@ from supervisely.project.versioning.volume_schema import (
     VolumeSnapshotSchema,
 )
 
-# Pickle. Predates the Parquet container. Nothing writes it any more, and everything
-# still reads it: archives created before the switch have to stay restorable for as
-# long as their versions exist.
+# Pickle. Predates the Parquet container. The public image backup API keeps writing it
+# by default for callers without the optional Parquet dependency; Data Versioning asks
+# for the current format explicitly. Everything still reads it: old archives have to
+# stay restorable for as long as their versions exist.
 IMAGE_SCHEMA_VERSION_V1 = "v1.0.0"
 
 # Parquet, same container as video and volume snapshots.

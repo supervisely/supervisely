@@ -3764,7 +3764,7 @@ class Project:
         log_progress: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
         return_bytesio: Optional[bool] = False,
-        schema_version: str = DEFAULT_IMAGE_SCHEMA_VERSION,
+        schema_version: str = IMAGE_SCHEMA_VERSION_V1,
         fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> Union[str, io.BytesIO]:
         """
@@ -3772,7 +3772,9 @@ class Project:
         This type of project download is more suitable for creating local backups.
         It is also suitable for cases where you don't need access to individual project files, such as images or annotations.
 
-        The default format (``schema_version="v2.0.0"``) is a ``.tar.zst`` holding
+        The default format (``schema_version="v1.0.0"``) is the legacy pickle format,
+        kept as the default so existing SDK callers do not acquire a new optional
+        dependency. ``schema_version="v2.1.0"`` is a ``.tar.zst`` holding
         ``project_info.json``, ``project_meta.json``, ``manifest.json`` and Parquet tables
         for datasets, images, figures and alpha-mask geometries - the same container video
         and volume projects use. It needs the ``versioning`` extra (pyarrow).
@@ -3804,7 +3806,8 @@ class Project:
         :type progress_cb: tqdm or callable, optional
         :param return_bytesio: If True, returns BytesIO object instead of saving it to the disk.
         :type return_bytesio: bool, optional
-        :param schema_version: Snapshot format, ``"v2.0.0"`` (default) or ``"v1.0.0"`` - see above.
+        :param schema_version: Snapshot format, ``"v1.0.0"`` (default), ``"v2.0.0"``
+            or ``"v2.1.0"`` - see above. Parquet formats require the ``versioning`` extra.
         :type schema_version: str, optional
         :returns: Path to the binary file or BytesIO object.
         :rtype: str or io.BytesIO
@@ -3843,6 +3846,7 @@ class Project:
                 batch_size=batch_size,
                 log_progress=log_progress,
                 progress_cb=progress_cb,
+                schema_version=schema_version,
                 fetch_workers=fetch_workers,
             )
             if return_bytesio:
