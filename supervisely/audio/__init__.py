@@ -18,6 +18,7 @@ from supervisely.audio.spectrogram import (
     render_from_file,
     render_segment,
     render_spectrogram,
+    scale_position_to_hz,
     stft_magnitude,
     to_image,
 )

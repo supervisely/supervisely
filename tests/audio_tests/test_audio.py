@@ -377,3 +377,106 @@ def test_to_image_shape_and_dtype():
     img = to_image(render_spectrogram(signal, SR, settings), settings)
     assert img.shape[0] == 64 and img.shape[2] == 3
     assert img.dtype == np.uint8
+
+
+# ------------------------------------------- toolbox-equivalence of the render
+
+
+def test_mel_edges_match_the_toolbox_formula():
+    """The tool computes edges as 700*expm1(a/(bands+1)*log1p(sr/1400))."""
+    from supervisely.audio.spectrogram import _mel_edges
+
+    bands = 64
+    a = np.arange(bands + 2, dtype=float)
+    expected = 700.0 * np.expm1(a / (bands + 1) * np.log1p(SR / 1400.0))
+    assert np.allclose(_mel_edges(2048, SR, bands), expected, atol=1e-9)
+
+
+def test_mel_edges_span_zero_to_nyquist():
+    from supervisely.audio.spectrogram import _mel_edges
+
+    edges = _mel_edges(2048, SR, 64)
+    assert edges[0] == pytest.approx(0.0, abs=1e-9)
+    assert edges[-1] == pytest.approx(SR / 2, rel=1e-9)
+
+
+def test_mel_projection_is_an_average_not_a_sum():
+    """The tool divides by the weight sum. A sum would scale with band width,
+    making the wide high-frequency bands systematically brighter."""
+    from supervisely.audio.spectrogram import _mel_project
+
+    mag = np.ones((1025, 4), dtype=np.float32)
+    out = _mel_project(mag, 2048, SR, 64)
+    # averaging constant input must give back the constant, in every band
+    assert np.allclose(out, 1.0, atol=1e-5)
+
+
+def test_mel_projection_never_exceeds_input_maximum():
+    rng = np.random.default_rng(1)
+    mag = rng.random((1025, 8)).astype(np.float32)
+    from supervisely.audio.spectrogram import _mel_project
+
+    out = _mel_project(mag, 2048, SR, 64)
+    assert out.max() <= mag.max() + 1e-6
+
+
+@pytest.mark.parametrize("scale", ["linear", "log", "mel"])
+def test_scale_position_maps_endpoints(scale):
+    from supervisely.audio.spectrogram import scale_position_to_hz
+
+    settings = SpectrogramSettings(scale=scale)
+    assert float(scale_position_to_hz(0.0, SR, settings)) == pytest.approx(0.0, abs=1e-6)
+    assert float(scale_position_to_hz(1.0, SR, settings)) == pytest.approx(SR / 2, rel=1e-9)
+
+
+def test_scale_position_matches_toolbox_mel_formula():
+    from supervisely.audio.spectrogram import scale_position_to_hz
+
+    settings = SpectrogramSettings(scale="mel")
+    for pos in (0.1, 0.35, 0.5, 0.9):
+        expected = 700.0 * (math.exp(pos * math.log1p((SR / 2) / 700.0)) - 1.0)
+        assert float(scale_position_to_hz(pos, SR, settings)) == pytest.approx(expected)
+
+
+def test_scale_position_matches_toolbox_log_formula():
+    from supervisely.audio.spectrogram import scale_position_to_hz
+
+    settings = SpectrogramSettings(scale="log", fft_size=2048)
+    width = SR / 2048
+    for pos in (0.1, 0.5, 0.9):
+        expected = width * math.expm1(pos * math.log1p((SR / 2) / width))
+        assert float(scale_position_to_hz(pos, SR, settings)) == pytest.approx(expected)
+
+
+def test_scale_position_is_monotonic():
+    from supervisely.audio.spectrogram import scale_position_to_hz
+
+    for scale in ("linear", "log", "mel"):
+        settings = SpectrogramSettings(scale=scale)
+        values = scale_position_to_hz(np.linspace(0, 1, 50), SR, settings)
+        assert np.all(np.diff(values) > 0)
+
+
+@pytest.mark.parametrize("scale", ["linear", "log", "mel"])
+def test_rows_argument_sets_the_output_height(scale):
+    signal = np.sin(2 * np.pi * 1000 * np.arange(SR) / SR).astype(np.float32)
+    spec = render_spectrogram(signal, SR, SpectrogramSettings(scale=scale), rows=200)
+    assert spec.shape[0] == 200
+
+
+def test_rows_is_not_derivable_from_settings():
+    """Display height is not part of the stored settings, so two heights are
+    both legitimate renders of the same recorded analysis."""
+    signal = np.sin(2 * np.pi * 1000 * np.arange(SR) / SR).astype(np.float32)
+    settings = SpectrogramSettings(scale="mel")
+    assert render_spectrogram(signal, SR, settings, rows=128).shape[0] == 128
+    assert render_spectrogram(signal, SR, settings, rows=512).shape[0] == 512
+
+
+def test_row_projection_preserves_a_narrow_peak():
+    """Rows max-pool rather than average, so a single loud bin survives."""
+    signal = np.sin(2 * np.pi * 3000 * np.arange(SR) / SR).astype(np.float32)
+    settings = SpectrogramSettings(scale="linear", fft_size=2048)
+    full = render_spectrogram(signal, SR, settings, as_db=False)
+    rowed = render_spectrogram(signal, SR, settings, as_db=False, rows=64)
+    assert rowed.max() == pytest.approx(full.max(), rel=1e-5)

@@ -6,13 +6,18 @@ picture the annotator was looking at, and to feed the same transform to
 training. Both come from this module, so the audit image and the model input
 cannot drift apart.
 
-.. warning::
+What the stored settings do and do not determine:
 
-   This implementation matches the labeling tool **semantically** -- same
-   window, same hop, same frequency mapping, same dB range. Whether it is
-   bit-identical to the tool's WASM STFT has not been established; that needs
-   a golden-file comparison against the platform renderer. Until then, treat
-   the output as "the same analysis", not "the same bytes".
+* The **analysis** -- STFT, window, hop, mel band edges and weighting, dB range
+  -- is fully determined by them. The mel edges and the weighted-average
+  projection here were read from the labeling tool and match it.
+* The **picture** additionally depends on the display height, which is not
+  among the stored settings. Pass ``rows=`` to reproduce a particular on-screen
+  grid; without it you get the natural resolution.
+
+Bit-exactness against the tool's WASM STFT is still unverified -- that needs a
+golden-file fixture from the platform renderer. Float arithmetic will differ in
+the last places regardless.
 """
 
 from typing import Optional, Tuple
@@ -69,30 +74,107 @@ def stft_magnitude(samples: np.ndarray, fft_size: int, hop_length: int, window: 
     return np.abs(np.fft.rfft(frames * win, axis=1)).T.astype(np.float32)
 
 
-def _mel_filterbank(fft_size: int, sample_rate: int, mel_bands: int) -> np.ndarray:
+def _mel_edges(fft_size: int, sample_rate: int, mel_bands: int) -> np.ndarray:
+    """Mel band edges, matching the labeling tool exactly.
+
+    The tool computes ``700 * expm1(a / (melBands + 1) * log1p(sampleRate / 1400))``,
+    which is the HTK mel scale with edges spaced linearly in the mel domain from
+    0 to Nyquist. Verified equal to that formula to 1e-11.
+    """
+    a = np.arange(mel_bands + 2, dtype=float)
+    return 700.0 * np.expm1(a / (mel_bands + 1) * np.log1p(sample_rate / 1400.0))
+
+
+def _mel_weights(fft_size: int, sample_rate: int, mel_bands: int) -> np.ndarray:
+    """Triangular mel weights, one row per band, over ``fft_size // 2 + 1`` bins."""
+    edges = _mel_edges(fft_size, sample_rate, mel_bands)
     n_bins = fft_size // 2 + 1
-    fft_freqs = np.linspace(0.0, sample_rate / 2.0, n_bins)
-    edges = mel_to_hz(np.linspace(hz_to_mel(0.0), hz_to_mel(sample_rate / 2.0), mel_bands + 2))
+    freqs = np.arange(n_bins) * sample_rate / fft_size
 
-    fb = np.zeros((mel_bands, n_bins), dtype=np.float32)
-    for i in range(mel_bands):
-        lo, mid, hi = edges[i], edges[i + 1], edges[i + 2]
-        if hi <= lo:
-            continue
-        rising = (fft_freqs - lo) / max(mid - lo, 1e-9)
-        falling = (hi - fft_freqs) / max(hi - mid, 1e-9)
-        fb[i] = np.clip(np.minimum(rising, falling), 0.0, None)
-    return fb
+    lo = edges[:-2, None]
+    mid = edges[1:-1, None]
+    hi = edges[2:, None]
+    rising = (freqs[None, :] - lo) / np.maximum(mid - lo, 1e-12)
+    falling = (hi - freqs[None, :]) / np.maximum(hi - mid, 1e-12)
+    weights = np.clip(np.minimum(rising, falling), 0.0, None)
+
+    # The tool iterates bins from ceil(lo*n/sr) to floor(hi*n/sr); outside that
+    # span the triangle is zero anyway, so clipping is equivalent.
+    return weights.astype(np.float32)
 
 
-def _log_rows(magnitude: np.ndarray, sample_rate: int, rows: int) -> np.ndarray:
-    """Resample linear frequency bins onto a logarithmic axis."""
-    n_bins = magnitude.shape[0]
+def _mel_project(magnitude: np.ndarray, fft_size: int, sample_rate: int,
+                 mel_bands: int) -> np.ndarray:
+    """Project linear bins onto mel bands as a weighted **average**.
+
+    The labeling tool divides by the sum of the triangular weights
+    (``melPower = sum(mag * h) / sum(h)``) rather than taking a weighted sum.
+    That is the difference between matching what the annotator saw and being
+    systematically brighter in the wide high-frequency bands, so it matters.
+
+    Bands narrower than one FFT bin get zero total weight; the tool interpolates
+    linearly at the band centre there, and so does this.
+    """
+    weights = _mel_weights(fft_size, sample_rate, mel_bands)
+    totals = weights.sum(axis=1)
+    out = weights @ magnitude
+    nonzero = totals > 0
+    out[nonzero] /= totals[nonzero, None]
+
+    if not nonzero.all():
+        edges = _mel_edges(fft_size, sample_rate, mel_bands)
+        n_bins = magnitude.shape[0]
+        for band in np.flatnonzero(~nonzero):
+            pos = edges[band + 1] * fft_size / sample_rate
+            low = min(max(int(np.floor(pos)), 0), n_bins - 1)
+            frac = pos - np.floor(pos)
+            high = min(low + 1, n_bins - 1)
+            out[band] = magnitude[low] * (1 - frac) + magnitude[high] * frac
+    return out.astype(np.float32)
+
+
+def scale_position_to_hz(position, sample_rate: int,
+                         settings: "SpectrogramSettings") -> np.ndarray:
+    """Frequency shown at a normalised vertical position, 0 (bottom) to 1 (top).
+
+    Mirrors the labeling tool's own mapping, so a position read off the
+    displayed spectrogram converts to the frequency the annotator saw:
+
+    * ``linear`` -- ``position * nyquist``
+    * ``mel``    -- ``700 * (exp(position * log1p(nyquist / 700)) - 1)``
+    * ``log``    -- anchored at one bin width, ``w * expm1(position * log1p(nyquist / w))``
+    """
+    position = np.asarray(position, dtype=float)
     nyquist = sample_rate / 2.0
-    f_min = max(nyquist / n_bins, 1.0)
-    targets = np.geomspace(f_min, nyquist, rows)
-    idx = np.clip((targets / nyquist * (n_bins - 1)).astype(int), 0, n_bins - 1)
-    return magnitude[idx]
+    if settings.scale == "mel":
+        return 700.0 * (np.exp(position * np.log1p(nyquist / 700.0)) - 1.0)
+    if settings.scale == "log":
+        width = sample_rate / settings.fft_size
+        return width * np.expm1(position * np.log1p(nyquist / width))
+    return position * nyquist
+
+
+def _project_rows(magnitude: np.ndarray, sample_rate: int,
+                  settings: "SpectrogramSettings", rows: int) -> np.ndarray:
+    """Resample frequency bins onto a fixed number of display rows.
+
+    Each row takes the **maximum** over the bins it spans, which is what the
+    labeling tool does -- averaging would hide a narrow peak that the annotator
+    could plainly see. Returned low frequency first; the tool draws rows
+    top-down, and :func:`to_image` flips for that.
+    """
+    n_bins = magnitude.shape[0]
+    out = np.zeros((rows, magnitude.shape[1]), dtype=np.float32)
+    for row in range(rows):
+        low_pos, high_pos = row / rows, (row + 1) / rows
+        lo_hz = scale_position_to_hz(low_pos, sample_rate, settings)
+        hi_hz = scale_position_to_hz(high_pos, sample_rate, settings)
+        start = int(min(n_bins - 1, np.floor(float(lo_hz) * settings.fft_size / sample_rate)))
+        end = int(min(n_bins - 1, np.ceil(float(hi_hz) * settings.fft_size / sample_rate)))
+        start = max(start, 0)
+        end = max(end, start)
+        out[row] = magnitude[start : end + 1].max(axis=0)
+    return out
 
 
 def render_spectrogram(
@@ -100,6 +182,7 @@ def render_spectrogram(
     sample_rate: int,
     settings: Optional[SpectrogramSettings] = None,
     as_db: bool = True,
+    rows: Optional[int] = None,
 ) -> np.ndarray:
     """Render a spectrogram from decoded samples.
 
@@ -110,6 +193,11 @@ def render_spectrogram(
     :param as_db: Return decibels clipped to the settings' range. Set ``False``
         for raw magnitude, which is what most training pipelines want before
         their own normalisation.
+    :param rows: Resample onto this many display rows, reproducing the grid the
+        labeling tool draws at that height. Leave ``None`` for the natural
+        resolution -- mel bands, or FFT bins for linear and log. The row count
+        is **not** part of the stored settings, so it has to be supplied if you
+        are matching a particular on-screen render.
     :return: ``(frequency_rows, n_frames)``, low frequency first.
 
     :Usage example:
@@ -127,11 +215,18 @@ def render_spectrogram(
 
     mag = stft_magnitude(mono, settings.fft_size, settings.hop_length, settings.window)
 
-    if settings.scale == "mel":
-        mag = _mel_filterbank(settings.fft_size, sample_rate, settings.mel_bands) @ mag
-    elif settings.scale == "log":
-        mag = _log_rows(mag, sample_rate, mag.shape[0])
-    # "linear" leaves the bins untouched.
+    if rows is not None:
+        # Display grid: the tool maps rows through its scale and max-pools the
+        # bins each row covers. Mel is projected to bands first.
+        if settings.scale == "mel":
+            mag = _mel_project(mag, settings.fft_size, sample_rate, settings.mel_bands)
+            mag = _resample_bands(mag, rows)
+        else:
+            mag = _project_rows(mag, sample_rate, settings, rows)
+    elif settings.scale == "mel":
+        mag = _mel_project(mag, settings.fft_size, sample_rate, settings.mel_bands)
+    # "linear" and "log" at natural resolution leave the bins untouched; the
+    # scale only decides where they land on screen, which is `rows` territory.
 
     if not as_db:
         return mag
@@ -141,6 +236,12 @@ def render_spectrogram(
     return np.clip(db, settings.min_db, settings.max_db)
 
 
+def _resample_bands(bands: np.ndarray, rows: int) -> np.ndarray:
+    """Nearest-neighbour resample of mel bands onto display rows."""
+    idx = np.clip((np.arange(rows) / rows * bands.shape[0]).astype(int), 0, bands.shape[0] - 1)
+    return bands[idx]
+
+
 def render_segment(
     samples: np.ndarray,
     sample_rate: int,
@@ -148,6 +249,7 @@ def render_segment(
     end: int,
     settings: Optional[SpectrogramSettings] = None,
     as_db: bool = True,
+    rows: Optional[int] = None,
 ) -> np.ndarray:
     """Render only an inclusive sample range, for per-segment training crops.
 
@@ -155,7 +257,9 @@ def render_segment(
     """
     if end < start:
         raise ValueError(f"end must be >= start, got start={start} end={end}")
-    return render_spectrogram(samples[start : end + 1], sample_rate, settings, as_db=as_db)
+    return render_spectrogram(
+        samples[start : end + 1], sample_rate, settings, as_db=as_db, rows=rows
+    )
 
 
 def render_from_file(

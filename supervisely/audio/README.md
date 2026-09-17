@@ -116,15 +116,33 @@ raw = sly.render_spectrogram(samples, rate, settings, as_db=False)
 
 Rendering under `segment.settings` reproduces the analysis the annotator saw.
 
-> **Caveat.** The renderer matches the labeling tool *semantically* — same
-> window, hop, frequency mapping and dB range. Whether it is bit-identical to
-> the tool's WASM STFT has not been established. Treat the output as "the same
-> analysis", not "the same bytes", until a golden-file comparison exists.
->
-> Whether bit-exactness is actually required, or whether storing the rendered
-> spectrogram itself would serve better, is an open product question. Recreating
-> from parameters covers the settings we expose; storing the render would also
-> cover a spectrogram computed some other way.
+### What the settings do and do not determine
+
+Confirmed workflow: spectrogram settings are chosen **once per dataset or labeling
+job** and not changed by individual annotators, and reproducing the view from the
+stored parameters is sufficient — the rendered image is not stored. Per-label
+settings may appear later, which is why the settings live on each label rather
+than on the project.
+
+* The **analysis** is fully determined by the stored settings. The mel band
+  edges, the weighted-average mel projection and the frequency mapping here were
+  read from the labeling tool and match it.
+* The **picture** also depends on the display height, which is *not* among the
+  stored settings. Pass `rows=` to reproduce a particular on-screen grid:
+
+  ```python
+  spec = sly.render_spectrogram(samples, rate, settings, rows=512)
+  ```
+
+  Without `rows`, you get the natural resolution — mel bands, or FFT bins.
+
+`sly.audio.scale_position_to_hz(position, rate, settings)` converts a normalised
+vertical position on the displayed spectrogram to the frequency the annotator saw,
+using the tool's own mapping.
+
+> Bit-exactness against the tool's WASM STFT is still unverified — that needs a
+> golden-file fixture from the platform renderer, and float arithmetic will differ
+> in the last places regardless. The analysis matches; the last bits are unproven.
 
 WAV is decoded with the standard library. Other formats (FLAC, OGG, MP3, M4A)
 need the optional `soundfile` package.
