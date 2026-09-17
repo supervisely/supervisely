@@ -361,8 +361,12 @@ class LiveTraining:
                 )
 
         status_message = f"{len(self.dataset)} images added"
-        if self.evaluator and self.evaluator.ema_value is not None:
-            status_message += f" | Model Quality: {self.evaluator.ema_value:.2f}"
+        if self.phase != Phase.WAITING_FOR_SAMPLES:
+            quality = self.evaluator.ema_value if self.evaluator else None
+            if quality is None or quality < 0.3:
+                status_message += " | Learning..."
+            else:
+                status_message += f" | Model Quality: {quality:.2f}"
         sly.Progress(status_message, 1, log_extra={"hide_counter": True}).iter_done_report()
 
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
