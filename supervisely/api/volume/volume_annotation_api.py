@@ -162,14 +162,23 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         else:
             figures = ann.figures
 
-        if volume_info is None:
-            volume_info = self._api.volume.get_info_by_id(volume_id)
+        # In a bulk operation both ids are fixed and already known, so an ApiContext
+        # spares a volumes.info round trip per annotation. A VolumeInfo handed in by a
+        # caller can also come from volumes.bulk.add, which does not fill project_id.
+        context = getattr(self._api, "optimization_context", None) or {}
+        project_id = context.get("project_id")
+        dataset_id = context.get("dataset_id")
+        if project_id is None or dataset_id is None:
+            if volume_info is None or volume_info.project_id is None:
+                volume_info = self._api.volume.get_info_by_id(volume_id)
+            project_id = project_id or volume_info.project_id
+            dataset_id = dataset_id or volume_info.dataset_id
         self._append(
             self._api.volume.tag,
             self._api.volume.object,
             self._api.volume.figure,
-            volume_info.project_id,
-            volume_info.dataset_id,
+            project_id,
+            dataset_id,
             volume_id,
             ann.tags,
             ann.objects,

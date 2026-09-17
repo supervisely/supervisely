@@ -1691,16 +1691,22 @@ class FileApi(ModuleApiBase):
             content = None
             if file_info.sizeb <= max_readable_size or not download:
                 self._api._set_client()
-                response = self._api.httpx_client.get(
-                    file_info.full_storage_url, headers=self._api.headers
-                )
-                if response.status_code != httpx.codes.OK:
+                try:
+                    response = self._api.httpx_client.get(
+                        file_info.full_storage_url, headers=self._api.headers
+                    )
+                except httpx.HTTPError as e:
+                    # storage URL can point to an address only reachable from the instance itself
+                    logger.debug(f"Direct storage read failed ({e}), falling back to download")
                     download = True
                 else:
-                    try:
-                        content = response.json()
-                    except ValueError:
+                    if response.status_code != httpx.codes.OK:
                         download = True
+                    else:
+                        try:
+                            content = response.json()
+                        except ValueError:
+                            download = True
             if file_info.sizeb > max_readable_size or download:
                 temp_path = os.path.join(tempfile.mkdtemp(), "temp.json")
                 self._download(team_id, remote_path, temp_path)
