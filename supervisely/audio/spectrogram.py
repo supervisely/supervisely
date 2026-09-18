@@ -6,18 +6,31 @@ picture the annotator was looking at, and to feed the same transform to
 training. Both come from this module, so the audit image and the model input
 cannot drift apart.
 
+Every step here is matched to the labeling tool, which computes its STFT in a
+Rust/WASM kernel and projects it in TypeScript:
+
+* periodic windows, ``1 - cos(2*pi*i/N)`` family, not the symmetric
+  ``numpy`` ones that divide by ``N - 1``;
+* **power**, not magnitude: ``(re^2 + im^2) / sum(window)^2``, doubled in
+  amplitude (``x4`` in power) for every bin except DC and Nyquist, so a
+  full-scale sine reads 0 dB;
+* frames **centred** on ``k * hop_length`` and zero-padded past the ends of the
+  recording;
+* absolute decibels, ``10 * log10(power)``. The tool never normalises by the
+  loudest point, which is what makes two renders of the same recording -- a
+  crop and the whole file -- comparable at all.
+
 What the stored settings do and do not determine:
 
 * The **analysis** -- STFT, window, hop, mel band edges and weighting, dB range
-  -- is fully determined by them. The mel edges and the weighted-average
-  projection here were read from the labeling tool and match it.
+  -- is fully determined by them.
 * The **picture** additionally depends on the display height, which is not
   among the stored settings. Pass ``rows=`` to reproduce a particular on-screen
   grid; without it you get the natural resolution.
 
-Bit-exactness against the tool's WASM STFT is still unverified -- that needs a
-golden-file fixture from the platform renderer. Float arithmetic will differ in
-the last places regardless.
+Bit-exactness against the tool's WASM kernel is still unverified -- that needs
+a golden-file fixture from the platform renderer. Float arithmetic will differ
+in the last places regardless: the tool transforms in f32, numpy in f64.
 """
 
 from typing import Optional, Tuple
@@ -27,10 +40,21 @@ import numpy as np
 from supervisely.audio.audio_io import read_audio, select_channel
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
 
-_WINDOWS = {
-    "hann": np.hanning,
-    "hamming": np.hamming,
-    "blackman": np.blackman,
+#: Floor applied before taking the logarithm, matching the labeling tool.
+POWER_FLOOR = 1e-20
+
+#: Colour stops of each palette, matching the labeling tool exactly.
+COLOR_STOPS = {
+    "viridis": [(68, 1, 84), (59, 82, 139), (33, 145, 140), (94, 201, 98), (253, 231, 37)],
+    "magma": [(0, 0, 4), (81, 18, 124), (183, 55, 121), (252, 137, 97), (252, 253, 191)],
+    "grayscale": [(0, 0, 0), (255, 255, 255)],
+}
+
+_WINDOW_COEFFS = {
+    # a0 - a1*cos(phase) + a2*cos(2*phase), phase = 2*pi*i/N (periodic).
+    "hann": (0.5, 0.5, 0.0),
+    "hamming": (0.54, 0.46, 0.0),
+    "blackman": (0.42, 0.5, 0.08),
 }
 
 
@@ -44,34 +68,61 @@ def mel_to_hz(mel):
     return 700.0 * (10.0 ** (np.asarray(mel, dtype=float) / 2595.0) - 1.0)
 
 
-def stft_magnitude(samples: np.ndarray, fft_size: int, hop_length: int, window: str) -> np.ndarray:
-    """Short-time Fourier transform magnitude.
+def window_function(name: str, size: int) -> np.ndarray:
+    """Periodic window of ``size`` samples, as float32.
 
-    Frames start at ``k * hop_length`` with no centering padding, matching the
-    labeling tool. The padding convention matters: centering shifts every frame
-    by half a window, which at ``fft_size=2048`` moves an event by 64 ms.
+    ``numpy``'s :func:`~numpy.hanning` and friends are *symmetric* -- they
+    divide the phase by ``size - 1``. The tool builds periodic windows, and the
+    difference shows up as a small but systematic tilt in every frame.
+    """
+    if name not in _WINDOW_COEFFS:
+        raise ValueError(f"unknown window {name!r}")
+    a0, a1, a2 = _WINDOW_COEFFS[name]
+    phase = 2.0 * np.pi * np.arange(size, dtype=np.float64) / size
+    return (a0 - a1 * np.cos(phase) + a2 * np.cos(2.0 * phase)).astype(np.float32)
+
+
+def stft_power(samples: np.ndarray, fft_size: int, hop_length: int, window: str) -> np.ndarray:
+    """Short-time Fourier transform power spectrum, as the labeling tool computes it.
+
+    Frame ``k`` is centred on sample ``k * hop_length`` and covers
+    ``[k * hop_length - fft_size // 2, ... + fft_size)``, zero-padded where it
+    runs past either end of the recording. The centring matters: starting
+    frames at ``k * hop_length`` instead would move every event half a window,
+    which at ``fft_size=2048`` is 64 ms.
+
+    Each bin is scaled by ``1 / sum(window)^2`` and, except at DC and Nyquist,
+    doubled in amplitude to account for the discarded negative frequencies. A
+    full-scale sine therefore reads ``0`` dB.
 
     :return: Array of shape ``(fft_size // 2 + 1, n_frames)``.
     """
-    if window not in _WINDOWS:
-        raise ValueError(f"unknown window {window!r}")
-    if samples.size < fft_size:
-        samples = np.pad(samples, (0, fft_size - samples.size), mode="constant")
+    win = window_function(window, fft_size)
+    # Match the tool: sum the stored float32 window values in float64.
+    normalization = 1.0 / float(np.sum(win.astype(np.float64)) ** 2)
 
-    win = _WINDOWS[window](fft_size).astype(np.float32)
-    n_frames = 1 + (samples.size - fft_size) // hop_length
-    if n_frames < 1:
-        n_frames = 1
+    n_samples = int(samples.size)
+    n_frames = max(1, (max(n_samples, 1) - 1) // hop_length + 1)
 
-    # Strided view avoids materialising n_frames copies of the window.
-    stride = samples.strides[0]
+    half = fft_size // 2
+    needed = (n_frames - 1) * hop_length + fft_size
+    padded = np.zeros(max(needed, half + n_samples), dtype=np.float32)
+    padded[half : half + n_samples] = samples
+
+    stride = padded.strides[0]
     frames = np.lib.stride_tricks.as_strided(
-        samples,
+        padded,
         shape=(n_frames, fft_size),
         strides=(stride * hop_length, stride),
         writeable=False,
     )
-    return np.abs(np.fft.rfft(frames * win, axis=1)).T.astype(np.float32)
+    spectrum = np.fft.rfft(frames * win, axis=1)
+    power = (spectrum.real**2 + spectrum.imag**2) * normalization
+
+    one_sided = np.full(power.shape[1], 4.0)
+    one_sided[0] = 1.0
+    one_sided[-1] = 1.0
+    return (power * one_sided).T.astype(np.float32)
 
 
 def _mel_edges(fft_size: int, sample_rate: int, mel_bands: int) -> np.ndarray:
@@ -103,12 +154,11 @@ def _mel_weights(fft_size: int, sample_rate: int, mel_bands: int) -> np.ndarray:
     return weights.astype(np.float32)
 
 
-def _mel_project(magnitude: np.ndarray, fft_size: int, sample_rate: int,
-                 mel_bands: int) -> np.ndarray:
-    """Project linear bins onto mel bands as a weighted **average**.
+def _mel_project(power: np.ndarray, fft_size: int, sample_rate: int, mel_bands: int) -> np.ndarray:
+    """Project linear bins onto mel bands as a weighted **average** of power.
 
     The labeling tool divides by the sum of the triangular weights
-    (``melPower = sum(mag * h) / sum(h)``) rather than taking a weighted sum.
+    (``melPower = sum(power * h) / sum(h)``) rather than taking a weighted sum.
     That is the difference between matching what the annotator saw and being
     systematically brighter in the wide high-frequency bands, so it matters.
 
@@ -117,19 +167,19 @@ def _mel_project(magnitude: np.ndarray, fft_size: int, sample_rate: int,
     """
     weights = _mel_weights(fft_size, sample_rate, mel_bands)
     totals = weights.sum(axis=1)
-    out = weights @ magnitude
+    out = weights @ power
     nonzero = totals > 0
     out[nonzero] /= totals[nonzero, None]
 
     if not nonzero.all():
         edges = _mel_edges(fft_size, sample_rate, mel_bands)
-        n_bins = magnitude.shape[0]
+        n_bins = power.shape[0]
         for band in np.flatnonzero(~nonzero):
             pos = edges[band + 1] * fft_size / sample_rate
             low = min(max(int(np.floor(pos)), 0), n_bins - 1)
             frac = pos - np.floor(pos)
             high = min(low + 1, n_bins - 1)
-            out[band] = magnitude[low] * (1 - frac) + magnitude[high] * frac
+            out[band] = power[low] * (1 - frac) + power[high] * frac
     return out.astype(np.float32)
 
 
@@ -154,26 +204,57 @@ def scale_position_to_hz(position, sample_rate: int,
     return position * nyquist
 
 
-def _project_rows(magnitude: np.ndarray, sample_rate: int,
-                  settings: "SpectrogramSettings", rows: int) -> np.ndarray:
+def _project_rows(power: np.ndarray, sample_rate: int, settings: "SpectrogramSettings",
+                  rows: int, mel_power: Optional[np.ndarray] = None) -> np.ndarray:
     """Resample frequency bins onto a fixed number of display rows.
 
-    Each row takes the **maximum** over the bins it spans, which is what the
-    labeling tool does -- averaging would hide a narrow peak that the annotator
-    could plainly see. Returned low frequency first; the tool draws rows
-    top-down, and :func:`to_image` flips for that.
+    Follows the tool row for row. Linear and log rows take the **maximum** over
+    the bins they span -- averaging would hide a narrow peak the annotator could
+    plainly see. Mel rows take the band their midpoint falls in. With
+    ``interpolation="smooth"`` a row that covers less than one bin (or one mel
+    band) interpolates instead of snapping, which is why ``interpolation``
+    changes the numbers here even though it is cosmetic at natural resolution.
+
+    Rows are returned low frequency first; the tool draws them top-down and
+    :func:`to_image` flips for that.
     """
-    n_bins = magnitude.shape[0]
-    out = np.zeros((rows, magnitude.shape[1]), dtype=np.float32)
-    for row in range(rows):
-        low_pos, high_pos = row / rows, (row + 1) / rows
-        lo_hz = scale_position_to_hz(low_pos, sample_rate, settings)
-        hi_hz = scale_position_to_hz(high_pos, sample_rate, settings)
-        start = int(min(n_bins - 1, np.floor(float(lo_hz) * settings.fft_size / sample_rate)))
-        end = int(min(n_bins - 1, np.ceil(float(hi_hz) * settings.fft_size / sample_rate)))
-        start = max(start, 0)
-        end = max(end, start)
-        out[row] = magnitude[start : end + 1].max(axis=0)
+    n_bins = power.shape[0]
+    half = settings.fft_size // 2
+    smooth = settings.interpolation == "smooth"
+    out = np.zeros((rows, power.shape[1]), dtype=np.float32)
+
+    for y in range(rows):
+        # The tool's row `y` counts from the top; ours counts from the bottom.
+        bottom, top = y / rows, (y + 1) / rows
+        low_bin = float(scale_position_to_hz(bottom, sample_rate, settings)) * settings.fft_size / sample_rate
+        high_bin = float(scale_position_to_hz(top, sample_rate, settings)) * settings.fft_size / sample_rate
+        middle = (bottom + top) / 2.0
+
+        position = -1.0
+        if smooth:
+            if settings.scale == "mel" and rows > settings.mel_bands:
+                position = min(max(middle * settings.mel_bands - 0.5, 0.0), settings.mel_bands - 1)
+            elif settings.scale != "mel" and high_bin - low_bin < 1:
+                position = min(
+                    float(half),
+                    float(scale_position_to_hz(middle, sample_rate, settings)) * settings.fft_size / sample_rate,
+                )
+
+        if position >= 0:
+            values = mel_power if settings.scale == "mel" else power
+            low = int(np.floor(position))
+            frac = position - low
+            high = min(low + 1, values.shape[0] - 1)
+            out[y] = values[low] * (1 - frac) + values[high] * frac
+        elif settings.scale == "mel":
+            band = min(settings.mel_bands - 1, int(np.floor(middle * settings.mel_bands)))
+            out[y] = mel_power[band]
+        else:
+            start = min(half, int(np.floor(low_bin)))
+            end = min(half, int(np.ceil(high_bin)))
+            start = min(max(start, 0), n_bins - 1)
+            end = min(max(end, start), n_bins - 1)
+            out[y] = power[start : end + 1].max(axis=0)
     return out
 
 
@@ -190,9 +271,10 @@ def render_spectrogram(
         ``settings`` is selected, or all channels are mixed down.
     :param sample_rate: Sample rate of the recording.
     :param settings: Settings to render under. Defaults to the platform default.
-    :param as_db: Return decibels clipped to the settings' range. Set ``False``
-        for raw magnitude, which is what most training pipelines want before
-        their own normalisation.
+    :param as_db: Return absolute decibels clipped to the settings' range. Set
+        ``False`` for raw power, which is what most training pipelines want
+        before their own normalisation. Decibels are absolute: a crop and a full
+        render of the same recording give the same numbers for the same event.
     :param rows: Resample onto this many display rows, reproducing the grid the
         labeling tool draws at that height. Leave ``None`` for the natural
         resolution -- mel bands, or FFT bins for linear and log. The row count
@@ -213,33 +295,24 @@ def render_spectrogram(
     mono = select_channel(samples, settings.channel)
     mono = np.ascontiguousarray(mono, dtype=np.float32)
 
-    mag = stft_magnitude(mono, settings.fft_size, settings.hop_length, settings.window)
+    power = stft_power(mono, settings.fft_size, settings.hop_length, settings.window)
+
+    mel_power = None
+    if settings.scale == "mel":
+        mel_power = _mel_project(power, settings.fft_size, sample_rate, settings.mel_bands)
 
     if rows is not None:
-        # Display grid: the tool maps rows through its scale and max-pools the
-        # bins each row covers. Mel is projected to bands first.
-        if settings.scale == "mel":
-            mag = _mel_project(mag, settings.fft_size, sample_rate, settings.mel_bands)
-            mag = _resample_bands(mag, rows)
-        else:
-            mag = _project_rows(mag, sample_rate, settings, rows)
-    elif settings.scale == "mel":
-        mag = _mel_project(mag, settings.fft_size, sample_rate, settings.mel_bands)
+        power = _project_rows(power, sample_rate, settings, rows, mel_power)
+    elif mel_power is not None:
+        power = mel_power
     # "linear" and "log" at natural resolution leave the bins untouched; the
     # scale only decides where they land on screen, which is `rows` territory.
 
     if not as_db:
-        return mag
+        return power
 
-    db = 20.0 * np.log10(np.maximum(mag, 1e-10))
-    db -= db.max()  # 0 dB at the loudest point, as the tool shows it
+    db = 10.0 * np.log10(np.maximum(power, POWER_FLOOR))
     return np.clip(db, settings.min_db, settings.max_db)
-
-
-def _resample_bands(bands: np.ndarray, rows: int) -> np.ndarray:
-    """Nearest-neighbour resample of mel bands onto display rows."""
-    idx = np.clip((np.arange(rows) / rows * bands.shape[0]).astype(int), 0, bands.shape[0] - 1)
-    return bands[idx]
 
 
 def render_segment(
@@ -253,7 +326,9 @@ def render_segment(
 ) -> np.ndarray:
     """Render only an inclusive sample range, for per-segment training crops.
 
-    ``end`` is inclusive, matching the platform's ``frameRange``.
+    ``end`` is inclusive, matching the platform's ``frameRange``. Decibels are
+    absolute, so a crop is directly comparable with the full render and with
+    crops of other recordings.
     """
     if end < start:
         raise ValueError(f"end must be >= start, got start={start} end={end}")
@@ -278,17 +353,19 @@ def render_from_file(
 def to_image(spectrogram: np.ndarray, settings: Optional[SpectrogramSettings] = None) -> np.ndarray:
     """Paint a dB spectrogram as an RGB uint8 image, low frequency at the bottom.
 
+    Uses the labeling tool's own colour stops with the same linear
+    interpolation between them, so the picture matches what the annotator saw.
+
     :return: ``(rows, frames, 3)`` uint8, ready for ``sly.image.write``.
     """
     settings = settings or SpectrogramSettings()
     lo, hi = settings.min_db, settings.max_db
-    norm = np.clip((spectrogram - lo) / max(hi - lo, 1e-9), 0.0, 1.0)
-    norm = np.flipud(norm)  # low frequency at the bottom, as the tool draws it
+    level = np.clip((spectrogram - lo) / max(hi - lo, 1e-9), 0.0, 1.0)
+    level = np.flipud(level)  # low frequency at the bottom, as the tool draws it
 
-    if settings.colormap == "grayscale":
-        rgb = np.stack([norm] * 3, axis=-1)
-    elif settings.colormap == "magma":
-        rgb = np.stack([norm**0.5, norm**1.7, np.clip(1.2 * norm**2.4, 0, 1)], axis=-1)
-    else:  # viridis
-        rgb = np.stack([np.clip(1.1 * norm**2, 0, 1), norm**0.8, np.clip(0.9 - 0.5 * norm, 0, 1)], axis=-1)
-    return (rgb * 255).astype(np.uint8)
+    stops = np.asarray(COLOR_STOPS[settings.colormap], dtype=np.float64)
+    position = level * (len(stops) - 1)
+    low = np.clip(np.floor(position), 0, len(stops) - 2).astype(int)
+    frac = (position - low)[..., None]
+    rgb = stops[low] * (1 - frac) + stops[low + 1] * frac
+    return np.clip(np.round(rgb), 0, 255).astype(np.uint8)

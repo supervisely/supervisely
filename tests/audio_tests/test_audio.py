@@ -19,12 +19,14 @@ from supervisely.audio.audio_segment import (
     seconds_to_samples,
 )
 from supervisely.audio.spectrogram import (
+    COLOR_STOPS,
     hz_to_mel,
     mel_to_hz,
     render_segment,
     render_spectrogram,
-    stft_magnitude,
+    stft_power,
     to_image,
+    window_function,
 )
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
 from supervisely.project.project_type import ProjectType
@@ -299,15 +301,17 @@ def test_mel_scale_round_trips():
 
 def test_stft_shape_matches_settings():
     signal = np.sin(2 * np.pi * 440 * np.arange(SR) / SR).astype(np.float32)
-    mag = stft_magnitude(signal, fft_size=1024, hop_length=256, window="hann")
-    assert mag.shape[0] == 1024 // 2 + 1
-    assert mag.shape[1] == 1 + (SR - 1024) // 256
+    power = stft_power(signal, fft_size=1024, hop_length=256, window="hann")
+    assert power.shape[0] == 1024 // 2 + 1
+    # Frames are centred on k*hop, so every hop that falls inside the recording
+    # produces one -- the tool's `lastCenter = floor((sampleCount-1)/hop)*hop`.
+    assert power.shape[1] == (SR - 1) // 256 + 1
 
 
 def test_stft_finds_the_right_frequency():
     signal = np.sin(2 * np.pi * 1000 * np.arange(SR) / SR).astype(np.float32)
-    mag = stft_magnitude(signal, 2048, 512, "hann")
-    peak_bin = int(np.argmax(mag[:, mag.shape[1] // 2]))
+    power = stft_power(signal, 2048, 512, "hann")
+    peak_bin = int(np.argmax(power[:, power.shape[1] // 2]))
     assert peak_bin * (SR / 2048) == pytest.approx(1000, abs=SR / 2048)
 
 
@@ -480,3 +484,101 @@ def test_row_projection_preserves_a_narrow_peak():
     full = render_spectrogram(signal, SR, settings, as_db=False)
     rowed = render_spectrogram(signal, SR, settings, as_db=False, rows=64)
     assert rowed.max() == pytest.approx(full.max(), rel=1e-5)
+
+
+# ------------------------------------ analysis parity with the labeling tool
+#
+# The tool's kernel is `shared/wasm/audio-fft-rs/audio-fft/src/lib.rs` and its
+# projection is `labeling-tool/src/tools/audio/engine/spectrum.ts` on the
+# platform side. These tests pin the four things that make the numbers match.
+
+
+def test_windows_are_periodic_like_the_tool():
+    """The tool builds `2*pi*i/N` windows; numpy's divide by `N - 1`."""
+    size = 64
+    phase = 2 * np.pi * np.arange(size) / size
+    assert np.allclose(window_function("hann", size), 0.5 - 0.5 * np.cos(phase), atol=1e-7)
+    assert np.allclose(
+        window_function("hamming", size), 0.54 - 0.46 * np.cos(phase), atol=1e-7
+    )
+    assert np.allclose(
+        window_function("blackman", size),
+        0.42 - 0.5 * np.cos(phase) + 0.08 * np.cos(2 * phase),
+        atol=1e-7,
+    )
+    assert not np.allclose(window_function("hann", size), np.hanning(size), atol=1e-3)
+
+
+def test_full_scale_sine_reads_zero_db():
+    """`1 / sum(window)^2` with the one-sided doubling calibrates 0 dB to a
+    full-scale sine, which is what `maxDb = 0` means in the tool."""
+    signal = np.sin(2 * np.pi * 1000 * np.arange(SR) / SR).astype(np.float32)
+    spec = render_spectrogram(
+        signal, SR, SpectrogramSettings(min_db=-120.0, max_db=20.0)
+    )
+    assert spec.max() == pytest.approx(0.0, abs=0.5)
+
+
+def test_constant_signal_puts_unit_power_in_dc():
+    """DC and Nyquist are not doubled: a constant 1.0 reads exactly 0 dB."""
+    signal = np.ones(4096, dtype=np.float32)
+    power = stft_power(signal, 1024, 256, "hann")
+    middle = power.shape[1] // 2
+    assert power[0, middle] == pytest.approx(1.0, rel=1e-4)
+
+
+def test_decibels_are_absolute_so_crops_stay_comparable():
+    """The regression that matters: a segment render must not renormalise to
+    its own loudest point, or the same event reads differently in a crop."""
+    t = np.arange(2 * SR) / SR
+    signal = np.zeros(2 * SR, dtype=np.float32)
+    signal[:SR] = 0.9 * np.sin(2 * np.pi * 440 * t[:SR])
+    signal[SR:] = 0.05 * np.sin(2 * np.pi * 1200 * t[SR:])
+
+    settings = SpectrogramSettings(fft_size=512, hop_length=256, min_db=-120.0)
+    full = render_spectrogram(signal, SR, settings)
+    crop = render_segment(signal, SR, SR, 2 * SR - 1, settings)
+
+    quiet_in_full = full[:, SR // 256 + 2 : -2].max()
+    quiet_in_crop = crop[:, 2:-2].max()
+    assert quiet_in_crop == pytest.approx(quiet_in_full, abs=0.5)
+
+
+def test_frames_are_centred_on_the_hop_grid():
+    """Frame k covers [k*hop - fft/2, k*hop + fft/2): an impulse at sample 0
+    shows up in frame 0. Starting frames at k*hop instead would move every
+    event half a window -- 64 ms at fft_size=2048."""
+    signal = np.zeros(4096, dtype=np.float32)
+    signal[0] = 1.0
+    power = stft_power(signal, 1024, 256, "hann")
+    assert power[:, 0].sum() > 0
+    assert power[:, 0].sum() > power[:, 3].sum()
+
+
+def test_render_without_db_returns_power():
+    """`as_db=False` hands out power, the quantity the tool projects and the
+    one training pipelines normalise themselves."""
+    signal = np.sin(2 * np.pi * 1000 * np.arange(SR) / SR).astype(np.float32)
+    settings = SpectrogramSettings(fft_size=1024, hop_length=256)
+    quiet = render_spectrogram(0.5 * signal, SR, settings, as_db=False)
+    loud = render_spectrogram(signal, SR, settings, as_db=False)
+    assert loud.max() == pytest.approx(4.0 * quiet.max(), rel=1e-3)
+
+
+def test_to_image_uses_the_tools_colour_stops():
+    settings = SpectrogramSettings(colormap="magma", min_db=-100.0, max_db=0.0)
+    spec = np.array([[-100.0], [0.0]], dtype=np.float32)
+    img = to_image(spec, settings)
+    stops = COLOR_STOPS["magma"]
+    # to_image flips: the first row of the output is the highest frequency,
+    # which is the last row of the input.
+    assert tuple(img[0, 0]) == tuple(stops[-1])
+    assert tuple(img[-1, 0]) == tuple(stops[0])
+
+
+def test_to_image_interpolates_between_stops():
+    settings = SpectrogramSettings(colormap="viridis", min_db=-100.0, max_db=0.0)
+    spec = np.array([[-75.0]], dtype=np.float32)  # level 0.25 -> exactly stop 1
+    img = to_image(spec, settings)
+    assert tuple(img[0, 0]) == tuple(COLOR_STOPS["viridis"][1])
+
