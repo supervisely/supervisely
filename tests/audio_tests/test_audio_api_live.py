@@ -66,11 +66,12 @@ def test_round_trip(api, project, tmp_path):
     # --- upload -----------------------------------------------------------
     path = _write_wav(tmp_path / "rt.wav")
     uploaded = api.audio.upload_path(dataset.id, "rt.wav", path)
-    entity_id = uploaded["id"]
+    entity_id = uploaded.id
     assert entity_id
+    assert uploaded.name == "rt.wav"
 
     # --- the platform stores no audio metadata; decode locally -------------
-    info = sly.get_audio_info(path)
+    info = sly.audio.get_audio_info(path)
     assert info.sample_rate == SR
     assert info.channels == 2
     assert info.sample_count == int(SR * 2.0)
@@ -98,7 +99,7 @@ def test_round_trip(api, project, tmp_path):
     api.audio.add_segments(project.id, entity_id, written)
 
     # --- read back --------------------------------------------------------
-    got = sorted(api.audio.get_segments(entity_id, dataset.id), key=lambda s: s.start)
+    got = sorted(api.audio.get_segments(entity_id), key=lambda s: s.start)
     assert len(got) == 3
 
     for expected, actual in zip(written, got):
@@ -107,21 +108,19 @@ def test_round_trip(api, project, tmp_path):
         if expected.settings is None:
             assert actual.settings is None, "labeled-by-ear provenance must survive"
         else:
-            # `to_meta_json` syncs the settings' inner `channel` to the
-            # segment's channel, because the API rejects the payload without
-            # it. Compare against the object that was actually sent.
-            sent = expected.settings.clone(channel=expected.channel)
-            assert actual.settings.fingerprint == sent.fingerprint
-            assert actual.settings.to_json() == sent.to_json()
+            # The settings' own `channel` is the viewed channel and is written
+            # as-is; the segment's channel is a separate field.
+            assert actual.settings.fingerprint == expected.settings.fingerprint
+            assert actual.settings.to_json() == expected.settings.to_json()
 
     # --- download and render under the recorded settings ------------------
     local = str(tmp_path / "downloaded.wav")
     api.audio.download_path(entity_id, local)
     assert os.path.getsize(local) == os.path.getsize(path)
 
-    samples, rate = sly.read_audio(local)
+    samples, rate = sly.audio.read_audio(local)
     segment = got[0]
-    spec = sly.render_segment(samples, rate, segment.start, segment.end, segment.settings)
+    spec = sly.audio.render_segment(samples, rate, segment.start, segment.end, segment.settings)
     assert spec.shape[0] == segment.settings.mel_bands
 
 

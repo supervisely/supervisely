@@ -3,24 +3,71 @@
 
 Audio is **not** served by the image endpoints -- ``images.list`` answers
 *"This API only supports images projects"*. Recordings come from
-``entities.list``, and its default projection omits both ``tags`` and ``meta``,
-so segment labels and their spectrogram settings are invisible unless the
-``fields`` parameter asks for them explicitly. :attr:`AudioApi.ENTITY_FIELDS`
-is that list.
+``entities.list`` and ``entities.info``, whose default projection omits both
+``tags`` and ``meta``, so segment labels and their spectrogram settings are
+invisible unless the ``fields`` parameter asks for them explicitly.
+:attr:`AudioApi.ENTITY_FIELDS` is that list.
 """
 
 from __future__ import annotations
+from collections.abc import Callable
+from typing import Any, NamedTuple, Optional, Union
 
-import json
-import os
-from urllib.parse import urlencode
-from typing import Any, Dict, List, Optional
-
-from requests_toolbelt import MultipartEncoder
-
+from tqdm import tqdm
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.audio.audio_segment import AudioSegment
-from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
+from supervisely.io.fs import ensure_base_path, get_file_hash
+
+
+class AudioInfo(NamedTuple):
+    """NamedTuple with information about an audio recording on the platform.
+
+    The platform deliberately stores no sample rate, duration or channel count
+    for audio -- ``file_meta`` is only ``{mime, size}``. Anything needing those
+    decodes the file locally, see :func:`supervisely.audio.get_audio_info`.
+
+    :Usage Example:
+
+     .. code-block:: python
+
+        AudioInfo(
+            id=525,
+            name="rain.wav",
+            hash="Cz7LSAAtSlnpZH4sVBhRwrY=",
+            link=None,
+            dataset_id=98,
+            project_id=31,
+            workspace_id=12,
+            created_at="2026-09-16T08:12:01.334Z",
+            updated_at="2026-09-16T08:12:01.334Z",
+            created_by_id=7,
+            meta={},
+            file_meta={"mime": "audio/wav", "size": 1536044},
+            size=1536044,
+            objects_count=0,
+            path_original="/h5un/...wav",
+            full_storage_url="http://localhost/h5un/...wav",
+            tags=[],
+        )
+    """
+
+    id: int
+    name: str
+    hash: str
+    link: str
+    dataset_id: int
+    project_id: int
+    workspace_id: int
+    created_at: str
+    updated_at: str
+    created_by_id: int
+    meta: dict
+    file_meta: dict
+    size: int
+    objects_count: int
+    path_original: str
+    full_storage_url: str
+    tags: list
 
 
 class AudioApi(ModuleApiBase):
@@ -36,88 +83,126 @@ class AudioApi(ModuleApiBase):
 
         api = sly.Api.from_env()
         recordings = api.audio.get_list(dataset_id)
-        segments = api.audio.get_segments(recordings[0]["id"], dataset_id)
+        segments = api.audio.get_segments(recordings[0].id)
     """
 
-    #: Field projection that makes ``entities.list`` return tags *and* their
-    #: ``meta``. Copied from the labeling tool; without it there is no ``tags``
-    #: key at all, and with a partial list ``meta`` comes back missing.
+    #: Field projection that makes ``entities.list`` and ``entities.info``
+    #: return tags *and* their ``meta``. Without it there is no ``tags`` key at
+    #: all, and with a partial list ``meta`` comes back missing.
     ENTITY_FIELDS = [
         "id",
-        "title",
-        "description",
-        "parentId",
-        "projectId",
+        "name",
+        "hash",
+        "link",
         "datasetId",
+        "projectId",
+        "workspaceId",
         "createdAt",
         "updatedAt",
         "createdBy",
         "meta",
-        "pathOriginal",
-        "hash",
         "fileMeta",
-        "fullStorageUrl",
-        "link",
-        "workspaceId",
+        "size",
         "objectsCount",
+        "pathOriginal",
+        "fullStorageUrl",
         "tags",
     ]
 
-    def __init__(self, api):
-        super().__init__(api)
-        self._api = api
+    @staticmethod
+    def info_sequence():
+        """Get list of all :class:`AudioInfo` field names."""
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.HASH,
+            ApiField.LINK,
+            ApiField.DATASET_ID,
+            ApiField.PROJECT_ID,
+            ApiField.WORKSPACE_ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.CREATED_BY_ID,
+            ApiField.META,
+            ApiField.FILE_META,
+            ApiField.SIZE,
+            ApiField.OBJECTS_COUNT,
+            ApiField.PATH_ORIGINAL,
+            ApiField.FULL_STORAGE_URL,
+            ApiField.TAGS,
+        ]
+
+    @staticmethod
+    def info_tuple_name():
+        """Get string name of :class:`AudioInfo` NamedTuple."""
+        return "AudioInfo"
+
+    def _convert_json_info(self, info: dict, skip_missing=True) -> AudioInfo:
+        """Private method. Convert audio information from json to AudioInfo.
+
+        ``entities.bulk.add`` answers with the *default* projection, which
+        names the field ``title`` and leaves out ``tags``. Reading a recording
+        back through :meth:`get_list` or :meth:`get_info_by_id` fills them in.
+        """
+        if info is not None and info.get(ApiField.NAME) is None and "title" in info:
+            info = {**info, ApiField.NAME: info["title"]}
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        return AudioInfo(**res._asdict())
 
     # ------------------------------------------------------------------ read
 
-    def get_list(self, dataset_id: int, recursive: bool = True) -> List[Dict[str, Any]]:
+    def get_list(
+        self,
+        dataset_id: int,
+        filters: Optional[list[dict[str, str]]] = None,
+        recursive: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> list[AudioInfo]:
         """List recordings in a dataset, with their segment labels attached.
 
         :param dataset_id: Dataset to list.
+        :param filters: ``entities.list`` filters, as for images and videos.
         :param recursive: Include nested datasets.
-        :return: Raw entity dicts, each with a ``tags`` key.
+        :param progress_cb: Function for tracking the listing progress.
+        :return: list of :class:`AudioInfo`, each with ``tags`` filled in.
         """
-        entities: List[Dict[str, Any]] = []
-        page = 1
-        while True:
-            # `fields` has to travel as a query parameter: entities.list only
-            # returns `tags` (and their `meta`) when asked for them explicitly.
-            query = urlencode(
-                {"fields": json.dumps(self.ENTITY_FIELDS), "sort": "id", "page": page}
-            )
-            response = self._api.post(
-                f"entities.list?{query}",
-                {"datasetId": dataset_id, "recursive": recursive},
-            ).json()
-            entities.extend(response.get("entities", []))
-            if page >= response.get("pagesCount", 1):
-                break
-            page += 1
-        return entities
+        return self.get_list_all_pages(
+            "entities.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTERS: filters or [],
+                ApiField.FIELDS: self.ENTITY_FIELDS,
+                "recursive": recursive,
+            },
+            progress_cb=progress_cb,
+        )
 
-    def get_info_by_id(self, id: int, dataset_id: int) -> Optional[Dict[str, Any]]:
+    def get_info_by_id(self, id: int) -> Optional[AudioInfo]:
         """Fetch one recording with its tags.
 
-        A ``dataset_id`` is required because the only projection that returns
-        ``meta`` is the list endpoint. ``images.info`` would answer for a single
-        id but silently drops ``meta``, which is exactly the field that carries
-        the spectrogram settings.
-        """
-        for entity in self.get_list(dataset_id):
-            if entity["id"] == id:
-                return entity
-        return None
+        One request: ``entities.info`` answers for a single id and, given the
+        ``fields`` projection, returns ``meta`` -- the field that carries the
+        spectrogram settings.
 
-    def get_segments(self, entity_id: int, dataset_id: int) -> List[AudioSegment]:
+        :param id: Audio entity id.
+        """
+        return self._get_info_by_id(
+            id, "entities.info", fields={ApiField.FIELDS: self.ENTITY_FIELDS}
+        )
+
+    def get_segments(self, entity_id: int) -> list[AudioSegment]:
         """Return the segment labels on a recording.
 
         Recording-level tags (no ``frameRange``) are skipped -- they are
         classifications of the whole file, not segments.
+
+        :param entity_id: Audio entity id.
         """
-        entity = self.get_info_by_id(entity_id, dataset_id)
-        if entity is None:
-            raise KeyError(f"audio entity {entity_id} not found in dataset {dataset_id}")
+        info = self.get_info_by_id(entity_id)
+        if info is None:
+            raise KeyError(f"audio entity {entity_id} not found")
         segments = []
-        for tag in entity.get("tags") or []:
+        for tag in info.tags or []:
             if tag.get("frameRange") is None and tag.get("startFrame") is None:
                 continue
             segments.append(AudioSegment.from_api_json(tag))
@@ -125,51 +210,63 @@ class AudioApi(ModuleApiBase):
 
     # ----------------------------------------------------------------- write
 
-    def upload_path(self, dataset_id: int, name: str, path: str) -> Dict[str, Any]:
+    def upload_path(self, dataset_id: int, name: str, path: str) -> AudioInfo:
         """Upload one local audio file into a dataset."""
         return self.upload_paths(dataset_id, [name], [path])[0]
 
     def upload_paths(
-        self, dataset_id: int, names: List[str], paths: List[str]
-    ) -> List[Dict[str, Any]]:
+        self,
+        dataset_id: int,
+        names: list[str],
+        paths: list[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> list[AudioInfo]:
         """Upload local audio files into a dataset.
+
+        Files already on the server are recognised by hash and not sent again,
+        exactly as for images and videos: re-running an interrupted upload
+        transfers only what is missing.
 
         :param names: Names to give the recordings in the dataset.
         :param paths: Local paths, aligned with ``names``.
+        :param progress_cb: Function for tracking the upload progress, counted
+            in files.
         """
         if len(names) != len(paths):
             raise ValueError(f"got {len(names)} names for {len(paths)} paths")
 
-        hashes = []
-        for path in paths:
-            with open(path, "rb") as fh:
-                encoder = MultipartEncoder(
-                    fields={
-                        get_file_name_with_ext(path): (
-                            os.path.basename(path),
-                            fh,
-                            "audio/*",
-                        )
-                    }
-                )
-                response = self._api.post("images.bulk.upload", encoder)
-            payload = response.json()
-            errors = payload[0].get("errors")
-            if errors:
-                raise RuntimeError(f"upload of {path!r} failed: {errors}")
-            hashes.append(payload[0]["hash"])
+        hashes = [get_file_hash(path) for path in paths]
+        # Reuse the image uploader: the storage layer is shared and detects the
+        # media type from the payload, so it also gives us hash de-duplication,
+        # batching and retries.
+        self._api.image._upload_data_bulk(
+            lambda path: open(path, "rb"), zip(paths, hashes), progress_cb=progress_cb
+        )
+        return self.upload_hashes(dataset_id, names, hashes)
 
-        return self._api.post(
+    def upload_hashes(
+        self, dataset_id: int, names: list[str], hashes: list[str]
+    ) -> list[AudioInfo]:
+        """Add recordings that are already in storage to a dataset, by hash.
+
+        The returned infos carry the endpoint's default projection: no ``tags``
+        and no ``objects_count``. Re-read them with :meth:`get_info_by_id` when
+        those are needed.
+        """
+        if len(names) != len(hashes):
+            raise ValueError(f"got {len(names)} names for {len(hashes)} hashes")
+        response = self._api.post(
             "entities.bulk.add",
             {
                 ApiField.DATASET_ID: dataset_id,
                 "entities": [{"name": n, "hash": h} for n, h in zip(names, hashes)],
             },
         ).json()
+        return [self._convert_json_info(info) for info in response]
 
     def add_segments(
-        self, project_id: int, entity_id: int, segments: List[AudioSegment]
-    ) -> List[Dict[str, Any]]:
+        self, project_id: int, entity_id: int, segments: list[AudioSegment]
+    ) -> list[dict[str, Any]]:
         """Attach segment labels to a recording.
 
         Each segment's spectrogram settings, when present, are written into the
@@ -192,7 +289,7 @@ class AudioApi(ModuleApiBase):
 
     def add_segment(
         self, project_id: int, entity_id: int, segment: AudioSegment
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Attach a single segment label."""
         return self.add_segments(project_id, entity_id, [segment])[0]
 
@@ -202,25 +299,32 @@ class AudioApi(ModuleApiBase):
 
     # ------------------------------------------------------------- rendering
 
-    def download_path(self, id: int, path: str) -> None:
+    def download_path(
+        self, id: int, path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> None:
         """Download a recording's original file, unmodified.
-
-        The platform deliberately stores no sample rate, duration or channel
-        count for audio, so anything needing those decodes the file locally --
-        see :func:`supervisely.audio.get_audio_info`.
 
         :param id: Audio entity id.
         :param path: Local path to write to.
+        :param progress_cb: Function for tracking the download progress,
+            counted in bytes.
         """
         response = self._api.post("images.download", {ApiField.ID: id}, stream=True)
         ensure_base_path(path)
         with open(path, "wb") as fd:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
+                if progress_cb is not None:
+                    progress_cb(len(chunk))
 
-    def download_paths(self, ids: List[int], paths: List[str]) -> None:
+    def download_paths(
+        self,
+        ids: list[int],
+        paths: list[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
         """Download several recordings to local paths."""
         if len(ids) != len(paths):
             raise ValueError(f"got {len(ids)} ids for {len(paths)} paths")
         for id_, path in zip(ids, paths):
-            self.download_path(id_, path)
+            self.download_path(id_, path, progress_cb=progress_cb)
