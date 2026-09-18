@@ -195,6 +195,13 @@ from supervisely import audio
 
 from supervisely.audio.audio_segment import AudioSegment
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
+from supervisely.audio_annotation.audio_annotation import AudioAnnotation
+from supervisely.project.audio_project import (
+    AudioDataset,
+    AudioProject,
+    download_audio_project,
+    upload_audio_project,
+)
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 from supervisely.video_annotation.video_annotation import VideoAnnotation

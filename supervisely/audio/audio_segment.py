@@ -44,7 +44,9 @@ def seconds_to_samples(seconds: float, sample_rate: int) -> int:
 class AudioSegment:
     """A labeled range of an audio recording.
 
-    :param tag_id: Id of the tag meta being applied.
+    :param tag_id: Id of the tag meta being applied. Not needed for a segment
+        that only lives in a local project directory, where tags are addressed
+        by ``name``.
     :param start: First sample of the segment, inclusive.
     :param end: Last sample of the segment, **inclusive**.
     :param value: Tag value, for tags that carry one.
@@ -57,6 +59,8 @@ class AudioSegment:
     :param id: Server id of the tag assignment, when it came from the platform.
     :param entity_id: Id of the recording this label belongs to.
     :param labeler_login: Login of whoever created it.
+    :param name: Name of the tag meta being applied. Local project directories
+        store the name; the API works with ``tag_id``.
 
     :Usage example:
 
@@ -70,15 +74,16 @@ class AudioSegment:
 
     def __init__(
         self,
-        tag_id: int,
-        start: int,
-        end: int,
+        tag_id: Optional[int] = None,
+        start: int = 0,
+        end: int = 0,
         value: Any = None,
         channel: Optional[int] = None,
         settings: Optional[SpectrogramSettings] = None,
         id: Optional[int] = None,
         entity_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
+        name: Optional[str] = None,
     ):
         # numbers.Integral, not int: sample indices routinely arrive as numpy
         # integers from np.argmax / np.flatnonzero. bool is an Integral too.
@@ -103,6 +108,7 @@ class AudioSegment:
         self.id = id
         self.entity_id = entity_id
         self.labeler_login = labeler_login
+        self.name = name
 
     @property
     def sample_count(self) -> int:
@@ -230,8 +236,49 @@ class AudioSegment:
             labeler_login=data.get("labelerLogin"),
         )
 
+    def to_json(self) -> Dict[str, Any]:
+        """Serialize for a local project directory.
+
+        Unlike :meth:`_to_api_json`, this identifies the tag by ``name``: a
+        downloaded project is readable without the server that issued the ids.
+        """
+        data: Dict[str, Any] = {
+            "name": self.name,
+            "frameRange": [self.start, self.end],
+            "channel": self.channel,
+        }
+        if self.value is not None:
+            data["value"] = self.value
+        if self.settings is not None:
+            data["spectrogram"] = self.settings.to_json()
+        if self.tag_id is not None:
+            data["tagId"] = self.tag_id
+        if self.id is not None:
+            data["id"] = self.id
+        if self.labeler_login is not None:
+            data["labelerLogin"] = self.labeler_login
+        return data
+
+    @classmethod
+    def from_json(cls, data: Dict[str, Any]) -> "AudioSegment":
+        """Build from the local project format written by :meth:`to_json`."""
+        start, end = data["frameRange"]
+        spec = data.get("spectrogram")
+        return cls(
+            tag_id=data.get("tagId"),
+            start=int(start),
+            end=int(end),
+            value=data.get("value"),
+            channel=data.get("channel"),
+            settings=SpectrogramSettings.from_json(spec) if spec else None,
+            id=data.get("id"),
+            labeler_login=data.get("labelerLogin"),
+            name=data.get("name"),
+        )
+
     def __repr__(self) -> str:
         return (
-            f"AudioSegment(tag_id={self.tag_id}, start={self.start}, end={self.end}, "
+            f"AudioSegment(name={self.name!r}, tag_id={self.tag_id}, "
+            f"start={self.start}, end={self.end}, "
             f"channel={self.channel}, settings={'yes' if self.settings else 'none'})"
         )
