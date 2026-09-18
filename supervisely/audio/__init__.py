@@ -2,7 +2,7 @@
 """Audio modality: recordings, segment labels and spectrogram rendering."""
 
 from supervisely.audio.audio_io import (
-    AudioInfo,
+    AudioFileInfo,
     get_audio_info,
     read_audio,
     select_channel,

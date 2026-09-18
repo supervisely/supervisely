@@ -600,3 +600,16 @@ def test_to_image_interpolates_between_stops():
     img = to_image(spec, settings)
     assert tuple(img[0, 0]) == tuple(COLOR_STOPS["viridis"][1])
 
+
+def test_get_audio_info_reads_the_header_only(tmp_path, monkeypatch):
+    """A one-hour WAV must not be decoded to answer three header fields."""
+    import supervisely.audio.audio_io as audio_io
+
+    path = write_wav(tmp_path / "hdr.wav", seconds=0.25, channels=2)
+    monkeypatch.setattr(
+        audio_io,
+        "read_audio",
+        lambda *a, **kw: pytest.fail("get_audio_info must not decode the samples"),
+    )
+    info = audio_io.get_audio_info(str(path))
+    assert (info.sample_rate, info.sample_count, info.channels) == (SR, SR // 4, 2)

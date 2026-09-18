@@ -19,8 +19,11 @@ from typing import Optional, Tuple
 import numpy as np
 
 
-class AudioInfo:
-    """Shape of a decoded recording.
+class AudioFileInfo:
+    """Shape of a recording as stored in the file.
+
+    Not to be confused with :class:`~supervisely.api.audio_api.AudioInfo`,
+    which describes a recording as the *platform* sees it.
 
     :param sample_rate: Samples per second.
     :param sample_count: Samples per channel.
@@ -38,7 +41,7 @@ class AudioInfo:
 
     def __repr__(self) -> str:
         return (
-            f"AudioInfo(sample_rate={self.sample_rate}, sample_count={self.sample_count}, "
+            f"AudioFileInfo(sample_rate={self.sample_rate}, sample_count={self.sample_count}, "
             f"channels={self.channels}, duration={self.duration_seconds:.3f}s)"
         )
 
@@ -92,17 +95,42 @@ def read_audio(path: str) -> Tuple[np.ndarray, int]:
     except ImportError:
         raise ImportError(
             f"reading {path!r} needs the optional 'soundfile' package "
-            "(pip install soundfile). Only uncompressed WAV is supported without it."
+            "(pip install supervisely[audio]). Only uncompressed WAV is "
+            "supported without it."
         )
     data, rate = soundfile.read(path, dtype="float32", always_2d=True)
     return data, rate
 
 
-def get_audio_info(path: str) -> AudioInfo:
-    """Read sample rate, sample count and channel count without keeping the
-    samples in memory longer than necessary."""
-    data, rate = read_audio(path)
-    return AudioInfo(sample_rate=rate, sample_count=data.shape[0], channels=data.shape[1])
+def get_audio_info(path: str) -> AudioFileInfo:
+    """Read sample rate, sample count and channel count from the file header.
+
+    The samples are never decoded: a one-hour WAV answers this in microseconds
+    instead of materialising gigabytes of float32. Only a container that hides
+    its layout in the payload -- a compressed stream in a ``.wav`` wrapper --
+    falls back to a full decode.
+    """
+    if path.lower().endswith(".wav"):
+        try:
+            with wave.open(path, "rb") as w:
+                return AudioFileInfo(
+                    sample_rate=w.getframerate(),
+                    sample_count=w.getnframes(),
+                    channels=w.getnchannels(),
+                )
+        except wave.Error:
+            pass  # compressed payload in a .wav container -- fall through
+
+    try:
+        import soundfile  # noqa: PLC0415
+    except ImportError:
+        data, rate = read_audio(path)
+        return AudioFileInfo(sample_rate=rate, sample_count=data.shape[0], channels=data.shape[1])
+
+    info = soundfile.info(path)
+    return AudioFileInfo(
+        sample_rate=info.samplerate, sample_count=info.frames, channels=info.channels
+    )
 
 
 def select_channel(samples: np.ndarray, channel: Optional[int]) -> np.ndarray:
