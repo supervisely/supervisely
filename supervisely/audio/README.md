@@ -13,7 +13,12 @@ project = api.project.create(workspace_id, "engine-noise", type=sly.ProjectType.
 dataset = api.dataset.create(project.id, "bench-run-1")
 
 recording = api.audio.upload_path(dataset.id, "run1.wav", "/data/run1.wav")
+recording.id, recording.name, recording.file_meta
 ```
+
+`api.audio` returns `AudioInfo` named tuples, like every other modality. Uploads
+are de-duplicated by hash, so re-running an interrupted `upload_paths` sends only
+what is missing, and take a `progress_cb`.
 
 ## Segments are inclusive sample ranges
 
@@ -59,7 +64,7 @@ settings = sly.SpectrogramSettings(
 
 api.audio.add_segment(
     project.id,
-    recording["id"],
+    recording.id,
     sly.AudioSegment(tag_id=tag_id, start=16000, end=31999, channel=0, settings=settings),
 )
 ```
@@ -84,14 +89,52 @@ the same view", and "does my training render match what the annotator saw".
 ## Reading back
 
 ```python
-segments = api.audio.get_segments(recording_id, dataset_id)
+segments = api.audio.get_segments(recording_id)
 for s in segments:
     print(s.start, s.end, s.channel, s.settings)
 ```
 
-`dataset_id` is required because the only API projection that returns the
-settings is the list endpoint. `images.info` answers for a single recording but
-silently drops `meta`, which is exactly where the settings live.
+Both `entities.list` and `entities.info` omit `tags` and their `meta` from the
+default projection, so `api.audio` asks for them explicitly
+(`AudioApi.ENTITY_FIELDS`). `meta` is exactly where the settings live.
+
+A segment records two channels, and they mean different things: `segment.channel`
+is what the label is *about*, `segment.settings.channel` is what was on *screen*
+when it was drawn. The labeling tool writes them independently, and so does the
+SDK; neither overwrites the other.
+
+## Local projects
+
+`sly.download(api, project_id, dest_dir)` works for audio like any other
+modality, and `sly.AudioProject` reads the result back:
+
+```
+project/
+    meta.json
+    ds0/
+        audio/rain.wav
+        ann/rain.wav.json
+        audio_info/rain.wav.json     # only with save_audio_info=True
+```
+
+```python
+sly.download(api, project_id, "/tmp/proj", save_audio_info=True)
+
+project_fs = sly.AudioProject("/tmp/proj", sly.OpenMode.READ)
+dataset_fs = project_fs.datasets.get("ds0")
+
+ann = dataset_fs.get_ann("rain.wav", project_fs.meta)
+ann.sample_rate, ann.sample_count, ann.channels   # the platform stores none of these
+for segment in ann.tags:
+    print(segment.name, segment.start, segment.end, segment.settings)
+
+sly.upload_audio_project("/tmp/proj", api, workspace_id, "copy of engine-noise")
+```
+
+On disk a segment is identified by tag **name**, not by the server id, so a
+downloaded project is readable without the server that issued the ids. The
+recording's shape is stored in the annotation because the platform does not keep
+it, and without it a sample range cannot be converted to seconds.
 
 ## Rendering
 
@@ -101,20 +144,24 @@ audio — clients derive what they need — so the file is decoded locally.
 ```python
 api.audio.download_path(recording_id, "/tmp/run1.wav")
 
-info = sly.get_audio_info("/tmp/run1.wav")
-samples, rate = sly.read_audio("/tmp/run1.wav")
+info = sly.audio.get_audio_info("/tmp/run1.wav")   # header only, no decoding
+samples, rate = sly.audio.read_audio("/tmp/run1.wav")
 
 # the whole recording
-spec = sly.render_spectrogram(samples, rate, settings)
+spec = sly.audio.render_spectrogram(samples, rate, settings)
 
 # just one labeled segment, for a training crop
-crop = sly.render_segment(samples, rate, segment.start, segment.end, segment.settings)
+crop = sly.audio.render_segment(samples, rate, segment.start, segment.end, segment.settings)
 
-# raw magnitude instead of clipped dB, for your own normalisation
-raw = sly.render_spectrogram(samples, rate, settings, as_db=False)
+# raw power instead of clipped dB, for your own normalisation
+raw = sly.audio.render_spectrogram(samples, rate, settings, as_db=False)
 ```
 
 Rendering under `segment.settings` reproduces the analysis the annotator saw.
+Decibels are **absolute** — `10*log10(power)`, calibrated so a full-scale sine
+reads 0 dB, exactly as the tool paints them. Nothing is normalised to the loudest
+point, which is what makes a crop, a full render and a second recording
+comparable with each other.
 
 ### What the settings do and do not determine
 
@@ -124,14 +171,16 @@ stored parameters is sufficient — the rendered image is not stored. Per-label
 settings may appear later, which is why the settings live on each label rather
 than on the project.
 
-* The **analysis** is fully determined by the stored settings. The mel band
-  edges, the weighted-average mel projection and the frequency mapping here were
-  read from the labeling tool and match it.
+* The **analysis** is fully determined by the stored settings. Every step is
+  matched to the labeling tool: periodic windows, power scaled by
+  `1/sum(window)^2` and doubled outside DC and Nyquist, frames centred on
+  `k*hop_length`, HTK mel edges, the weighted-average mel projection, the
+  frequency mapping, and the palette stops used by `to_image`.
 * The **picture** also depends on the display height, which is *not* among the
   stored settings. Pass `rows=` to reproduce a particular on-screen grid:
 
   ```python
-  spec = sly.render_spectrogram(samples, rate, settings, rows=512)
+  spec = sly.audio.render_spectrogram(samples, rate, settings, rows=512)
   ```
 
   Without `rows`, you get the natural resolution — mel bands, or FFT bins.
@@ -145,7 +194,7 @@ using the tool's own mapping.
 > in the last places regardless. The analysis matches; the last bits are unproven.
 
 WAV is decoded with the standard library. Other formats (FLAC, OGG, MP3, M4A)
-need the optional `soundfile` package.
+need the optional `soundfile` package: `pip install supervisely[audio]`.
 
 ## Validation
 
