@@ -11,6 +11,7 @@ Sample indices are exact; seconds are not. Conversions are provided for
 convenience but the sample index is always the source of truth.
 """
 
+import numbers
 from typing import Any, Dict, Optional
 
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
@@ -79,10 +80,13 @@ class AudioSegment:
         entity_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
     ):
-        if not isinstance(start, int) or isinstance(start, bool):
-            raise ValueError(f"start must be an int, got {type(start).__name__}")
-        if not isinstance(end, int) or isinstance(end, bool):
-            raise ValueError(f"end must be an int, got {type(end).__name__}")
+        # numbers.Integral, not int: sample indices routinely arrive as numpy
+        # integers from np.argmax / np.flatnonzero. bool is an Integral too.
+        if not isinstance(start, numbers.Integral) or isinstance(start, bool):
+            raise ValueError(f"start must be an integer, got {type(start).__name__}")
+        if not isinstance(end, numbers.Integral) or isinstance(end, bool):
+            raise ValueError(f"end must be an integer, got {type(end).__name__}")
+        start, end = int(start), int(end)
         if start < 0:
             raise ValueError(f"start must be >= 0, got {start}")
         if end < start:
@@ -152,23 +156,30 @@ class AudioSegment:
             return False
         return self.start <= other.end and other.start <= self.end
 
-    def to_meta_json(self) -> Dict[str, Any]:
-        """Build the tag assignment's ``meta`` object.
+    def _meta_json(self) -> Dict[str, Any]:
+        """Build the tag assignment's ``meta`` object -- the platform's
+        ``meta`` on a tag, unrelated to a project's ``meta.json``.
+
+        ``meta.channel`` is the channel the *label* is about;
+        ``meta.spectrogram.channel`` is the channel that was on *screen* when
+        it was drawn. The labeling tool writes them independently
+        (``recordings.ts``: ``meta: { channel, spectrogram: viewingSettings }``),
+        so neither one overwrites the other here either.
 
         Returns an empty dict when there is nothing to record: the platform
         accepts a missing or empty ``meta``, but rejects a partial
-        ``spectrogram`` object outright.
+        ``spectrogram`` object outright -- it insists on the ``channel`` key
+        being present, though ``null`` is a valid value for it.
         """
         meta: Dict[str, Any] = {}
-        if self.channel is not None:
-            meta["channel"] = self.channel
         if self.settings is not None:
-            # `channel` is duplicated inside the settings object -- the API
-            # rejects the whole payload without it.
-            meta["spectrogram"] = self.settings.clone(channel=self.channel).to_json()
+            meta["channel"] = self.channel
+            meta["spectrogram"] = self.settings.to_json()
+        elif self.channel is not None:
+            meta["channel"] = self.channel
         return meta
 
-    def to_api_json(self, entity_id: Optional[int] = None) -> Dict[str, Any]:
+    def _to_api_json(self, entity_id: Optional[int] = None) -> Dict[str, Any]:
         """Build the payload for one entry of ``entities.tags.bulk.add``."""
         payload: Dict[str, Any] = {
             "tagId": self.tag_id,
@@ -177,7 +188,7 @@ class AudioSegment:
         }
         if self.value is not None:
             payload["value"] = self.value
-        meta = self.to_meta_json()
+        meta = self._meta_json()
         if meta:
             payload["meta"] = meta
         return payload
@@ -203,9 +214,9 @@ class AudioSegment:
         meta = data.get("meta") or {}
         spec = meta.get("spectrogram")
         settings = SpectrogramSettings.from_json(spec) if spec else None
+        # No fallback to `spectrogram.channel`: that is the viewed channel, not
+        # the labeled one. A label with no `meta.channel` is a mixdown label.
         channel = meta.get("channel")
-        if channel is None and spec is not None:
-            channel = spec.get("channel")
 
         return cls(
             tag_id=data["tagId"],

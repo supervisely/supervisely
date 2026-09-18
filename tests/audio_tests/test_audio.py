@@ -73,14 +73,32 @@ def test_colormap_excluded_by_default_to_match_the_toolbox():
 
 
 def test_channel_is_emitted_inside_the_settings_object():
-    # The API rejects the whole payload when the inner `channel` is missing.
+    # The API rejects the whole payload when the inner `channel` key is missing,
+    # though null is a valid value for it.
     assert "channel" in SpectrogramSettings(channel=2).to_json()
     segment = AudioSegment(
-        tag_id=1, start=0, end=10, channel=2, settings=SpectrogramSettings()
+        tag_id=1, start=0, end=10, channel=2, settings=SpectrogramSettings(channel=2)
     )
-    meta = segment.to_meta_json()
+    meta = segment._meta_json()
     assert meta["channel"] == 2
     assert meta["spectrogram"]["channel"] == 2
+
+
+def test_labeled_channel_and_viewed_channel_are_independent():
+    """The tool writes `meta.channel` (what the label is about) and
+    `meta.spectrogram.channel` (what was on screen) separately."""
+    segment = AudioSegment(
+        tag_id=1, start=0, end=10, channel=None, settings=SpectrogramSettings(channel=1)
+    )
+    meta = segment._meta_json()
+    assert meta["channel"] is None
+    assert meta["spectrogram"]["channel"] == 1
+
+    restored = AudioSegment.from_api_json(
+        {"tagId": 1, "frameRange": [0, 10], "meta": meta}
+    )
+    assert restored.channel is None
+    assert restored.settings.channel == 1
 
 
 def test_from_json_tolerates_missing_optional_keys():
@@ -193,7 +211,7 @@ def test_from_seconds_uses_exclusive_end():
 def test_bigint_sample_indices_survive():
     big = 2_200_000_000
     segment = AudioSegment(tag_id=1, start=big, end=big + 1000)
-    assert segment.to_api_json(entity_id=7)["frameRange"] == [big, big + 1000]
+    assert segment._to_api_json(entity_id=7)["frameRange"] == [big, big + 1000]
 
 
 def test_overlap_is_channel_aware():
@@ -210,7 +228,7 @@ def test_overlap_is_channel_aware():
 def test_api_payload_shape():
     settings = SpectrogramSettings(scale="mel", channel=1)
     segment = AudioSegment(tag_id=42, start=10, end=20, channel=1, settings=settings)
-    payload = segment.to_api_json(entity_id=7)
+    payload = segment._to_api_json(entity_id=7)
     assert payload["tagId"] == 42
     assert payload["entityId"] == 7
     assert payload["frameRange"] == [10, 20]
@@ -221,8 +239,8 @@ def test_segment_without_settings_emits_no_meta():
     # A partial `spectrogram` object is rejected outright by the API, so the
     # choice is all-or-nothing.
     segment = AudioSegment(tag_id=1, start=0, end=10)
-    assert segment.to_meta_json() == {}
-    assert "meta" not in segment.to_api_json(entity_id=1)
+    assert segment._meta_json() == {}
+    assert "meta" not in segment._to_api_json(entity_id=1)
 
 
 def test_parse_tag_assignment_from_api():

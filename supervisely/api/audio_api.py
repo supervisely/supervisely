@@ -186,7 +186,7 @@ class AudioApi(ModuleApiBase):
             "entities.tags.bulk.add",
             {
                 ApiField.PROJECT_ID: project_id,
-                "tags": [s.to_api_json(entity_id) for s in segments],
+                "tags": [s._to_api_json(entity_id) for s in segments],
             },
         ).json()
 

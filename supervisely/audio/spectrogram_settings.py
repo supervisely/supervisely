@@ -198,10 +198,20 @@ class SpectrogramSettings:
         fields.update(overrides)
         return SpectrogramSettings(**fields)
 
+    def _canonical(self) -> str:
+        data = self.to_json(include_colormap=True)
+        return json.dumps(data, sort_keys=True, separators=(",", ":"))
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, SpectrogramSettings):
             return NotImplemented
         return self.to_json(include_colormap=True) == other.to_json(include_colormap=True)
+
+    def __hash__(self) -> int:
+        """Defining ``__eq__`` alone would set ``__hash__`` to ``None``, and
+        grouping labels by view -- ``set(s.settings for s in segments)`` -- is
+        the obvious thing to want to do with these."""
+        return hash(self._canonical())
 
     def __repr__(self) -> str:
         return (
