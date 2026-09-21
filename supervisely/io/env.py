@@ -2,7 +2,7 @@
 import json
 import os
 from contextvars import ContextVar, Token
-from typing import Callable, List, Literal, Optional, Union
+from typing import Callable, List, Literal, Optional, Tuple, Union
 
 RAISE_IF_NOT_FOUND = True
 _MULTIUSER_USER_CTX: ContextVar[Optional[Union[int, str]]] = ContextVar(
@@ -642,6 +642,48 @@ def semaphore_size() -> int:
         name="semaphore_size",
         keys=["SUPERVISELY_ASYNC_SEMAPHORE"],
         postprocess_fn=lambda x: int(x),
+        raise_not_found=False,
+    )
+
+
+def _parse_timeouts_from_env(value: str) -> Optional[Tuple[float, float]]:
+    from supervisely.sly_logger import logger
+
+    parts = [part.strip() for part in value.split(",") if part.strip() != ""]
+    if not parts:
+        return None
+    try:
+        if len(parts) == 1:
+            connect_timeout = read_timeout = float(parts[0])
+        elif len(parts) == 2:
+            connect_timeout, read_timeout = float(parts[0]), float(parts[1])
+        else:
+            raise ValueError("expected one or two comma-separated numbers")
+        if connect_timeout <= 0 or read_timeout <= 0:
+            raise ValueError("timeouts must be positive")
+    except ValueError as e:
+        logger.warning(
+            f"Invalid SUPERVISELY_API_TIMEOUTS value: '{value}' ({e}). Default timeouts will be used."
+        )
+        return None
+    return (connect_timeout, read_timeout)
+
+
+def api_timeouts() -> Optional[Tuple[float, float]]:
+    """Returns API timeouts in seconds from environment variable using following
+        - SUPERVISELY_API_TIMEOUTS
+
+    Expected format is "connect,read", e.g. "30,300". A single number sets both of them.
+    Invalid value is ignored with a warning, so that API falls back to its default timeouts.
+
+    :returns: (connect timeout, read timeout) or None if the variable is not set or invalid
+    :rtype: Optional[Tuple[float, float]]
+    """
+    return _parse_from_env(
+        name="api_timeouts",
+        keys=["SUPERVISELY_API_TIMEOUTS"],
+        postprocess_fn=_parse_timeouts_from_env,
+        default=None,
         raise_not_found=False,
     )
 
