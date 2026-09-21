@@ -671,9 +671,13 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
     }
     has_keypoints = any(c.geometry_type == GraphNodes for c in meta.obj_classes)
     if has_keypoints and with_keypoint:
-        kpts_count = len(get_keypoint_labels(meta))
-        data_yaml["kpt_shape"] = [kpts_count, 3]
-        data_yaml["flip_idx"] = [i for i in range(kpts_count)]
+        kpt_labels = get_keypoint_labels(meta)
+        data_yaml["kpt_shape"] = [len(kpt_labels), 3]
+        data_yaml["flip_idx"] = [i for i in range(len(kpt_labels))]
+        logger.info(
+            f"Keypoint template of the dataset: {kpt_labels}",
+            extra={"kpt_shape": data_yaml["kpt_shape"]},
+        )
     with open(save_path, "w") as f:
         yaml.dump(data_yaml, f, default_flow_style=None)
 
