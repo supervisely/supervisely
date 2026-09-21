@@ -120,6 +120,15 @@ class InteractiveSegmentation(Inference):
 
         @server.post("/smart_segmentation")
         def smart_segmentation(response: Response, request: Request):
+            """Run the smart tool on a single crop.
+
+            The init mask is taken from the request context field ``mask``
+            (see :func:`functional.get_init_mask_from_context`). A present but
+            undecodable ``mask`` is answered with 400 Bad Request. When it is
+            absent, the deprecated ``figure_id``/``init_figure`` fields are used
+            instead, which downloads the image annotation and only supports
+            bitmap figures.
+            """
             logger.debug(
                 f"smart_segmentation inference: context=",
                 extra={**request.state.context, "api_token": "***"},
@@ -131,6 +140,7 @@ class InteractiveSegmentation(Inference):
                 settings = self._get_inference_settings(state)
                 smtool_state = request.state.context
                 api = request.state.api
+                init_mask_bitmap = functional.get_init_mask_from_context(smtool_state)
                 crop = smtool_state["crop"]
                 positive_clicks, negative_clicks = (
                     smtool_state["positive"],
@@ -190,20 +200,27 @@ class InteractiveSegmentation(Inference):
             # Prepare init_mask (only for images)
             figure_id = smtool_state.get("figure_id")
             image_id = smtool_state.get("image_id")
-            if smtool_state.get("init_figure") is True and image_id is not None:
-                # Download and save in Cache
-                init_mask = functional.download_init_mask(api, figure_id, image_id)
-                self._init_mask_cache[figure_id] = init_mask
-            elif self._init_mask_cache.get(figure_id) is not None:
-                # Load from Cache
-                init_mask = self._init_mask_cache[figure_id]
+            if init_mask_bitmap is not None:
+                # The request carries the mask itself: no annotation download,
+                # no figure lookup, works for any geometry of the edited figure.
+                init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
             else:
-                init_mask = None
+                # Deprecated: resolve the mask from the figure id.
+                if smtool_state.get("init_figure") is True and image_id is not None:
+                    # Download and save in Cache
+                    init_mask = functional.download_init_mask(api, figure_id, image_id)
+                    self._init_mask_cache[figure_id] = init_mask
+                elif self._init_mask_cache.get(figure_id) is not None:
+                    # Load from Cache
+                    init_mask = self._init_mask_cache[figure_id]
+                else:
+                    init_mask = None
+                if init_mask is not None:
+                    img_info = api.image.get_info_by_id(image_id)
+                    h, w = img_info.height, img_info.width
+                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
+                    init_mask = functional.crop_image(crop, init_mask)
             if init_mask is not None:
-                img_info = api.image.get_info_by_id(image_id)
-                h, w = img_info.height, img_info.width
-                init_mask = functional.bitmap_to_mask(init_mask, h, w)
-                init_mask = functional.crop_image(crop, init_mask)
                 assert init_mask.shape[:2] == image_np.shape[:2]
             settings["init_mask"] = init_mask
 
@@ -240,6 +257,13 @@ class InteractiveSegmentation(Inference):
 
         @server.post("/smart_segmentation_batch")
         def smart_segmentation_batch(response: Response, request: Request):
+            """Run the smart tool on a batch of crops.
+
+            Each state honours the same init mask contract as
+            ``/smart_segmentation``: the context field ``mask`` replaces the
+            deprecated ``figure_id``/``init_figure`` lookup, and an undecodable
+            ``mask`` in any state makes the whole request a bad request.
+            """
             result = []
             logger.debug(
                 f"smart_segmentation inference: context=",
@@ -252,12 +276,16 @@ class InteractiveSegmentation(Inference):
                 settings = self._get_inference_settings(state)
                 api = request.state.api
                 smtool_states = request.state.context.get("states", [])
+                init_mask_bitmaps = [
+                    functional.get_init_mask_from_context(smtool_state)
+                    for smtool_state in smtool_states
+                ]
             except Exception as exc:
                 logger.warning("Error parsing request:" + str(exc), exc_info=True)
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "400: Bad request.", "success": False}
 
-            for smtool_state in smtool_states:
+            for smtool_state, init_mask_bitmap in zip(smtool_states, init_mask_bitmaps):
                 crop = smtool_state["crop"]
                 positive_clicks, negative_clicks = (
                     smtool_state["positive"],
@@ -318,20 +346,27 @@ class InteractiveSegmentation(Inference):
                 # Prepare init_mask (only for images)
                 figure_id = smtool_state.get("figure_id")
                 image_id = smtool_state.get("image_id")
-                if smtool_state.get("init_figure") is True and image_id is not None:
-                    # Download and save in Cache
-                    init_mask = functional.download_init_mask(api, figure_id, image_id)
-                    self._init_mask_cache[figure_id] = init_mask
-                elif self._init_mask_cache.get(figure_id) is not None:
-                    # Load from Cache
-                    init_mask = self._init_mask_cache[figure_id]
+                if init_mask_bitmap is not None:
+                    # The request carries the mask itself: no annotation download,
+                    # no figure lookup, works for any geometry of the edited figure.
+                    init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
                 else:
-                    init_mask = None
+                    # Deprecated: resolve the mask from the figure id.
+                    if smtool_state.get("init_figure") is True and image_id is not None:
+                        # Download and save in Cache
+                        init_mask = functional.download_init_mask(api, figure_id, image_id)
+                        self._init_mask_cache[figure_id] = init_mask
+                    elif self._init_mask_cache.get(figure_id) is not None:
+                        # Load from Cache
+                        init_mask = self._init_mask_cache[figure_id]
+                    else:
+                        init_mask = None
+                    if init_mask is not None:
+                        img_info = api.image.get_info_by_id(image_id)
+                        h, w = img_info.height, img_info.width
+                        init_mask = functional.bitmap_to_mask(init_mask, h, w)
+                        init_mask = functional.crop_image(crop, init_mask)
                 if init_mask is not None:
-                    img_info = api.image.get_info_by_id(image_id)
-                    h, w = img_info.height, img_info.width
-                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
-                    init_mask = functional.crop_image(crop, init_mask)
                     assert init_mask.shape[:2] == image_np.shape[:2]
                 settings["init_mask"] = init_mask
 
