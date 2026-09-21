@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Callable, List, Literal, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import yaml
 from tqdm import tqdm
@@ -387,12 +387,43 @@ def polygon_to_yolo_line(
     return f"{class_idx} {' '.join(map(lambda coord: f'{coord:.6f}', coords))}"
 
 
+def get_keypoint_labels(meta: ProjectMeta) -> List[str]:
+    """
+    Build a single keypoint template shared by every GraphNodes class of the project.
+
+    Node labels are collected from the geometry config of each GraphNodes class,
+    deduplicated by label and kept in the order they were first seen. The result
+    defines the keypoint order of the converted dataset: its length is the
+    ``kpt_shape`` written to ``data_config.yaml``, and the index of a label in it
+    is the index the node is written at in every YOLO line.
+
+    Only classes of the GraphNodes type itself are taken into account, because
+    those are the only ones the "pose" task type writes lines for.
+
+    :param meta: Project meta.
+    :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+    :returns: Ordered keypoint labels of the project.
+    :rtype: List[str]
+    """
+    kpt_labels = []
+    for obj_class in meta.obj_classes:
+        if obj_class.geometry_type != GraphNodes:
+            continue
+        nodes_field = obj_class.geometry_type.items_json_field
+        for node_id, node in obj_class.geometry_config.get(nodes_field, {}).items():
+            node_label = node.get("label") or node_id
+            if node_label not in kpt_labels:
+                kpt_labels.append(node_label)
+    return kpt_labels
+
+
 def keypoints_to_yolo_line(
     class_idx: int,
     geometry: GraphNodes,
     img_height: int,
     img_width: int,
-    max_kpts_count: int,
+    kpt_labels: List[str],
+    node_id_to_label: Dict[str, str],
 ):
     bbox = geometry.to_bbox()
     x, y, w, h = bbox.center.col, bbox.center.row, bbox.width, bbox.height
@@ -400,15 +431,20 @@ def keypoints_to_yolo_line(
 
     line = f"{class_idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
 
-    for node in geometry.nodes.values():
-        node: Node
+    label_to_node: Dict[str, Node] = {}
+    for node_id, node in geometry.nodes.items():
+        label_to_node.setdefault(node_id_to_label.get(node_id, node_id), node)
+
+    # * one slot per template label, so every line has the same number of columns
+    for kpt_label in kpt_labels:
+        node = label_to_node.get(kpt_label)
+        if node is None:
+            line += " 0 0 0"
+            continue
         visible = 2 if not node.disabled else 1
         line += (
             f" {node.location.col / img_width:.6f} {node.location.row / img_height:.6f} {visible}"
         )
-    if len(geometry.nodes) < max_kpts_count:
-        for _ in range(max_kpts_count - len(geometry.nodes)):
-            line += " 0 0 0"
 
     return line
 
@@ -456,9 +492,16 @@ def label_to_yolo_lines(
     img_width: int,
     class_names: List[str],
     task_type: Literal["detect", "segment", "pose"],
+    kpt_labels: Optional[List[str]] = None,
 ) -> List[str]:
     """
     Convert the Supervisely Label to a line in the YOLO format.
+
+    For the "pose" task type, ``kpt_labels`` is the keypoint template the whole
+    dataset is converted against, as returned by :func:`get_keypoint_labels`.
+    It has to be the same for every label of the dataset, otherwise the lines
+    disagree on the number of columns and on what each keypoint index means.
+    If it is not passed, the template of the label's own class is used.
     """
 
     labels = convert_label_geometry_if_needed(label, task_type)
@@ -482,13 +525,20 @@ def label_to_yolo_lines(
             )
         elif task_type == YOLOTaskType.POSE:
             nodes_field = label.obj_class.geometry_type.items_json_field
-            max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
+            nodes_config = label.obj_class.geometry_config.get(nodes_field, {})
+            node_id_to_label = {
+                node_id: node.get("label") or node_id for node_id, node in nodes_config.items()
+            }
+            label_kpt_labels = kpt_labels
+            if label_kpt_labels is None:
+                label_kpt_labels = list(dict.fromkeys(node_id_to_label.values()))
             yolo_line = keypoints_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
-                max_kpts_count=max_kpts_count,
+                kpt_labels=label_kpt_labels,
+                node_id_to_label=node_id_to_label,
             )
         else:
             raise ValueError(
@@ -506,9 +556,15 @@ def sly_ann_to_yolo(
     ann: Annotation,
     class_names: List[str],
     task_type: Literal["detect", "segment", "pose"] = "detect",
+    kpt_labels: Optional[List[str]] = None,
 ) -> List[str]:
     """
     Convert the Supervisely annotation to the YOLO format.
+
+    For the "pose" task type, ``kpt_labels`` is the keypoint template the whole
+    dataset is converted against, as returned by :func:`get_keypoint_labels`.
+    Pass it whenever the project has more than one GraphNodes class, so that
+    every line of the dataset has the same keypoint order and length.
     """
     h, w = ann.img_size
     yolo_lines = []
@@ -519,6 +575,7 @@ def sly_ann_to_yolo(
             img_width=w,
             class_names=class_names,
             task_type=task_type,
+            kpt_labels=kpt_labels,
         )
         yolo_lines.extend(lines)
     return yolo_lines
@@ -558,6 +615,7 @@ def sly_ds_to_yolo(
 
     # * convert annotations and copy images
     class_names = [obj_class.name for obj_class in meta.obj_classes]
+    kpt_labels = get_keypoint_labels(meta) if task_type == YOLOTaskType.POSE else None
     used_names = set(os.listdir(train_images_dir)) | set(os.listdir(val_images_dir))
     for name in dataset.get_items_names():
         ann_path = dataset.get_ann_path(name)
@@ -576,7 +634,7 @@ def sly_ds_to_yolo(
         shutil.copy2(img_path, images_dir / img_name)
 
         label_path = str(labels_dir / f"{get_file_name(img_name)}.txt")
-        yolo_lines = ann.to_yolo(class_names, task_type)
+        yolo_lines = ann.to_yolo(class_names, task_type, kpt_labels=kpt_labels)
         if len(yolo_lines) > 0:
             with open(label_path, "w") as f:
                 f.write("\n".join(yolo_lines))
@@ -611,13 +669,9 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
     }
     has_keypoints = any(c.geometry_type == GraphNodes for c in meta.obj_classes)
     if has_keypoints and with_keypoint:
-        max_kpts_count = 0
-        for obj_class in meta.obj_classes:
-            if issubclass(obj_class.geometry_type, GraphNodes):
-                field_name = obj_class.geometry_type.items_json_field
-                max_kpts_count = max(max_kpts_count, len(obj_class.geometry_config[field_name]))
-        data_yaml["kpt_shape"] = [max_kpts_count, 3]
-        data_yaml["flip_idx"] = [i for i in range(max_kpts_count)]
+        kpts_count = len(get_keypoint_labels(meta))
+        data_yaml["kpt_shape"] = [kpts_count, 3]
+        data_yaml["flip_idx"] = [i for i in range(kpts_count)]
     with open(save_path, "w") as f:
         yaml.dump(data_yaml, f, default_flow_style=None)
 

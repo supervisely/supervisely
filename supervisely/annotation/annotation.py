@@ -3181,6 +3181,7 @@ class Annotation:
         self,
         class_names: List[str],
         task_type: Literal["detect", "segment", "pose"] = "detect",
+        kpt_labels: Optional[List[str]] = None,
     ) -> List[str]:
         """
         Convert Supervisely annotation to YOLO annotation format.
@@ -3190,6 +3191,13 @@ class Annotation:
         :type class_names: List[str]
         :param task_type: Task type, one of "detection", "segmentation", "pose".
         :type task_type: str
+        :param kpt_labels:  Ordered keypoint labels of the whole dataset, as returned by
+                            :func:`~supervisely.convert.image.yolo.yolo_helper.get_keypoint_labels`.
+                            Used for the "pose" task type only, and required for every
+                            annotation of a dataset to agree on the keypoint order and the
+                            number of columns. If not passed, the template of each label's own
+                            class is used.
+        :type kpt_labels: List[str], optional
         :returns: List of objects in YOLO format.
         :rtype: list
 
@@ -3206,7 +3214,9 @@ class Annotation:
 
         from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
 
-        return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)
+        return sly_ann_to_yolo(
+            ann=self, class_names=class_names, task_type=task_type, kpt_labels=kpt_labels
+        )
 
     def to_pascal_voc(
         self,
