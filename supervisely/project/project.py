@@ -2122,6 +2122,7 @@ class Dataset(KeyObject):
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
         is_val: Optional[bool] = None,
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ):
         """
         Convert Supervisely dataset to YOLO format.
@@ -2138,6 +2139,12 @@ class Dataset(KeyObject):
         :type progress_cb: :class:`Callable`, optional
         :param is_val: If True, the dataset is a validation dataset.
         :type is_val: bool, optional
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                                   type. Either "include" (labelled but not visible, trained)
+                                   or "ignore" (not labelled, skipped), or a dict mapping a
+                                   class name to one of them. Classes missing from the dict
+                                   use "include". Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: YOLO dataset in dictionary format.
         :rtype: dict
 
@@ -2165,6 +2172,7 @@ class Dataset(KeyObject):
             log_progress=log_progress,
             progress_cb=progress_cb,
             is_val=is_val,
+            disabled_keypoints=disabled_keypoints,
         )
 
     def to_pascal_voc(
@@ -4514,6 +4522,7 @@ class Project:
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
         val_datasets: Optional[List[str]] = None,
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ) -> None:
         """
         Convert Supervisely project to YOLO format.
@@ -4531,6 +4540,12 @@ class Project:
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
         :type val_datasets: List[str], optional
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                            type. Either "include" (labelled but not visible, trained) or
+                            "ignore" (not labelled, skipped), or a dict mapping a class name
+                            to one of them. Classes missing from the dict use "include".
+                            Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: None
         :rtype: NoneType
 
@@ -4561,6 +4576,7 @@ class Project:
             log_progress=log_progress,
             progress_cb=progress_cb,
             val_datasets=val_datasets,
+            disabled_keypoints=disabled_keypoints,
         )
 
     def to_pascal_voc(
