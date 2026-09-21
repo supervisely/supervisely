@@ -646,6 +646,9 @@ def semaphore_size() -> int:
     )
 
 
+_warned_timeouts_values = set()
+
+
 def _parse_timeouts_from_env(value: str) -> Optional[Tuple[float, float]]:
     from supervisely.sly_logger import logger
 
@@ -662,9 +665,13 @@ def _parse_timeouts_from_env(value: str) -> Optional[Tuple[float, float]]:
         if connect_timeout <= 0 or read_timeout <= 0:
             raise ValueError("timeouts must be positive")
     except ValueError as e:
-        logger.warning(
-            f"Invalid SUPERVISELY_API_TIMEOUTS value: '{value}' ({e}). Default timeouts will be used."
-        )
+        # Api objects can be created in a loop, warn about the same broken value only once
+        if value not in _warned_timeouts_values:
+            _warned_timeouts_values.add(value)
+            logger.warning(
+                f"Invalid SUPERVISELY_API_TIMEOUTS value: '{value}' ({e}). "
+                "API timeouts will be left as they are."
+            )
         return None
     return (connect_timeout, read_timeout)
 
@@ -674,7 +681,7 @@ def api_timeouts() -> Optional[Tuple[float, float]]:
         - SUPERVISELY_API_TIMEOUTS
 
     Expected format is "connect,read", e.g. "30,300". A single number sets both of them.
-    Invalid value is ignored with a warning, so that API falls back to its default timeouts.
+    Invalid value is ignored with a warning, so that API timeouts are left as they are.
 
     :returns: (connect timeout, read timeout) or None if the variable is not set or invalid
     :rtype: Optional[Tuple[float, float]]

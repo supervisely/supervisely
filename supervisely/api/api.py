@@ -96,10 +96,9 @@ SERVER_ADDRESS = "SERVER_ADDRESS"
 SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
-DEFAULT_API_CONNECT_TIMEOUT = 30
-DEFAULT_API_READ_TIMEOUT = 300
-# httpx paths used to connect with 60s, keep it until the timeouts are configured explicitly
-DEFAULT_HTTPX_CONNECT_TIMEOUT = 60
+# requests-based methods have never had a timeout, httpx-based ones have always had 60s:
+# both are kept as is until the timeouts are configured explicitly
+DEFAULT_HTTPX_TIMEOUT = 60
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 
@@ -183,37 +182,34 @@ def _resolve_timeouts(
     """
     Bring configured timeouts to the (connect timeout, read timeout) form.
     Explicitly passed value wins over SUPERVISELY_API_TIMEOUTS env variable.
+    An invalid env variable is ignored with a warning, an invalid argument is an error.
 
     :param timeouts: Single timeout for both phases or a (connect, read) pair, in seconds.
     :type timeouts: float or tuple(float, float), optional
     :returns: (connect timeout, read timeout) in seconds or None if nothing is configured
     :rtype: tuple(float, float) or None
+    :raises ValueError: if the passed timeouts are not positive numbers
     """
     if timeouts is None:
-        timeouts = sly_env.api_timeouts()
-    if timeouts is None:
-        return None
-    if isinstance(timeouts, (int, float)):
-        return (float(timeouts), float(timeouts))
-    connect_timeout, read_timeout = timeouts
-    return (float(connect_timeout), float(read_timeout))
+        return sly_env.api_timeouts()
 
-
-def _normalize_timeouts(
-    timeouts: Optional[Union[float, Tuple[float, float]]] = None
-) -> Tuple[float, float]:
-    """
-    Same as :func:`_resolve_timeouts`, but falls back to the default timeouts.
-
-    :param timeouts: Single timeout for both phases or a (connect, read) pair, in seconds.
-    :type timeouts: float or tuple(float, float), optional
-    :returns: (connect timeout, read timeout) in seconds
-    :rtype: tuple(float, float)
-    """
-    return _resolve_timeouts(timeouts) or (
-        float(DEFAULT_API_CONNECT_TIMEOUT),
-        float(DEFAULT_API_READ_TIMEOUT),
+    invalid = ValueError(
+        f"Invalid timeouts: {timeouts!r}. Expected a positive number of seconds "
+        "or a (connect timeout, read timeout) pair."
     )
+    if isinstance(timeouts, bool):
+        raise invalid
+    if isinstance(timeouts, (int, float)):
+        connect_timeout = read_timeout = timeouts
+    else:
+        try:
+            connect_timeout, read_timeout = timeouts
+            connect_timeout, read_timeout = float(connect_timeout), float(read_timeout)
+        except (TypeError, ValueError):
+            raise invalid from None
+    if connect_timeout <= 0 or read_timeout <= 0:
+        raise invalid
+    return (float(connect_timeout), float(read_timeout))
 
 
 class UserSession:
@@ -230,7 +226,7 @@ class UserSession:
         :param server_address: Server address.
         :type server_address: str
         :param timeouts: Connection and read timeouts in seconds. If not set, SUPERVISELY_API_TIMEOUTS
-            env variable is used, otherwise the default timeouts are applied.
+            env variable is used, otherwise the requests are performed without a timeout.
         :type timeouts: float or tuple(float, float), optional
         :raises RuntimeError: if server address is invalid.
         """
@@ -238,7 +234,7 @@ class UserSession:
         self.team_id = None
         self.workspace_id = None
         self.server_address = server_address
-        self.timeouts = _normalize_timeouts(timeouts)
+        self.timeouts = _resolve_timeouts(timeouts)
 
         if not self._normalize_and_validate_server_url():
             raise RuntimeError(f"Invalid server url: {server_address}")
@@ -367,7 +363,8 @@ class Api:
         :type check_instance_version: bool or str, optional
         :param timeouts: Connection and read timeouts in seconds, either a single value for both phases
             or a (connect, read) pair. If not set, SUPERVISELY_API_TIMEOUTS env variable is used
-            (e.g. "30,300"), otherwise the default timeouts are applied.
+            (e.g. "30,300"), otherwise the timeouts are left as they are: requests-based methods
+            are performed without a timeout, httpx-based ones keep their own default.
         :type timeouts: float or tuple(float, float), optional
         :raises ValueError: if token is None or it length != 128
 
@@ -418,7 +415,7 @@ class Api:
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
-        self._configured_timeouts = _resolve_timeouts(timeouts)
+        self.timeouts = timeouts
 
         self.token = token
         self.headers = {}
@@ -817,13 +814,14 @@ class Api:
         :type stream: bool, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
         :type raise_error: bool, optional
-        :param timeout: Connection and read timeouts in seconds for this request. If not set, API timeouts are used.
+        :param timeout: Connection and read timeouts in seconds for this request.
+            If not set, the API timeouts are used.
         :type timeout: float or tuple(float, float), optional
         :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         if timeout is None:
-            timeout = self.timeouts
+            timeout = self._timeouts
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
         if retries is None:
@@ -912,13 +910,14 @@ class Api:
         :type use_public_api: bool, optional
         :param data: Dictionary to send in the body of the :class:`Request`.
         :type data: dict, optional
-        :param timeout: Connection and read timeouts in seconds for this request. If not set, API timeouts are used.
+        :param timeout: Connection and read timeouts in seconds for this request.
+            If not set, the API timeouts are used.
         :type timeout: float or tuple(float, float), optional
         :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         if timeout is None:
-            timeout = self.timeouts
+            timeout = self._timeouts
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
         if retries is None:
@@ -1237,39 +1236,31 @@ class Api:
         return f"{self.server_address}/public/api"
 
     @property
-    def timeouts(self) -> Tuple[float, float]:
+    def timeouts(self) -> Optional[Tuple[float, float]]:
         """
-        Connection and read timeouts in seconds applied to requests-based API methods.
+        Connection and read timeouts in seconds applied to requests-based API methods,
+        or None if they are not configured and the requests are not limited in time.
 
-        :returns: (connect timeout, read timeout)
-        :rtype: tuple(float, float)
+        :returns: (connect timeout, read timeout) or None
+        :rtype: tuple(float, float) or None
         """
-        return self._configured_timeouts or (
-            float(DEFAULT_API_CONNECT_TIMEOUT),
-            float(DEFAULT_API_READ_TIMEOUT),
-        )
+        return self._timeouts
 
     @timeouts.setter
     def timeouts(self, timeouts: Optional[Union[float, Tuple[float, float]]]) -> None:
-        self._configured_timeouts = _resolve_timeouts(timeouts)
-
-    @property
-    def _httpx_timeout(self) -> httpx.Timeout:
-        """
-        Same timeouts in the httpx form. Write phase follows the read timeout, pool the connect one.
-        Until the timeouts are configured, httpx keeps its historical 60s connect timeout.
-        """
-        if self._configured_timeouts is None:
-            connect_timeout = float(DEFAULT_HTTPX_CONNECT_TIMEOUT)
-            read_timeout = float(DEFAULT_API_READ_TIMEOUT)
+        self._timeouts = _resolve_timeouts(timeouts)
+        if self._timeouts is None:
+            self._httpx_timeout = httpx.Timeout(DEFAULT_HTTPX_TIMEOUT)
         else:
-            connect_timeout, read_timeout = self._configured_timeouts
-        return httpx.Timeout(
-            connect=connect_timeout,
-            read=read_timeout,
-            write=read_timeout,
-            pool=connect_timeout,
-        )
+            connect_timeout, read_timeout = self._timeouts
+            # write follows the read timeout, and so does pool: waiting for a free
+            # connection is queueing, not a network phase
+            self._httpx_timeout = httpx.Timeout(
+                connect=connect_timeout,
+                read=read_timeout,
+                write=read_timeout,
+                pool=read_timeout,
+            )
 
     def _resolve_httpx_timeout(
         self, timeout: Optional[httpx._types.TimeoutTypes]
@@ -1308,7 +1299,7 @@ class Api:
         :type retries: int, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed.
         :type raise_error: bool, optional
-        :param timeout: Overall timeout for the request. If not set, API timeouts are used.
+        :param timeout: Overall timeout for the request. If not set, the API timeouts are used.
         :type timeout: httpx._types.TimeoutTypes, optional
         :returns: Response object
         :rtype: :class:`httpx.Response`
@@ -1392,7 +1383,7 @@ class Api:
         :type retries: int, optional
         :param use_public_api: Define if public API should be used. Default is True.
         :type use_public_api: bool, optional
-        :param timeout: Overall timeout for the request. If not set, API timeouts are used.
+        :param timeout: Overall timeout for the request. If not set, the API timeouts are used.
         :type timeout: httpx._types.TimeoutTypes, optional
         :returns: Response object
         :rtype: :class:`Response<Response>`
@@ -1485,7 +1476,7 @@ class Api:
         :type chunk_size: int, optional
         :param use_public_api: Define if public API should be used.
         :type use_public_api: bool, optional
-        :param timeout: Overall timeout for the request. If not set, API timeouts are used.
+        :param timeout: Overall timeout for the request. If not set, the API timeouts are used.
         :type timeout: httpx._types.TimeoutTypes, optional
         :returns: Generator object.
         :rtype: :class:`Generator`
@@ -1640,7 +1631,7 @@ class Api:
         :type retries: int, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed.
         :type raise_error: bool, optional
-        :param timeout: Overall timeout for the request. If not set, API timeouts are used.
+        :param timeout: Overall timeout for the request. If not set, the API timeouts are used.
         :type timeout: httpx._types.TimeoutTypes, optional
         :returns: Response object
         :rtype: :class:`httpx.Response`
@@ -1747,7 +1738,7 @@ class Api:
         :type chunk_size: int, optional
         :param use_public_api: Define if public API should be used.
         :type use_public_api: bool, optional
-        :param timeout: Overall timeout for the request. If not set, API timeouts are used.
+        :param timeout: Overall timeout for the request. If not set, the API timeouts are used.
         :type timeout: httpx._types.TimeoutTypes, optional
         :param content: Request body passed via kwargs. May be bytes, an iterator,
             or a zero-arg callable returning a fresh body iterator — a callable is
