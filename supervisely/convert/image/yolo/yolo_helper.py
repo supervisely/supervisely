@@ -406,13 +406,15 @@ def get_keypoint_labels(meta: ProjectMeta) -> List[str]:
     :rtype: List[str]
     """
     kpt_labels = []
+    seen = set()
     for obj_class in meta.obj_classes:
         if obj_class.geometry_type != GraphNodes:
             continue
         nodes_field = obj_class.geometry_type.items_json_field
         for node_id, node in obj_class.geometry_config.get(nodes_field, {}).items():
             node_label = node.get("label") or node_id
-            if node_label not in kpt_labels:
+            if node_label not in seen:
+                seen.add(node_label)
                 kpt_labels.append(node_label)
     return kpt_labels
 
