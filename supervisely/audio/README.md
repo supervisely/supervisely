@@ -165,11 +165,13 @@ comparable with each other.
 
 ### What the settings do and do not determine
 
-Confirmed workflow: spectrogram settings are chosen **once per dataset or labeling
-job** and not changed by individual annotators, and reproducing the view from the
-stored parameters is sufficient — the rendered image is not stored. Per-label
-settings may appear later, which is why the settings live on each label rather
-than on the project.
+Confirmed workflow: spectrogram settings are chosen **once at the start of a
+project** and not changed afterwards; only the audio is stored, never a rendered
+spectrogram image; and the spectrogram is regenerated from the stored samples in
+whatever framework does the training. So the stored parameters are the whole
+contract — there is no image to fall back on. Settings still live on each label
+rather than on the project, because per-label settings may appear later and a
+label that outlives its project's setting has to keep meaning what it meant.
 
 * The **analysis** is fully determined by the stored settings. Every step is
   matched to the labeling tool: periodic windows, power scaled by
@@ -189,9 +191,52 @@ than on the project.
 vertical position on the displayed spectrogram to the frequency the annotator saw,
 using the tool's own mapping.
 
-> Bit-exactness against the tool's WASM STFT is still unverified — that needs a
-> golden-file fixture from the platform renderer, and float arithmetic will differ
-> in the last places regardless. The analysis matches; the last bits are unproven.
+> Bit-exactness against the tool's WASM STFT is not a goal and is not claimed.
+> The training input is rendered by the consumer's own framework, not by the
+> toolbox, so what has to hold is that the stored parameters pin the analysis
+> unambiguously — and float arithmetic differs in the last places between any
+> two implementations anyway.
+
+### Reproducing the analysis in PyTorch or TensorFlow
+
+The settings carry enough to rebuild the same analysis outside this SDK, which
+is what a training pipeline usually wants. Five conventions are not implied by
+the field names, and getting any of them wrong is a visible error rather than a
+rounding one:
+
+| | What the settings mean |
+|---|---|
+| Window | **Periodic** (`phase = 2*pi*i/N`), not the symmetric `numpy.hanning` family |
+| Padding | Frames **centred** on `k*hop_length`, padded with **zeros** — not reflected |
+| Scaling | Power `/sum(window)^2`, then `x4` on every bin except DC and Nyquist |
+| Mel | **HTK** edges from 0 to Nyquist, and a weighted **average** — divide by the filterbank column sums, do not take the weighted sum |
+| dB | `10*log10(power)` **absolute**, floor `1e-20`, clipped to `[min_db, max_db]`. No `top_db`, no per-render max |
+
+```python
+# periodic_window() builds the named window as `a0 - a1*cos(p) + a2*cos(2p)`,
+# p = 2*pi*i/N -- see the test module below for the coefficients.
+win = torch.from_numpy(periodic_window(settings.window, settings.fft_size))
+spec = torch.stft(samples, n_fft=settings.fft_size, hop_length=settings.hop_length,
+                  win_length=settings.fft_size, window=win,
+                  center=True, pad_mode="constant",   # torch defaults to "reflect"
+                  normalized=False, return_complex=True)
+power = spec.abs().double() ** 2 / float(win.double().sum()) ** 2
+power[1:-1] *= 4.0
+
+fb = torchaudio.functional.melscale_fbanks(settings.fft_size // 2 + 1, 0.0, rate / 2,
+                                           settings.mel_bands, rate,
+                                           norm=None, mel_scale="htk")
+power = (fb.T.double() @ power) / fb.sum(0).double()[:, None]     # average, not sum
+db = (10 * torch.log10(power.clamp_min(1e-20))).clamp(settings.min_db, settings.max_db)
+```
+
+`tests/audio_tests/test_framework_parity.py` runs this and the `tf.signal`
+equivalent against `render_spectrogram` and is the executable version of the
+table. Both agree to under 0.07 dB across scales, windows and FFT sizes — the
+residual is float32 versus float64, and a 100 dB display range quantised to 256
+levels is 0.4 dB per level, so it is not something an annotator could see. The
+tests skip themselves when the framework is not installed; neither is a
+dependency of this SDK.
 
 WAV is decoded with the standard library. Other formats (FLAC, OGG, MP3, M4A)
 need the optional `soundfile` package: `pip install supervisely[audio]`.
