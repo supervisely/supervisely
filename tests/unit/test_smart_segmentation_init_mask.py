@@ -40,6 +40,14 @@ def context_mask(bitmap: sly.Bitmap) -> dict:
     }
 
 
+def empty_context_mask() -> dict:
+    """`mask` field of a figure whose raster ended up with no set pixels."""
+    return {
+        "data": sly.Bitmap.data_2_base64(np.zeros((30, 40), bool)),
+        "origin": {"x": 25, "y": 15},
+    }
+
+
 def make_context(**overrides) -> dict:
     context = {
         "image_id": IMAGE_ID,
@@ -267,3 +275,62 @@ def test_batch_endpoint_rejects_an_undecodable_context_mask(service):
     assert body["success"] is False
     assert api.calls == []
     assert service.init_masks == []
+
+
+def test_a_session_keeps_the_init_mask_after_the_first_click(service):
+    # The platform gates `mask` and `init_figure` on sendGeometryToSmartAnnotation and
+    # clears that flag right after the first request, so every later click of the same
+    # session arrives with figure_id alone.
+    bitmap = init_bitmap()
+    api = FakeApi()
+
+    _, first_body = service.call(
+        "/smart_segmentation",
+        make_context(figure_id=FIGURE_ID, init_figure=True, mask=context_mask(bitmap)),
+        api,
+    )
+    _, second_body = service.call(
+        "/smart_segmentation",
+        make_context(figure_id=FIGURE_ID, request_uid="uid-2"),
+        api,
+    )
+
+    assert first_body["success"] is True
+    assert second_body["success"] is True
+    assert ("annotation.download_json", IMAGE_ID) not in api.calls
+    first_mask, second_mask = service.init_masks
+    assert first_mask is not None
+    assert second_mask is not None
+    assert np.array_equal(second_mask, first_mask)
+
+
+def test_an_all_zero_context_mask_is_served_without_an_init_mask(service):
+    api = FakeApi()
+
+    response, body = service.call(
+        "/smart_segmentation",
+        make_context(figure_id=FIGURE_ID, init_figure=True, mask=empty_context_mask()),
+        api,
+    )
+    batch_response, batch_body = service.call(
+        "/smart_segmentation_batch",
+        {
+            "states": [
+                make_context(figure_id=FIGURE_ID, init_figure=True, mask=empty_context_mask())
+            ]
+        },
+        api,
+    )
+
+    assert response.status_code == 200
+    assert body["success"] is True
+    assert batch_response.status_code == 200
+    assert [item["success"] for item in batch_body] == [True]
+    assert api.calls == []
+    assert service.init_masks == [None, None]
+
+
+def test_the_decode_helper_is_exported_from_supervisely_nn_inference():
+    from supervisely.nn.inference import get_init_mask_from_context
+
+    assert get_init_mask_from_context is functional.get_init_mask_from_context
