@@ -205,11 +205,16 @@ class InteractiveSegmentation(Inference):
                 # no figure lookup, works for any geometry of the edited figure.
                 init_mask = None
                 if init_mask_bitmap is not None:
-                    if figure_id is not None:
-                        # The platform sends the mask only on the first request of a
-                        # session, so the clicks that follow are served from this cache.
-                        self._init_mask_cache[figure_id] = init_mask_bitmap
                     init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
+                if figure_id is not None and image_id is not None:
+                    # The platform sends the mask only on the first request of a session,
+                    # so the clicks that follow are served from this cache. Only image
+                    # contexts are cached: the reader below needs image_id to rasterize.
+                    # An empty mask must drop whatever an earlier session left there.
+                    if init_mask_bitmap is None:
+                        self._init_mask_cache.pop(figure_id, None)
+                    else:
+                        self._init_mask_cache[figure_id] = init_mask_bitmap
             else:
                 # Deprecated: resolve the mask from the figure id.
                 if smtool_state.get("init_figure") is True and image_id is not None:
@@ -357,11 +362,16 @@ class InteractiveSegmentation(Inference):
                     # no figure lookup, works for any geometry of the edited figure.
                     init_mask = None
                     if init_mask_bitmap is not None:
-                        if figure_id is not None:
-                            # The platform sends the mask only on the first request of a
-                            # session, so later clicks are served from this cache.
-                            self._init_mask_cache[figure_id] = init_mask_bitmap
                         init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
+                    if figure_id is not None and image_id is not None:
+                        # The platform sends the mask only on the first request of a
+                        # session, so later clicks are served from this cache. Only image
+                        # contexts are cached: the reader below needs image_id to
+                        # rasterize. An empty mask drops what an earlier session left.
+                        if init_mask_bitmap is None:
+                            self._init_mask_cache.pop(figure_id, None)
+                        else:
+                            self._init_mask_cache[figure_id] = init_mask_bitmap
                 else:
                     # Deprecated: resolve the mask from the figure id.
                     if smtool_state.get("init_figure") is True and image_id is not None:

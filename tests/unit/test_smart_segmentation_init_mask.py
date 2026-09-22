@@ -330,7 +330,38 @@ def test_an_all_zero_context_mask_is_served_without_an_init_mask(service):
     assert service.init_masks == [None, None]
 
 
+def test_an_empty_mask_drops_what_an_earlier_session_cached(service):
+    bitmap = init_bitmap()
+    api = FakeApi()
+    service.call(
+        "/smart_segmentation",
+        make_context(figure_id=FIGURE_ID, init_figure=True, mask=context_mask(bitmap)),
+        api,
+    )
+
+    # The figure is emptied and edited again, so the new session opens with an empty mask.
+    service.call(
+        "/smart_segmentation",
+        make_context(figure_id=FIGURE_ID, init_figure=True, mask=empty_context_mask()),
+        api,
+    )
+    _, body = service.call(
+        "/smart_segmentation",
+        make_context(figure_id=FIGURE_ID, request_uid="uid-3"),
+        api,
+    )
+
+    assert body["success"] is True
+    assert api.calls == []
+    assert service.init_masks[1:] == [None, None]
+
+
 def test_the_decode_helper_is_exported_from_supervisely_nn_inference():
+    # Smart tool apps such as Serve Segment Anything 2 import the helper from here.
     from supervisely.nn.inference import get_init_mask_from_context
 
-    assert get_init_mask_from_context is functional.get_init_mask_from_context
+    bitmap = init_bitmap()
+    decoded = get_init_mask_from_context({"mask": context_mask(bitmap)})
+
+    assert np.array_equal(decoded.data, bitmap.data)
+    assert (decoded.origin.row, decoded.origin.col) == (bitmap.origin.row, bitmap.origin.col)
