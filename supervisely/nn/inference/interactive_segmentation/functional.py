@@ -123,6 +123,14 @@ def get_hash_from_context(context: dict):
 
 
 def download_init_mask(api: sly.Api, figure_id, image_id) -> sly.Bitmap:
+    """Read the figure a Smart Tool session starts from out of the image annotation.
+
+    .. deprecated::
+        Naming the figure by ``figure_id``/``init_figure`` is deprecated: it costs an
+        annotation download and only ever worked for bitmap figures, since the label is
+        parsed back as one. Senders put the figure into the request's ``mask`` field
+        instead - see :func:`get_smart_tool_init_mask`.
+    """
     ann_json = api.annotation.download_json(image_id)
     labels = [label for label in ann_json["objects"] if label["id"] == figure_id]
     assert len(labels) > 0, f"Label with id {figure_id} not found in image {image_id}."
