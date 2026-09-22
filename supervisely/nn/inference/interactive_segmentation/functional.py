@@ -1,6 +1,6 @@
 import os
 from copy import deepcopy
-from typing import Callable, Mapping, Optional, Tuple
+from typing import Callable, MutableMapping, Optional, Tuple
 
 import numpy as np
 
@@ -181,7 +181,7 @@ def get_smart_tool_init_mask(
     context: dict,
     image_size: Tuple[int, int],
     api: Optional[sly.Api] = None,
-    cache: Optional[Mapping] = None,
+    cache: Optional[MutableMapping] = None,
 ) -> Optional[np.ndarray]:
     """Build the init mask for one Smart Tool request, in the size of the full image.
 
@@ -199,7 +199,7 @@ def get_smart_tool_init_mask(
     :param api: API used by the deprecated ``figure_id`` path only
     :type api: :class:`~supervisely.api.api.Api`, optional
     :param cache: mutable mapping keeping the session's geometry between clicks
-    :type cache: Mapping, optional
+    :type cache: MutableMapping, optional
     :returns: mask of the figure being edited, or None when the request starts from scratch
     :rtype: np.ndarray, optional
 
