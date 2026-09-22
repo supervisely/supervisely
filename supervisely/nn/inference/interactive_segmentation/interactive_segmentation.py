@@ -200,10 +200,16 @@ class InteractiveSegmentation(Inference):
             # Prepare init_mask (only for images)
             figure_id = smtool_state.get("figure_id")
             image_id = smtool_state.get("image_id")
-            if init_mask_bitmap is not None:
+            if smtool_state.get("mask") is not None:
                 # The request carries the mask itself: no annotation download,
                 # no figure lookup, works for any geometry of the edited figure.
-                init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
+                init_mask = None
+                if init_mask_bitmap is not None:
+                    if figure_id is not None:
+                        # The platform sends the mask only on the first request of a
+                        # session, so the clicks that follow are served from this cache.
+                        self._init_mask_cache[figure_id] = init_mask_bitmap
+                    init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
             else:
                 # Deprecated: resolve the mask from the figure id.
                 if smtool_state.get("init_figure") is True and image_id is not None:
@@ -346,10 +352,16 @@ class InteractiveSegmentation(Inference):
                 # Prepare init_mask (only for images)
                 figure_id = smtool_state.get("figure_id")
                 image_id = smtool_state.get("image_id")
-                if init_mask_bitmap is not None:
+                if smtool_state.get("mask") is not None:
                     # The request carries the mask itself: no annotation download,
                     # no figure lookup, works for any geometry of the edited figure.
-                    init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
+                    init_mask = None
+                    if init_mask_bitmap is not None:
+                        if figure_id is not None:
+                            # The platform sends the mask only on the first request of a
+                            # session, so later clicks are served from this cache.
+                            self._init_mask_cache[figure_id] = init_mask_bitmap
+                        init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
                 else:
                     # Deprecated: resolve the mask from the figure id.
                     if smtool_state.get("init_figure") is True and image_id is not None:

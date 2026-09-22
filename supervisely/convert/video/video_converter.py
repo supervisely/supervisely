@@ -3,6 +3,7 @@ import subprocess
 from typing import Dict, Optional, Tuple, Union
 
 import cv2
+import magic
 
 from supervisely import (
     Api,
@@ -249,7 +250,6 @@ class VideoConverter(BaseConverter):
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def convert_to_mp4_if_needed(self, video_path):
-        import magic
         video_name = get_file_name_with_ext(video_path)
         if self.upload_as_links:
             video_path = self.remote_files_map.get(video_path)

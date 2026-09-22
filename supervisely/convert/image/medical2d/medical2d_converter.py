@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 from typing import Dict, List, Optional, Union
 
+import magic
 import nrrd
 import numpy as np
 
@@ -57,7 +58,6 @@ class Medical2DImageConverter(ImageConverter):
         ]
 
     def validate_format(self) -> bool:
-        import magic
         logger.debug(f"Validating format: {self.__str__()}")
 
         converted_dir_name = "converted"

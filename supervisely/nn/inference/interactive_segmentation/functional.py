@@ -162,7 +162,8 @@ def get_init_mask_from_context(context: dict) -> Optional[sly.Bitmap]:
 
     :param context: Request context of a smart tool request.
     :type context: dict
-    :returns: Bitmap built from the context, or None when ``mask`` is absent or null.
+    :returns: Bitmap built from the context, or None when ``mask`` is absent, null,
+        or decodes to a raster with no set pixels.
     :rtype: :class:`supervisely.Bitmap` or None
     :raises InitMaskDecodeError: if ``mask`` carries a value that cannot be decoded.
     """
@@ -172,6 +173,10 @@ def get_init_mask_from_context(context: dict) -> Optional[sly.Bitmap]:
     try:
         origin = mask["origin"]
         data = sly.Bitmap.base64_2_data(mask["data"])
+        if not data.any():
+            # An edited figure can rasterize to nothing; that is "no init mask",
+            # not a broken request, and sly.Bitmap refuses to hold an empty raster.
+            return None
         return sly.Bitmap(
             data=data,
             origin=sly.PointLocation(row=int(origin["y"]), col=int(origin["x"])),

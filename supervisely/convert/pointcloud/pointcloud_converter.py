@@ -2,6 +2,7 @@ import os
 from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
+import magic
 import numpy as np
 
 from supervisely import (
@@ -452,7 +453,6 @@ class PointcloudConverter(BaseConverter):
 
     @staticmethod
     def _is_image_file(path: str) -> bool:
-        import magic
         try:
             return magic.from_file(path, mime=True).startswith("image/")
         except Exception:
