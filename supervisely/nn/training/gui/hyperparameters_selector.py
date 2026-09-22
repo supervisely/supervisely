@@ -45,7 +45,7 @@ class HyperparametersSelector:
 
         # GUI Components
         self.editor = Editor(
-            hyperparameters, height_lines=50, language_mode="yaml", auto_format=True
+            hyperparameters, height_px=600, language_mode="yaml", auto_format=True
         )
         self.display_widgets.extend([self.editor])
 
