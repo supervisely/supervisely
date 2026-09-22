@@ -1,0 +1,43 @@
+# https://hub.docker.com/r/supervisely/base-py-sdk-cuda-light
+name: Build base-py-sdk-cuda-light Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        type: string
+        default: ""
+  workflow_call:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: gha-runner-supervisely
+    env:
+      IMAGE_NAME: base-py-sdk-cuda-light
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Write Tag to ENV variable
+        run: |
+          TAG_VERSION="${{ inputs.tag_version }}"
+          echo "TAG_VERSION=${TAG_VERSION#v}" >> "$GITHUB_ENV"
+
+      - name: Build and Push Docker Image
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/base_images/py_sdk_cuda_light \
+            --opt build-arg:tag_ref_name=${{ env.TAG_VERSION }} \
+            --output type=image,name=docker.io/supervisely/${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }},push=true \
+            --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
