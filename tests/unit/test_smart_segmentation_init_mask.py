@@ -241,6 +241,18 @@ def test_legacy_figure_id_path_is_unchanged_without_a_context_mask(service):
         functional.crop_image(CROP, functional.bitmap_to_mask(bitmap, IMAGE_H, IMAGE_W)),
     )
 
+    # The click that follows carries figure_id alone: it is served from the cache the
+    # download filled, with no second annotation download.
+    _, repeat = service.call("/smart_segmentation", make_context(figure_id=FIGURE_ID), api)
+
+    assert repeat["success"] is True
+    assert api.calls == [
+        ("annotation.download_json", IMAGE_ID),
+        ("image.get_info_by_id", IMAGE_ID),
+        ("image.get_info_by_id", IMAGE_ID),
+    ]
+    assert np.array_equal(service.init_masks[-1], service.init_masks[-2])
+
 
 def test_batch_endpoint_honours_the_context_mask(service):
     bitmap = init_bitmap()

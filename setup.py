@@ -48,6 +48,12 @@ def get_release_commit(tag: str):
     return response.json()["object"]["sha"]
 
 
+def local_version_label(branch_name: str) -> str:
+    """PEP 440 local labels take alphanumerics and periods only, so a branch
+    name with a slash (`agent/6094-...`) makes setuptools reject the version."""
+    return re.sub(r"[^A-Za-z0-9]+", ".", branch_name).strip(".")
+
+
 def get_version():
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
@@ -64,7 +70,7 @@ def get_version():
                 )
                 if release_commit == commit:
                     if branch_name != "master":
-                        return release["tag_name"] + "+" + branch_name
+                        return release["tag_name"] + "+" + local_version_label(branch_name)
                     return release["tag_name"]
         commit = get_previous_commit(commit)
 

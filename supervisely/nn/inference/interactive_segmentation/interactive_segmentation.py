@@ -206,10 +206,9 @@ class InteractiveSegmentation(Inference):
                 init_mask = None
                 if init_mask_bitmap is not None:
                     init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
-                if figure_id is not None and image_id is not None:
+                if figure_id is not None:
                     # The platform sends the mask only on the first request of a session,
-                    # so the clicks that follow are served from this cache. Only image
-                    # contexts are cached: the reader below needs image_id to rasterize.
+                    # so the clicks that follow are served from this cache.
                     # An empty mask must drop whatever an earlier session left there.
                     if init_mask_bitmap is None:
                         self._init_mask_cache.pop(figure_id, None)
@@ -227,10 +226,15 @@ class InteractiveSegmentation(Inference):
                 else:
                     init_mask = None
                 if init_mask is not None:
-                    img_info = api.image.get_info_by_id(image_id)
-                    h, w = img_info.height, img_info.width
-                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
-                    init_mask = functional.crop_image(crop, init_mask)
+                    if image_id is None:
+                        # A mask cached from an inline request can belong to a figure in
+                        # a video, which has no image info to size the raster with.
+                        init_mask = functional.bitmap_to_mask_in_crop(init_mask, crop)
+                    else:
+                        img_info = api.image.get_info_by_id(image_id)
+                        h, w = img_info.height, img_info.width
+                        init_mask = functional.bitmap_to_mask(init_mask, h, w)
+                        init_mask = functional.crop_image(crop, init_mask)
             if init_mask is not None:
                 assert init_mask.shape[:2] == image_np.shape[:2]
             settings["init_mask"] = init_mask
@@ -363,11 +367,10 @@ class InteractiveSegmentation(Inference):
                     init_mask = None
                     if init_mask_bitmap is not None:
                         init_mask = functional.bitmap_to_mask_in_crop(init_mask_bitmap, crop)
-                    if figure_id is not None and image_id is not None:
+                    if figure_id is not None:
                         # The platform sends the mask only on the first request of a
-                        # session, so later clicks are served from this cache. Only image
-                        # contexts are cached: the reader below needs image_id to
-                        # rasterize. An empty mask drops what an earlier session left.
+                        # session, so the clicks that follow are served from this cache.
+                        # An empty mask must drop what an earlier session left there.
                         if init_mask_bitmap is None:
                             self._init_mask_cache.pop(figure_id, None)
                         else:
@@ -384,10 +387,15 @@ class InteractiveSegmentation(Inference):
                     else:
                         init_mask = None
                     if init_mask is not None:
-                        img_info = api.image.get_info_by_id(image_id)
-                        h, w = img_info.height, img_info.width
-                        init_mask = functional.bitmap_to_mask(init_mask, h, w)
-                        init_mask = functional.crop_image(crop, init_mask)
+                        if image_id is None:
+                            # A mask cached from an inline request can belong to a figure
+                            # in a video, which has no image info to size the raster with.
+                            init_mask = functional.bitmap_to_mask_in_crop(init_mask, crop)
+                        else:
+                            img_info = api.image.get_info_by_id(image_id)
+                            h, w = img_info.height, img_info.width
+                            init_mask = functional.bitmap_to_mask(init_mask, h, w)
+                            init_mask = functional.crop_image(crop, init_mask)
                 if init_mask is not None:
                     assert init_mask.shape[:2] == image_np.shape[:2]
                 settings["init_mask"] = init_mask
