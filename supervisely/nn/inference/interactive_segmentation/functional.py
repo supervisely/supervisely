@@ -138,10 +138,9 @@ def bitmap_to_mask(bitmap: sly.Bitmap, h, w):
     return mask
 
 
-# Key of the inline source figure in a Smart Tool request context, and of its two fields.
-# The Smart Tool sends the figure it is editing along with the clicks; `figure_id` +
-# `init_figure` is the legacy way of saying the same thing, and it made the app read the
-# annotation back from the API, which only ever worked for bitmap figures.
+# Fields of the figure a Smart Tool session starts from, sent inline with the clicks.
+# `figure_id` + `init_figure` names the same figure the legacy way, by reading it back
+# from the API, which only ever worked for bitmaps.
 MASK = "mask"
 GEOMETRY_TYPE = "geometry_type"
 GEOMETRY = "geometry"
