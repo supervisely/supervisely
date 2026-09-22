@@ -162,9 +162,9 @@ def get_init_mask_from_context(context: dict) -> Optional[sly.Bitmap]:
 
     :param context: Request context of a smart tool request.
     :type context: dict
-    :returns: Bitmap built from the context, or None if there is no ``mask``.
+    :returns: Bitmap built from the context, or None when ``mask`` is absent or null.
     :rtype: :class:`supervisely.Bitmap` or None
-    :raises InitMaskDecodeError: if ``mask`` is present but cannot be decoded.
+    :raises InitMaskDecodeError: if ``mask`` carries a value that cannot be decoded.
     """
     mask = context.get("mask")
     if mask is None:
