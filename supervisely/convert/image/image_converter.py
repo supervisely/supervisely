@@ -3,7 +3,6 @@ import os
 from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
-import magic
 import nrrd
 
 import supervisely.convert.image.image_helper as image_helper
@@ -232,6 +231,7 @@ class ImageConverter(BaseConverter):
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
+        import magic
         if self._upload_as_links and self.supports_links:
             ext = get_file_ext(path)
             return ext.lower() in self.allowed_exts

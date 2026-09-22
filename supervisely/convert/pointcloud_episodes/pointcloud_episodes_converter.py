@@ -2,8 +2,6 @@ import os
 from typing import Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
 
-import magic
-
 from supervisely import (
     Api,
     PointcloudEpisodeAnnotation,
@@ -391,6 +389,7 @@ class PointcloudEpisodeConverter(BaseConverter):
 
     @staticmethod
     def _get_image_subtype(path: str) -> Optional[str]:
+        import magic
         try:
             mime_type = magic.from_file(path, mime=True)
         except Exception:
