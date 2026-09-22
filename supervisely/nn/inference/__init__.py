@@ -17,6 +17,9 @@ from supervisely.nn.inference.prompt_based_object_detection.propmt_based_object_
 from supervisely.nn.inference.interactive_segmentation.interactive_segmentation import (
     InteractiveSegmentation,
 )
+from supervisely.nn.inference.interactive_segmentation.functional import (
+    get_smart_tool_init_mask,
+)
 from supervisely.nn.inference.promptable_segmentation.promptable_segmentation import (
     PromptableSegmentation,
 )
