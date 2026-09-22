@@ -266,6 +266,8 @@ class DeployModel(Widget):
             deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Deploying custom model with parameters:", extra=deploy_parameters)
             experiment_info = deploy_parameters["experiment_info"]
+            if experiment_info is None:
+                raise ValueError("No experiment selected for deployment.")
             experiment_info = ExperimentInfo(**experiment_info)  # pylint: disable=not-a-mapping
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
                 agent_id=agent_id,
