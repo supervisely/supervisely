@@ -1,8 +1,8 @@
 # Audio modality
 
-Audio projects hold recordings labeled with **time segments**. Each segment can
-record the spectrogram settings it was drawn under, so the picture the annotator
-was looking at can be reproduced later and fed to training.
+Audio projects hold recordings labeled with **time segments**. The spectrogram
+they are labeled against is configured once for the whole project, so the picture
+every annotator was looking at can be reproduced later and fed to training.
 
 ```python
 import supervisely as sly
@@ -42,66 +42,82 @@ segment = sly.AudioSegment.from_seconds(tag_id, start_sec=1.0, end_sec=2.0, samp
 
 `channel` is a zero-based channel index, or `None` for the mixdown.
 
-## Why the settings are stored
+## The spectrogram belongs to the project
 
 A spectrogram is not the audio — it is one of many possible transforms of it,
 and the choice changes what is visible. Two tones 40 Hz apart are one line at
 `fft_size=256` and two lines at `fft_size=1024`. A quiet event 70 dB down is
-invisible at `min_db=-60` and obvious at `min_db=-100`. So the settings a label
-was made under are part of the label.
+invisible at `min_db=-60` and obvious at `min_db=-100`. So every recording in a
+project has to be analysed the same way, or two annotators are not looking at
+the same evidence.
+
+The platform stores the settings in `projects.settings.spectrogram` and applies
+them to every recording. Set them once, at the start of the project.
 
 ```python
 settings = sly.SpectrogramSettings(
-    scale="mel",        # linear | log | mel
-    fft_size=1024,      # power of two, 32..32768
+    scale="mel",            # linear | log | mel
+    fft_size=1024,          # power of two, 32..32768
     hop_length=256,
-    window="hann",      # hann | hamming | blackman
-    mel_bands=64,       # 2..512
+    window="hann",          # hann | hamming | blackman
+    mel_bands=64,           # 2..512
     min_db=-100.0,
     max_db=0.0,
-    channel=0,
+    colormap="magma",       # viridis | magma | grayscale
+    interpolation="sharp",  # sharp | smooth
 )
 
+api.audio.set_spectrogram_settings(project.id, settings)
+api.audio.get_spectrogram_settings(project.id)   # the defaults, if never configured
+```
+
+Changing them is a project-wide change that everyone sees, and it needs
+permission to edit the project (`PROJECTS.UPDATE`) rather than permission to
+label in it — an annotator cannot retune the analysis mid-job. Existing labels
+are left untouched, which is the reason to set it once and leave it.
+
+`channel` is not one of the settings: which channel is on screen is navigation,
+so it is an argument to the render functions instead.
+
+```python
 api.audio.add_segment(
     project.id,
     recording.id,
-    sly.AudioSegment(tag_id=tag_id, start=16000, end=31999, channel=0, settings=settings),
+    sly.AudioSegment(tag_id=tag_id, start=16000, end=31999, channel=0),
 )
 ```
-
-`settings=None` is meaningful rather than missing: it records that the label was
-made on the waveform alone, by ear.
 
 ### Fingerprints
 
 `settings.fingerprint` is a canonical hash over the fields that change the
 numbers. `colormap` and `interpolation` only change how the array is painted, so
-they are excluded — two labels made under the same analysis compare equal
-regardless of palette.
+they are excluded — two projects analysing identically compare equal regardless
+of palette.
 
 ```python
 a.fingerprint == b.fingerprint   # same transform -> safe to merge or train together
 ```
 
 One string answers "can these datasets be merged", "were these labels made under
-the same view", and "does my training render match what the annotator saw".
+the same analysis", and "does my training render match what the annotator saw".
 
 ## Reading back
 
 ```python
 segments = api.audio.get_segments(recording_id)
 for s in segments:
-    print(s.start, s.end, s.channel, s.settings)
+    print(s.start, s.end, s.channel, s.meta)
 ```
 
 Both `entities.list` and `entities.info` omit `tags` and their `meta` from the
 default projection, so `api.audio` asks for them explicitly
-(`AudioApi.ENTITY_FIELDS`). `meta` is exactly where the settings live.
+(`AudioApi.ENTITY_FIELDS`). `meta` is where a segment's channel lives.
 
-A segment records two channels, and they mean different things: `segment.channel`
-is what the label is *about*, `segment.settings.channel` is what was on *screen*
-when it was drawn. The labeling tool writes them independently, and so does the
-SDK; neither overwrites the other.
+`meta` is a free-form options object shared with other clients, so keys this SDK
+does not know about are read back and written out unchanged — including the
+`spectrogram` object that labels made before the settings moved onto the project
+still carry. It is history, not configuration: the project's settings are what
+the tool renders with.
 
 ## Local projects
 
@@ -126,7 +142,10 @@ dataset_fs = project_fs.datasets.get("ds0")
 ann = dataset_fs.get_ann("rain.wav", project_fs.meta)
 ann.sample_rate, ann.sample_count, ann.channels   # the platform stores none of these
 for segment in ann.tags:
-    print(segment.name, segment.start, segment.end, segment.settings)
+    print(segment.name, segment.start, segment.end, segment.channel)
+
+# the project's analysis travels in meta.json and is restored on upload
+sly.SpectrogramSettings.from_json(project_fs.meta.project_settings.spectrogram)
 
 sly.upload_audio_project("/tmp/proj", api, workspace_id, "copy of engine-noise")
 ```
@@ -151,13 +170,16 @@ samples, rate = sly.audio.read_audio("/tmp/run1.wav")
 spec = sly.audio.render_spectrogram(samples, rate, settings)
 
 # just one labeled segment, for a training crop
-crop = sly.audio.render_segment(samples, rate, segment.start, segment.end, segment.settings)
+settings = api.audio.get_spectrogram_settings(project.id)
+crop = sly.audio.render_segment(
+    samples, rate, segment.start, segment.end, settings, channel=segment.channel
+)
 
 # raw power instead of clipped dB, for your own normalisation
 raw = sly.audio.render_spectrogram(samples, rate, settings, as_db=False)
 ```
 
-Rendering under `segment.settings` reproduces the analysis the annotator saw.
+Rendering under the project's settings reproduces the analysis the annotator saw.
 Decibels are **absolute** — `10*log10(power)`, calibrated so a full-scale sine
 reads 0 dB, exactly as the tool paints them. Nothing is normalised to the loudest
 point, which is what makes a crop, a full render and a second recording
@@ -169,9 +191,7 @@ Confirmed workflow: spectrogram settings are chosen **once at the start of a
 project** and not changed afterwards; only the audio is stored, never a rendered
 spectrogram image; and the spectrogram is regenerated from the stored samples in
 whatever framework does the training. So the stored parameters are the whole
-contract — there is no image to fall back on. Settings still live on each label
-rather than on the project, because per-label settings may appear later and a
-label that outlives its project's setting has to keep meaning what it meant.
+contract — there is no image to fall back on.
 
 * The **analysis** is fully determined by the stored settings. Every step is
   matched to the labeling tool: periodic windows, power scaled by
@@ -243,10 +263,11 @@ need the optional `soundfile` package: `pip install supervisely[audio]`.
 
 ## Validation
 
-Settings are validated on construction, against the **labeling tool's** bounds
-rather than the API's. The API is currently looser — it accepts `mel_bands=1`
-and `fft_size=65536`, which the toolbox then refuses to open, leaving a
-recording that cannot be viewed. The SDK will not author those.
+Settings are validated on construction, against the bounds the API enforces on
+`projects.settings.spectrogram`: an enumerated set of FFT sizes, 2..512 mel
+bands, a hop of at least one sample, and a dB range the right way round. The
+labeling tool's bounds are the same ones, so a value this SDK accepts is a value
+the toolbox can open. Checking locally turns a 400 into a specific error.
 
 ```python
 sly.SpectrogramSettings(mel_bands=1)   # ValueError

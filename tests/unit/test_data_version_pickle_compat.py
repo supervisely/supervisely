@@ -154,3 +154,16 @@ def test_project_meta_unpickle_never_revalidates_against_stricter_rules():
     restored = _roundtrip_meta(meta)  # must not raise
 
     assert restored.project_settings.multiview_tag_name == "group"
+
+
+def test_project_settings_unpickle_missing_spectrogram():
+    """`spectrogram` was added when audio projects moved the analysis onto the
+    project. A backup written before that has no such attribute, and to_json()
+    reads it."""
+    settings = ProjectSettings(labeling_interface=None)
+    del settings.__dict__["spectrogram"]
+
+    restored = _roundtrip(settings)
+
+    assert restored.spectrogram is None
+    assert "spectrogram" not in restored.to_json()

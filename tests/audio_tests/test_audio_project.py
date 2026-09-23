@@ -61,7 +61,7 @@ def test_project_layout_and_round_trip(tmp_path, meta):
                 start=0,
                 end=15999,
                 channel=1,
-                settings=sly.SpectrogramSettings(scale="mel", channel=0),
+                meta={"reviewedBy": "anna"},
             )
         ],
     )
@@ -80,10 +80,8 @@ def test_project_layout_and_round_trip(tmp_path, meta):
     segment = restored.tags[0]
     assert segment.name == "Event"
     assert (segment.start, segment.end) == (0, 15999)
-    # The labeled channel and the viewed channel stay separate on disk too.
     assert segment.channel == 1
-    assert segment.settings.channel == 0
-    assert segment.settings.scale == "mel"
+    assert segment.meta == {"reviewedBy": "anna"}
 
 
 def test_empty_annotation_reads_the_shape_from_the_file(tmp_path, meta):
@@ -118,3 +116,30 @@ def test_non_audio_file_is_refused(tmp_path, meta):
     dataset = project.create_dataset("ds0")
     with pytest.raises(Exception):
         dataset.add_item_file("notes.txt", str(junk))
+
+
+def test_meta_json_carries_the_project_spectrogram(tmp_path, meta):
+    """The analysis the labels were drawn under is project configuration, so it
+    travels in meta.json -- otherwise a downloaded project cannot be rendered
+    the way the annotators saw it."""
+    settings = sly.SpectrogramSettings(scale="mel", fft_size=1024, mel_bands=64)
+    meta_with_spectrogram = meta.clone(
+        project_settings=sly.ProjectSettings(spectrogram=settings.to_json())
+    )
+
+    audio_path = write_wav(tmp_path / "rain.wav", seconds=0.5)
+    project = sly.AudioProject(str(tmp_path / "proj"), sly.OpenMode.CREATE)
+    project.set_meta(meta_with_spectrogram)
+    project.create_dataset("ds0").add_item_file("rain.wav", audio_path)
+
+    reopened = sly.AudioProject(str(tmp_path / "proj"), sly.OpenMode.READ)
+    restored = sly.SpectrogramSettings.from_json(reopened.meta.project_settings.spectrogram)
+    assert restored == settings
+    assert restored.fingerprint == settings.fingerprint
+
+
+def test_project_settings_without_a_spectrogram_stay_clean(meta):
+    """Every other modality shares this class; an unset spectrogram must not
+    appear in their meta.json."""
+    assert "spectrogram" not in sly.ProjectSettings().to_json()
+    assert meta.project_settings.spectrogram is None

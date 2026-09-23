@@ -273,13 +273,16 @@ def render_spectrogram(
     settings: Optional[SpectrogramSettings] = None,
     as_db: bool = True,
     rows: Optional[int] = None,
+    channel: Optional[int] = None,
 ) -> np.ndarray:
     """Render a spectrogram from decoded samples.
 
-    :param samples: ``(n,)`` mono or ``(n, channels)``; the channel named in
-        ``settings`` is selected, or all channels are mixed down.
+    :param samples: ``(n,)`` mono or ``(n, channels)``; ``channel`` selects one,
+        or all channels are mixed down.
     :param sample_rate: Sample rate of the recording.
-    :param settings: Settings to render under. Defaults to the platform default.
+    :param settings: Settings to render under -- normally the project's, from
+        :meth:`~supervisely.api.audio_api.AudioApi.get_spectrogram_settings`.
+        Defaults to the platform default.
     :param as_db: Return absolute decibels clipped to the settings' range. Set
         ``False`` for raw power, which is what most training pipelines want
         before their own normalisation. Decibels are absolute: a crop and a full
@@ -289,6 +292,9 @@ def render_spectrogram(
         resolution -- mel bands, or FFT bins for linear and log. The row count
         is **not** part of the stored settings, so it has to be supplied if you
         are matching a particular on-screen render.
+    :param channel: Zero-based channel to analyse, or ``None`` to mix down.
+        Not part of the stored settings: which channel is on screen is
+        navigation, not project configuration.
     :return: ``(frequency_rows, n_frames)``, low frequency first.
 
     :Usage example:
@@ -298,10 +304,11 @@ def render_spectrogram(
         import supervisely as sly
 
         samples, rate = sly.audio.read_audio("recording.wav")
-        spec = sly.audio.render_spectrogram(samples, rate, segment.settings)
+        settings = api.audio.get_spectrogram_settings(project_id)
+        spec = sly.audio.render_spectrogram(samples, rate, settings)
     """
     settings = settings or SpectrogramSettings()
-    mono = select_channel(samples, settings.channel)
+    mono = select_channel(samples, channel)
     mono = np.ascontiguousarray(mono, dtype=np.float32)
 
     power = stft_power(mono, settings.fft_size, settings.hop_length, settings.window)
@@ -332,17 +339,19 @@ def render_segment(
     settings: Optional[SpectrogramSettings] = None,
     as_db: bool = True,
     rows: Optional[int] = None,
+    channel: Optional[int] = None,
 ) -> np.ndarray:
     """Render only an inclusive sample range, for per-segment training crops.
 
     ``end`` is inclusive, matching the platform's ``frameRange``. Decibels are
     absolute, so a crop is directly comparable with the full render and with
-    crops of other recordings.
+    crops of other recordings. Pass ``channel=segment.channel`` to analyse the
+    channel the label is about.
     """
     if end < start:
         raise ValueError(f"end must be >= start, got start={start} end={end}")
     return render_spectrogram(
-        samples[start : end + 1], sample_rate, settings, as_db=as_db, rows=rows
+        samples[start : end + 1], sample_rate, settings, as_db=as_db, rows=rows, channel=channel
     )
 
 
@@ -351,12 +360,15 @@ def render_from_file(
     settings: Optional[SpectrogramSettings] = None,
     sample_range: Optional[Tuple[int, int]] = None,
     as_db: bool = True,
+    channel: Optional[int] = None,
 ) -> np.ndarray:
     """Decode a file and render it, optionally only an inclusive sample range."""
     samples, rate = read_audio(path)
     if sample_range is None:
-        return render_spectrogram(samples, rate, settings, as_db=as_db)
-    return render_segment(samples, rate, sample_range[0], sample_range[1], settings, as_db=as_db)
+        return render_spectrogram(samples, rate, settings, as_db=as_db, channel=channel)
+    return render_segment(
+        samples, rate, sample_range[0], sample_range[1], settings, as_db=as_db, channel=channel
+    )
 
 
 def to_image(spectrogram: np.ndarray, settings: Optional[SpectrogramSettings] = None) -> np.ndarray:

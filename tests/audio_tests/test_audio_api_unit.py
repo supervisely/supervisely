@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from supervisely.api.audio_api import AudioApi, AudioInfo
+from supervisely.audio.spectrogram_settings import PROJECT_FIELDS, SpectrogramSettings
 
 
 @pytest.fixture
@@ -75,3 +76,40 @@ def test_upload_paths_checks_its_arguments(audio_api):
         audio_api.upload_paths(1, ["a.wav", "b.wav"], ["/tmp/a.wav"])
     with pytest.raises(ValueError):
         audio_api.download_paths([1, 2], ["/tmp/a.wav"])
+
+
+def test_project_settings_are_read_with_platform_defaults(audio_api):
+    """A project that has never been configured has no `spectrogram` key, and
+    the platform renders it with the defaults -- so do we, rather than
+    answering None."""
+    audio_api._api.project.get_settings.return_value = {"labelingInterface": "default"}
+    settings = audio_api.get_spectrogram_settings(31)
+    assert settings == SpectrogramSettings()
+
+
+def test_project_settings_are_read_back(audio_api):
+    audio_api._api.project.get_settings.return_value = {
+        "spectrogram": {"scale": "mel", "fftSize": 1024, "melBands": 64}
+    }
+    settings = audio_api.get_spectrogram_settings(31)
+    assert (settings.scale, settings.fft_size, settings.mel_bands) == ("mel", 1024, 64)
+    assert settings.hop_length == 512  # a field the project never set
+
+
+def test_settings_are_written_under_the_spectrogram_key(audio_api):
+    settings = SpectrogramSettings(scale="mel", fft_size=1024)
+    audio_api.set_spectrogram_settings(31, settings)
+    audio_api._api.project.update_settings.assert_called_once_with(
+        31, {"spectrogram": settings.to_json()}, merge_with_current=True
+    )
+    # merge_with_current, so writing the spectrogram does not blank the rest of
+    # the project's settings.
+    written = audio_api._api.project.update_settings.call_args[0][1]["spectrogram"]
+    assert set(written) == set(PROJECT_FIELDS)
+
+
+def test_settings_must_be_a_settings_object(audio_api):
+    """A raw dict would skip validation and reach the API unchecked."""
+    with pytest.raises(TypeError):
+        audio_api.set_spectrogram_settings(31, {"scale": "mel"})
+    audio_api._api.project.update_settings.assert_not_called()

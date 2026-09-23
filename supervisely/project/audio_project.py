@@ -13,6 +13,12 @@ Layout on disk mirrors the other modalities::
 ``ann/<name>.json`` holds an :class:`~supervisely.audio_annotation.audio_annotation.AudioAnnotation`:
 the shape of the recording plus its segment labels. Tags are stored by **name**,
 so a downloaded project is readable without the server that issued the ids.
+
+The project's spectrogram settings travel in ``meta.json`` under
+``projectSettings.spectrogram``, because that is where the platform keeps them:
+they are project configuration applied to every recording, not part of any one
+label. Download writes them out and upload puts them back, so a round trip
+preserves the analysis the labels were drawn under.
 """
 
 from __future__ import annotations
@@ -269,6 +275,8 @@ def download_audio_project(
     :param log_progress: Log the download progress.
     :param progress_cb: Function for tracking the download progress.
     """
+    # with_settings=True is what carries `projectSettings.spectrogram` into
+    # meta.json; without it the analysis the labels were drawn under is lost.
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     tag_names = _tag_names_by_id(api, project_id)
 
@@ -374,6 +382,16 @@ def upload_audio_project(
         workspace_id, project_name, type=ProjectType.AUDIO, change_name_if_conflict=True
     )
     api.project.update_meta(project.id, project_fs.meta.to_json())
+
+    # update_meta does not carry project settings, so the spectrogram has to be
+    # written separately. It needs permission to edit the project, which the
+    # uploader has: it just created it.
+    spectrogram = getattr(project_fs.meta.project_settings, "spectrogram", None)
+    if spectrogram is not None:
+        api.project.update_settings(
+            project.id, {"spectrogram": spectrogram}, merge_with_current=True
+        )
+
     tag_ids = {name: id for id, name in _tag_names_by_id(api, project.id).items()}
 
     for dataset_fs in project_fs.datasets:

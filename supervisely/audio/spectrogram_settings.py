@@ -1,39 +1,62 @@
 # coding: utf-8
-"""Spectrogram view settings recorded alongside an audio segment label.
+"""Spectrogram analysis settings, configured once per audio project.
 
 An audio segment is labeled against a *picture* of the sound, and that picture
 is one of many possible transforms of it. Two annotators using different
-settings are not looking at the same evidence, so the settings a label was
-drawn under are part of the label, not a user preference.
+settings are not looking at the same evidence, so the settings have to be
+knowable for every label in the project.
 
-The platform stores them in the tag assignment's ``meta`` under the
-``spectrogram`` key. This module is the typed, validated Python view of that
-object.
+The platform makes them project configuration rather than annotation data:
+they live in ``projects.settings.spectrogram``, are applied to every recording
+in the project, and changing them needs the permission to edit the project
+rather than the permission to label in it. Read and write them with
+:meth:`~supervisely.api.audio_api.AudioApi.get_spectrogram_settings` and
+:meth:`~supervisely.api.audio_api.AudioApi.set_spectrogram_settings`.
+
+``channel`` is deliberately *not* one of these settings. Which channel an
+annotator is looking at is navigation, not configuration, so it is passed to
+the render functions instead. The channel a *label* is about is
+:attr:`AudioSegment.channel`, which is a different thing again.
 """
 
 import hashlib
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-# Allowed enum values, mirroring the labeling tool.
+# Allowed enum values, mirroring the labeling tool and the API's Joi schema.
 SCALES = ("linear", "log", "mel")
 WINDOWS = ("hann", "hamming", "blackman")
 COLORMAPS = ("viridis", "magma", "grayscale")
 INTERPOLATIONS = ("sharp", "smooth")
 
-# Numeric bounds enforced by the labeling tool. The API is currently looser
-# (see :func:`validate`), so we validate here to the stricter rule: a segment
-# the toolbox cannot open is worse than a rejected write.
+# Numeric bounds. These are the API's bounds and the labeling tool's bounds --
+# the two agree since the settings moved onto the project.
 FFT_SIZE_MIN, FFT_SIZE_MAX = 32, 32768
 MEL_BANDS_MIN, MEL_BANDS_MAX = 2, 512
 
+#: The nine fields the platform stores, in the order the API declares them.
+PROJECT_FIELDS = (
+    "scale",
+    "fftSize",
+    "hopLength",
+    "window",
+    "melBands",
+    "minDb",
+    "maxDb",
+    "colormap",
+    "interpolation",
+)
+
 #: Keys that change the numbers. ``colormap`` and ``interpolation`` only change
 #: how the array is painted, so they are excluded from the fingerprint.
-_SEMANTIC_KEYS = ("scale", "fftSize", "hopLength", "window", "melBands", "minDb", "maxDb", "channel")
+_SEMANTIC_KEYS = ("scale", "fftSize", "hopLength", "window", "melBands", "minDb", "maxDb")
 
 
 class SpectrogramSettings:
-    """Settings describing how a spectrogram was rendered for an audio label.
+    """How every recording in an audio project is analysed and drawn.
+
+    The defaults are the platform's defaults, so ``SpectrogramSettings()``
+    describes a project that has never been configured.
 
     :param scale: Frequency axis. One of ``linear``, ``log``, ``mel``.
     :param fft_size: FFT window length in samples. Power of two, 32..32768.
@@ -42,9 +65,8 @@ class SpectrogramSettings:
     :param mel_bands: Number of mel filters, 2..512. Used when ``scale="mel"``.
     :param min_db: Lower edge of the displayed dB range.
     :param max_db: Upper edge of the displayed dB range. Must exceed ``min_db``.
-    :param colormap: Palette. View-only; excluded from :attr:`fingerprint`.
-    :param interpolation: ``sharp`` or ``smooth``. View-only.
-    :param channel: Zero-based channel index, or ``None`` for a mixdown.
+    :param colormap: Palette. Display-only; excluded from :attr:`fingerprint`.
+    :param interpolation: ``sharp`` or ``smooth``. Display-only.
 
     :Usage example:
 
@@ -52,8 +74,9 @@ class SpectrogramSettings:
 
         import supervisely as sly
 
+        api = sly.Api.from_env()
         settings = sly.SpectrogramSettings(scale="mel", fft_size=1024, hop_length=256)
-        settings.to_json()
+        api.audio.set_spectrogram_settings(project_id, settings)
     """
 
     def __init__(
@@ -67,7 +90,6 @@ class SpectrogramSettings:
         max_db: float = 0.0,
         colormap: str = "magma",
         interpolation: str = "sharp",
-        channel: Optional[int] = None,
     ):
         self.scale = scale
         self.fft_size = int(fft_size)
@@ -78,17 +100,16 @@ class SpectrogramSettings:
         self.max_db = float(max_db)
         self.colormap = colormap
         self.interpolation = interpolation
-        self.channel = None if channel is None else int(channel)
         self.validate()
 
     def validate(self) -> None:
-        """Raise :class:`ValueError` if any field is outside what the labeling
-        tool accepts.
+        """Raise :class:`ValueError` if any field is outside what the platform
+        accepts.
 
-        Validated here rather than relying on the API, which currently accepts
-        values the toolbox then refuses to load (``melBands`` of 1 or 100000,
-        ``fftSize`` of 16 or 65536). Writing one of those produces a recording
-        that cannot be opened in the UI, so the SDK refuses to author it.
+        The bounds are the API's own (``UpdateProjectSettings``): an enumerated
+        set of FFT sizes, 2..512 mel bands, a hop of at least one sample and a
+        dB range that is the right way round. Checking here turns a rejected
+        request into an immediate, specific error.
         """
         if self.scale not in SCALES:
             raise ValueError(f"scale must be one of {SCALES}, got {self.scale!r}")
@@ -114,23 +135,14 @@ class SpectrogramSettings:
             )
         if self.min_db >= self.max_db:
             raise ValueError(f"min_db must be < max_db, got {self.min_db} >= {self.max_db}")
-        if self.channel is not None and self.channel < 0:
-            raise ValueError(f"channel must be >= 0 or None, got {self.channel}")
 
-    def to_json(self, include_colormap: bool = False) -> Dict[str, Any]:
-        """Serialize to the platform's ``meta.spectrogram`` object.
+    def to_json(self) -> Dict[str, Any]:
+        """Serialize to the platform's ``projects.settings.spectrogram`` object.
 
-        :param include_colormap: Whether to emit ``colormap``. Defaults to
-            ``False`` to match the labeling tool, which strips it before saving
-            because it does not affect which events are visible. Two labels made
-            under the same analysis then compare equal regardless of palette.
-
-            This is a confirmed platform decision, not an inference: the
-            colormap is deliberately not persisted. Do not "fix" this by
-            writing it -- SDK-made and toolbox-made labels would stop
-            comparing equal.
+        All nine fields are always present: the API requires every one of them,
+        and a partial object is rejected.
         """
-        data = {
+        return {
             "scale": self.scale,
             "fftSize": self.fft_size,
             "hopLength": self.hop_length,
@@ -138,19 +150,18 @@ class SpectrogramSettings:
             "melBands": self.mel_bands,
             "minDb": self.min_db,
             "maxDb": self.max_db,
+            "colormap": self.colormap,
             "interpolation": self.interpolation,
-            "channel": self.channel,
         }
-        if include_colormap:
-            data["colormap"] = self.colormap
-        return data
 
     @classmethod
     def from_json(cls, data: Dict[str, Any]) -> "SpectrogramSettings":
-        """Build from a platform ``meta.spectrogram`` object.
+        """Build from a stored settings object.
 
-        Missing optional keys fall back to the platform defaults, so settings
-        written by an older toolbox build still load.
+        A missing key falls back to the platform default for it, which is what
+        the labeling tool does: a project configured before a field existed
+        keeps rendering exactly as it did. Keys that are not settings --
+        ``channel`` on a legacy annotation-level object -- are ignored.
         """
         if not isinstance(data, dict):
             raise ValueError(f"spectrogram settings must be a dict, got {type(data).__name__}")
@@ -164,17 +175,16 @@ class SpectrogramSettings:
             max_db=data.get("maxDb", 0.0),
             colormap=data.get("colormap", "magma"),
             interpolation=data.get("interpolation", "sharp"),
-            channel=data.get("channel"),
         )
 
     @property
     def fingerprint(self) -> str:
         """Stable id for "is this the same transform".
 
-        A canonical SHA-256 over the fields that change the numbers. Cosmetic
+        A canonical SHA-256 over the fields that change the numbers. Display
         changes (``colormap``, ``interpolation``) leave it untouched, so it
         answers three questions with one string comparison: can these datasets
-        be merged, were these labels made under the same view, and does a
+        be merged, were these labels made under the same analysis, and does a
         training render match what the annotator saw.
         """
         core = {k: v for k, v in self.to_json().items() if k in _SEMANTIC_KEYS}
@@ -193,24 +203,22 @@ class SpectrogramSettings:
             "max_db": self.max_db,
             "colormap": self.colormap,
             "interpolation": self.interpolation,
-            "channel": self.channel,
         }
         fields.update(overrides)
         return SpectrogramSettings(**fields)
 
     def _canonical(self) -> str:
-        data = self.to_json(include_colormap=True)
-        return json.dumps(data, sort_keys=True, separators=(",", ":"))
+        return json.dumps(self.to_json(), sort_keys=True, separators=(",", ":"))
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, SpectrogramSettings):
             return NotImplemented
-        return self.to_json(include_colormap=True) == other.to_json(include_colormap=True)
+        return self.to_json() == other.to_json()
 
     def __hash__(self) -> int:
         """Defining ``__eq__`` alone would set ``__hash__`` to ``None``, and
-        grouping labels by view -- ``set(s.settings for s in segments)`` -- is
-        the obvious thing to want to do with these."""
+        grouping projects by analysis is the obvious thing to want to do with
+        these."""
         return hash(self._canonical())
 
     def __repr__(self) -> str:
@@ -218,5 +226,5 @@ class SpectrogramSettings:
             f"SpectrogramSettings(scale={self.scale!r}, fft_size={self.fft_size}, "
             f"hop_length={self.hop_length}, window={self.window!r}, "
             f"mel_bands={self.mel_bands}, min_db={self.min_db}, max_db={self.max_db}, "
-            f"channel={self.channel})"
+            f"colormap={self.colormap!r}, interpolation={self.interpolation!r})"
         )

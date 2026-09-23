@@ -52,7 +52,7 @@ def _settings(case):
         scale=case["scale"], fft_size=case["fftSize"], hop_length=case["hopLength"],
         window=case["window"], mel_bands=case["melBands"], min_db=case["minDb"],
         max_db=case["maxDb"], colormap=case["colormap"],
-        interpolation=case["interpolation"], channel=case["channel"],
+        interpolation=case["interpolation"],
     )
 
 
@@ -71,7 +71,9 @@ def _reference_rows(signal, case):
 def test_power_matches_the_tool(signal, case):
     expected = _reference_rows(signal, case)
     ours = np.flipud(
-        sly.audio.render_spectrogram(signal, SR, _settings(case), as_db=False, rows=HEIGHT)
+        sly.audio.render_spectrogram(
+            signal, SR, _settings(case), as_db=False, rows=HEIGHT, channel=case["channel"]
+        )
     )
     assert ours.shape == expected.shape
 
@@ -93,7 +95,9 @@ def test_picture_matches_the_tool(signal, case):
         [ref.colorize(column, case) for column in expected_power.T]
     ).transpose(1, 0, 2)
 
-    spec = sly.audio.render_spectrogram(signal, SR, _settings(case), rows=HEIGHT)
+    spec = sly.audio.render_spectrogram(
+        signal, SR, _settings(case), rows=HEIGHT, channel=case["channel"]
+    )
     ours = sly.audio.to_image(spec, _settings(case))
 
     assert ours.shape == expected_pixels.shape

@@ -14,8 +14,6 @@ convenience but the sample index is always the source of truth.
 import numbers
 from typing import Any, Dict, Optional
 
-from supervisely.audio.spectrogram_settings import SpectrogramSettings
-
 
 def samples_to_seconds(sample: int, sample_rate: int) -> float:
     """Convert a sample index to seconds.
@@ -52,10 +50,9 @@ class AudioSegment:
     :param value: Tag value, for tags that carry one.
     :param channel: Zero-based channel this label refers to, or ``None`` for
         the mixdown.
-    :param settings: Spectrogram settings active when the label was made, or
-        ``None`` when it was made on the waveform alone. ``None`` is meaningful
-        -- it records "labeled by ear", which is different provenance, not
-        missing data.
+    :param meta: Any other keys to keep in the tag assignment's ``meta``. The
+        platform treats ``meta`` as a free-form options object, so keys written
+        by another client are preserved rather than dropped on read and write.
     :param id: Server id of the tag assignment, when it came from the platform.
     :param entity_id: Id of the recording this label belongs to.
     :param labeler_login: Login of whoever created it.
@@ -79,7 +76,7 @@ class AudioSegment:
         end: int = 0,
         value: Any = None,
         channel: Optional[int] = None,
-        settings: Optional[SpectrogramSettings] = None,
+        meta: Optional[Dict[str, Any]] = None,
         id: Optional[int] = None,
         entity_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
@@ -104,7 +101,7 @@ class AudioSegment:
         self.end = end
         self.value = value
         self.channel = channel
-        self.settings = settings
+        self.meta = dict(meta) if meta else {}
         self.id = id
         self.entity_id = entity_id
         self.labeler_login = labeler_login
@@ -166,22 +163,15 @@ class AudioSegment:
         """Build the tag assignment's ``meta`` object -- the platform's
         ``meta`` on a tag, unrelated to a project's ``meta.json``.
 
-        ``meta.channel`` is the channel the *label* is about;
-        ``meta.spectrogram.channel`` is the channel that was on *screen* when
-        it was drawn. The labeling tool writes them independently
-        (``recordings.ts``: ``meta: { channel, spectrogram: viewingSettings }``),
-        so neither one overwrites the other here either.
+        The only key the platform validates for audio is ``channel``, the
+        channel the *label* is about. The spectrogram is not recorded here:
+        it is project configuration, the same for every label in the project.
 
-        Returns an empty dict when there is nothing to record: the platform
-        accepts a missing or empty ``meta``, but rejects a partial
-        ``spectrogram`` object outright -- it insists on the ``channel`` key
-        being present, though ``null`` is a valid value for it.
+        Returns an empty dict when there is nothing to record; the platform
+        accepts a missing or empty ``meta``.
         """
-        meta: Dict[str, Any] = {}
-        if self.settings is not None:
-            meta["channel"] = self.channel
-            meta["spectrogram"] = self.settings.to_json()
-        elif self.channel is not None:
+        meta: Dict[str, Any] = dict(self.meta)
+        if self.channel is not None:
             meta["channel"] = self.channel
         return meta
 
@@ -217,12 +207,13 @@ class AudioSegment:
         else:
             start, end = rng
 
-        meta = data.get("meta") or {}
-        spec = meta.get("spectrogram")
-        settings = SpectrogramSettings.from_json(spec) if spec else None
-        # No fallback to `spectrogram.channel`: that is the viewed channel, not
-        # the labeled one. A label with no `meta.channel` is a mixdown label.
-        channel = meta.get("channel")
+        # A label with no `meta.channel` is a mixdown label. Everything else in
+        # `meta` is kept as-is: it is a free-form options object and may carry
+        # keys this SDK does not know about, including the `spectrogram` object
+        # older labels were written with, before the settings moved onto the
+        # project.
+        meta = dict(data.get("meta") or {})
+        channel = meta.pop("channel", None)
 
         return cls(
             tag_id=data["tagId"],
@@ -230,7 +221,7 @@ class AudioSegment:
             end=int(end),
             value=data.get("value"),
             channel=channel,
-            settings=settings,
+            meta=meta,
             id=data.get("id"),
             entity_id=data.get("entityId"),
             labeler_login=data.get("labelerLogin"),
@@ -249,8 +240,8 @@ class AudioSegment:
         }
         if self.value is not None:
             data["value"] = self.value
-        if self.settings is not None:
-            data["spectrogram"] = self.settings.to_json()
+        if self.meta:
+            data["meta"] = dict(self.meta)
         if self.tag_id is not None:
             data["tagId"] = self.tag_id
         if self.id is not None:
@@ -263,14 +254,13 @@ class AudioSegment:
     def from_json(cls, data: Dict[str, Any]) -> "AudioSegment":
         """Build from the local project format written by :meth:`to_json`."""
         start, end = data["frameRange"]
-        spec = data.get("spectrogram")
         return cls(
             tag_id=data.get("tagId"),
             start=int(start),
             end=int(end),
             value=data.get("value"),
             channel=data.get("channel"),
-            settings=SpectrogramSettings.from_json(spec) if spec else None,
+            meta=data.get("meta"),
             id=data.get("id"),
             labeler_login=data.get("labelerLogin"),
             name=data.get("name"),
@@ -280,5 +270,5 @@ class AudioSegment:
         return (
             f"AudioSegment(name={self.name!r}, tag_id={self.tag_id}, "
             f"start={self.start}, end={self.end}, "
-            f"channel={self.channel}, settings={'yes' if self.settings else 'none'})"
+            f"channel={self.channel})"
         )

@@ -28,7 +28,7 @@ from supervisely.audio.spectrogram import (
     to_image,
     window_function,
 )
-from supervisely.audio.spectrogram_settings import SpectrogramSettings
+from supervisely.audio.spectrogram_settings import PROJECT_FIELDS, SpectrogramSettings
 from supervisely.project.project_type import ProjectType
 
 SR = 16000
@@ -61,44 +61,37 @@ def test_audio_is_a_project_type():
 
 
 def test_settings_round_trip_through_json():
-    settings = SpectrogramSettings(scale="mel", fft_size=1024, hop_length=256, channel=1)
+    settings = SpectrogramSettings(scale="mel", fft_size=1024, hop_length=256)
     restored = SpectrogramSettings.from_json(settings.to_json())
     assert restored == settings
 
 
-def test_colormap_excluded_by_default_to_match_the_toolbox():
+def test_all_nine_project_fields_are_emitted():
+    """The API requires every field of the object; a partial one is rejected."""
+    assert set(SpectrogramSettings().to_json()) == set(PROJECT_FIELDS)
+
+
+def test_colormap_is_part_of_the_project_settings():
     settings = SpectrogramSettings(colormap="viridis")
-    assert "colormap" not in settings.to_json()
-    assert settings.to_json(include_colormap=True)["colormap"] == "viridis"
+    assert settings.to_json()["colormap"] == "viridis"
 
 
-def test_channel_is_emitted_inside_the_settings_object():
-    # The API rejects the whole payload when the inner `channel` key is missing,
-    # though null is a valid value for it.
-    assert "channel" in SpectrogramSettings(channel=2).to_json()
-    segment = AudioSegment(
-        tag_id=1, start=0, end=10, channel=2, settings=SpectrogramSettings(channel=2)
+def test_channel_is_not_a_setting():
+    """Which channel is on screen is navigation, so it is neither stored on the
+    project nor accepted as a setting."""
+    with pytest.raises(TypeError):
+        SpectrogramSettings(channel=1)
+    assert "channel" not in SpectrogramSettings().to_json()
+
+
+def test_legacy_annotation_level_object_still_loads():
+    """Labels written before the settings moved onto the project carry a
+    `channel` key inside the object. It is not a setting; ignore it."""
+    settings = SpectrogramSettings.from_json(
+        {"scale": "mel", "fftSize": 1024, "channel": 1}
     )
-    meta = segment._meta_json()
-    assert meta["channel"] == 2
-    assert meta["spectrogram"]["channel"] == 2
-
-
-def test_labeled_channel_and_viewed_channel_are_independent():
-    """The tool writes `meta.channel` (what the label is about) and
-    `meta.spectrogram.channel` (what was on screen) separately."""
-    segment = AudioSegment(
-        tag_id=1, start=0, end=10, channel=None, settings=SpectrogramSettings(channel=1)
-    )
-    meta = segment._meta_json()
-    assert meta["channel"] is None
-    assert meta["spectrogram"]["channel"] == 1
-
-    restored = AudioSegment.from_api_json(
-        {"tagId": 1, "frameRange": [0, 10], "meta": meta}
-    )
-    assert restored.channel is None
-    assert restored.settings.channel == 1
+    assert settings.scale == "mel"
+    assert settings.fft_size == 1024
 
 
 def test_from_json_tolerates_missing_optional_keys():
@@ -124,7 +117,6 @@ def test_from_json_tolerates_missing_optional_keys():
         {"window": "kaiser"},
         {"colormap": "jet"},
         {"interpolation": "bilinear"},
-        {"channel": -1},
     ],
 )
 def test_invalid_settings_are_rejected(kwargs):
@@ -132,10 +124,10 @@ def test_invalid_settings_are_rejected(kwargs):
         SpectrogramSettings(**kwargs)
 
 
-def test_bounds_the_api_accepts_but_the_toolbox_rejects():
-    """The API accepts melBands=1 and fftSize=65536; the toolbox then refuses
-    to open the recording. The SDK must not be able to author that."""
-    for kwargs in ({"mel_bands": 1}, {"mel_bands": 100000}, {"fft_size": 65536}):
+def test_bounds_match_the_api_schema():
+    """`UpdateProjectSettings` enumerates the FFT sizes and bounds melBands at
+    2..512. Rejecting the same values here turns a 400 into a specific error."""
+    for kwargs in ({"mel_bands": 1}, {"mel_bands": 513}, {"fft_size": 16}, {"fft_size": 65536}):
         with pytest.raises(ValueError):
             SpectrogramSettings(**kwargs)
 
@@ -159,12 +151,19 @@ def test_fingerprint_ignores_cosmetic_changes():
         {"mel_bands": 64},
         {"min_db": -80.0},
         {"max_db": -1.0},
-        {"channel": 0},
     ],
 )
 def test_fingerprint_changes_when_the_numbers_change(override):
     base = SpectrogramSettings()
     assert base.fingerprint != base.clone(**override).fingerprint
+
+
+@pytest.mark.parametrize("override", [{"colormap": "viridis"}, {"interpolation": "smooth"}])
+def test_fingerprint_ignores_display_only_fields(override):
+    """Two projects analysing identically compare equal whatever they look
+    like, so a repaint does not make datasets look unmergeable."""
+    base = SpectrogramSettings()
+    assert base.fingerprint == base.clone(**override).fingerprint
 
 
 def test_fingerprint_is_stable_across_key_order():
@@ -226,21 +225,29 @@ def test_overlap_is_channel_aware():
 
 
 def test_api_payload_shape():
-    settings = SpectrogramSettings(scale="mel", channel=1)
-    segment = AudioSegment(tag_id=42, start=10, end=20, channel=1, settings=settings)
+    segment = AudioSegment(tag_id=42, start=10, end=20, channel=1)
     payload = segment._to_api_json(entity_id=7)
     assert payload["tagId"] == 42
     assert payload["entityId"] == 7
     assert payload["frameRange"] == [10, 20]
-    assert payload["meta"]["spectrogram"]["scale"] == "mel"
+    assert payload["meta"] == {"channel": 1}
+    assert "spectrogram" not in payload["meta"]
 
 
-def test_segment_without_settings_emits_no_meta():
-    # A partial `spectrogram` object is rejected outright by the API, so the
-    # choice is all-or-nothing.
+def test_mixdown_segment_emits_no_meta():
     segment = AudioSegment(tag_id=1, start=0, end=10)
     assert segment._meta_json() == {}
     assert "meta" not in segment._to_api_json(entity_id=1)
+
+
+def test_unknown_meta_keys_survive_a_round_trip():
+    """`meta` is a free-form options object shared with other clients, so keys
+    this SDK does not know about are read back and written out unchanged."""
+    raw = {"tagId": 1, "frameRange": [0, 10], "meta": {"channel": 1, "reviewedBy": "anna"}}
+    segment = AudioSegment.from_api_json(raw)
+    assert segment.channel == 1
+    assert segment.meta == {"reviewedBy": "anna"}
+    assert segment._to_api_json(entity_id=3)["meta"] == {"channel": 1, "reviewedBy": "anna"}
 
 
 def test_parse_tag_assignment_from_api():
@@ -264,7 +271,8 @@ def test_parse_tag_assignment_from_api():
     segment = AudioSegment.from_api_json(raw)
     assert segment.start == 4000 and segment.end == 8000
     assert segment.channel == 0
-    assert segment.settings.scale == "linear"
+    # Written before the settings moved onto the project: kept, not interpreted.
+    assert segment.meta["spectrogram"]["scale"] == "linear"
     assert segment.labeler_login == "iwatkot"
 
 
@@ -273,7 +281,7 @@ def test_parse_falls_back_to_start_end_frame():
         {"id": 1, "tagId": 2, "startFrame": 5, "endFrame": 9}
     )
     assert (segment.start, segment.end) == (5, 9)
-    assert segment.settings is None
+    assert segment.meta == {}
 
 
 def test_recording_level_tag_is_not_a_segment():
@@ -387,8 +395,8 @@ def test_render_shorter_than_one_window_still_works():
 def test_render_selects_the_named_channel(tmp_path):
     path = write_wav(tmp_path / "stereo.wav", seconds=1.0, channels=2)
     samples, rate = read_audio(str(path))
-    ch0 = render_spectrogram(samples, rate, SpectrogramSettings(channel=0))
-    ch1 = render_spectrogram(samples, rate, SpectrogramSettings(channel=1))
+    ch0 = render_spectrogram(samples, rate, channel=0)
+    ch1 = render_spectrogram(samples, rate, channel=1)
     # channel 1 is generated at twice the frequency, so the pictures differ
     assert not np.array_equal(ch0, ch1)
 

@@ -674,6 +674,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_id=json_settings.get("groupImagesByTagId"),
                 multiview_is_synced=json_settings.get("groupImagesSync", False),
                 labeling_interface=json_settings.get(ProjectSettingsJsonFields.LABELING_INTERFACE),
+                spectrogram=json_settings.get(ProjectSettingsJsonFields.SPECTROGRAM),
             ).to_json()
 
         return json_response

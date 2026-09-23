@@ -4,9 +4,13 @@
 Audio is **not** served by the image endpoints -- ``images.list`` answers
 *"This API only supports images projects"*. Recordings come from
 ``entities.list`` and ``entities.info``, whose default projection omits both
-``tags`` and ``meta``, so segment labels and their spectrogram settings are
+``tags`` and ``meta``, so segment labels and the channel each one is about are
 invisible unless the ``fields`` parameter asks for them explicitly.
 :attr:`AudioApi.ENTITY_FIELDS` is that list.
+
+The spectrogram is not on the labels. It is project configuration, read and
+written with :meth:`AudioApi.get_spectrogram_settings` and
+:meth:`AudioApi.set_spectrogram_settings`.
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from typing import Any, NamedTuple, Optional, Union
 from tqdm import tqdm
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.audio.audio_segment import AudioSegment
+from supervisely.audio.spectrogram_settings import SpectrogramSettings
 from supervisely.io.fs import ensure_base_path, get_file_hash
 
 
@@ -181,8 +186,8 @@ class AudioApi(ModuleApiBase):
         """Fetch one recording with its tags.
 
         One request: ``entities.info`` answers for a single id and, given the
-        ``fields`` projection, returns ``meta`` -- the field that carries the
-        spectrogram settings.
+        ``fields`` projection, returns ``meta`` -- the field that carries each
+        label's channel.
 
         :param id: Audio entity id.
         """
@@ -269,16 +274,13 @@ class AudioApi(ModuleApiBase):
     ) -> list[dict[str, Any]]:
         """Attach segment labels to a recording.
 
-        Each segment's spectrogram settings, when present, are written into the
-        tag assignment's ``meta`` so the label records the view it was made
-        under. Settings are validated client-side first: the API currently
-        accepts values the labeling tool then refuses to open.
+        A segment carries its inclusive sample range, its tag value and the
+        channel it is about. The spectrogram it was drawn under is not stored
+        per label: it is the project's, see
+        :meth:`get_spectrogram_settings`.
         """
         if not segments:
             return []
-        for segment in segments:
-            if segment.settings is not None:
-                segment.settings.validate()
         return self._api.post(
             "entities.tags.bulk.add",
             {
@@ -296,6 +298,52 @@ class AudioApi(ModuleApiBase):
     def remove_segment(self, tag_assignment_id: int) -> None:
         """Remove one segment label by its tag-assignment id."""
         self._api.post("image-tags.remove-from-image", {ApiField.ID: tag_assignment_id})
+
+    # ---------------------------------------------------- project spectrogram
+
+    def get_spectrogram_settings(self, project_id: int) -> SpectrogramSettings:
+        """Read the spectrogram settings every recording in the project is
+        analysed under.
+
+        A project that has never been configured has no ``spectrogram`` key,
+        and the platform defaults apply -- so this returns the defaults rather
+        than ``None``, which is what the labeling tool shows in that case.
+
+        :param project_id: Audio project id.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            settings = api.audio.get_spectrogram_settings(project_id)
+            spec = sly.audio.render_spectrogram(samples, rate, settings)
+        """
+        stored = self._api.project.get_settings(project_id).get("spectrogram")
+        return SpectrogramSettings.from_json(stored) if stored else SpectrogramSettings()
+
+    def set_spectrogram_settings(
+        self, project_id: int, settings: SpectrogramSettings
+    ) -> None:
+        """Configure the spectrogram for a whole audio project.
+
+        This is a project-wide change: every annotator sees it, and existing
+        labels are left untouched -- they were drawn on a picture that no
+        longer matches. Set it once, at the start of the project.
+
+        Requires permission to edit the project (``PROJECTS.UPDATE``), not just
+        to label in it, and the project must be of type ``audio``.
+
+        :param project_id: Audio project id.
+        :param settings: Settings to apply.
+        """
+        if not isinstance(settings, SpectrogramSettings):
+            raise TypeError(
+                f"settings must be a SpectrogramSettings, got {type(settings).__name__}"
+            )
+        settings.validate()
+        self._api.project.update_settings(
+            project_id, {"spectrogram": settings.to_json()}, merge_with_current=True
+        )
 
     # ------------------------------------------------------------- rendering
 
