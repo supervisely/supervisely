@@ -25,6 +25,10 @@ class LabelingInterface(str, StrEnum):
     MULTIVIEW = "multi_view"
     IMAGE_MATTING = "image_matting"
     FISHEYE = "fisheye"
+    NRRD = "nrrd"
+    MEDICAL_IMAGING_MULTIPLE = "medical_imaging_multiple"
+    POINT_CLOUD_EPISODES = "point_cloud_episodes"
+    TELEMETRY = "telemetry"
 
 
 class ProjectSettingsJsonFields:
