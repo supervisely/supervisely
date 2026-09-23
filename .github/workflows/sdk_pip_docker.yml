@@ -65,17 +65,21 @@ jobs:
         run: |
           VERSION="${{ env.RELEASE_VERSION }}"
           PACKAGE="supervisely"
-          RETRIES=60
-          DELAY=5
+          # Ask pip, the way the image builds will, rather than reading
+          # https://pypi.org/pypi/<package>/json: that page is served by PyPI's CDN
+          # with max-age=900, so a runner can keep getting a copy from before the
+          # upload for up to 15 minutes. pip revalidates its index requests.
+          # 120 x 10 s = 20 minutes, longer than that cache.
+          RETRIES=120
+          DELAY=10
+          DEST=$(mktemp -d)
           for i in $(seq 1 $RETRIES); do
-            RESPONSE=$(curl -s "https://pypi.org/pypi/$PACKAGE/json" | jq -r ".releases[\"$VERSION\"]")
-            if [ "$RESPONSE" != "null" ]; then
+            if python -m pip download --quiet --no-deps --no-cache-dir --dest "$DEST" "$PACKAGE==$VERSION" >/dev/null 2>&1; then
               echo "Found version $VERSION on PyPI!"
               exit 0
-            else
-              echo "Version $VERSION not found. Retrying in $DELAY seconds..."
-              sleep $DELAY
             fi
+            echo "Version $VERSION not available to pip yet ($i/$RETRIES). Retrying in $DELAY seconds..."
+            sleep $DELAY
           done
           echo "Timeout waiting for version $VERSION on PyPI"
           exit 1
