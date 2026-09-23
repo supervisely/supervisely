@@ -27,6 +27,7 @@ PLATFORM_INTERFACES = [
     "fisheye",
     "overlay",
     "telemetry",
+    "audio_references",
 ]
 
 

@@ -29,6 +29,7 @@ class LabelingInterface(str, StrEnum):
     MEDICAL_IMAGING_MULTIPLE = "medical_imaging_multiple"
     POINT_CLOUD_EPISODES = "point_cloud_episodes"
     TELEMETRY = "telemetry"
+    AUDIO_REFERENCES = "audio_references"
 
 
 class ProjectSettingsJsonFields:
