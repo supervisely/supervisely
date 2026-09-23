@@ -113,6 +113,37 @@ def unpack_snapshot(snapshot_bytes: bytes, payload_dir: str) -> None:
             _extractall(tar, payload_dir)
 
 
+def unpack_snapshot_file(path: str, payload_dir: str) -> None:
+    """Extract a snapshot archive from disk, without loading it whole.
+
+    The same two shapes as :func:`unpack_snapshot`, read from the file rather than from a
+    copy of it in memory. A plain tar streams straight out of the path; a zstd-wrapped one
+    streams through the decompressor. Either way the archive is never held, which on a
+    multi-gigabyte snapshot is the difference between a restore that runs and one that does
+    not.
+    """
+    with open(path, "rb") as f:
+        head = f.read(SNIFF_SIZE)
+
+    if not is_zstd_container(head):
+        with tarfile.open(path, mode="r") as tar:
+            _extractall(tar, payload_dir)
+        return
+
+    import zstd  # imported lazily to avoid a GC-during-module-init crash in some zstd builds
+
+    try:
+        dctx = zstd.ZstdDecompressor()
+        with open(path, "rb") as f:
+            with dctx.stream_reader(f) as reader:
+                with tarfile.open(fileobj=reader, mode="r|") as tar:
+                    _extractall(tar, payload_dir)
+    except Exception:
+        # Fallback for zstd builds with no streaming reader; this one does hold the archive.
+        with open(path, "rb") as f:
+            unpack_snapshot(f.read(), payload_dir)
+
+
 def read_manifest_schema_version(payload_dir: str) -> Optional[str]:
     """Schema version recorded in the unpacked payload's manifest, if it has one."""
     manifest_path = os.path.join(payload_dir, MANIFEST_NAME)

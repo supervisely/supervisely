@@ -28,6 +28,25 @@ IMAGE_SCHEMA_VERSION_V2_1 = "v2.1.0"
 # directions: a snapshot says what it is (a zstd frame with a manifest, or a pickle),
 # so the reader picks the right path per archive rather than per SDK version.
 DEFAULT_IMAGE_SCHEMA_VERSION = IMAGE_SCHEMA_VERSION_V2_1
+
+
+def default_image_schema_version() -> str:
+    """The format to write a new image version in, given what is installed.
+
+    The columnar format needs pyarrow, which lives in the ``versioning`` extra rather than
+    in the base install. Answering ``v2.1.0`` regardless would turn a plain
+    ``pip install supervisely`` into one where creating a version raises instead of writing
+    a pickle, so an install without the extra keeps the old format and everything that
+    reads a snapshot still reads both.
+    """
+    try:
+        from supervisely.project.versioning.image_snapshot_io import import_pyarrow
+
+        import_pyarrow()
+    except Exception:
+        return IMAGE_SCHEMA_VERSION_V1
+
+    return DEFAULT_IMAGE_SCHEMA_VERSION
 VOLUME_SCHEMA_VERSION_V2 = "v2.0.0"
 VOLUME_SCHEMA_VERSION_V2_1 = "v2.1.0"
 

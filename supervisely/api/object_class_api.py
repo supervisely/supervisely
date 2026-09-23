@@ -135,7 +135,7 @@ class ObjectClassApi(ModuleApi):
             {ApiField.PROJECT_ID: project_id, "filter": filters or []},
         )
 
-    def get_name_to_id_map(self, project_id: int) -> Dict[str, int]:
+    def get_name_to_id_map(self, project_id: int, refresh: bool = False) -> Dict[str, int]:
         """
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int
@@ -161,10 +161,13 @@ class ObjectClassApi(ModuleApi):
                 obj_class_map = api.object_class.get_name_to_id_map(1951)
                 print(obj_class_map)
                 # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
+
+        A name added to the project meta inside an open :class:`ApiContext` is not in the
+        cached map, so pass ``refresh=True`` to read it again rather than getting a miss.
         """
         context = getattr(self._api, "optimization_context", None) or {}
         cache = context.setdefault("obj_class_name_to_id", {}) if context else {}
-        if project_id in cache:
+        if project_id in cache and not refresh:
             return cache[project_id]
 
         objects_infos = self.get_list(project_id)

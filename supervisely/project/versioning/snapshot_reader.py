@@ -29,7 +29,7 @@ from supervisely.project.versioning.container import (
     SNIFF_SIZE,
     is_snapshot_container,
     read_manifest_schema_version,
-    unpack_snapshot,
+    unpack_snapshot_file,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
 from supervisely.sly_logger import logger
@@ -336,7 +336,10 @@ def _physical_columns(mapping: Dict[str, str], columns: Optional[Sequence[str]])
     """
     wanted = mapping.keys() if columns is None else columns
     needed = {mapping[c] for c in wanted if mapping.get(c) is not None}
-    return sorted(needed) or None
+    # An empty list, not None: None means "every column" to the caller below, so a
+    # projection that maps to nothing - `[OBJECT_ID]` on images, which has no objects -
+    # would otherwise read the whole figures table, geometry and all.
+    return sorted(needed)
 
 
 class _AlphaGeometryCursor:
@@ -531,6 +534,10 @@ class _ImagesV2Backend(_PayloadBackend):
                     VersionSchemaField.SRC_FIGURE_ID,
                 }
             )
+        if not wants_geometry and physical is not None:
+            # Read and discarded otherwise - the heaviest column in the table, and the
+            # whole point of saying `with_geometry=False`.
+            physical = [c for c in physical if c != VersionSchemaField.GEOMETRY_JSON]
         alpha = _AlphaGeometryCursor(self._payload_dir, batch_size) if wants_geometry else None
         alpha_mask_name = AlphaMask.name()
         for batch in self._iter_table(image_snapshot_io.FIGURES_TABLE, physical, batch_size):
@@ -552,6 +559,10 @@ class _ImagesV2Backend(_PayloadBackend):
                         {
                             SnapshotColumn.FIGURE_ID: row.get(VersionSchemaField.SRC_FIGURE_ID),
                             SnapshotColumn.ITEM_ID: row.get(VersionSchemaField.SRC_IMAGE_ID),
+                            # Always present, always null: an image figure is the label, so
+                            # there is no object above it - but a consumer written against
+                            # FIGURE_COLUMNS reads this key whatever the modality.
+                            SnapshotColumn.OBJECT_ID: None,
                             SnapshotColumn.CLASS_NAME: row.get(VersionSchemaField.CLASS_NAME),
                             SnapshotColumn.GEOMETRY_TYPE: row.get(
                                 VersionSchemaField.GEOMETRY_TYPE
@@ -697,6 +708,9 @@ class _ImagesV1Backend(_Backend):
                         {
                             SnapshotColumn.FIGURE_ID: figure.id,
                             SnapshotColumn.ITEM_ID: image_id,
+                            # Null for the same reason as in the Parquet backend, and
+                            # present for the same reason: a modality-agnostic reader.
+                            SnapshotColumn.OBJECT_ID: None,
                             SnapshotColumn.CLASS_NAME: self._class_name_by_id.get(
                                 getattr(figure, "class_id", None)
                             ),
@@ -1355,11 +1369,15 @@ class VersionSnapshot:
             cleanup_dirs.append(payload_dir)
 
         # An already-unpacked payload is reused, so a cached snapshot is not re-extracted
-        # on every open either.
-        if not os.path.isfile(os.path.join(payload_dir, "manifest.json")):
+        # on every open either. What marks it finished is a file written after the
+        # extraction, not one that comes out of it: the manifest lands early, so an
+        # extraction cut short would otherwise look complete to every later open.
+        done_marker = os.path.join(payload_dir, ".unpacked")
+        if not os.path.isfile(done_marker):
             os.makedirs(payload_dir, exist_ok=True)
-            with open(path, "rb") as f:
-                unpack_snapshot(f.read(), payload_dir)
+            unpack_snapshot_file(path, payload_dir)
+            with open(done_marker, "w", encoding="utf-8") as f:
+                f.write(read_manifest_schema_version(payload_dir) or "")
 
         schema_version = read_manifest_schema_version(payload_dir)
         backend = cls._backend_for(payload_dir, schema_version)

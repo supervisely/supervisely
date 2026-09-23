@@ -15,6 +15,7 @@ from supervisely.io import json
 from supervisely.io.fs import remove_dir
 from supervisely.project.versioning.common import (
     DEFAULT_IMAGE_SCHEMA_VERSION,
+    default_image_schema_version,
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
     HIDDEN_WORKSPACE_NAME,
@@ -117,7 +118,9 @@ class DataVersion(ModuleApiBase):
         self._batch_size = None
         project_type = self.project_info.type
         if project_type == ProjectType.IMAGES.value:
-            self.__version_format = DEFAULT_IMAGE_SCHEMA_VERSION
+            # Asked rather than assumed: the columnar format needs pyarrow, which is in the
+            # `versioning` extra, and an install without it writes a pickle as before.
+            self.__version_format = default_image_schema_version()
             self._batch_size = 200
             return Project
         elif project_type == ProjectType.VIDEOS.value:

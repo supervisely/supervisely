@@ -114,7 +114,7 @@ class TagApi(ModuleApi):
             "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
         )
 
-    def get_name_to_id_map(self, project_id: int):
+    def get_name_to_id_map(self, project_id: int, refresh: bool = False):
         """
         Get dictionary with mapping tag name to tag ID for a given project ID.
 
@@ -122,11 +122,14 @@ class TagApi(ModuleApi):
         :type project_id: int
         :returns: Dictionary with mapping tag name to tag id for a given project ID.
         :rtype: dict
+
+        A name added to the project meta inside an open :class:`ApiContext` is not in the
+        cached map, so pass ``refresh=True`` to read it again rather than getting a miss.
         """
 
         context = getattr(self._api, "optimization_context", None) or {}
         cache = context.setdefault("tag_name_to_id", {}) if context else {}
-        if project_id in cache:
+        if project_id in cache and not refresh:
             return cache[project_id]
 
         tags_info = self.get_list(project_id)
@@ -444,6 +447,10 @@ class TagApi(ModuleApi):
             raise RuntimeError("Impossible to get ids for project tags")
         if tag_name_id_map is None:
             tag_name_id_map = self.get_name_to_id_map(project_id)
+            # Same as for classes: a tag meta added inside an open ApiContext is not in
+            # the cached map, and a miss there used to be a KeyError.
+            if any(tag.name not in tag_name_id_map for tag in tags):
+                tag_name_id_map = self.get_name_to_id_map(project_id, refresh=True)
         tags_json = []
         tags_keys = []
         for tag in tags:

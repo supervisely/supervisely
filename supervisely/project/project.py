@@ -101,6 +101,7 @@ from supervisely.project.versioning.container import (
     is_snapshot_container,
     read_manifest_schema_version,
     unpack_snapshot,
+    unpack_snapshot_file,
 )
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -4238,17 +4239,17 @@ class Project:
             with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
                 return CustomUnpickler(f).load()
 
-        if isinstance(file, io.BytesIO):
-            snapshot_bytes = file.getvalue()
-        else:
-            with open(file, "rb") as f:
-                snapshot_bytes = f.read()
-
         tmp_root = tempfile.mkdtemp()
         payload_dir = os.path.join(tmp_root, "payload")
         mkdir(payload_dir)
         try:
-            unpack_snapshot(snapshot_bytes, payload_dir)
+            if isinstance(file, io.BytesIO):
+                unpack_snapshot(file.getvalue(), payload_dir)
+            else:
+                # From the path, not from a copy of the whole archive in memory: holding
+                # the compressed bytes and the decompressed copy at once was two or three
+                # times the snapshot's size, against a restore that is otherwise streamed.
+                unpack_snapshot_file(file, payload_dir)
             # Raises on a version this SDK does not know, rather than reading whichever
             # columns happen to match.
             get_image_snapshot_schema(read_manifest_schema_version(payload_dir))

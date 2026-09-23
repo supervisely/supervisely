@@ -1122,3 +1122,106 @@ def test_the_alpha_cursor_stops_hoarding_rows_it_walks_past(tmp_path):
         assert cursor.get(3) == {"id": 3}
     finally:
         image_snapshot_io.iter_rows = original
+
+
+def test_a_figure_row_carries_object_id_even_though_images_have_none(parquet_reader, pickle_reader):
+    """`FIGURE_COLUMNS` promises the key for every modality.
+
+    An image figure is the label, so there is no object above it and the value is null - but
+    a reader written against the canonical columns and handed `columns=None` used to get a
+    dict without the key at all, and a KeyError instead of a None.
+    """
+    from supervisely.project.versioning.snapshot_reader import FIGURE_COLUMNS, SnapshotColumn
+
+    for reader in (parquet_reader, pickle_reader):
+        rows = _collect(reader.iter_figures())
+
+        assert rows
+        for row in rows:
+            assert SnapshotColumn.OBJECT_ID in row
+            assert row[SnapshotColumn.OBJECT_ID] is None
+        # Nothing else the canonical list promises is missing either.
+        assert set(FIGURE_COLUMNS) <= set(rows[0])
+
+
+def test_a_projection_that_maps_to_nothing_reads_nothing(parquet_reader):
+    """`OBJECT_ID` is the one canonical column an image snapshot has no store for.
+
+    Asking for it alone used to leave the physical projection empty, and empty meant "every
+    column" one level down - so the narrowest possible read became the widest, geometry and
+    all.
+    """
+    from supervisely.project.versioning import image_snapshot_io
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    asked = []
+    original = image_snapshot_io.iter_rows
+
+    def _recording(payload_dir, table, columns=None, batch_size=5000):
+        asked.append((table, None if columns is None else sorted(columns)))
+        return original(payload_dir, table, columns=columns, batch_size=batch_size)
+
+    image_snapshot_io.iter_rows = _recording
+    try:
+        rows = _collect(
+            parquet_reader.iter_figures(columns=[SnapshotColumn.OBJECT_ID], with_geometry=False)
+        )
+    finally:
+        image_snapshot_io.iter_rows = original
+
+    assert [row[SnapshotColumn.OBJECT_ID] for row in rows] == [None, None, None]
+    figures_reads = [columns for table, columns in asked if table == image_snapshot_io.FIGURES_TABLE]
+    assert figures_reads == [[]], f"read more than asked for: {figures_reads}"
+
+
+def test_geometry_is_not_read_when_it_is_not_wanted(parquet_reader):
+    """The heaviest column in the table, and the whole point of `with_geometry=False`.
+
+    It only ever lands in the projection when the caller names no columns at all, since
+    that asks for every canonical one - so that is the read this is about. The video
+    backend already dropped it there; images read it and threw it away.
+    """
+    from supervisely.project.versioning import image_snapshot_io
+    from supervisely.project.versioning.schema_fields import VersionSchemaField
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    asked = []
+    original = image_snapshot_io.iter_rows
+
+    def _recording(payload_dir, table, columns=None, batch_size=5000):
+        if table == image_snapshot_io.FIGURES_TABLE:
+            asked.append(columns)
+        return original(payload_dir, table, columns=columns, batch_size=batch_size)
+
+    image_snapshot_io.iter_rows = _recording
+    try:
+        rows = _collect(parquet_reader.iter_figures(with_geometry=False))
+    finally:
+        image_snapshot_io.iter_rows = original
+
+    assert asked and all(
+        VersionSchemaField.GEOMETRY_JSON not in (columns or []) for columns in asked
+    ), f"geometry was read and discarded: {asked}"
+    # Every other canonical column still comes back; only the payload is left behind.
+    assert rows and all(row[SnapshotColumn.GEOMETRY] is None for row in rows)
+    assert rows[0][SnapshotColumn.CLASS_NAME] is not None
+
+
+def test_an_interrupted_extraction_is_not_mistaken_for_a_finished_one(tmp_path):
+    """The manifest lands early in the archive.
+
+    Keying reuse on it meant an extraction killed part-way left a payload that every later
+    open took for complete - and then read a table that was not there.
+    """
+    from supervisely.project.versioning.snapshot_reader import VersionSnapshot
+
+    path = _write(tmp_path, Project.build_snapshot(_FakeApi(), PROJECT_ID, log_progress=False))
+    payload_dir = str(tmp_path / "payload")
+
+    os.makedirs(payload_dir, exist_ok=True)
+    # What an extraction that died right after the manifest leaves behind.
+    with open(os.path.join(payload_dir, "manifest.json"), "w", encoding="utf-8") as f:
+        f.write('{"schemaVersion": "v2.1.0"}')
+
+    with VersionSnapshot.open_archive(path, payload_dir=payload_dir) as snapshot:
+        assert _collect(snapshot.iter_items()), "the payload was not extracted again"
