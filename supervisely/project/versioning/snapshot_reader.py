@@ -21,6 +21,7 @@ import tempfile
 from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Sequence, Set, Union
 
 from supervisely.api.module_api import ApiField
+from supervisely.io.fs import silent_remove
 from supervisely.project.project_type import ProjectType
 from supervisely.project.versioning import image_snapshot_io
 from supervisely.project.versioning.common import IMAGE_SCHEMA_VERSION_V1
@@ -352,7 +353,13 @@ class _AlphaGeometryCursor:
     than dropped. In the ordered case ``_stash`` stays empty.
     """
 
+    # How many passed-over rows to keep before giving up on the merge and reading the
+    # table by id. A mask is large, so this is a count of rows, not of bytes.
+    _STASH_LIMIT = 2048
+
     def __init__(self, payload_dir: str, batch_size: int):
+        self._payload_dir = payload_dir
+        self._batch_size = batch_size
         self._batches = image_snapshot_io.iter_rows(
             payload_dir, image_snapshot_io.ALPHA_GEOMETRIES_TABLE, batch_size=batch_size
         )
@@ -360,6 +367,7 @@ class _AlphaGeometryCursor:
         self._pos = 0
         self._stash: Dict[int, Any] = {}
         self._exhausted = False
+        self._gave_up = False
 
     def _next_row(self) -> Optional[dict]:
         while self._pos >= len(self._current):
@@ -375,11 +383,29 @@ class _AlphaGeometryCursor:
         self._pos += 1
         return row
 
+    def _scan_for(self, figure_id: int):
+        """Read the table from the start for one figure, keeping nothing.
+
+        The slow way out, used once the merge has been abandoned: every row is looked at
+        and only the wanted one is held, so the cost is time rather than memory.
+        """
+        for batch in image_snapshot_io.iter_rows(
+            self._payload_dir, image_snapshot_io.ALPHA_GEOMETRIES_TABLE, batch_size=self._batch_size
+        ):
+            for row in batch:
+                if row.get(VersionSchemaField.SRC_FIGURE_ID) == figure_id:
+                    return image_snapshot_io.loads_or(
+                        row.get(VersionSchemaField.GEOMETRY_JSON), None
+                    )
+        return None
+
     def get(self, figure_id: Optional[int]):
         if figure_id is None:
             return None
         if figure_id in self._stash:
             return self._stash.pop(figure_id)
+        if self._gave_up:
+            return self._scan_for(figure_id)
         while True:
             row = self._next_row()
             if row is None:
@@ -388,6 +414,15 @@ class _AlphaGeometryCursor:
             row_id = row.get(VersionSchemaField.SRC_FIGURE_ID)
             if row_id == figure_id:
                 return geometry
+            # Both tables are written in figure order, so walking them together normally
+            # passes over nothing. A reader that filters by item skips most figures, and
+            # then every mask in between lands here - which is the whole table for a diff
+            # that touches a handful of items. Past the limit the merge is abandoned and
+            # the rest is read by id.
+            if len(self._stash) >= self._STASH_LIMIT:
+                self._stash.clear()
+                self._gave_up = True
+                return self._scan_for(figure_id)
             self._stash[row_id] = geometry
 
 
@@ -485,10 +520,16 @@ class _ImagesV2Backend(_PayloadBackend):
             physical = sorted(set(physical) | {VersionSchemaField.SRC_IMAGE_ID})
         if wants_geometry and physical is not None:
             # The type decides whether a null geometry means "inline, absent" or "in the
-            # alpha table", so it has to be read even when the caller did not ask for it.
+            # alpha table", and the figure id is what the alpha table is keyed by. Both are
+            # read even when the caller did not ask for them: without the id every alpha
+            # mask silently comes back empty.
             physical = sorted(
                 set(physical)
-                | {VersionSchemaField.GEOMETRY_JSON, VersionSchemaField.GEOMETRY_TYPE}
+                | {
+                    VersionSchemaField.GEOMETRY_JSON,
+                    VersionSchemaField.GEOMETRY_TYPE,
+                    VersionSchemaField.SRC_FIGURE_ID,
+                }
             )
         alpha = _AlphaGeometryCursor(self._payload_dir, batch_size) if wants_geometry else None
         alpha_mask_name = AlphaMask.name()
@@ -1218,7 +1259,15 @@ class VersionSnapshot:
             )
 
         if not os.path.isfile(snapshot_path):
-            api.project.version.download_snapshot(project, version_id, dest_path=snapshot_path)
+            # Downloaded aside and moved, the way the conversion below does it: a download
+            # cut short by the network or a kill would otherwise leave a truncated file
+            # that every later open of this version happily takes for a finished one.
+            partial_path = snapshot_path + ".partial"
+            try:
+                api.project.version.download_snapshot(project, version_id, dest_path=partial_path)
+                os.replace(partial_path, snapshot_path)
+            finally:
+                silent_remove(partial_path)
         else:
             logger.debug(f"Reusing cached snapshot of version {version_id}: {snapshot_path}")
 

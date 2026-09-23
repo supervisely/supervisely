@@ -217,7 +217,10 @@ class _FakeImageApi:
     def get_list(self, dataset_id):
         return self._images.get(dataset_id, [])
 
-    def get_list_generator(self, dataset_id, batch_size=None):
+    def get_list_generator(self, dataset_id, batch_size=None, force_metadata_for_links=False):
+        # Recorded, because the generator defaults this off where `get_list` defaults it on,
+        # and a link-backed image listed without it has no width, height, mime or size.
+        self.forced_metadata_for_links = force_metadata_for_links
         images = self._images.get(dataset_id, [])
         step = batch_size or len(images) or 1
         for start in range(0, len(images), step):
@@ -1056,3 +1059,66 @@ def test_snapshots_written_before_the_renumbering_still_read(tmp_path):
         assert snap.schema_version == IMAGE_SCHEMA_VERSION_V2
         assert snap.is_diffable is False
         assert [row["name"] for batch in snap.iter_items() for row in batch]
+
+
+def test_an_alpha_mask_survives_a_read_that_does_not_ask_for_the_figure_id(parquet_reader):
+    """The mask lives in a table of its own, keyed by figure id.
+
+    A caller that wants geometry and nothing else never mentions that id, and the read used
+    to project it away - so the lookup was made with `None` and every alpha mask came back
+    empty, with no error anywhere to say so.
+    """
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    rows = _collect(
+        parquet_reader.iter_figures(
+            columns=[SnapshotColumn.GEOMETRY_TYPE, SnapshotColumn.GEOMETRY]
+        )
+    )
+    masks = [
+        row
+        for row in rows
+        if row[SnapshotColumn.GEOMETRY_TYPE] == AlphaMask.geometry_name()
+    ]
+
+    assert len(masks) == 1
+    assert masks[0][SnapshotColumn.GEOMETRY] == ALPHA_GEOMETRY
+    # Asked for two columns, given two: the id is read to find the mask, not handed back.
+    assert set(masks[0]) == {SnapshotColumn.GEOMETRY_TYPE, SnapshotColumn.GEOMETRY}
+
+
+def test_the_alpha_cursor_stops_hoarding_rows_it_walks_past(tmp_path):
+    """Both tables are written in figure order, so walking them together normally keeps
+    nothing. A reader filtering by item skips most figures, and every mask in between was
+    kept forever - the whole mask table, for a diff that touches a handful of items."""
+    import json
+
+    from supervisely.project.versioning import image_snapshot_io
+    from supervisely.project.versioning.schema_fields import VersionSchemaField
+    from supervisely.project.versioning.snapshot_reader import _AlphaGeometryCursor
+
+    rows = [
+        {
+            VersionSchemaField.SRC_FIGURE_ID: figure_id,
+            VersionSchemaField.GEOMETRY_JSON: json.dumps({"id": figure_id}),
+        }
+        for figure_id in range(10_000)
+    ]
+
+    def _batches(payload_dir, table, batch_size=5000, columns=None):
+        for start in range(0, len(rows), 500):
+            yield rows[start : start + 500]
+
+    original = image_snapshot_io.iter_rows
+    image_snapshot_io.iter_rows = _batches
+    try:
+        cursor = _AlphaGeometryCursor("unused", 500)
+        # The one figure this reader cares about is at the far end of the table.
+        assert cursor.get(9_999) == {"id": 9_999}
+        # Against a fixed number rather than the limit itself, so raising the limit does not
+        # quietly make this pass again: unbounded, it would be holding all 9_999 it walked.
+        assert len(cursor._stash) < 5_000
+        # Having given up on the merge, it still answers - by reading the table again.
+        assert cursor.get(3) == {"id": 3}
+    finally:
+        image_snapshot_io.iter_rows = original

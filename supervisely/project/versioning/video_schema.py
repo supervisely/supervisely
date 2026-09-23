@@ -453,7 +453,12 @@ def annotation_json_from_rows(
         video_constants.OBJECTS: objects,
         video_constants.FRAMES: [
             {video_constants.INDEX: index, video_constants.FIGURES: figures}
-            for index, figures in sorted(figures_by_frame.items())
+            # A figure with no frame index sorts first rather than raising: comparing None
+            # with an int aborts the whole restore over one malformed row.
+            for index, figures in sorted(
+                figures_by_frame.items(),
+                key=lambda pair: (1, pair[0]) if pair[0] is not None else (0, 0),
+            )
         ],
         video_constants.FRAMES_COUNT: video_row.get(VersionSchemaField.FRAMES_COUNT),
     }

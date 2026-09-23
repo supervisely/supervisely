@@ -461,55 +461,61 @@ class VolumeProject(VideoProject):
                 pool = None
                 fetched = (_fetch_volume_batch(b) for b in id_batches)
 
-            for volume_ids_batch, ann_jsons, figures_dict in fetched:
+            # Built once for the dataset, not per batch: the mapping is over every volume in
+            # it, so rebuilding it for each batch is quadratic in the dataset's size.
+            volume_by_id = {volume.id: volume for volume in volumes}
 
-                # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
-                # Build mappings:
-                # - volume_id -> ann_json
-                # - volume_id -> {figure_id -> spatial_figure_dict}
-                for ann_json in ann_jsons:
-                    volume_id = ann_json.get(ApiField.VOLUME_ID)
-                    if volume_id is None:
-                        continue
-                    ann_by_volume_id[volume_id] = ann_json
-                    figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
-                    fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
-                    for spatial_figure in figures_list:
-                        fig_id = spatial_figure.get("id")
-                        if fig_id is not None:
-                            fig_id_to_spatial_figure[fig_id] = spatial_figure
-                    spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
+            # The pool is released even when the consuming loop raises; without this a
+            # failure part-way through a dataset leaves its fetch threads running.
+            try:
+                for volume_ids_batch, ann_jsons, figures_dict in fetched:
 
-                for volume_id, figure_infos in figures_dict.items():
-                    ann_json = ann_by_volume_id.get(volume_id)
-                    if ann_json is None:
-                        continue
-                    fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
-                    for figure_info in figure_infos:
-                        spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
-                        if spatial_figure is not None:
-                            spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
+                    # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
+                    # Build mappings:
+                    # - volume_id -> ann_json
+                    # - volume_id -> {figure_id -> spatial_figure_dict}
+                    for ann_json in ann_jsons:
+                        volume_id = ann_json.get(ApiField.VOLUME_ID)
+                        if volume_id is None:
+                            continue
+                        ann_by_volume_id[volume_id] = ann_json
+                        figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
+                        fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
+                        for spatial_figure in figures_list:
+                            fig_id = spatial_figure.get("id")
+                            if fig_id is not None:
+                                fig_id_to_spatial_figure[fig_id] = spatial_figure
+                        spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
 
-                volume_by_id = {v.id: v for v in volumes}
-                for ann_json in ann_jsons:
-                    volume_info = volume_by_id.get(ann_json.get(ApiField.VOLUME_ID))
-                    if volume_info is None:
-                        continue
-                    ann_dict = snapshot_schema.annotation_dict_from_raw(
-                        api=api,
-                        raw_ann_json=ann_json,
-                        project_meta_obj=project_meta_obj,
-                        key_id_map=key_id_map,
-                    )
-                    volume_records.append(volume_info._asdict())
-                    annotations[str(volume_info.id)] = ann_dict
-                    if progress_cb is not None:
-                        progress_cb(1)
-                    if ds_progress is not None:
-                        ds_progress(1)
+                    for volume_id, figure_infos in figures_dict.items():
+                        ann_json = ann_by_volume_id.get(volume_id)
+                        if ann_json is None:
+                            continue
+                        fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
+                        for figure_info in figure_infos:
+                            spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
+                            if spatial_figure is not None:
+                                spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
 
-            if pool is not None:
-                pool.shutdown()
+                    for ann_json in ann_jsons:
+                        volume_info = volume_by_id.get(ann_json.get(ApiField.VOLUME_ID))
+                        if volume_info is None:
+                            continue
+                        ann_dict = snapshot_schema.annotation_dict_from_raw(
+                            api=api,
+                            raw_ann_json=ann_json,
+                            project_meta_obj=project_meta_obj,
+                            key_id_map=key_id_map,
+                        )
+                        volume_records.append(volume_info._asdict())
+                        annotations[str(volume_info.id)] = ann_dict
+                        if progress_cb is not None:
+                            progress_cb(1)
+                        if ds_progress is not None:
+                            ds_progress(1)
+            finally:
+                if pool is not None:
+                    pool.shutdown()
 
         project_info_dict = project_info._asdict()
         project_info_dict[VersionSchemaField.SCHEMA_VERSION] = schema_version

@@ -66,8 +66,15 @@ def existing_columns(source, columns: Optional[Sequence[str]]) -> Optional[List[
     if columns is None:
         return None
     parquet = import_parquet()
-    present = set(parquet.ParquetFile(source).schema_arrow.names)
-    return [c for c in columns if c in present] or None
+    handle = parquet.ParquetFile(source)
+    try:
+        present = set(handle.schema_arrow.names)
+    finally:
+        handle.close()
+    # An empty list, never None: None means "every column" further down, so a reader asking
+    # an older snapshot only for columns it predates would read the whole table instead of
+    # getting nulls back.
+    return [c for c in columns if c in present]
 
 
 def iter_rows_from_source(
@@ -85,7 +92,7 @@ def iter_rows_from_source(
     parquet_file = parquet.ParquetFile(source)
     try:
         for batch in parquet_file.iter_batches(
-            batch_size=batch_size, columns=list(columns or []) or None
+            batch_size=batch_size, columns=None if columns is None else list(columns)
         ):
             yield batch.to_pylist()
     finally:
@@ -440,7 +447,7 @@ def iter_arrow_batches(
     parquet_file = parquet.ParquetFile(path)
     try:
         for batch in parquet_file.iter_batches(
-            batch_size=batch_size, columns=list(columns or []) or None
+            batch_size=batch_size, columns=None if columns is None else list(columns)
         ):
             yield batch
     finally:

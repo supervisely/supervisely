@@ -4028,7 +4028,12 @@ class Project:
                 # - an ImageInfo is small, and one list request per figures request costs
                 # real time on a project with tens of thousands of images.
                 page_size = max(batch_size or 1, LIST_PAGE_SIZE)
-                for page in api.image.get_list_generator(ds_info.id, batch_size=page_size):
+                # `force_metadata_for_links` defaults the other way round on the generator
+                # than on `get_list`, and without it a link-backed image is snapshotted with
+                # no width, height, mime or size at all.
+                for page in api.image.get_list_generator(
+                    ds_info.id, batch_size=page_size, force_metadata_for_links=True
+                ):
                     if not page:
                         continue
                     for image_info in page:

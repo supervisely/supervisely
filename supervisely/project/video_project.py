@@ -1848,9 +1848,9 @@ class VideoProject(Project):
                             new_row[VersionSchemaField.DESCRIPTION] = ann_json.get(
                                 video_constants.DESCRIPTION
                             )
-                            new_row[VersionSchemaField.TAGS_JSON] = json.dumps(
-                                ann_json.get(video_constants.TAGS) or []
-                            )
+                            # The tags go to the tags table below and nowhere else: the
+                            # videos schema has no column for them, so writing one here was
+                            # dropped on the way into Parquet.
                             writers["videos"].add(new_row)
                             for tag_json in ann_json.get(video_constants.TAGS) or []:
                                 writers["tags"].add(
