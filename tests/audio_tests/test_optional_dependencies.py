@@ -1,8 +1,8 @@
 # coding: utf-8
 """Audio support must not add a dependency for anyone who does not use it.
 
-``soundfile`` is the ``supervisely[audio]`` extra and is imported only when a
-non-WAV file is decoded. ``torch`` and ``tensorflow`` are never imported by the
+``soundfile`` and ``av`` are the ``supervisely[audio]`` extra and are imported
+only when a non-WAV file is decoded. ``torch`` and ``tensorflow`` are never imported by the
 SDK; the framework parity tests use them only when installed. Checked in a
 fresh interpreter, because this process has already imported whatever the
 other tests needed.
@@ -13,7 +13,7 @@ import sys
 
 import pytest
 
-OPTIONAL = ("soundfile", "torch", "torchaudio", "tensorflow", "librosa")
+OPTIONAL = ("soundfile", "av", "torch", "torchaudio", "tensorflow", "librosa")
 
 
 def test_importing_audio_support_loads_no_optional_package():
