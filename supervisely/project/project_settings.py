@@ -26,6 +26,10 @@ class LabelingInterface(str, StrEnum):
     MULTIVIEW = "multi_view"
     IMAGE_MATTING = "image_matting"
     FISHEYE = "fisheye"
+    NRRD = "nrrd"
+    MEDICAL_IMAGING_MULTIPLE = "medical_imaging_multiple"
+    POINT_CLOUD_EPISODES = "point_cloud_episodes"
+    TELEMETRY = "telemetry"
 
 
 class ProjectSettingsJsonFields:
@@ -115,7 +119,7 @@ class ProjectSettings(JsonSerializable):
         :type multiview_tag_id: int, optional
         :param multiview_is_synced: Enable synchronization of views for multi-view mode.
         :type multiview_is_synced: bool
-        :param labeling_interface: The interface for labeling images.
+        :param labeling_interface: Labeling interface of the project, one of :class:`LabelingInterface` values.
         :type labeling_interface: str, optional
         :param spectrogram: Audio projects only: the spectrogram settings every
             recording in the project is analysed under, as stored by the
