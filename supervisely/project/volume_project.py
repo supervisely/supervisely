@@ -7,6 +7,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 import re
 import struct
+import threading
 from collections import defaultdict, namedtuple
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -753,8 +754,12 @@ class VolumeProject(VideoProject):
                 progress_cb=ds_progress,
             )
 
+            # volumes.bulk.add leaves project_id and dataset_id empty; both are known here,
+            # and without them every annotation append re-reads the volume first.
             for old_volume, new_volume in zip(dataset_volumes_to_upload, new_volume_infos):
-                volume_mapping[old_volume.get("id")] = new_volume
+                volume_mapping[old_volume.get("id")] = new_volume._replace(
+                    project_id=new_project_info.id, dataset_id=new_dataset_info.id
+                )
 
         def _restore_one(item):
             volume_id_str, ann_json = item
@@ -768,14 +773,19 @@ class VolumeProject(VideoProject):
                 return
             ann_json["volumeId"] = new_volume_info.id
             ann = VolumeAnnotation.from_json(ann_json, project_meta, None)
-            # passing the info we already have spares a volumes.info round trip per item;
-            # volumes.bulk.add leaves project_id empty, and the project is the one just made
-            api.volume.annotation.append(
-                new_volume_info.id,
-                ann,
-                None,
-                volume_info=new_volume_info._replace(project_id=new_project_info.id),
-            )
+            # passing the info we already have spares a volumes.info round trip per item
+            api.volume.annotation.append(new_volume_info.id, ann, None, volume_info=new_volume_info)
+            if anns_progress is not None:
+                with progress_lock:
+                    anns_progress(1)
+
+        # Its own bar, as in the video restore: after the last dataset's volumes the
+        # annotations are the rest of the restore, and without one the last volumes bar
+        # sat at N/N for all of it.
+        anns_progress = progress_cb
+        if log_progress and progress_cb is None:
+            anns_progress = tqdm_sly(desc="Uploading annotations", total=len(annotations))
+        progress_lock = threading.Lock()
 
         # Each annotation is several independent round trips, and the ApiContext keeps
         # the per-project tag and class lookups out of every one of them.
@@ -786,6 +796,8 @@ class VolumeProject(VideoProject):
             else:
                 with ThreadPoolExecutor(max_workers=restore_workers) as pool:
                     list(pool.map(_restore_one, list(annotations.items())))
+        if anns_progress is not None and anns_progress is not progress_cb:
+            anns_progress.close()
 
         return api.project.get_info_by_id(new_project_info.id)
 

@@ -1366,3 +1366,72 @@ def _dataset_record(dataset_id, name, parent_id=None, custom_data=None):
         id=dataset_id, name=name, parent_id=parent_id, custom_data=custom_data
     )
     return info._asdict()
+
+
+def test_a_volume_restore_counts_annotations_and_hands_over_complete_infos(tmp_path):
+    """The annotations are most of a volume restore and used to report no progress at all -
+    the last "Uploading volumes" bar sat at N/N for all of it. And volumes.bulk.add returns
+    infos without project and dataset, so each append re-read its volume."""
+    from supervisely.api.volume.volume_api import VolumeInfo
+    from supervisely.project.volume_project import VolumeProject
+
+    schema = get_volume_snapshot_schema("v2.1.0")
+    datasets = pyarrow.Table.from_pylist(
+        [schema.dataset_row_from_record(_dataset_record(1, "scans"))],
+        schema=schema.datasets_table_schema(pyarrow),
+    )
+    volumes = pyarrow.Table.from_pylist(
+        [
+            schema.volume_row_from_record(
+                {"id": vid, "dataset_id": 1, "name": f"v{vid}.nrrd", "hash": f"h{vid}", "meta": {}}
+            )
+            for vid in (20, 21)
+        ],
+        schema=schema.volumes_table_schema(pyarrow),
+    )
+    empty = {volume_constants.TAGS: [], volume_constants.OBJECTS: [], volume_constants.PLANES: [],
+             volume_constants.SPATIAL_FIGURES: [],
+             volume_constants.VOLUME_META: {"dimensionsIJK": {"x": 64, "y": 64, "z": 32}}}
+    anns = pyarrow.Table.from_pylist(
+        [schema.annotation_row_from_dict(src_volume_id=vid, annotation=dict(empty)) for vid in (20, 21)],
+        schema=schema.annotations_table_schema(pyarrow),
+    )
+    blob = VolumeProject._assemble_sections(
+        [
+            (VolumeProject._SECTION_PROJECT_INFO,
+             json.dumps({"id": 1, "name": "p", "type": "volumes"}).encode()),
+            (VolumeProject._SECTION_PROJECT_META, json.dumps(META.to_json()).encode()),
+            (VolumeProject._SECTION_DATASETS, _parquet_bytes(datasets)),
+            (VolumeProject._SECTION_VOLUMES, _parquet_bytes(volumes)),
+            (VolumeProject._SECTION_ANNOTATIONS, _parquet_bytes(anns)),
+        ]
+    )
+    path = os.path.join(str(tmp_path), "volume.bin")
+    with open(path, "wb") as f:
+        f.write(blob)
+
+    api = _restore_api()
+    handed = []
+
+    def upload_hashes(dataset_id, names, hashes, metas=None, progress_cb=None):
+        return [
+            VolumeInfo(**{f: None for f in VolumeInfo._fields})._replace(id=500 + i, name=name)
+            for i, name in enumerate(names)
+        ]
+
+    def append(volume_id, ann, key_id_map=None, volume_info=None):
+        handed.append((volume_id, volume_info.project_id, volume_info.dataset_id))
+
+    api.volume = SimpleNamespace(
+        upload_hashes=upload_hashes, annotation=SimpleNamespace(append=append)
+    )
+    progress = []
+    VolumeProject.upload_bin(
+        api, path, workspace_id=1, progress_cb=progress.append, restore_workers=2,
+        with_custom_data=False,
+    )
+
+    dataset_id = api.dataset.created[0].id
+    assert sorted(handed) == [(500, 900, dataset_id), (501, 900, dataset_id)]
+    # The annotations are counted too, one per volume, after the volumes' own progress.
+    assert progress[-2:] == [1, 1]
