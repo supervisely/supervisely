@@ -1,13 +1,13 @@
 # coding: utf-8
 """Rendering spectrograms from a recorded :class:`SpectrogramSettings`.
 
-The point of storing the settings on a label is to be able to reproduce the
-picture the annotator was looking at, and to feed the same transform to
+The point of storing the settings on the project is to be able to reproduce
+the picture the annotator was looking at, and to feed the same transform to
 training. Both come from this module, so the audit image and the model input
 cannot drift apart.
 
-Every step here is matched to the labeling tool, which computes its STFT in a
-Rust/WASM kernel and projects it in TypeScript:
+Every step here is matched to the labeling tool, which computes its STFT and
+projection in a GPU compute kernel (WebGPU, or WebGL2 as a fallback):
 
 * periodic windows, ``1 - cos(2*pi*i/N)`` family, not the symmetric
   ``numpy`` ones that divide by ``N - 1``;
@@ -28,12 +28,12 @@ What the stored settings do and do not determine:
   among the stored settings. Pass ``rows=`` to reproduce a particular on-screen
   grid; without it you get the natural resolution.
 
-Bit-exactness against the tool's WASM kernel is not a goal and is not claimed.
+Bit-exactness against the tool's GPU kernel is not a goal and is not claimed.
 The confirmed workflow renders the training input in the consumer's own
 framework from the stored parameters, so what has to hold is that those
 parameters pin the analysis unambiguously -- and float arithmetic differs in
 the last places between any two implementations regardless (the tool transforms
-in f32, numpy in f64).
+in f32 on the GPU, numpy in f64).
 
 The conventions above are therefore the contract, not an implementation detail.
 ``tests/audio_tests/test_framework_parity.py`` rebuilds this analysis in

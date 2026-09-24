@@ -238,7 +238,7 @@ contract — there is no image to fall back on.
 vertical position on the displayed spectrogram to the frequency the annotator saw,
 using the tool's own mapping.
 
-> Bit-exactness against the tool's WASM STFT is not a goal and is not claimed.
+> Bit-exactness against the tool's own STFT is not a goal and is not claimed.
 > The training input is rendered by the consumer's own framework, not by the
 > toolbox, so what has to hold is that the stored parameters pin the analysis
 > unambiguously — and float arithmetic differs in the last places between any
@@ -255,27 +255,41 @@ rounding one:
 |---|---|
 | Window | **Periodic** (`phase = 2*pi*i/N`), not the symmetric `numpy.hanning` family |
 | Padding | Frames **centred** on `k*hop_length`, padded with **zeros** — not reflected |
+| Frames | `(n - 1) // hop_length + 1`. `torch.stft(center=True)` gives one more when `n` is a multiple of the hop — drop it |
 | Scaling | Power `/sum(window)^2`, then `x4` on every bin except DC and Nyquist |
 | Mel | **HTK** edges from 0 to Nyquist, and a weighted **average** — divide by the filterbank column sums, do not take the weighted sum |
 | dB | `10*log10(power)` **absolute**, floor `1e-20`, clipped to `[min_db, max_db]`. No `top_db`, no per-render max |
 
 ```python
-# periodic_window() builds the named window as `a0 - a1*cos(p) + a2*cos(2p)`,
-# p = 2*pi*i/N -- see the test module below for the coefficients.
-win = torch.from_numpy(periodic_window(settings.window, settings.fft_size))
-spec = torch.stft(samples, n_fft=settings.fft_size, hop_length=settings.hop_length,
-                  win_length=settings.fft_size, window=win,
-                  center=True, pad_mode="constant",   # torch defaults to "reflect"
-                  normalized=False, return_complex=True)
-power = spec.abs().double() ** 2 / float(win.double().sum()) ** 2
+WINDOWS = {"hann": torch.hann_window, "hamming": torch.hamming_window,
+           "blackman": torch.blackman_window}   # periodic=True is the tool's window
+
+
+def htk_mel_filters(fft_size, sample_rate, mel_bands):
+    edges = 700 * np.expm1(np.arange(mel_bands + 2) / (mel_bands + 1) * np.log1p(sample_rate / 1400))
+    freqs = np.arange(fft_size // 2 + 1) * sample_rate / fft_size
+    lo, mid, hi = edges[:-2, None], edges[1:-1, None], edges[2:, None]
+    return torch.from_numpy(np.clip(np.minimum((freqs - lo) / (mid - lo), (hi - freqs) / (hi - mid)), 0, None))
+
+
+x = torch.from_numpy(mono).double()
+win = WINDOWS[settings.window](settings.fft_size, periodic=True, dtype=torch.float64)
+spec = torch.stft(x, settings.fft_size, settings.hop_length, window=win,
+                  center=True, pad_mode="constant",    # torch defaults to "reflect"
+                  return_complex=True)
+spec = spec[:, : (len(x) - 1) // settings.hop_length + 1]
+power = spec.abs() ** 2 / win.sum() ** 2
 power[1:-1] *= 4.0
 
-fb = torchaudio.functional.melscale_fbanks(settings.fft_size // 2 + 1, 0.0, rate / 2,
-                                           settings.mel_bands, rate,
-                                           norm=None, mel_scale="htk")
-power = (fb.T.double() @ power) / fb.sum(0).double()[:, None]     # average, not sum
+if settings.scale == "mel":
+    fb = htk_mel_filters(settings.fft_size, rate, settings.mel_bands)
+    power = (fb @ power) / fb.sum(1, keepdim=True)   # average, not sum
 db = (10 * torch.log10(power.clamp_min(1e-20))).clamp(settings.min_db, settings.max_db)
 ```
+
+The filter bank is written out because torchaudio lags PyTorch releases;
+`torchaudio.functional.melscale_fbanks(..., norm=None, mel_scale="htk")` is the
+same matrix, transposed, where it is installed.
 
 `tests/audio_tests/test_framework_parity.py` runs this and the `tf.signal`
 equivalent against `render_spectrogram` and is the executable version of the

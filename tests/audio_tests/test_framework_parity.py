@@ -40,13 +40,31 @@ CASES = [
 ]
 
 
-@pytest.fixture(scope="module")
-def signal():
-    """Two tones and a click: narrowband and wideband content in one array."""
-    t = np.arange(int(SR * 0.5)) / SR
+@pytest.fixture(scope="module", params=[8000, 8192], ids=["n%hop!=0", "n%hop==0"])
+def signal(request):
+    """Two tones and a click: narrowband and wideband content in one array.
+
+    8192 samples is a multiple of every hop in CASES, which is where
+    ``torch.stft(center=True)`` returns one frame more than the tool.
+    """
+    t = np.arange(request.param) / SR
     x = 0.5 * np.sin(2 * np.pi * 440 * t) + 0.2 * np.sin(2 * np.pi * 3100 * t)
-    x[8000:8020] += 0.6
+    x[6000:6020] += 0.6
     return x.astype(np.float32)
+
+
+def htk_mel_filters(fft_size, sample_rate, mel_bands):
+    """Triangles on HTK mel edges from 0 to Nyquist, ``(mel_bands, fft_size // 2 + 1)``.
+
+    Written out rather than taken from torchaudio, which lags PyTorch
+    releases; this is the version the documentation shows.
+    """
+    a = np.arange(mel_bands + 2) / (mel_bands + 1)
+    edges = 700 * np.expm1(a * np.log1p(sample_rate / 1400))
+    freqs = np.arange(fft_size // 2 + 1) * sample_rate / fft_size
+    lo, mid, hi = edges[:-2, None], edges[1:-1, None], edges[2:, None]
+    tri = np.minimum((freqs - lo) / (mid - lo), (hi - freqs) / (hi - mid))
+    return np.clip(tri, 0, None)
 
 
 def periodic_window(name, size):
@@ -63,7 +81,6 @@ def periodic_window(name, size):
 @pytest.mark.parametrize("case", CASES, ids=lambda c: f"{c['scale']}-{c['fft_size']}")
 def test_torch_reproduces_the_stored_analysis(signal, case):
     torch = pytest.importorskip("torch")
-    torchaudio = pytest.importorskip("torchaudio")
     settings = sly.SpectrogramSettings(**case)
 
     win = torch.from_numpy(periodic_window(settings.window, settings.fft_size))
@@ -78,20 +95,15 @@ def test_torch_reproduces_the_stored_analysis(signal, case):
         normalized=False,
         return_complex=True,
     )
+    # center=True yields 1 + n // hop frames; the tool has (n - 1) // hop + 1,
+    # one fewer whenever n is a multiple of the hop.
+    spec = spec[:, : (signal.size - 1) // settings.hop_length + 1]
     power = spec.abs().double() ** 2 / float(win.double().sum()) ** 2
     power[1:-1] *= 4.0
 
     if settings.scale == "mel":
-        fb = torchaudio.functional.melscale_fbanks(
-            n_freqs=settings.fft_size // 2 + 1,
-            f_min=0.0,
-            f_max=SR / 2.0,
-            n_mels=settings.mel_bands,
-            sample_rate=SR,
-            norm=None,
-            mel_scale="htk",
-        ).double()
-        power = (fb.T @ power) / fb.sum(dim=0)[:, None]  # average, not sum
+        fb = torch.from_numpy(htk_mel_filters(settings.fft_size, SR, settings.mel_bands))
+        power = (fb @ power) / fb.sum(dim=1, keepdim=True)  # average, not sum
 
     db = 10.0 * torch.log10(power.clamp_min(1e-20))
     theirs = db.clamp(settings.min_db, settings.max_db).numpy()
@@ -178,3 +190,21 @@ def test_reflect_padding_would_be_a_visible_error(signal):
     zeroed = torch.stft(x, pad_mode="constant", **kwargs)[:, 0].abs()
     difference = 20 * torch.log10((reflected + 1e-20) / (zeroed + 1e-20))
     assert float(difference.abs().max()) > 5.0
+
+
+def test_torch_center_adds_a_frame_when_the_length_is_a_multiple_of_the_hop():
+    """Why the torch recipe trims: without it the shapes differ by one frame."""
+    torch = pytest.importorskip("torch")
+    settings = sly.SpectrogramSettings(scale="linear", fft_size=1024, hop_length=256)
+    x = np.zeros(8192, dtype=np.float32)
+    spec = torch.stft(
+        torch.from_numpy(x),
+        n_fft=settings.fft_size,
+        hop_length=settings.hop_length,
+        window=torch.hann_window(settings.fft_size, periodic=True),
+        center=True,
+        pad_mode="constant",
+        return_complex=True,
+    )
+    ours = render_spectrogram(x, SR, settings)
+    assert spec.shape[1] == ours.shape[1] + 1

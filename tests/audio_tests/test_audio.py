@@ -514,9 +514,10 @@ def test_row_projection_preserves_a_narrow_peak():
 
 # ------------------------------------ analysis parity with the labeling tool
 #
-# The tool's kernel is `shared/wasm/audio-fft-rs/audio-fft/src/lib.rs` and its
-# projection is `labeling-tool/src/tools/audio/engine/spectrum.ts` on the
-# platform side. These tests pin the four things that make the numbers match.
+# The tool's transform and projection are the GPU kernel in
+# `labeling-tool/src/tools/audio/engine/fft.ts` and `spectrogram.ts` on the
+# platform side (ported from the earlier `lib.rs` and `spectrum.ts` with the same
+# formulas). These tests pin the four things that make the numbers match.
 
 
 def test_windows_are_periodic_like_the_tool():

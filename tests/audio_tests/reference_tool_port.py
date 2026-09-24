@@ -1,10 +1,16 @@
 """Line-by-line transliteration of the platform's own audio analysis.
 
-Sources (branch origin/feature/6151-audio of the platform monorepo):
+Sources (platform monorepo, feature/6151-audio at 291bcde0):
   shared/wasm/audio-fft-rs/audio-fft/src/lib.rs     -- BatchFft::new / compute
   labeling-tool/src/tools/audio/engine/spectrum.ts  -- SpectrumRows, colorize
   labeling-tool/src/tools/audio/engine/types.ts     -- frequencyAtPosition, stops
   labeling-tool/src/tools/audio/engine/reader.ts    -- copy(): zero padding, mixdown
+
+e1536b6b, merged with the feature, moved the transform and projection to a GPU
+kernel (engine/fft.ts, engine/spectrogram.ts) with the same windows, 1/sum^2
+and x4 scaling, zero-padded centred frames, mel edges and weighted average,
+max-pooled rows and 1e-20 dB floor; the stops and frequencyAtPosition are
+unchanged. The formulas below still describe it.
 
 Deliberately naive: plain loops, no numpy tricks, so it can be read next to the
 original and compared by eye.
