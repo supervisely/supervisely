@@ -157,8 +157,9 @@ it, and without it a sample range cannot be converted to seconds.
 
 ### Import into an existing project
 
-`sly.ImportManager` (what the Auto Import app runs) accepts two inputs for an
-audio project: recordings in any folder structure, uploaded without labels, or
+`sly.ImportManager` is what the Auto Import app runs, so it works inside an
+app, in the app's data directory (`SLY_APP_DATA_DIR`). It accepts two inputs for
+an audio project: recordings in any folder structure, uploaded without labels, or
 a project in the layout above, uploaded with its segments. Segments are matched
 to the destination's tags by name; a conflicting tag is renamed, as for the
 other modalities.
