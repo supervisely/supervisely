@@ -109,6 +109,13 @@ for s in segments:
     print(s.start, s.end, s.channel, s.meta)
 ```
 
+To delete one, pass the segment as read back — the endpoint needs its id, its
+tag id and the recording id together:
+
+```python
+api.audio.remove_segment(segments[0])
+```
+
 Both `entities.list` and `entities.info` omit `tags` and their `meta` from the
 default projection, so `api.audio` asks for them explicitly
 (`AudioApi.ENTITY_FIELDS`). `meta` is where a segment's channel lives.
@@ -278,8 +285,11 @@ levels is 0.4 dB per level, so it is not something an annotator could see. The
 tests skip themselves when the framework is not installed; neither is a
 dependency of this SDK.
 
-WAV is decoded with the standard library. Other formats (FLAC, OGG, MP3, M4A)
-need the optional `soundfile` package: `pip install supervisely[audio]`.
+WAV is decoded with the standard library. FLAC, OGG and MP3 need `soundfile`;
+M4A (AAC), which libsndfile cannot open, needs `av`. Both come with
+`pip install supervisely[audio]`, and neither is imported until such a file is
+decoded — importing `supervisely` never needs them. Uploading and importing
+never decode at all: the file is sent as it is.
 
 ## Validation
 

@@ -264,6 +264,8 @@ setup(
         ],
         "audio": [
             "soundfile>=0.12, <1.0",
+            "av>=12.0.0, <13.0.0; python_version == '3.8'",
+            "av>=13.0.0, <18.0.0; python_version >= '3.9'",
         ],
         "video-av": [
             "av>=12.0.0, <13.0.0; python_version == '3.8'",

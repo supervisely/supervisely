@@ -295,9 +295,45 @@ class AudioApi(ModuleApiBase):
         """Attach a single segment label."""
         return self.add_segments(project_id, entity_id, [segment])[0]
 
-    def remove_segment(self, tag_assignment_id: int) -> None:
-        """Remove one segment label by its tag-assignment id."""
-        self._api.post("image-tags.remove-from-image", {ApiField.ID: tag_assignment_id})
+    def remove_segment(self, segment: AudioSegment) -> None:
+        """Remove one segment label from its recording.
+
+        The endpoint needs the tag-assignment id, the tag meta id *and* the
+        recording id, and answers 400 without all three -- so this takes the
+        segment as returned by :meth:`get_segments`, which carries them.
+
+        :param segment: Segment read from the platform.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            for segment in api.audio.get_segments(entity_id):
+                if segment.end - segment.start < 160:
+                    api.audio.remove_segment(segment)
+        """
+        missing = [
+            name
+            for name, value in (
+                ("id", segment.id),
+                ("tag_id", segment.tag_id),
+                ("entity_id", segment.entity_id),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                f"cannot remove a segment without {', '.join(missing)}: "
+                "pass one read with api.audio.get_segments"
+            )
+        self._api.post(
+            "image-tags.remove-from-image",
+            {
+                ApiField.ID: segment.id,
+                ApiField.TAG_ID: segment.tag_id,
+                ApiField.IMAGE_ID: segment.entity_id,
+            },
+        )
 
     # ---------------------------------------------------- project spectrogram
 

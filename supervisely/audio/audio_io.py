@@ -9,8 +9,9 @@ browser, and the SDK does the same. That is why every function here takes a
 local path rather than an entity id.
 
 WAV is handled with the standard library so the common case needs no extra
-dependency. Anything else needs ``soundfile`` (``pip install soundfile``),
-which is an optional install.
+dependency. FLAC, OGG and MP3 need ``soundfile``; M4A (AAC), which libsndfile
+cannot open, needs ``av``. Both come with ``pip install supervisely[audio]`` and
+both are imported only when such a file is actually decoded.
 """
 
 import wave
@@ -74,6 +75,56 @@ def _read_wav(path: str) -> Tuple[np.ndarray, int]:
     return data, rate
 
 
+_MISSING_DECODER = (
+    "reading {path!r} needs the optional 'soundfile' or 'av' package "
+    "(pip install supervisely[audio]). Only uncompressed WAV is supported "
+    "without them."
+)
+
+
+def _read_with_soundfile(path: str) -> Optional[Tuple[np.ndarray, int]]:
+    """Decode with libsndfile, or ``None`` when it is not installed or cannot
+    open the container (MP4/AAC)."""
+    try:
+        import soundfile  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        data, rate = soundfile.read(path, dtype="float32", always_2d=True)
+    except soundfile.LibsndfileError:
+        return None
+    return data, rate
+
+
+def _read_with_av(path: str) -> Optional[Tuple[np.ndarray, int]]:
+    """Decode with FFmpeg through PyAV, or ``None`` when it is not installed.
+
+    Used for what libsndfile cannot open, M4A (AAC) in practice. Sample
+    positions are FFmpeg's: an MP4 edit list, when the encoder wrote one, trims
+    the AAC priming delay; a file without one keeps it (1024 samples). Whether
+    the labeling tool's decoder agrees on such a file is not verified.
+    """
+    try:
+        import av  # noqa: PLC0415
+    except ImportError:
+        return None
+    with av.open(path) as container:
+        stream = container.streams.audio[0]
+        rate = stream.codec_context.sample_rate
+        # Planar float32 at the source rate and layout: one row per channel.
+        resampler = av.AudioResampler(format="fltp", layout=stream.layout, rate=rate)
+        chunks = []
+        for frame in container.decode(stream):
+            for out in resampler.resample(frame):
+                chunks.append(out.to_ndarray())
+        for out in resampler.resample(None):
+            chunks.append(out.to_ndarray())
+    if not chunks:
+        return np.zeros((0, stream.codec_context.channels), dtype=np.float32), rate
+    data = np.concatenate(chunks, axis=1).T
+    return np.ascontiguousarray(data, dtype=np.float32), rate
+
+
 def read_audio(path: str) -> Tuple[np.ndarray, int]:
     """Decode an audio file to float32 samples in ``[-1, 1]``.
 
@@ -81,8 +132,9 @@ def read_audio(path: str) -> Tuple[np.ndarray, int]:
     :return: ``(samples, sample_rate)`` where ``samples`` has shape
         ``(sample_count, channels)``.
 
-    WAV is decoded with the standard library. Other formats require
-    ``soundfile``; a clear :class:`ImportError` is raised if it is missing.
+    WAV is decoded with the standard library. FLAC, OGG and MP3 use
+    ``soundfile``, M4A uses ``av``; a clear :class:`ImportError` is raised when
+    neither can decode the file because it is not installed.
     """
     if path.lower().endswith(".wav"):
         try:
@@ -90,16 +142,11 @@ def read_audio(path: str) -> Tuple[np.ndarray, int]:
         except wave.Error:
             pass  # compressed payload in a .wav container -- fall through
 
-    try:
-        import soundfile  # noqa: PLC0415
-    except ImportError:
-        raise ImportError(
-            f"reading {path!r} needs the optional 'soundfile' package "
-            "(pip install supervisely[audio]). Only uncompressed WAV is "
-            "supported without it."
-        )
-    data, rate = soundfile.read(path, dtype="float32", always_2d=True)
-    return data, rate
+    for decode in (_read_with_soundfile, _read_with_av):
+        decoded = decode(path)
+        if decoded is not None:
+            return decoded
+    raise ImportError(_MISSING_DECODER.format(path=path))
 
 
 def get_audio_info(path: str) -> AudioFileInfo:
@@ -123,14 +170,17 @@ def get_audio_info(path: str) -> AudioFileInfo:
 
     try:
         import soundfile  # noqa: PLC0415
-    except ImportError:
+
+        info = soundfile.info(path)
+        return AudioFileInfo(
+            sample_rate=info.samplerate, sample_count=info.frames, channels=info.channels
+        )
+    except (ImportError, RuntimeError):
+        # Not installed, or a container libsndfile cannot open (LibsndfileError
+        # is a RuntimeError). An MP4 header does not give an exact sample count
+        # after priming is trimmed, so decode.
         data, rate = read_audio(path)
         return AudioFileInfo(sample_rate=rate, sample_count=data.shape[0], channels=data.shape[1])
-
-    info = soundfile.info(path)
-    return AudioFileInfo(
-        sample_rate=info.samplerate, sample_count=info.frames, channels=info.channels
-    )
 
 
 def select_channel(samples: np.ndarray, channel: Optional[int]) -> np.ndarray:

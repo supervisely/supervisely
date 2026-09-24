@@ -101,6 +101,12 @@ def test_round_trip(api, project, tmp_path):
         assert actual.channel == expected.channel
         assert actual.meta == expected.meta, "free-form meta keys must survive"
 
+    # --- remove one, the other two stay ------------------------------------
+    api.audio.remove_segment(got[1])
+    left = sorted(api.audio.get_segments(entity_id), key=lambda s: s.start)
+    assert [(s.start, s.end) for s in left] == [(0, 15999), (24001, 31999)]
+    got = left
+
     # --- download and render under the project's settings -----------------
     local = str(tmp_path / "downloaded.wav")
     api.audio.download_path(entity_id, local)

@@ -113,3 +113,23 @@ def test_settings_must_be_a_settings_object(audio_api):
     with pytest.raises(TypeError):
         audio_api.set_spectrogram_settings(31, {"scale": "mel"})
     audio_api._api.project.update_settings.assert_not_called()
+
+
+def test_remove_segment_sends_all_three_ids(audio_api):
+    """`image-tags.remove-from-image` answers 400 unless it gets the assignment
+    id, the tag meta id and the recording id together."""
+    from supervisely.audio.audio_segment import AudioSegment
+
+    segment = AudioSegment(tag_id=53636, start=0, end=99, id=2122848, entity_id=7133008)
+    audio_api.remove_segment(segment)
+    audio_api._api.post.assert_called_once_with(
+        "image-tags.remove-from-image", {"id": 2122848, "tagId": 53636, "imageId": 7133008}
+    )
+
+
+def test_remove_segment_refuses_a_segment_that_never_reached_the_server(audio_api):
+    from supervisely.audio.audio_segment import AudioSegment
+
+    with pytest.raises(ValueError, match="id, entity_id"):
+        audio_api.remove_segment(AudioSegment(tag_id=1, start=0, end=9))
+    audio_api._api.post.assert_not_called()
