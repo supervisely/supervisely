@@ -68,7 +68,8 @@ def _write_m4a(path, rate=48000, seconds=1.0):
     planar = np.stack(
         [0.3 * np.sin(2 * np.pi * 440 * t), 0.3 * np.sin(2 * np.pi * 1000 * t)]
     ).astype(np.float32)
-    with av.open(str(path), "w", format="mp4") as out:
+    # "ipod" is FFmpeg's muxer for .m4a (brand M4A); "mp4" writes a video brand.
+    with av.open(str(path), "w", format="ipod") as out:
         stream = out.add_stream("aac", rate=rate, layout="stereo")
         step = 1024
         for i in range(0, n, step):
