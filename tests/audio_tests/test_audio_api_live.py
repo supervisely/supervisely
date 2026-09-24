@@ -143,3 +143,55 @@ def test_settings_outside_the_api_schema_are_refused_locally(api, project):
     for kwargs in ({"mel_bands": 1}, {"mel_bands": 513}, {"fft_size": 65536}):
         with pytest.raises(ValueError):
             SpectrogramSettings(**kwargs)
+
+
+def test_auto_import_of_a_supervisely_audio_project(api, tmp_path):
+    """What Auto Import runs: detect a downloaded-format project, upload it into a
+    pre-created dataset, and get back the same labels under destination tag ids."""
+    from supervisely.convert.audio.audio_converter import AudioConverter
+
+    src = sly.AudioProject(str(tmp_path / "src"), sly.OpenMode.CREATE)
+    settings = SpectrogramSettings(scale="mel", fft_size=1024, mel_bands=64)
+    src.set_meta(
+        sly.ProjectMeta(
+            tag_metas=sly.TagMetaCollection([sly.TagMeta("Event", sly.TagValueType.NONE)]),
+            project_type=sly.ProjectType.AUDIO.value,
+            project_settings=sly.ProjectSettings(spectrogram=settings.to_json()),
+        )
+    )
+    ann = sly.AudioAnnotation(
+        tags=[
+            AudioSegment(name="Event", start=10, end=15999, channel=1, tag_id=999),
+            AudioSegment(name="Event", start=16000, end=31999),
+        ]
+    )
+    src.create_dataset("ds0").add_item_file("rec.wav", _write_wav(tmp_path / "rec.wav"), ann=ann)
+
+    workspace_id = int(os.environ.get("SLY_WORKSPACE_ID", "1"))
+    dst = api.project.create(
+        workspace_id, "sdk-audio-import", type=sly.ProjectType.AUDIO, change_name_if_conflict=True
+    )
+    try:
+        dataset = api.dataset.create(dst.id, "import")
+        converter = AudioConverter(str(tmp_path / "src")).detect_format()
+        assert str(converter) == "supervisely"
+        converter.upload_dataset(api, dataset.id, log_progress=False)
+
+        (info,) = api.audio.get_list(dataset.id)
+        assert info.name == "rec.wav"
+        tag_id = next(t["id"] for t in api.project.get_meta(dst.id)["tags"] if t["name"] == "Event")
+        got = sorted(api.audio.get_segments(info.id), key=lambda s: s.start)
+        assert [(s.tag_id, s.start, s.end, s.channel) for s in got] == [
+            (tag_id, 10, 15999, 1),
+            (tag_id, 16000, 31999, None),
+        ]
+
+        stored = api.project.get_settings(dst.id).get("spectrogram")
+        if stored is None:
+            pytest.skip(
+                "labels imported; the spectrogram check needs projects.settings.spectrogram "
+                "(platform MR !2098), which this instance drops silently"
+            )
+        assert SpectrogramSettings.from_json(stored) == settings
+    finally:
+        api.project.remove(dst.id)

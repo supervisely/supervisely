@@ -118,7 +118,10 @@ def stft_power(samples: np.ndarray, fft_size: int, hop_length: int, window: str)
     padded = np.zeros(max(needed, half + n_samples), dtype=np.float32)
     padded[half : half + n_samples] = samples
 
-    stride = padded.strides[0]
+    # `padded` is a fresh contiguous 1-D array, so its only stride is the item
+    # size. Reading `itemsize` rather than `strides[0]` also keeps pylint from
+    # misreading numpy's `strides` as unsubscriptable (E1136).
+    stride = padded.itemsize
     frames = np.lib.stride_tricks.as_strided(
         padded,
         shape=(n_frames, fft_size),

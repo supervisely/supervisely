@@ -155,6 +155,25 @@ downloaded project is readable without the server that issued the ids. The
 recording's shape is stored in the annotation because the platform does not keep
 it, and without it a sample range cannot be converted to seconds.
 
+### Import into an existing project
+
+`sly.ImportManager` (what the Auto Import app runs) accepts two inputs for an
+audio project: recordings in any folder structure, uploaded without labels, or
+a project in the layout above, uploaded with its segments. Segments are matched
+to the destination's tags by name; a conflicting tag is renamed, as for the
+other modalities.
+
+```python
+importer = sly.ImportManager("/tmp/proj", sly.ProjectType.AUDIO)
+importer.upload_dataset(dataset_id)
+```
+
+The spectrogram settings in `meta.json` are applied only when the destination
+project is not configured yet and holds no recordings. A project that already
+has settings, or labels drawn under the defaults, keeps its own, and a mismatch
+is logged: changing them would change what the existing labels mean. Audio is
+never added by link; the files are always uploaded.
+
 ## Rendering
 
 The platform deliberately stores no sample rate, duration or channel count for
