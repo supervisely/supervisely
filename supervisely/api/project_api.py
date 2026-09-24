@@ -882,6 +882,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post(
             "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
         )
+        # The meta is what the ApiContext name->id caches are built from, so they go stale here.
+        context = getattr(self._api, "optimization_context", None) or {}
+        for cache_key in ("obj_class_name_to_id", "tag_name_to_id"):
+            context.get(cache_key, {}).pop(id, None)
         try:
             tmp = ProjectMeta.from_json(data=response.json())
             m = tmp.clone(project_type=m.project_type, project_settings=m.project_settings)

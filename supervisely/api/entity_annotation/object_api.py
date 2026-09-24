@@ -233,14 +233,11 @@ class ObjectApi(RemoveableBulkModuleApi):
         if len(objects) == 0:
             return []
 
-        objcls_name_id_map = self._api.object_class.get_name_to_id_map(project_id)
-        # A class the caller added to the meta inside an open ApiContext is not in the
-        # cached map - which is exactly what an inference app does: update_meta, then
-        # upload annotations. One re-read answers it; a miss used to be a KeyError.
-        if any(obj.obj_class.name not in objcls_name_id_map for obj in objects):
-            objcls_name_id_map = self._api.object_class.get_name_to_id_map(
-                project_id, refresh=True
-            )
+        # A class added to the meta inside an open ApiContext is not in the cached map -
+        # which is what an inference app does: update_meta, then upload annotations.
+        objcls_name_id_map = self._api.object_class._name_to_id_map_covering(
+            project_id, [obj.obj_class.name for obj in objects]
+        )
 
         items = []
         for obj in objects:

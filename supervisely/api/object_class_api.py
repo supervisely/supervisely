@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, Iterable, List, NamedTuple, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -139,6 +139,8 @@ class ObjectClassApi(ModuleApi):
         """
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int
+        :param refresh: Read the project's classes again even if a map is cached.
+        :type refresh: bool
         :returns: Dictionary mapping object class name to object class ID.
         :rtype: Dict[str, int]
 
@@ -162,20 +164,38 @@ class ObjectClassApi(ModuleApi):
                 print(obj_class_map)
                 # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
 
-        A name added to the project meta inside an open :class:`ApiContext` is not in the
-        cached map, so pass ``refresh=True`` to read it again rather than getting a miss.
+        Inside an open :class:`ApiContext` the map is cached, and a class added meanwhile
+        is not in it - pass ``refresh=True`` to read it again.
         """
+        from supervisely.api.api import API_CONTEXT_MARKER
+
         context = getattr(self._api, "optimization_context", None) or {}
-        cache = context.setdefault("obj_class_name_to_id", {}) if context else {}
+        in_context = bool(context.get(API_CONTEXT_MARKER))
+        cache = context.setdefault("obj_class_name_to_id", {}) if in_context else {}
         if project_id in cache and not refresh:
             return cache[project_id]
 
         objects_infos = self.get_list(project_id)
         mapping = {object_info.name: object_info.id for object_info in objects_infos}
-        if context:
+        if in_context:
             # same reasoning as the tag map: classes are fixed for the duration of a
             # bulk upload, so an ApiContext reads them once instead of per item
             cache[project_id] = mapping
+        return mapping
+
+    def _name_to_id_map_covering(self, project_id: int, names: Iterable[str]) -> Dict[str, int]:
+        """The name->id map, read again if a cached one lacks any of ``names``.
+
+        Inside an ApiContext the map is cached, and a name added to the meta meanwhile is
+        not in it; one re-read answers that instead of a KeyError.
+        """
+        from supervisely.api.api import API_CONTEXT_MARKER
+
+        mapping = self.get_name_to_id_map(project_id)
+        context = getattr(self._api, "optimization_context", None) or {}
+        # Outside a context the map was just read, and reading it again would find the same.
+        if context.get(API_CONTEXT_MARKER) and any(name not in mapping for name in names):
+            mapping = self.get_name_to_id_map(project_id, refresh=True)
         return mapping
 
     def _get_info_by_id(self, id, method, fields=None):

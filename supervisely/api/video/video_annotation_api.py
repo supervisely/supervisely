@@ -94,6 +94,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         ann: VideoAnnotation,
         key_id_map: Optional[KeyIdMap] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        video_info=None,
     ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
@@ -106,6 +107,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param progress: Progress.
         :type progress: Optional[Union[tqdm, Callable]]
+        :param video_info: VideoInfo of ``video_id`` when the caller already has it; spares a videos.info request.
+        :type video_info: :class:`~supervisely.api.video.video_api.VideoInfo`, optional
         :returns: None
         :rtype: None
 
@@ -129,14 +132,11 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                 api.video.annotation.append(video_id, video_ann)
         """
 
-        # In a bulk operation the project and dataset are fixed and already known, so an
-        # ApiContext spares one videos.info round trip per annotation.
-        context = getattr(self._api, "optimization_context", None) or {}
-        if context.get("project_id") is not None and context.get("dataset_id") is not None:
-            project_id, dataset_id = context["project_id"], context["dataset_id"]
-        else:
-            info = self._api.video.get_info_by_id(video_id)
-            project_id, dataset_id = info.project_id, info.dataset_id
+        # Taken from the video itself, never from an ApiContext: this call has no dataset
+        # argument to check a context against, so a stale one would file it elsewhere.
+        if video_info is None or video_info.project_id is None or video_info.dataset_id is None:
+            video_info = self._api.video.get_info_by_id(video_id)
+        project_id, dataset_id = video_info.project_id, video_info.dataset_id
         self._append(
             self._api.video.tag,
             self._api.video.object,

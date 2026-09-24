@@ -209,6 +209,21 @@ class _FakeFigureApi:
         return [ALPHA_GEOMETRY for _ in figure_ids]
 
 
+class _FakeAnnotationApi:
+    """annotations.bulk.info: where the snapshot reads figure tags from."""
+
+    def __init__(self, figures):
+        self._figures = figures
+
+    def _figure_tags_batch(self, dataset_id, image_ids):
+        return {
+            figure.id: figure.tags
+            for image_id in image_ids
+            for figure in self._figures.get(image_id, [])
+            if figure.tags
+        }
+
+
 class _FakeImageApi:
     def __init__(self, images, figures):
         self._images = images
@@ -257,6 +272,7 @@ class _FakeApi:
         self.project = _FakeProjectApi(_project_info(), _meta())
         self.dataset = _FakeDatasetApi(_datasets())
         self.image = _FakeImageApi(_images(), _figures())
+        self.annotation = _FakeAnnotationApi(_figures())
 
 
 @pytest.fixture(scope="module")
@@ -1225,3 +1241,156 @@ def test_an_interrupted_extraction_is_not_mistaken_for_a_finished_one(tmp_path):
 
     with VersionSnapshot.open_archive(path, payload_dir=payload_dir) as snapshot:
         assert _collect(snapshot.iter_items()), "the payload was not extracted again"
+
+
+def test_a_failed_figure_tag_read_fails_the_snapshot():
+    """No quiet fallback to the lean figures.list tags.
+
+    Those carry no name and no updated_at, and a version is immutable: one written that
+    way would report every figure tag on a touched item as changed against its neighbours.
+    """
+    api = _FakeApi()
+
+    def broken(dataset_id, image_ids):
+        raise RuntimeError("annotations.bulk.info: 502")
+
+    api.annotation._figure_tags_batch = broken
+    with pytest.raises(RuntimeError, match="502"):
+        Project.build_snapshot(api, PROJECT_ID, log_progress=False)
+
+
+def test_a_filtered_geometry_read_walks_the_mask_table_once(parquet_reader, monkeypatch):
+    """With an item filter the masks are looked up by id, not merged: once past the cursor's
+    stash limit every wanted mask used to cost a scan of the whole alpha table."""
+    from supervisely.project.versioning import image_snapshot_io
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    alpha_reads = []
+    original = image_snapshot_io.iter_rows
+
+    def counting(payload_dir, table, *args, **kwargs):
+        if table == image_snapshot_io.ALPHA_GEOMETRIES_TABLE:
+            alpha_reads.append(table)
+        return original(payload_dir, table, *args, **kwargs)
+
+    monkeypatch.setattr(image_snapshot_io, "iter_rows", counting)
+
+    rows = _collect(parquet_reader.iter_figures(item_ids={101}))
+    by_id = {row[SnapshotColumn.FIGURE_ID]: row for row in rows}
+    assert set(by_id) == {9001, ALPHA_FIGURE_ID}
+    assert by_id[ALPHA_FIGURE_ID][SnapshotColumn.GEOMETRY] == ALPHA_GEOMETRY
+    assert len(alpha_reads) == 1
+
+    # An item with no masks never opens the mask table at all.
+    alpha_reads.clear()
+    assert [row[SnapshotColumn.FIGURE_ID] for row in _collect(
+        parquet_reader.iter_figures(item_ids={201})
+    )] == [9002]
+    assert alpha_reads == []
+
+
+def test_a_repacked_pickle_does_not_pass_as_comparable(tmp_path):
+    """A pickle kept figure tags as figures.list rendered them - no name, no updated_at - so
+    a snapshot converted from one must not claim the format a comparison accepts."""
+    from supervisely.project.versioning.snapshot_reader import VersionSnapshot
+
+    path = _write(tmp_path, Project.repack_snapshot(_pickle_snapshot()))
+    with VersionSnapshot.open_archive(path) as snap:
+        assert snap.schema_version == IMAGE_SCHEMA_VERSION_V2
+        assert snap.is_diffable is False
+
+
+def test_a_filtered_cursor_drops_the_masks_it_does_not_want(monkeypatch):
+    """Given the wanted ids, rows passed over are dropped rather than stashed, so a filtered
+    read holds no mask it was not asked for."""
+    import json
+
+    from supervisely.project.versioning import image_snapshot_io
+    from supervisely.project.versioning.schema_fields import VersionSchemaField
+    from supervisely.project.versioning.snapshot_reader import _AlphaGeometryCursor
+
+    rows = [
+        {
+            VersionSchemaField.SRC_FIGURE_ID: figure_id,
+            VersionSchemaField.GEOMETRY_JSON: json.dumps({"id": figure_id}),
+        }
+        for figure_id in range(10_000)
+    ]
+    monkeypatch.setattr(
+        image_snapshot_io,
+        "iter_rows",
+        lambda *a, **k: (rows[i : i + 500] for i in range(0, len(rows), 500)),
+    )
+    cursor = _AlphaGeometryCursor("unused", 500, wanted={17, 9_999})
+    assert cursor.get(9_999) == {"id": 9_999}
+    # 17 was passed before 9_999 was reached, and is the one row worth keeping.
+    assert set(cursor._stash) == {17}
+    assert cursor.get(17) == {"id": 17}
+
+
+def test_figure_tags_come_from_the_annotation_endpoint_and_skip_deleted_images():
+    """annotations.bulk.info renders a figure tag with its name and timestamps. An image
+    deleted while the snapshot ran is simply not returned - it has no tags to give, and
+    download_batch's ordering would have raised on it."""
+    from supervisely.api.annotation_api import AnnotationApi
+
+    posted = []
+
+    class _Response:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def post(method, data):
+        posted.append((method, list(data["imageIds"])))
+        return _Response(
+            [
+                {
+                    "imageId": 101,
+                    "annotation": {
+                        "objects": [
+                            {"id": 9001, "tags": [{"id": 5, "tagId": 21, "name": "score"}]},
+                            {"id": 9003, "tags": []},
+                        ]
+                    },
+                }
+            ]
+        )
+
+    api = AnnotationApi.__new__(AnnotationApi)
+    api._api = SimpleNamespace(post=post)
+
+    tags = api._figure_tags_batch(1, [101, 102])
+
+    assert tags == {9001: [{"id": 5, "tagId": 21, "name": "score"}]}
+    assert posted == [("annotations.bulk.info", [101, 102])]
+
+
+def test_the_fetch_pool_keeps_a_window_in_flight_not_the_page(monkeypatch):
+    """pool.map submits every batch of a page at once and holds each finished one - masks
+    and all - until the writer reaches it."""
+    import threading
+
+    from supervisely.project import project as project_module
+
+    in_flight = []
+    live = [0]
+    lock = threading.Lock()
+    api = _FakeApi()
+    original = api.image.figure.download
+
+    def slow_download(dataset_id, image_ids, integer_coords=False):
+        with lock:
+            live[0] += 1
+            in_flight.append(live[0])
+        try:
+            return original(dataset_id, image_ids, integer_coords=integer_coords)
+        finally:
+            with lock:
+                live[0] -= 1
+
+    api.image.figure.download = slow_download
+    Project.build_snapshot(api, PROJECT_ID, batch_size=1, log_progress=False, fetch_workers=2)
+    assert max(in_flight) <= 2

@@ -768,9 +768,13 @@ class VolumeProject(VideoProject):
                 return
             ann_json["volumeId"] = new_volume_info.id
             ann = VolumeAnnotation.from_json(ann_json, project_meta, None)
-            # passing the info we already have spares a volumes.info round trip per item
+            # passing the info we already have spares a volumes.info round trip per item;
+            # volumes.bulk.add leaves project_id empty, and the project is the one just made
             api.volume.annotation.append(
-                new_volume_info.id, ann, None, volume_info=new_volume_info
+                new_volume_info.id,
+                ann,
+                None,
+                volume_info=new_volume_info._replace(project_id=new_project_info.id),
             )
 
         # Each annotation is several independent round trips, and the ApiContext keeps

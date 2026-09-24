@@ -71,6 +71,8 @@ class VideoItemPaths(NamedTuple):
 # Restoring an annotation is a handful of round trips per item; running a few items at
 # once is what turns a restore of tens of thousands of videos from hours into minutes.
 RESTORE_WORKERS = int(os.environ.get("SLY_RESTORE_WORKERS", "8"))
+# Videos whose annotations are rebuilt from the tables at a time during a restore.
+RESTORE_READ_CHUNK = 200
 SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
@@ -1781,9 +1783,11 @@ class VideoProject(Project):
                 "pyarrow is required to repack a video snapshot. Please install pyarrow."
             ) from e
 
-        snapshot_bytes = (
-            source.getvalue() if isinstance(source, io.BytesIO) else open(source, "rb").read()
-        )
+        if isinstance(source, io.BytesIO):
+            snapshot_bytes = source.getvalue()
+        else:
+            with open(source, "rb") as f:
+                snapshot_bytes = f.read()
         snapshot_schema = get_video_snapshot_schema(schema_version)
         tag_schema = get_tag_schema()
 
@@ -2181,88 +2185,98 @@ class VideoProject(Project):
 
             # v2.0.0 carried each annotation as a string on the video row. v2.1.0 does
             # not: the tables hold the same information, so the annotation is rebuilt
-            # from them rather than stored a second time.
-            objects_by_video: Dict[int, List[dict]] = {}
-            figures_by_video: Dict[int, List[dict]] = {}
-            item_tags: Dict[int, List[dict]] = {}
-            object_tags: Dict[int, List[dict]] = {}
-            if not snapshot_schema.stores_ann_json:
-                for table, sink in (
-                    ("objects.parquet", objects_by_video),
-                    ("figures.parquet", figures_by_video),
-                ):
-                    table_path = os.path.join(payload_dir, table)
-                    if not os.path.exists(table_path):
-                        continue
-                    for row in parquet.read_table(table_path).to_pylist():
-                        sink.setdefault(row[VersionSchemaField.SRC_VIDEO_ID], []).append(row)
+            # from them rather than stored a second time. The rebuild is done a chunk of
+            # videos at a time and written to disk as it is built: indexing the tables of
+            # the whole project first held every figure of it as a Python dict. A v2.0.0
+            # restore still holds every ann_json string, as it always did, in v_rows.
+            def _rows_of(table: str, column: str, src_video_ids: List[int]) -> List[dict]:
+                path = os.path.join(payload_dir, table)
+                if not os.path.exists(path):
+                    return []
+                # Rows are written video by video, so the filter prunes row groups whose id
+                # range misses the chunk; ids spread over a wide range prune less.
+                return parquet.read_table(
+                    path, filters=[(column, "in", src_video_ids)]
+                ).to_pylist()
 
-                tags_path = os.path.join(payload_dir, "tags.parquet")
-                if os.path.exists(tags_path):
-                    for row in parquet.read_table(tags_path).to_pylist():
-                        sink = (
-                            item_tags
-                            if row[VersionSchemaField.OWNER_TYPE] == OWNER_ITEM
-                            else object_tags
-                        )
-                        sink.setdefault(row[VersionSchemaField.OWNER_ID], []).append(
-                            tag_json_from_row(row)
-                        )
-
-            anns_by_dataset: Dict[int, List[Tuple[int, dict]]] = {}
-            for row in v_rows:
-                src_vid = row["src_video_id"]
-                new_info = src_to_new_video.get(src_vid)
-                if new_info is None:
-                    continue
-                src_ds_id = row["src_dataset_id"]
-                if snapshot_schema.stores_ann_json:
-                    try:
-                        ann_json = json.loads(row["ann_json"])
-                    except Exception:
-                        logger.warning(
-                            f"Failed to parse ann_json for video {src_vid}, "
-                            "skipping its annotation."
-                        )
-                        continue
-                else:
-                    ann_json = annotation_json_from_rows(
-                        row,
-                        objects_by_video.get(src_vid, []),
-                        figures_by_video.get(src_vid, []),
-                        item_tags=item_tags.get(src_vid, []),
-                        object_tags=object_tags,
-                    )
-                anns_by_dataset.setdefault(src_ds_id, []).append((new_info.id, ann_json))
-
-            for src_ds_id, items in anns_by_dataset.items():
+            for src_ds_id, rows in videos_by_dataset.items():
                 ds_info = dataset_mapping.get(src_ds_id)
                 if ds_info is None:
                     continue
-
-                video_ids: List[int] = []
-                ann_paths: List[str] = []
-
-                for vid_id, ann_json in items:
-                    video_ids.append(vid_id)
-                    ann_path = os.path.join(ann_temp_dir, f"{vid_id}.json")
-                    dump_json_file(ann_json, ann_path)
-                    ann_paths.append(ann_path)
-
-                if not video_ids:
+                restored = [
+                    (row, src_to_new_video[row["src_video_id"]])
+                    for row in rows
+                    if row["src_video_id"] in src_to_new_video
+                ]
+                if not restored:
                     continue
+
+                def _rebuild_chunk(chunk) -> List[Tuple[VideoInfo, str]]:
+                    objects_by_video: Dict[int, List[dict]] = {}
+                    figures_by_video: Dict[int, List[dict]] = {}
+                    item_tags: Dict[int, List[dict]] = {}
+                    object_tags: Dict[int, List[dict]] = {}
+                    if not snapshot_schema.stores_ann_json:
+                        src_video_ids = [row["src_video_id"] for row, _ in chunk]
+                        for table, sink in (
+                            ("objects.parquet", objects_by_video),
+                            ("figures.parquet", figures_by_video),
+                        ):
+                            for row in _rows_of(
+                                table, VersionSchemaField.SRC_VIDEO_ID, src_video_ids
+                            ):
+                                sink.setdefault(
+                                    row[VersionSchemaField.SRC_VIDEO_ID], []
+                                ).append(row)
+                        for row in _rows_of(
+                            "tags.parquet", VersionSchemaField.SRC_ITEM_ID, src_video_ids
+                        ):
+                            sink = (
+                                item_tags
+                                if row[VersionSchemaField.OWNER_TYPE] == OWNER_ITEM
+                                else object_tags
+                            )
+                            sink.setdefault(row[VersionSchemaField.OWNER_ID], []).append(
+                                tag_json_from_row(row)
+                            )
+
+                    pairs: List[Tuple[VideoInfo, str]] = []
+                    for row, new_info in chunk:
+                        src_vid = row["src_video_id"]
+                        if snapshot_schema.stores_ann_json:
+                            try:
+                                ann_json = json.loads(row["ann_json"])
+                            except Exception:
+                                logger.warning(
+                                    f"Failed to parse ann_json for video {src_vid}, "
+                                    "skipping its annotation."
+                                )
+                                continue
+                        else:
+                            ann_json = annotation_json_from_rows(
+                                row,
+                                objects_by_video.get(src_vid, []),
+                                figures_by_video.get(src_vid, []),
+                                item_tags=item_tags.get(src_vid, []),
+                                object_tags=object_tags,
+                            )
+                        ann_path = os.path.join(ann_temp_dir, f"{new_info.id}.json")
+                        dump_json_file(ann_json, ann_path)
+                        pairs.append((new_info, ann_path))
+                    return pairs
 
                 anns_progress = progress_cb
                 if log_progress and progress_cb is None:
                     anns_progress = tqdm_sly(
                         desc=f"Uploading annotations to '{ds_info.name}'",
-                        total=len(video_ids),
+                        total=len(restored),
                         leave=False,
                     )
                 multiview_key_id_map = KeyIdMap()
 
                 def _restore_one(pair, ds_info=ds_info, new_meta=new_meta):
-                    vid_id, ann_path = pair
+                    new_info, ann_path = pair
+                    vid_id = new_info.id
                     try:
                         ann_json = load_json_file(ann_path)
                         # A v2.0.0 annotation is the server's: figures point at their
@@ -2284,7 +2298,14 @@ class VideoProject(Project):
 
                     try:
                         if not is_multiview:
-                            api.video.annotation.append(vid_id, ann)
+                            # Both ids are known here, which spares a videos.info per video.
+                            api.video.annotation.append(
+                                vid_id,
+                                ann,
+                                video_info=new_info._replace(
+                                    project_id=project.id, dataset_id=ds_info.id
+                                ),
+                            )
                         else:
                             api.video.annotation.upload_anns_multiview(
                                 [vid_id], [ann], key_id_map=multiview_key_id_map
@@ -2297,24 +2318,29 @@ class VideoProject(Project):
                             f"video id={vid_id}: {e}"
                         )
 
-                # One annotation is several round trips and they do not depend on each
-                # other, so the videos of a dataset go up in parallel. Multi-view shares
-                # one KeyIdMap across the call and has to stay serial.
-                pairs = list(zip(video_ids, ann_paths))
-                # ApiContext keeps the per-project tag and class lookups out of every
-                # single append - they were more than half of its time.
-                with ApiContext(
-                    api,
-                    project_id=project.id,
-                    dataset_id=ds_info.id,
-                    project_meta=new_meta,
-                ):
-                    if is_multiview or restore_workers <= 1:
-                        for pair in pairs:
-                            _restore_one(pair)
-                    else:
-                        with ThreadPoolExecutor(max_workers=restore_workers) as pool:
-                            list(pool.map(_restore_one, pairs))
+                # A few hundred videos at a time, not the dataset: a project can be one
+                # dataset of 14k videos, and its figures as dicts are what must not be held.
+                for chunk in batched(restored, RESTORE_READ_CHUNK):
+                    pairs = _rebuild_chunk(chunk)
+                    if not pairs:
+                        continue
+                    # One annotation is several round trips and they do not depend on
+                    # each other, so the videos go up in parallel. Multi-view shares one
+                    # KeyIdMap across the call and has to stay serial.
+                    # ApiContext keeps the per-project tag and class lookups out of every
+                    # single append - they were more than half of its time.
+                    with ApiContext(
+                        api,
+                        project_id=project.id,
+                        dataset_id=ds_info.id,
+                        project_meta=new_meta,
+                    ):
+                        if is_multiview or restore_workers <= 1:
+                            for pair in pairs:
+                                _restore_one(pair)
+                        else:
+                            with ThreadPoolExecutor(max_workers=restore_workers) as pool:
+                                list(pool.map(_restore_one, pairs))
 
             return project
 

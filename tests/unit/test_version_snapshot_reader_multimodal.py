@@ -1232,3 +1232,137 @@ def test_tags_can_be_read_as_columns(tmp_path):
 
         # The dict path still hands back the decoded value.
         assert _collect(snapshot.iter_tags())[0][SnapshotColumn.VALUE] == 0
+
+
+@pytest.mark.parametrize("chunk", [200, 1])
+def test_a_v2_1_video_restore_rebuilds_each_dataset_and_files_it_there(
+    tmp_path, monkeypatch, chunk
+):
+    """Restore reads the tables a chunk of videos at a time and appends with the ids it knows.
+
+    Two datasets, so that a rebuild keyed on the wrong dataset's rows, or an append filed
+    under the wrong dataset, shows up as a miscount rather than passing by accident; and a
+    chunk of one, so that a dataset split across chunks still restores every video.
+    """
+    from supervisely.api.dataset_api import DatasetInfo
+    from supervisely.api.video.video_api import VideoInfo
+    from supervisely.project import video_project
+    from supervisely.project.video_project import VideoProject
+
+    monkeypatch.setattr(video_project, "RESTORE_READ_CHUNK", chunk)
+
+    api, _, _, _ = _video_writer_api(video_count=2, objects=2, frames=3)
+    datasets = [
+        DatasetInfo(**{f: None for f in DatasetInfo._fields})._replace(id=1, name="a"),
+        DatasetInfo(**{f: None for f in DatasetInfo._fields})._replace(id=2, name="b"),
+    ]
+    original_list = api.video.get_list
+
+    def get_list(ds_id):
+        # Distinct video ids per dataset, and a different number of videos in each.
+        videos = original_list(ds_id)[: ds_id]
+        return [v._replace(id=ds_id * 100 + v.id, name=f"{ds_id}-{v.name}") for v in videos]
+
+    api.video.get_list = get_list
+    download = api.video.annotation.download_bulk
+    api.video.annotation.download_bulk = lambda ds_id, ids: [
+        dict(ann, videoName=f"{ds_id}-clip{video_id - ds_id * 100}.mp4")
+        for video_id, ann in zip(ids, download(ds_id, ids))
+    ]
+    api.dataset.get_list = lambda *a, **k: datasets
+    api.dataset.tree = lambda pid: iter([([], datasets[0]), ([], datasets[1])])
+
+    path = os.path.join(str(tmp_path), "version.bin")
+    with open(path, "wb") as f:
+        f.write(VideoProject.build_snapshot(api, project_id=1, log_progress=False).getvalue())
+
+    restore_api = _restore_api()
+    appended = []
+    info_reads = []
+
+    class _RestoreAnnotation:
+        def append(self, video_id, ann, key_id_map=None, progress_cb=None, video_info=None):
+            appended.append(
+                (video_id, len(ann.figures), video_info.project_id, video_info.dataset_id)
+            )
+
+    class _RestoreVideo:
+        annotation = _RestoreAnnotation()
+
+        def upload_hashes(self, dataset_id, names, hashes, metas=None, progress_cb=None):
+            # videos.bulk.add does not say which project a video landed in.
+            return [
+                VideoInfo(**{f: None for f in VideoInfo._fields})._replace(
+                    id=dataset_id * 10 + i, name=name
+                )
+                for i, name in enumerate(names)
+            ]
+
+        def get_info_by_id(self, video_id):
+            info_reads.append(video_id)
+            raise AssertionError("restore already knows both ids")
+
+    restore_api.video = _RestoreVideo()
+    VideoProject.upload_bin(
+        restore_api, path, workspace_id=1, log_progress=False, restore_workers=1
+    )
+
+    new_dataset_ids = [d.id for d in restore_api.dataset.created]
+    # Dataset "a" has one video, "b" two; each video carries 2 objects x 3 frames.
+    assert sorted(appended) == sorted(
+        [(new_dataset_ids[0] * 10, 6, 900, new_dataset_ids[0])]
+        + [(new_dataset_ids[1] * 10 + i, 6, 900, new_dataset_ids[1]) for i in range(2)]
+    )
+    assert info_reads == []
+
+
+def test_volume_datasets_carry_their_full_path(tmp_path):
+    """A volume snapshot stores no dataset path; without one two nested datasets that share
+    a leaf name are the same dataset to anything matching on paths."""
+    from supervisely.project.volume_project import VolumeProject
+
+    schema = get_volume_snapshot_schema("v2.1.0")
+    datasets = pyarrow.Table.from_pylist(
+        [
+            # What the writer stores: DatasetInfo._asdict(), snake_case keys.
+            schema.dataset_row_from_record(_dataset_record(1, "a")),
+            schema.dataset_row_from_record(_dataset_record(2, "b")),
+            schema.dataset_row_from_record(_dataset_record(3, "train", parent_id=1)),
+            schema.dataset_row_from_record(
+                _dataset_record(4, "train", parent_id=2, custom_data={"k": 1})
+            ),
+        ],
+        schema=schema.datasets_table_schema(pyarrow),
+    )
+    blob = VolumeProject._assemble_sections(
+        [
+            (
+                VolumeProject._SECTION_PROJECT_INFO,
+                json.dumps({"id": 1, "name": "p", "type": "volumes"}).encode(),
+            ),
+            (VolumeProject._SECTION_PROJECT_META, json.dumps(META.to_json()).encode()),
+            (VolumeProject._SECTION_DATASETS, _parquet_bytes(datasets)),
+        ]
+    )
+    path = os.path.join(str(tmp_path), "volume.bin")
+    with open(path, "wb") as f:
+        f.write(blob)
+
+    with VersionSnapshot.open_archive(path) as snapshot:
+        paths = {ds.id: ds.full_path for ds in snapshot.datasets()}
+
+    assert paths[3] != paths[4]
+    assert paths[1] == "a" and paths[2] == "b"
+    assert paths[3].endswith("train") and paths[3].startswith("a")
+    with VersionSnapshot.open_archive(path) as snapshot:
+        by_id = {ds.id: ds for ds in snapshot.datasets()}
+    assert by_id[4].parent_id == 2 and by_id[4].custom_data == {"k": 1}
+
+
+def _dataset_record(dataset_id, name, parent_id=None, custom_data=None):
+    from supervisely.api.dataset_api import DatasetInfo
+
+    info = DatasetInfo(**{f: None for f in DatasetInfo._fields})._replace(
+        id=dataset_id, name=name, parent_id=parent_id, custom_data=custom_data
+    )
+    return info._asdict()

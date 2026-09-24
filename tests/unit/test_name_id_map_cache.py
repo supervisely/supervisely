@@ -12,6 +12,7 @@ right to use.
 
 import pytest
 
+from supervisely.api.api import API_CONTEXT_MARKER
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.object_class_api import ObjectClassApi
 
@@ -32,6 +33,7 @@ class _FakeApi:
             "dataset_id": None,
             "project_meta": None,
             "with_alpha_masks": False,
+            API_CONTEXT_MARKER: True,
         }
 
 
@@ -95,4 +97,60 @@ def test_without_a_context_nothing_is_cached(cls):
 
     instance.get_name_to_id_map(1)
     instance.get_name_to_id_map(1)
+    assert reads == [1, 1]
+
+
+@pytest.mark.parametrize("cls", [ObjectClassApi, TagApi])
+def test_a_meta_update_drops_the_cached_map(cls):
+    """A class re-created under the same name gets a new id; a miss-only refresh never sees it."""
+    from types import SimpleNamespace
+
+    from supervisely.api.project_api import ProjectApi
+
+    names = ["cat"]
+    api, reads = _api_with(cls, names)
+    api.get_name_to_id_map(1)
+
+    project_api = ProjectApi.__new__(ProjectApi)
+    project_api._api = api._api
+    api._api.post = lambda method, data: SimpleNamespace(json=lambda: {"success": True})
+    meta = SimpleNamespace(
+        to_json=lambda: {},
+        project_settings=SimpleNamespace(validate=lambda m: None),
+    )
+    try:
+        project_api.update_meta(1, meta)
+    except AttributeError:
+        # Past the post the fake meta runs out; the cache is dropped right after the post.
+        pass
+
+    # "cat" deleted and re-created: same name, new id.
+    names[:] = ["car", "cat"]
+    assert api.get_name_to_id_map(1) == {"car": 1, "cat": 2}
+    assert reads == [1, 1]
+
+
+@pytest.mark.parametrize("cls", [ObjectClassApi, TagApi])
+def test_a_context_dict_filled_outside_a_context_does_not_cache(cls):
+    """annotation.download_batch writes dataset and project ids into the dict outside any
+    ApiContext; a non-empty dict must not turn the cache on for the life of the Api."""
+    names = ["cat"]
+    api, reads = _api_with(cls, names)
+    api._api.optimization_context = {"dataset_id": 7, "project_id": 1}
+
+    api.get_name_to_id_map(1)
+    api.get_name_to_id_map(1)
+    assert reads == [1, 1]
+
+
+@pytest.mark.parametrize("cls", [ObjectClassApi, TagApi])
+def test_names_re_read_a_map_that_lacks_one(cls):
+    """A caller names what it will look up; a cached map without it is read again."""
+    names = ["cat"]
+    api, reads = _api_with(cls, names)
+    api.get_name_to_id_map(1)
+
+    names.append("dog")
+    assert api._name_to_id_map_covering(1, ["cat"]) == {"cat": 1}
+    assert api._name_to_id_map_covering(1, ["cat", "dog"]) == {"cat": 1, "dog": 2}
     assert reads == [1, 1]

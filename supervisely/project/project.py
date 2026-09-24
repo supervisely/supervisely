@@ -11,7 +11,7 @@ import pickle
 import random
 import shutil
 import tempfile
-from collections import Counter, defaultdict, namedtuple
+from collections import Counter, defaultdict, deque, namedtuple
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -3783,7 +3783,7 @@ class Project:
 
         The default format (``schema_version="v1.0.0"``) is the legacy pickle format,
         kept as the default so existing SDK callers do not acquire a new optional
-        dependency. ``schema_version="v2.1.0"`` is a ``.tar.zst`` holding
+        dependency. ``schema_version="v2.1.0"`` is a ``.tar`` holding
         ``project_info.json``, ``project_meta.json``, ``manifest.json`` and Parquet tables
         for datasets, images, figures and alpha-mask geometries - the same container video
         and volume projects use. It needs the ``versioning`` extra (pyarrow).
@@ -3864,9 +3864,8 @@ class Project:
 
             project_info = api.project.get_info_by_id(project_id)
             os.makedirs(dest_dir, exist_ok=True)
-            out_path = os.path.join(
-                dest_dir, f"{project_info.id}_{project_info.name}.tar.zst"
-            )
+            # A plain tar: the Parquet inside is already zstd-compressed per column.
+            out_path = os.path.join(dest_dir, f"{project_info.id}_{project_info.name}.tar")
             with open(out_path, "wb") as dst:
                 dst.write(snapshot_io.read())
             return out_path
@@ -3952,7 +3951,7 @@ class Project:
         fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
     ) -> io.BytesIO:
         """
-        Create an image project snapshot in Parquet + ``tar.zst`` format and return it as BytesIO.
+        Create an image project snapshot in Parquet + ``tar`` format and return it as BytesIO.
 
         Archive contents:
             - project_info.json
@@ -3978,7 +3977,7 @@ class Project:
         :type log_progress: bool
         :param progress_cb: Optional progress callback. Has a higher priority than ``log_progress``.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param schema_version: Snapshot schema version. Currently only ``"v2.0.0"``.
+        :param schema_version: Snapshot schema version, ``"v2.1.0"`` (default) or ``"v2.0.0"``.
         :type schema_version: str
         :returns: In-memory snapshot stream.
         :rtype: io.BytesIO
@@ -4068,57 +4067,64 @@ class Project:
                         # timestamps and its customData. Neither endpoint is a superset
                         # of the other - geometry_meta and priority only come from the
                         # first - so the tags come from a second bulk call per batch.
-                        figure_tags = {}
-                        try:
-                            for ann_info in api.annotation.download_batch(ds_id, image_ids):
-                                for obj in ann_info.annotation.get("objects", []):
-                                    if obj.get("tags"):
-                                        figure_tags[obj["id"]] = obj["tags"]
-                        except Exception:
-                            logger.warning(
-                                f"Could not read annotations of dataset {ds_id} for "
-                                "figure tags; storing what figures.list returned instead"
-                            )
-                            figure_tags = None
-                        return batch, ds_figures, figure_tags
+                        # No fallback to the lean form: a version is immutable, and one
+                        # whose figure tags lack name and updated_at reads as every
+                        # figure tag changed against its neighbours, forever.
+                        figure_tags = api.annotation._figure_tags_batch(ds_id, image_ids)
+                        # The masks are the heaviest round trip of the batch, so they are
+                        # fetched here in the pool rather than by the writer's thread.
+                        alpha_ids = [
+                            figure.id
+                            for image_figures in ds_figures.values()
+                            for figure in image_figures
+                            if figure.geometry_type == alpha_mask_name
+                        ]
+                        alpha_geometries = (
+                            api.image.figure.download_geometries_batch(alpha_ids)
+                            if alpha_ids
+                            else []
+                        )
+                        return batch, ds_figures, figure_tags, alpha_ids, alpha_geometries
 
-                    page_batches = list(batched(page, batch_size))
-                    with ThreadPoolExecutor(max_workers=fetch_workers) as fetch_pool:
-                        for batch, ds_figures, figure_tags in fetch_pool.map(
-                            _fetch_batch, page_batches
-                        ):
-                            alpha_ids = []
-                            for src_image_id, image_figures in ds_figures.items():
-                                for figure in image_figures:
-                                    is_alpha = figure.geometry_type == alpha_mask_name
-                                    if is_alpha:
-                                        alpha_ids.append(figure.id)
-                                    writer.add_figure(
-                                        figure,
-                                        src_image_id=src_image_id,
-                                        class_name=class_name_by_id.get(figure.class_id),
-                                        store_geometry=not is_alpha,
-                                    )
-                                    tags = (
-                                        figure_tags.get(figure.id, [])
-                                        if figure_tags is not None
-                                        else (getattr(figure, "tags", None) or [])
-                                    )
-                                    for tag_json in tags:
-                                        writer.add_tag(
-                                            tag_json,
-                                            owner_type=OWNER_FIGURE,
-                                            owner_id=figure.id,
-                                            src_item_id=src_image_id,
-                                        )
-                            if alpha_ids:
-                                geometries = api.image.figure.download_geometries_batch(
-                                    alpha_ids
+                    def _fetched_in_order(batches):
+                        # A window of fetch_workers batches in flight, consumed in order:
+                        # pool.map would submit the whole page at once and hold every
+                        # finished batch - masks included - until the writer reached it.
+                        with ThreadPoolExecutor(max_workers=fetch_workers) as fetch_pool:
+                            window = deque()
+                            for batch in batches:
+                                window.append(fetch_pool.submit(_fetch_batch, batch))
+                                if len(window) >= max(1, fetch_workers):
+                                    yield window.popleft().result()
+                            while window:
+                                yield window.popleft().result()
+
+                    for (
+                        batch,
+                        ds_figures,
+                        figure_tags,
+                        alpha_ids,
+                        alpha_geometries,
+                    ) in _fetched_in_order(batched(page, batch_size)):
+                        for src_image_id, image_figures in ds_figures.items():
+                            for figure in image_figures:
+                                writer.add_figure(
+                                    figure,
+                                    src_image_id=src_image_id,
+                                    class_name=class_name_by_id.get(figure.class_id),
+                                    store_geometry=figure.geometry_type != alpha_mask_name,
                                 )
-                                for figure_id, geometry in zip(alpha_ids, geometries):
-                                    writer.add_alpha_geometry(figure_id, geometry)
-                            if ds_progress is not None:
-                                ds_progress(len(batch))
+                                for tag_json in figure_tags.get(figure.id, []):
+                                    writer.add_tag(
+                                        tag_json,
+                                        owner_type=OWNER_FIGURE,
+                                        owner_id=figure.id,
+                                        src_item_id=src_image_id,
+                                    )
+                        for figure_id, geometry in zip(alpha_ids, alpha_geometries):
+                            writer.add_alpha_geometry(figure_id, geometry)
+                        if ds_progress is not None:
+                            ds_progress(len(batch))
 
                 if ds_progress is not None and ds_progress is not progress_cb:
                     ds_progress.close()
@@ -4128,7 +4134,9 @@ class Project:
     @staticmethod
     def repack_snapshot(
         source: Union[str, io.BytesIO],
-        schema_version: str = IMAGE_SCHEMA_VERSION_V2_1,
+        # v2.0.0, not v2.1.0: a pickle stored figure tags as figures.list rendered them, with
+        # no name and no updated_at, so a converted snapshot must not pass as comparable.
+        schema_version: str = IMAGE_SCHEMA_VERSION_V2,
     ) -> io.BytesIO:
         """
         Convert an image snapshot of any supported format into the Parquet container.
@@ -4144,7 +4152,7 @@ class Project:
 
         :param source: Snapshot file path or in-memory snapshot stream, in either format.
         :type source: Union[str, io.BytesIO]
-        :param schema_version: Target schema version. Currently only ``"v2.0.0"``.
+        :param schema_version: Target schema version, ``"v2.0.0"`` (default) or ``"v2.1.0"``.
         :type schema_version: str
         :returns: In-memory snapshot stream in the Parquet container.
         :rtype: io.BytesIO

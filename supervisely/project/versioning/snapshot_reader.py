@@ -172,7 +172,12 @@ class _Backend:
     ):
         raise NotImplementedError(f"{type(self).__name__} does not expose tags")
 
-    def iter_objects(self, batch_size: int, columns: Optional[Sequence[str]]):
+    def iter_objects(
+        self,
+        batch_size: int,
+        columns: Optional[Sequence[str]],
+        item_ids: Optional[Set[Any]] = None,
+    ):
         """Annotation objects, for the modalities that have them.
 
         Nothing here rather than an error: an image figure IS the label, so "this project
@@ -360,9 +365,11 @@ class _AlphaGeometryCursor:
     # table by id. A mask is large, so this is a count of rows, not of bytes.
     _STASH_LIMIT = 2048
 
-    def __init__(self, payload_dir: str, batch_size: int):
+    def __init__(self, payload_dir: str, batch_size: int, wanted: Optional[Set[Any]] = None):
         self._payload_dir = payload_dir
         self._batch_size = batch_size
+        # With a filtered read: rows not in here are dropped as they are passed, not stashed.
+        self._wanted = wanted
         self._batches = image_snapshot_io.iter_rows(
             payload_dir, image_snapshot_io.ALPHA_GEOMETRIES_TABLE, batch_size=batch_size
         )
@@ -413,20 +420,49 @@ class _AlphaGeometryCursor:
             row = self._next_row()
             if row is None:
                 return None
-            geometry = image_snapshot_io.loads_or(row.get(VersionSchemaField.GEOMETRY_JSON), None)
             row_id = row.get(VersionSchemaField.SRC_FIGURE_ID)
+            if row_id != figure_id and self._wanted is not None and row_id not in self._wanted:
+                continue
+            geometry = image_snapshot_io.loads_or(row.get(VersionSchemaField.GEOMETRY_JSON), None)
             if row_id == figure_id:
                 return geometry
             # Both tables are written in figure order, so walking them together normally
-            # passes over nothing. A reader that filters by item skips most figures, and
-            # then every mask in between lands here - which is the whole table for a diff
-            # that touches a handful of items. Past the limit the merge is abandoned and
-            # the rest is read by id.
+            # passes over nothing, and a filtered read drops what it does not want above.
+            # Only a file out of that order lands here, and past the limit the merge is
+            # abandoned and the rest is read by id.
             if len(self._stash) >= self._STASH_LIMIT:
                 self._stash.clear()
                 self._gave_up = True
                 return self._scan_for(figure_id)
             self._stash[row_id] = geometry
+
+
+def _wanted_alpha_ids(
+    payload_dir: str, item_ids: Set[Any], alpha_mask_name: str, batch_size: int
+) -> Set[Any]:
+    """Figure ids of the alpha masks on the named items, from three light columns.
+
+    With an item filter the rows the cursor walks past are mostly masks nobody asked for;
+    knowing which ones are wanted lets it drop those instead of stashing them.
+    """
+    wanted = set()
+    for batch in image_snapshot_io.iter_rows(
+        payload_dir,
+        image_snapshot_io.FIGURES_TABLE,
+        columns=[
+            VersionSchemaField.SRC_FIGURE_ID,
+            VersionSchemaField.SRC_IMAGE_ID,
+            VersionSchemaField.GEOMETRY_TYPE,
+        ],
+        batch_size=batch_size,
+    ):
+        for row in batch:
+            if (
+                row.get(VersionSchemaField.GEOMETRY_TYPE) == alpha_mask_name
+                and row.get(VersionSchemaField.SRC_IMAGE_ID) in item_ids
+            ):
+                wanted.add(row.get(VersionSchemaField.SRC_FIGURE_ID))
+    return wanted
 
 
 class _ImagesV2Backend(_PayloadBackend):
@@ -538,8 +574,17 @@ class _ImagesV2Backend(_PayloadBackend):
             # Read and discarded otherwise - the heaviest column in the table, and the
             # whole point of saying `with_geometry=False`.
             physical = [c for c in physical if c != VersionSchemaField.GEOMETRY_JSON]
-        alpha = _AlphaGeometryCursor(self._payload_dir, batch_size) if wants_geometry else None
         alpha_mask_name = AlphaMask.name()
+        alpha = None
+        if wants_geometry:
+            wanted = (
+                None
+                if item_ids is None
+                else _wanted_alpha_ids(self._payload_dir, item_ids, alpha_mask_name, batch_size)
+            )
+            # No mask on the named items: the mask table is never opened.
+            if wanted is None or wanted:
+                alpha = _AlphaGeometryCursor(self._payload_dir, batch_size, wanted=wanted)
         for batch in self._iter_table(image_snapshot_io.FIGURES_TABLE, physical, batch_size):
             rows = []
             for row in batch:
@@ -774,8 +819,10 @@ class _VideoV2Backend(_PayloadBackend):
             "tags": (image_snapshot_io.TAGS_TABLE, _TAG_MAP),
         }
 
-    def iter_objects(self, batch_size, columns):
+    def iter_objects(self, batch_size, columns, item_ids=None):
         physical = _physical_columns(self._OBJECT_MAP, columns)
+        if item_ids is not None:
+            physical = sorted(set(physical) | {VersionSchemaField.SRC_VIDEO_ID})
         for batch in self._iter_table("objects", physical, batch_size):
             yield [
                 _select(
@@ -789,6 +836,7 @@ class _VideoV2Backend(_PayloadBackend):
                     columns,
                 )
                 for row in batch
+                if item_ids is None or row.get(VersionSchemaField.SRC_VIDEO_ID) in item_ids
             ]
 
     def datasets(self) -> List[SnapshotDataset]:
@@ -1012,17 +1060,24 @@ class _VolumeSectionsBackend(_Backend):
         for batch in self._iter_section(self._datasets_section, 1000):
             for row in batch:
                 record = image_snapshot_io.loads_or(row.get(VersionSchemaField.JSON), {})
+                # The writer stores DatasetInfo._asdict(), so the keys are snake_case; the
+                # camelCase ones are read too, for a record that came from the API as is.
                 datasets.append(
                     SnapshotDataset(
                         id=row[VersionSchemaField.SRC_DATASET_ID],
-                        parent_id=record.get(ApiField.PARENT_ID),
+                        parent_id=record.get("parent_id", record.get(ApiField.PARENT_ID)),
                         name=record.get(ApiField.NAME),
                         full_path=None,
                         description=record.get(ApiField.DESCRIPTION),
-                        custom_data=record.get(ApiField.CUSTOM_DATA) or {},
+                        custom_data=(
+                            record.get("custom_data") or record.get(ApiField.CUSTOM_DATA) or {}
+                        ),
                     )
                 )
-        return datasets
+        # The format stores no path, and a leaf name alone makes two nested datasets
+        # called "train" one and the same to any reader matching on paths.
+        full_paths = image_snapshot_io.dataset_full_paths(datasets)
+        return [ds._replace(full_path=full_paths.get(ds.id)) for ds in datasets]
 
     def iter_items(self, batch_size, columns):
         for batch in self._iter_section(self._volumes_section, batch_size):
@@ -1109,14 +1164,16 @@ class _VolumeSectionsBackend(_Backend):
                         )
             yield rows
 
-    def iter_objects(self, batch_size, columns):
+    def iter_objects(self, batch_size, columns, item_ids=None):
         """Like the tags: flattened out of the annotation document, because this format
         stores whole records rather than tables. A volume object is identified by its uuid
         key, which is also what its figures point at."""
         from supervisely.annotation.label import LabelJsonFields
         from supervisely.volume_annotation import constants as volume_constants
 
-        for batch in self.iter_annotations(batch_size=max(1, batch_size // 100)):
+        for batch in self.iter_annotations(
+            batch_size=max(1, batch_size // 100), item_ids=item_ids
+        ):
             rows = []
             for entry in batch:
                 volume_id = entry[SnapshotColumn.ITEM_ID]
@@ -1272,23 +1329,25 @@ class VersionSnapshot:
                 repacked_path, payload_dir=os.path.join(download_dir, "payload")
             )
 
-        if not os.path.isfile(snapshot_path):
-            # Downloaded aside and moved, the way the conversion below does it: a download
-            # cut short by the network or a kill would otherwise leave a truncated file
-            # that every later open of this version happily takes for a finished one.
-            partial_path = snapshot_path + ".partial"
-            try:
-                api.project.version.download_snapshot(project, version_id, dest_path=partial_path)
-                os.replace(partial_path, snapshot_path)
-            finally:
-                silent_remove(partial_path)
-        else:
-            logger.debug(f"Reusing cached snapshot of version {version_id}: {snapshot_path}")
-
-        if repack_legacy and cache_dir is not None:
-            snapshot_path = cls._repack_into_cache(snapshot_path, repacked_path, version_id)
-
         try:
+            if not os.path.isfile(snapshot_path):
+                # Downloaded aside and moved, the way the conversion below does it: a
+                # download cut short by the network or a kill would otherwise leave a
+                # truncated file that every later open takes for a finished one.
+                partial_path = snapshot_path + ".partial"
+                try:
+                    api.project.version.download_snapshot(
+                        project, version_id, dest_path=partial_path
+                    )
+                    os.replace(partial_path, snapshot_path)
+                finally:
+                    silent_remove(partial_path)
+            else:
+                logger.debug(f"Reusing cached snapshot of version {version_id}: {snapshot_path}")
+
+            if repack_legacy and cache_dir is not None:
+                snapshot_path = cls._repack_into_cache(snapshot_path, repacked_path, version_id)
+
             return cls.open_archive(
                 snapshot_path,
                 payload_dir=os.path.join(download_dir, "payload"),
@@ -1599,6 +1658,7 @@ class VersionSnapshot:
         self,
         batch_size: int = DEFAULT_BATCH_SIZE,
         columns: Optional[Sequence[str]] = None,
+        item_ids: Optional[Set[Any]] = None,
     ) -> Iterator[List[dict]]:
         """
         Yield the project's annotation objects in batches, as dicts keyed by :class:`SnapshotColumn`.
@@ -1612,8 +1672,9 @@ class VersionSnapshot:
 
         :param batch_size: Rows per batch.
         :param columns: Columns to read. None reads them all.
+        :param item_ids: Read only these items' objects - see :func:`iter_figures`.
         """
-        return self._backend.iter_objects(batch_size, columns)
+        return self._backend.iter_objects(batch_size, columns, item_ids)
 
     def iter_figures(
         self,

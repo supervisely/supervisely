@@ -515,6 +515,29 @@ class AnnotationApi(ModuleApi):
             figure_filters=figure_filters,
         ).annotation
 
+    def _figure_tags_batch(self, dataset_id: int, image_ids: List[int]) -> Dict[int, List[dict]]:
+        """figure id -> its tags as annotations.bulk.info renders them, for a snapshot.
+
+        Not :func:`download_batch`: that one also fetches every alpha mask, reads the
+        project meta and writes into the Api's optimization context, none of which a tag
+        read needs, and it raises on an image that was deleted while a long snapshot ran.
+        Here an image the server no longer returns simply has no tags to give.
+        """
+        figure_tags: Dict[int, List[dict]] = {}
+        for batch in batched(image_ids):
+            post_data = {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.IMAGE_IDS: batch,
+                ApiField.WITH_CUSTOM_DATA: True,
+                ApiField.INTEGER_COORDS: False,
+            }
+            for ann_dict in self._api.post("annotations.bulk.info", data=post_data).json():
+                labels = ann_dict[ApiField.ANNOTATION].get(AnnotationJsonFields.LABELS, [])
+                for label in labels:
+                    if label.get("tags"):
+                        figure_tags[label[LabelJsonFields.ID]] = label["tags"]
+        return figure_tags
+
     def download_batch(
         self,
         dataset_id: int,
