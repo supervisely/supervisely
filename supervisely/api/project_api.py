@@ -279,6 +279,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         fields: List[str] = [],
         team_id: Optional[int] = None,
+        archived: Optional[Union[bool, str]] = None,
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace (without version info).
@@ -294,6 +295,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type fields: List[str]
         :param team_id: Team ID in which the Projects are located.
         :type team_id: int, optional
+        :param archived: Which rows to return. ``None`` (default) omits the parameter
+                         entirely and keeps the server default of live entities only.
+                         ``True`` returns archived (Trash Bin) entities instead.
+                         ``'forever'`` also includes entities already queued for permanent
+                         removal, where the entity has that state; it is root only.
+                         Requires Supervisely instance 6.17.22 or newer.
+        :type archived: Optional[Union[bool, str]]
         :returns: List of all projects in the workspace (without version info). See :meth:`info_sequence_for_listing`.
         :rtype: List[:class:`~supervisely.api.project_api.ProjectInfo`]
 
@@ -418,6 +426,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             data[ApiField.WORKSPACE_ID] = workspace_id
         if team_id is not None:
             data[ApiField.GROUP_ID] = team_id
+        if archived is not None:
+            data[ApiField.ARCHIVED] = archived
 
         return self.get_list_all_pages(method, data)
 

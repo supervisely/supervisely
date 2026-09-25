@@ -64,6 +64,7 @@ import supervisely.api.role_api as role_api
 import supervisely.api.storage_api as storage_api
 import supervisely.api.task_api as task_api
 import supervisely.api.team_api as team_api
+import supervisely.api.trash_api as trash_api
 import supervisely.api.user_api as user_api
 import supervisely.api.video.video_api as video_api
 import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
@@ -406,6 +407,7 @@ class Api:
         self.issues = issues_api.IssuesApi(self)
         self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
         self.webhook = webhook_api.WebhookApi(self)
+        self.trash = trash_api.TrashApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec

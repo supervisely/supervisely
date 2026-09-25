@@ -74,7 +74,10 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         return "WorkspaceInfo"
 
     def get_list(
-        self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self,
+        team_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        archived: Optional[Union[bool, str]] = None,
     ) -> List[WorkspaceInfo]:
         """
         List of Workspaces in the given Team on the Supervisely instance.
@@ -83,6 +86,13 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :type team_id: int
         :param filters: List of params to sort output Workspaces.
         :type filters: List[Dict[str, str]], optional
+        :param archived: Which rows to return. ``None`` (default) omits the parameter
+                         entirely and keeps the server default of live entities only.
+                         ``True`` returns archived (Trash Bin) entities instead.
+                         ``'forever'`` also includes entities already queued for permanent
+                         removal, where the entity has that state; it is root only.
+                         Requires Supervisely instance 6.17.22 or newer.
+        :type archived: Optional[Union[bool, str]]
         :returns: List of all Workspaces with information for the given Team.
         :rtype: List[:class:`~supervisely.api.workspace_api.WorkspaceInfo`]
 
@@ -136,10 +146,10 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
                 #                       updated_at='2020-05-20T15:01:54.172Z')
                 # ]
         """
-        return self.get_list_all_pages(
-            "workspaces.list",
-            {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []},
-        )
+        data = {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []}
+        if archived is not None:
+            data[ApiField.ARCHIVED] = archived
+        return self.get_list_all_pages("workspaces.list", data)
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> WorkspaceInfo:
         """
