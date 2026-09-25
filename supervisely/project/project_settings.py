@@ -10,6 +10,7 @@ from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.json import JsonSerializable
+from supervisely.io.pickle_compat import legacy_pickle_defaults
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
@@ -40,6 +41,7 @@ class ProjectSettingsJsonFields:
     TAG_NAME = "tagName"
     IS_SYNCED = "isSynced"
     LABELING_INTERFACE = "labelingInterface"
+    SPECTROGRAM = "spectrogram"
 
 
 class ProjectSettingsRequiredSchema:
@@ -65,6 +67,10 @@ class ProjectSettingsRequiredSchema:
                 "additionalProperties": False,
             },
             ProjectSettingsJsonFields.LABELING_INTERFACE: {"type": ["string", "null"]},
+            # Audio only: the spectrogram every recording in the project is
+            # analysed under. Left unconstrained here because the platform owns
+            # the field list; SpectrogramSettings validates the contents.
+            ProjectSettingsJsonFields.SPECTROGRAM: {"type": ["object", "null"]},
         },
         "required": [ProjectSettingsJsonFields.MULTI_VIEW],
         "additionalProperties": False,
@@ -92,6 +98,7 @@ def validate_project_settings_schema(data: dict) -> None:
             raise ValidationError(msg)
 
 
+@legacy_pickle_defaults(spectrogram=None)
 class ProjectSettings(JsonSerializable):
     """Project settings: multi-view mode, labeling interface, etc."""
 
@@ -102,6 +109,7 @@ class ProjectSettings(JsonSerializable):
         multiview_tag_id: Optional[int] = None,
         multiview_is_synced: bool = False,
         labeling_interface: Optional[LabelingInterface] = None,
+        spectrogram: Optional[Dict] = None,
     ):
         """:param multiview_enabled: Enable multi-view mode.
         :type multiview_enabled: bool
@@ -113,6 +121,10 @@ class ProjectSettings(JsonSerializable):
         :type multiview_is_synced: bool
         :param labeling_interface: Labeling interface of the project, one of :class:`LabelingInterface` values.
         :type labeling_interface: str, optional
+        :param spectrogram: Audio projects only: the spectrogram settings every
+            recording in the project is analysed under, as stored by the
+            platform. See :class:`~supervisely.audio.spectrogram_settings.SpectrogramSettings`.
+        :type spectrogram: dict, optional
         :raises ValidationError: if settings schema is invalid.
 
         :Usage Example:
@@ -135,6 +147,7 @@ class ProjectSettings(JsonSerializable):
                 )
 
         self.labeling_interface = labeling_interface
+        self.spectrogram = spectrogram
         # Instances are pickled into .bin backups: a new attribute here needs a
         # @legacy_pickle_defaults declaration on this class, else old backups
         # restore without it.
@@ -157,6 +170,7 @@ class ProjectSettings(JsonSerializable):
             multiview_tag_id=d_multiview[ProjectSettingsJsonFields.TAG_ID],
             multiview_is_synced=d_multiview[ProjectSettingsJsonFields.IS_SYNCED],
             labeling_interface=labeling_interface,
+            spectrogram=data.get(ProjectSettingsJsonFields.SPECTROGRAM),
         )
 
     def to_json(self) -> dict:
@@ -170,6 +184,8 @@ class ProjectSettings(JsonSerializable):
         }
         if self.labeling_interface is not None:
             data[ProjectSettingsJsonFields.LABELING_INTERFACE] = self.labeling_interface
+        if self.spectrogram is not None:
+            data[ProjectSettingsJsonFields.SPECTROGRAM] = self.spectrogram
         validate_project_settings_schema(data)
         return data
 
@@ -180,6 +196,7 @@ class ProjectSettings(JsonSerializable):
         multiview_tag_id: Optional[int] = None,
         multiview_is_synced: bool = None,
         labeling_interface: Optional[LabelingInterface] = None,
+        spectrogram: Optional[Dict] = None,
     ):
         return ProjectSettings(
             multiview_enabled=take_with_default(multiview_enabled, self.multiview_enabled),
@@ -187,6 +204,7 @@ class ProjectSettings(JsonSerializable):
             multiview_tag_id=take_with_default(multiview_tag_id, self.multiview_tag_id),
             multiview_is_synced=take_with_default(multiview_is_synced, self.multiview_is_synced),
             labeling_interface=take_with_default(labeling_interface, self.labeling_interface),
+            spectrogram=take_with_default(spectrogram, self.spectrogram),
         )
 
     def validate(self, meta):
