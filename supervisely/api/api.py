@@ -100,6 +100,10 @@ TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 
+# Set in `optimization_context` while an ApiContext is open.
+API_CONTEXT_MARKER = "api_context_open"
+
+
 class ApiContext:
     """
     Context manager for the API object for optimization purposes.
@@ -167,6 +171,9 @@ class ApiContext:
             "dataset_id": self.dataset_id,
             "project_meta": self.project_meta,
             "with_alpha_masks": self.with_alpha_masks,
+            # What says a context is open: annotation downloads also write into the dict
+            # outside one, so its being non-empty proves nothing.
+            API_CONTEXT_MARKER: True,
         }
         return self
 
