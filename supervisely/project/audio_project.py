@@ -394,8 +394,18 @@ def upload_audio_project(
 
     tag_ids = {name: id for id, name in _tag_names_by_id(api, project.id).items()}
 
+    # Nested datasets are stored as "parent/child" on disk. The server takes
+    # only the short name plus the parent's id, and a parent always comes
+    # before its children in project_fs.datasets.
+    dataset_ids: Dict[str, int] = {}
     for dataset_fs in project_fs.datasets:
-        dataset = api.dataset.create(project.id, dataset_fs.name, change_name_if_conflict=True)
+        parent_path = "/".join(dataset_fs.parents)
+        dataset = api.dataset.create(
+            project.id,
+            dataset_fs.short_name,
+            parent_id=dataset_ids.get(parent_path) if parent_path else None,
+        )
+        dataset_ids[dataset_fs.name] = dataset.id
 
         names = list(dataset_fs.get_items_names())
         paths = [dataset_fs.get_item_path(name) for name in names]
