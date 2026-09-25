@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 import shutil
 import tempfile
 import threading
+import time
 from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
@@ -74,6 +75,9 @@ class VideoItemPaths(NamedTuple):
 RESTORE_WORKERS = int(os.environ.get("SLY_RESTORE_WORKERS", "8"))
 # Videos whose annotations are rebuilt from the tables at a time during a restore.
 RESTORE_READ_CHUNK = 200
+# Rounds of re-uploading failed annotations; the wait before the second doubles each round.
+RESTORE_RETRY_ROUNDS = 3
+RESTORE_RETRY_WAIT = 60
 SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
@@ -2203,6 +2207,45 @@ class VideoProject(Project):
                     path, filters=[(column, "in", src_video_ids)]
                 ).to_pylist()
 
+            # Request retries cover minutes; an api restart can take half an hour.
+            failed: List[tuple] = []
+            unreadable: List[tuple] = []
+
+            def _read_annotation(ann_path: str, meta: ProjectMeta) -> VideoAnnotation:
+                # A v2.0.0 annotation is the server's: figures point at their object by id,
+                # so the parser needs a map to resolve them - one per video, since ids only
+                # have to be distinct within one. A rebuilt annotation links by key and
+                # needs no map at all, and must not be given one: it carries keys without
+                # ids, and the map refuses to record a second missing id.
+                return VideoAnnotation.from_json(
+                    load_json_file(ann_path),
+                    meta,
+                    key_id_map=KeyIdMap() if snapshot_schema.stores_ann_json else None,
+                )
+
+            def _upload_annotation(ds_info, new_info, ann, key_id_map) -> None:
+                if not is_multiview:
+                    # Both ids are known here, which spares a videos.info per video.
+                    api.video.annotation.append(
+                        new_info.id,
+                        ann,
+                        video_info=new_info._replace(project_id=project.id, dataset_id=ds_info.id),
+                    )
+                else:
+                    api.video.annotation.upload_anns_multiview(
+                        [new_info.id], [ann], key_id_map=key_id_map
+                    )
+
+            def _clear_annotation(ds_info, new_info) -> None:
+                # A half-done append left objects or tags; the video is new, so all of it goes.
+                ann_json = api.video.annotation.download_bulk(ds_info.id, [new_info.id])[0]
+                objects = ann_json.get(video_constants.OBJECTS) or []
+                object_ids = [obj[video_constants.ID] for obj in objects]
+                if object_ids:
+                    api.video.object.remove_batch(object_ids)
+                for tag in ann_json.get(video_constants.TAGS) or []:
+                    api.video.tag.remove_from_video(tag[video_constants.ID])
+
             for src_ds_id, rows in videos_by_dataset.items():
                 ds_info = dataset_mapping.get(src_ds_id)
                 if ds_info is None:
@@ -2250,11 +2293,12 @@ class VideoProject(Project):
                         if snapshot_schema.stores_ann_json:
                             try:
                                 ann_json = json.loads(row["ann_json"])
-                            except Exception:
+                            except Exception as e:
                                 logger.warning(
                                     f"Failed to parse ann_json for video {src_vid}, "
                                     "skipping its annotation."
                                 )
+                                unreadable.append((ds_info, new_info, f"unreadable ann_json: {e}"))
                                 continue
                         else:
                             ann_json = annotation_json_from_rows(
@@ -2279,51 +2323,34 @@ class VideoProject(Project):
                 multiview_key_id_map = KeyIdMap()
                 progress_lock = threading.Lock()
 
-                def _restore_one(pair, ds_info=ds_info, new_meta=new_meta):
+                def _restore_one(
+                    pair, ds_info=ds_info, new_meta=new_meta, key_id_map=multiview_key_id_map
+                ):
                     new_info, ann_path = pair
-                    vid_id = new_info.id
                     try:
-                        ann_json = load_json_file(ann_path)
-                        # A v2.0.0 annotation is the server's: figures point at their
-                        # object by id, so the parser needs a map to resolve them - one
-                        # per video, since ids only have to be distinct within one.
-                        # A rebuilt annotation links by key and needs no map at all, and
-                        # must not be given one: it carries keys without ids, and the map
-                        # refuses to record a second missing id.
-                        ann = VideoAnnotation.from_json(
-                            ann_json,
-                            new_meta,
-                            key_id_map=KeyIdMap() if snapshot_schema.stores_ann_json else None,
-                        )
+                        ann = _read_annotation(ann_path, new_meta)
                     except Exception as e:
                         logger.warning(
-                            f"Failed to deserialize annotation for restored video id={vid_id}: {e}"
+                            f"Failed to deserialize annotation for restored video "
+                            f"'{new_info.name}' (id={new_info.id}): {e}"
                         )
+                        unreadable.append((ds_info, new_info, str(e)))
                         return
 
                     try:
-                        if not is_multiview:
-                            # Both ids are known here, which spares a videos.info per video.
-                            api.video.annotation.append(
-                                vid_id,
-                                ann,
-                                video_info=new_info._replace(
-                                    project_id=project.id, dataset_id=ds_info.id
-                                ),
-                            )
-                        else:
-                            api.video.annotation.upload_anns_multiview(
-                                [vid_id], [ann], key_id_map=multiview_key_id_map
-                            )
-                        if anns_progress is not None:
-                            # Several threads report at once; tqdm's counter is not atomic.
-                            with progress_lock:
-                                anns_progress(1)
+                        _upload_annotation(ds_info, new_info, ann, key_id_map)
                     except Exception as e:
                         logger.warning(
                             f"Failed to upload annotation for dataset '{ds_info.name}', "
-                            f"video id={vid_id}: {e}"
+                            f"video '{new_info.name}' (id={new_info.id}): {e}. "
+                            "It is tried again after the rest of the project."
                         )
+                        failed.append((ds_info, new_info, ann_path, new_meta, key_id_map, e))
+                        return
+                    if anns_progress is not None:
+                        # Several threads report at once; tqdm's counter is not atomic.
+                        with progress_lock:
+                            anns_progress(1)
 
                 # A few hundred videos at a time, not the dataset: a project can be one
                 # dataset of 14k videos, and its figures as dicts are what must not be held.
@@ -2350,6 +2377,45 @@ class VideoProject(Project):
                                 list(pool.map(_restore_one, pairs))
                 if anns_progress is not None and anns_progress is not progress_cb:
                     anns_progress.close()
+
+            # Retried after the whole project, when a restarting api is usually back.
+            for attempt in range(RESTORE_RETRY_ROUNDS):
+                if not failed:
+                    break
+                if attempt:
+                    time.sleep(RESTORE_RETRY_WAIT * 2 ** (attempt - 1))
+                logger.info(
+                    f"Uploading the annotations of {len(failed)} videos again "
+                    f"(round {attempt + 1} of {RESTORE_RETRY_ROUNDS})"
+                )
+                pending, failed = failed, []
+                for ds_info, new_info, ann_path, meta, key_id_map, _ in pending:
+                    try:
+                        with ApiContext(
+                            api, project_id=project.id, dataset_id=ds_info.id, project_meta=meta
+                        ):
+                            _clear_annotation(ds_info, new_info)
+                            _upload_annotation(
+                                ds_info, new_info, _read_annotation(ann_path, meta), key_id_map
+                            )
+                        if progress_cb is not None:
+                            progress_cb(1)
+                    except Exception as e:
+                        failed.append((ds_info, new_info, ann_path, meta, key_id_map, e))
+
+            lost = [
+                (ds_info, new_info, str(error)) for ds_info, new_info, _, _, _, error in failed
+            ] + unreadable
+            if lost:
+                listed = "; ".join(
+                    f"'{ds_info.name}/{new_info.name}' (id={new_info.id}): {reason}"
+                    for ds_info, new_info, reason in lost[:20]
+                )
+                more = f" and {len(lost) - 20} more" if len(lost) > 20 else ""
+                raise RuntimeError(
+                    f"Project {project.id} was restored without the annotations of "
+                    f"{len(lost)} videos: {listed}{more}"
+                )
 
             return project
 

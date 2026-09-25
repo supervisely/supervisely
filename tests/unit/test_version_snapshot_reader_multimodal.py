@@ -1316,6 +1316,102 @@ def test_a_v2_1_video_restore_rebuilds_each_dataset_and_files_it_there(
     assert info_reads == []
 
 
+def _flaky_video_restore(tmp_path, monkeypatch, failures_by_name):
+    """A v2.1 snapshot of three videos, and a restore api whose appends fail for the named
+    videos the given number of times, leaving an object and a tag behind each time."""
+    from supervisely.api.video.video_api import VideoInfo
+    from supervisely.project import video_project
+    from supervisely.project.video_project import VideoProject
+
+    monkeypatch.setattr(video_project, "RESTORE_RETRY_WAIT", 0)
+    api, _, _, _ = _video_writer_api(video_count=3, objects=2, frames=2)
+    path = os.path.join(str(tmp_path), "version.bin")
+    with open(path, "wb") as f:
+        f.write(VideoProject.build_snapshot(api, project_id=1, log_progress=False).getvalue())
+
+    state = SimpleNamespace(appended=[], leftovers={}, removed_objects=[], removed_tags=[])
+    names_by_id = {}
+
+    class _Annotation:
+        def append(self, video_id, ann, key_id_map=None, progress_cb=None, video_info=None):
+            name = names_by_id[video_id]
+            if failures_by_name.get(name, 0) > 0:
+                failures_by_name[name] -= 1
+                state.leftovers[video_id] = {
+                    "objects": [{"id": video_id * 10}],
+                    "tags": [{"id": video_id * 10 + 1}],
+                }
+                raise ConnectionError("Retry limit exceeded ('videos.tags.bulk.add')")
+            assert video_id not in state.leftovers, "appended over a half-done attempt"
+            state.appended.append((name, len(ann.figures)))
+
+        def download_bulk(self, dataset_id, ids):
+            return [state.leftovers.get(i, {"objects": [], "tags": []}) for i in ids]
+
+    class _Object:
+        def remove_batch(self, ids):
+            state.removed_objects.extend(ids)
+            for video_id in list(state.leftovers):
+                if state.leftovers[video_id]["objects"][0]["id"] in ids:
+                    state.leftovers[video_id]["objects"] = []
+
+    class _Tag:
+        def remove_from_video(self, tag_id):
+            state.removed_tags.append(tag_id)
+            for video_id, left in list(state.leftovers.items()):
+                left["tags"] = [t for t in left["tags"] if t["id"] != tag_id]
+                if not left["objects"] and not left["tags"]:
+                    del state.leftovers[video_id]
+
+    class _RestoreVideo:
+        annotation = _Annotation()
+        object = _Object()
+        tag = _Tag()
+
+        def upload_hashes(self, dataset_id, names, hashes, metas=None, progress_cb=None):
+            infos = [
+                VideoInfo(**{f: None for f in VideoInfo._fields})._replace(id=100 + i, name=name)
+                for i, name in enumerate(names)
+            ]
+            names_by_id.update({info.id: info.name for info in infos})
+            return infos
+
+    restore_api = _restore_api()
+    restore_api.video = _RestoreVideo()
+
+    def restore():
+        return VideoProject.upload_bin(
+            restore_api, path, workspace_id=1, log_progress=False, restore_workers=1
+        )
+
+    return restore, state
+
+
+def test_a_video_whose_annotation_failed_is_uploaded_again_without_its_leftovers(
+    tmp_path, monkeypatch
+):
+    restore, state = _flaky_video_restore(tmp_path, monkeypatch, {"clip1.mp4": 2})
+
+    restored = restore()
+
+    assert restored.id == 900
+    assert sorted(state.appended) == [("clip0.mp4", 4), ("clip1.mp4", 4), ("clip2.mp4", 4)]
+    # Two failed attempts, each cleared before the next one.
+    assert state.removed_objects == [1010, 1010]
+    assert state.removed_tags == [1011, 1011]
+
+
+def test_a_restore_that_cannot_upload_an_annotation_fails_and_names_the_video(
+    tmp_path, monkeypatch
+):
+    restore, state = _flaky_video_restore(tmp_path, monkeypatch, {"clip2.mp4": 99})
+
+    with pytest.raises(RuntimeError, match=r"annotations of 1 videos: 'clips/clip2\.mp4'"):
+        restore()
+
+    assert sorted(state.appended) == [("clip0.mp4", 4), ("clip1.mp4", 4)]
+
+
 def test_volume_datasets_carry_their_full_path(tmp_path):
     """A volume snapshot stores no dataset path; without one two nested datasets that share
     a leaf name are the same dataset to anything matching on paths."""
