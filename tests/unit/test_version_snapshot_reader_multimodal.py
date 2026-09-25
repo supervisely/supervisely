@@ -1433,5 +1433,5 @@ def test_a_volume_restore_counts_annotations_and_hands_over_complete_infos(tmp_p
 
     dataset_id = api.dataset.created[0].id
     assert sorted(handed) == [(500, 900, dataset_id), (501, 900, dataset_id)]
-    # The annotations are counted too, one per volume, after the volumes' own progress.
-    assert progress[-2:] == [1, 1]
+    # The stub upload does not report, so this is the annotations alone: once each.
+    assert progress == [1, 1]

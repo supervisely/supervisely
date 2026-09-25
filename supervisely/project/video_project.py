@@ -9,6 +9,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 import shutil
 import tempfile
+import threading
 from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
@@ -2176,8 +2177,11 @@ class VideoProject(Project):
                                     f"Failed to restore custom_data for video '{new_info.name}'"
                                 )
 
-                if ds_progress is not None:
-                    ds_progress(len(rows))
+                # upload_hashes and upload_links count what they upload; only rows that were
+                # never sent (no hash and no link, or a hash the server lacks) are left.
+                uploaded = len(hashed_rows) + len(link_rows)
+                if ds_progress is not None and len(rows) > uploaded:
+                    ds_progress(len(rows) - uploaded)
 
             # Annotations
             ann_temp_dir = os.path.join(tmp_root, "anns")
@@ -2273,6 +2277,7 @@ class VideoProject(Project):
                         leave=False,
                     )
                 multiview_key_id_map = KeyIdMap()
+                progress_lock = threading.Lock()
 
                 def _restore_one(pair, ds_info=ds_info, new_meta=new_meta):
                     new_info, ann_path = pair
@@ -2311,7 +2316,9 @@ class VideoProject(Project):
                                 [vid_id], [ann], key_id_map=multiview_key_id_map
                             )
                         if anns_progress is not None:
-                            anns_progress(1)
+                            # Several threads report at once; tqdm's counter is not atomic.
+                            with progress_lock:
+                                anns_progress(1)
                     except Exception as e:
                         logger.warning(
                             f"Failed to upload annotation for dataset '{ds_info.name}', "
@@ -2341,6 +2348,8 @@ class VideoProject(Project):
                         else:
                             with ThreadPoolExecutor(max_workers=restore_workers) as pool:
                                 list(pool.map(_restore_one, pairs))
+                if anns_progress is not None and anns_progress is not progress_cb:
+                    anns_progress.close()
 
             return project
 

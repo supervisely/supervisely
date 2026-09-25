@@ -630,7 +630,7 @@ class VolumeProject(VideoProject):
         :type project_name: str, optional
         :param log_progress: If True, show a progress bar (unless a custom ``progress_cb`` is provided).
         :type log_progress: bool
-        :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
+        :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress: once per volume uploaded, then once per annotation.
         :type progress_cb: tqdm or callable, optional
         :param skip_missed_entities: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
         :type skip_missed_entities: bool
@@ -770,6 +770,10 @@ class VolumeProject(VideoProject):
                         "Annotation for volume %s skipped because the source volume was not restored.",
                         volume_id_str,
                     )
+                # Counted all the same: the bar's total is every annotation.
+                if anns_progress is not None:
+                    with progress_lock:
+                        anns_progress(1)
                 return
             ann_json["volumeId"] = new_volume_info.id
             ann = VolumeAnnotation.from_json(ann_json, project_meta, None)
@@ -789,15 +793,17 @@ class VolumeProject(VideoProject):
 
         # Each annotation is several independent round trips, and the ApiContext keeps
         # the per-project tag and class lookups out of every one of them.
-        with ApiContext(api, project_id=new_project_info.id, project_meta=project_meta):
-            if restore_workers <= 1:
-                for item in annotations.items():
-                    _restore_one(item)
-            else:
-                with ThreadPoolExecutor(max_workers=restore_workers) as pool:
-                    list(pool.map(_restore_one, list(annotations.items())))
-        if anns_progress is not None and anns_progress is not progress_cb:
-            anns_progress.close()
+        try:
+            with ApiContext(api, project_id=new_project_info.id, project_meta=project_meta):
+                if restore_workers <= 1:
+                    for item in annotations.items():
+                        _restore_one(item)
+                else:
+                    with ThreadPoolExecutor(max_workers=restore_workers) as pool:
+                        list(pool.map(_restore_one, list(annotations.items())))
+        finally:
+            if anns_progress is not None and anns_progress is not progress_cb:
+                anns_progress.close()
 
         return api.project.get_info_by_id(new_project_info.id)
 
