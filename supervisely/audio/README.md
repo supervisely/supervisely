@@ -300,7 +300,10 @@ tests skip themselves when the framework is not installed; neither is a
 dependency of this SDK.
 
 WAV is decoded with the standard library. FLAC, OGG and MP3 need `soundfile`;
-M4A (AAC), which libsndfile cannot open, needs `av`. Both come with
+M4A (AAC), which libsndfile cannot open, needs `av`. An M4A is decoded on the
+container's timeline, as the labeling tool does: AAC priming that the edit list
+puts before time 0 is dropped and the last frame's padding is cut, so sample
+indices and the sample count match the tool's. Both come with
 `pip install supervisely[audio]`, and neither is imported until such a file is
 decoded — importing `supervisely` never needs them. Uploading and importing
 never decode at all: the file is sent as it is.

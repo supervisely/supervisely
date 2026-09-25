@@ -97,9 +97,9 @@ def test_m4a_is_decoded_through_av(tmp_path):
     samples, rate = sly.audio.read_audio(path)
     assert rate == 48000
     assert samples.dtype == np.float32 and samples.shape[1] == 2
-    # AAC works in 1024-sample frames, plus 1024 priming samples when the file
-    # has no edit list -- which a file muxed by PyAV does not.
-    assert abs(samples.shape[0] - n) <= 2048
+    # No pts on the frames, so no edit list: the 1024 priming samples stay, and
+    # the tool keeps them too -- mediabunny reports 49024 for this file.
+    assert samples.shape[0] == 49024
 
     for channel, tone in ((0, 440), (1, 1000)):
         spectrum = np.abs(np.fft.rfft(samples[:, channel]))
@@ -108,6 +108,35 @@ def test_m4a_is_decoded_through_av(tmp_path):
 
     info = sly.audio.get_audio_info(path)
     assert (info.sample_rate, info.channels, info.sample_count) == (48000, 2, samples.shape[0])
+
+
+def test_m4a_follows_the_container_timeline_like_the_tool(tmp_path):
+    """With an edit list the recording is exactly the source: priming before
+    time 0 dropped, padding of the last AAC frame cut. Counts checked against
+    mediabunny 1.40.1, the labeling tool's demuxer, on the same files: 132300
+    here, and 576000 for a 12 s 48 kHz file where FFmpeg alone gives 576512."""
+    import numpy as np
+
+    import supervisely as sly
+
+    av = pytest.importorskip("av")
+    rate, n = 44100, 132300
+    samples = (0.3 * np.sin(2 * np.pi * 440 * np.arange(n) / rate)).astype(np.float32)
+    samples[20000:20010] = 0.99  # a click to locate sample 20000
+    path = str(tmp_path / "edit-list.m4a")
+    with av.open(path, "w", format="ipod") as out:
+        stream = out.add_stream("aac", rate=rate, layout="mono")
+        frame = av.AudioFrame.from_ndarray(samples[None, :], format="flt", layout="mono")
+        frame.sample_rate, frame.pts = rate, 0  # a pts is what makes FFmpeg write the edit list
+        for packet in stream.encode(frame):
+            out.mux(packet)
+        for packet in stream.encode(None):
+            out.mux(packet)
+
+    decoded, _ = sly.audio.read_audio(path)
+    assert decoded.shape == (n, 1)
+    assert abs(int(np.argmax(np.abs(decoded[:, 0]))) - 20000) < 16  # AAC smears a click
+    assert sly.audio.get_audio_info(path).sample_count == n
 
 
 def test_m4a_without_av_names_the_extra(tmp_path):

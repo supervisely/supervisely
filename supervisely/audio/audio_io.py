@@ -99,10 +99,13 @@ def _read_with_soundfile(path: str) -> Optional[Tuple[np.ndarray, int]]:
 def _read_with_av(path: str) -> Optional[Tuple[np.ndarray, int]]:
     """Decode with FFmpeg through PyAV, or ``None`` when it is not installed.
 
-    Used for what libsndfile cannot open, M4A (AAC) in practice. Sample
-    positions are FFmpeg's: an MP4 edit list, when the encoder wrote one, trims
-    the AAC priming delay; a file without one keeps it (1024 samples). Whether
-    the labeling tool's decoder agrees on such a file is not verified.
+    Used for what libsndfile cannot open, M4A (AAC) in practice. Samples are
+    placed on the container's timeline, as the labeling tool places them:
+    sample 0 is presentation time 0, so AAC priming that an MP4 edit list
+    moves before zero is dropped, and the recording ends at the stream's
+    duration, so the padding of the last AAC frame is cut. FFmpeg alone keeps
+    that padding -- 512 extra samples on a 12 s file -- and every range near
+    the end would then disagree with the tool.
     """
     try:
         import av  # noqa: PLC0415
@@ -114,14 +117,24 @@ def _read_with_av(path: str) -> Optional[Tuple[np.ndarray, int]]:
         # Planar float32 at the source rate and layout: one row per channel.
         resampler = av.AudioResampler(format="fltp", layout=stream.layout, rate=rate)
         chunks = []
+        first_pts = None
         for frame in container.decode(stream):
+            if first_pts is None and frame.pts is not None:
+                first_pts = frame.pts
             for out in resampler.resample(frame):
                 chunks.append(out.to_ndarray())
         for out in resampler.resample(None):
             chunks.append(out.to_ndarray())
+        to_samples = float(stream.time_base * rate) if stream.time_base else None
+        duration = stream.duration
     if not chunks:
         return np.zeros((0, stream.codec_context.channels), dtype=np.float32), rate
     data = np.concatenate(chunks, axis=1).T
+    if to_samples is not None:
+        if first_pts is not None and first_pts < 0:
+            data = data[int(round(-first_pts * to_samples)) :]
+        if duration:
+            data = data[: int(round(duration * to_samples))]
     return np.ascontiguousarray(data, dtype=np.float32), rate
 
 
