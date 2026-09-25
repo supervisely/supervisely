@@ -18,7 +18,18 @@ from collections import deque
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import Any, Deque, Dict, List, Literal, Optional, Tuple
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Deque,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 import numpy as np
 import requests
@@ -909,6 +920,94 @@ def run_coroutine(coroutine):
         return future.result()
     else:
         return loop.run_until_complete(coroutine)
+
+
+def get_semaphore_limit(semaphore, default: int = 10) -> int:
+    """
+    Number of permits a semaphore was configured with, used to size worker pools.
+
+    :class:`CrossLoopSemaphore` keeps it in ``_limit``; ``asyncio.Semaphore`` only exposes
+    ``_value``, which is the count still free and therefore right only while nothing is in
+    flight. Both are best effort, so an unreadable semaphore falls back to ``default``:
+    the value sizes a pool, it never controls how many requests actually run at once.
+
+    :param semaphore: Semaphore to inspect.
+    :type semaphore: :class:`CrossLoopSemaphore` or :class:`asyncio.Semaphore`
+    :param default: Value to return when the limit cannot be read.
+    :type default: int
+    :returns: Number of permits.
+    :rtype: int
+    """
+    for attr in ("_limit", "_value"):
+        value = getattr(semaphore, attr, None)
+        if isinstance(value, int) and value > 0:
+            return value
+    return default
+
+
+async def run_bounded(
+    coro_factories: Sequence[Callable[[], Awaitable[Any]]], limit: int
+) -> List[Any]:
+    """
+    Await coroutine factories keeping at most ``limit`` of them alive, results in input order.
+
+    Unlike ``asyncio.gather(*[factory() for factory in factories])`` this never builds one
+    task per item, so a job spanning hundreds of thousands of entities keeps a pool the
+    size of the throttle instead of a task list the size of the dataset.
+
+    Takes factories rather than coroutines because a coroutine is created eagerly: passing
+    coroutines would allocate them all upfront and leave the unstarted ones to be destroyed
+    with a "never awaited" warning if the run fails early.
+
+    The first failure cancels the remaining workers and propagates.
+
+    :param coro_factories: Callables that each return a fresh coroutine.
+    :type coro_factories: Sequence[Callable[[], Awaitable[Any]]]
+    :param limit: Maximum number of coroutines running at the same time.
+    :type limit: int
+    :returns: Results in the order of ``coro_factories``.
+    :rtype: List[Any]
+
+    :Usage Example:
+
+     .. code-block:: python
+
+        from functools import partial
+
+        from supervisely._utils import run_bounded
+
+        results = await run_bounded([partial(fetch, url) for url in urls], limit=10)
+    """
+    factories = list(coro_factories)
+    results: List[Any] = [None] * len(factories)
+    if not factories:
+        return results
+
+    next_index = 0
+
+    async def worker() -> None:
+        nonlocal next_index
+        while True:
+            # no await between the read and the bump, so workers cannot claim the same index
+            index = next_index
+            if index >= len(factories):
+                return
+            next_index += 1
+            results[index] = await factories[index]()
+
+    workers = [
+        asyncio.create_task(worker()) for _ in range(min(max(1, limit), len(factories)))
+    ]
+    try:
+        await asyncio.gather(*workers)
+    except BaseException:
+        for task in workers:
+            task.cancel()
+        # gather() propagates the first failure without touching its siblings; drain them
+        # here so no worker outlives this call and keeps issuing requests
+        await asyncio.gather(*workers, return_exceptions=True)
+        raise
+    return results
 
 
 def get_filename_from_headers(url):
