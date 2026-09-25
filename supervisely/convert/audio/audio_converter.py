@@ -1,8 +1,9 @@
 import os
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from supervisely._utils import batched, generate_free_name, is_development
 from supervisely.api.api import Api
+from supervisely.audio.audio_recording_tag import AudioRecordingTag
 from supervisely.audio.audio_segment import AudioSegment
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
 from supervisely.audio_annotation.audio_annotation import AudioAnnotation
@@ -84,7 +85,8 @@ class AudioConverter(BaseConverter):
         entities: Optional[List[Item]] = None,
         progress_cb=None,
     ) -> None:
-        """Upload recordings and their segment labels to a dataset.
+        """Upload recordings and their labels -- segments and whole-recording
+        tags -- to a dataset.
 
         :param entities: Items to upload; defaults to all items collected by the
             converter. Pass a subset when uploading one dataset at a time.
@@ -119,9 +121,12 @@ class AudioConverter(BaseConverter):
 
             infos = api.audio.upload_paths(dataset_id, names, paths)
             for info, ann in zip(infos, anns):
-                segments = self._resolve_tag_ids(info.name, ann.tags, tag_ids)
-                if segments:
-                    api.audio.add_segments(project_id, info.id, segments)
+                api.audio.add_tags(
+                    project_id,
+                    info.id,
+                    segments=self._resolve_tag_ids(info.name, ann.tags, tag_ids),
+                    recording_tags=self._resolve_tag_ids(info.name, ann.recording_tags, tag_ids),
+                )
 
             if progress_cb is not None:
                 progress_cb(len(batch))
@@ -147,28 +152,36 @@ class AudioConverter(BaseConverter):
 
     @staticmethod
     def _resolve_tag_ids(
-        item_name: str, segments: List[AudioSegment], tag_ids: Dict[str, int]
-    ) -> List[AudioSegment]:
-        """Point each segment at the destination project's tag by name.
+        item_name: str,
+        labels: List[Union[AudioSegment, AudioRecordingTag]],
+        tag_ids: Dict[str, int],
+    ) -> List[Union[AudioSegment, AudioRecordingTag]]:
+        """Point each segment or recording tag at the destination project's
+        tag by name.
 
-        A segment whose tag is not in the project cannot be written and is
+        A label whose tag is not in the project cannot be written and is
         skipped with a warning, so one bad label does not fail the import.
         Ids carried over from the source project are discarded: they belong
         to another server.
         """
         resolved = []
-        for segment in segments:
-            tag_id = tag_ids.get(segment.name)
+        for label in labels:
+            tag_id = tag_ids.get(label.name)
             if tag_id is None:
+                where = (
+                    f"Segment {label.start}-{label.end}"
+                    if isinstance(label, AudioSegment)
+                    else "Recording tag"
+                )
                 logger.warning(
-                    f"Segment {segment.start}-{segment.end} of {item_name!r} refers to tag "
-                    f"{segment.name!r}, which is not in the project. The segment is skipped."
+                    f"{where} of {item_name!r} refers to tag {label.name!r}, "
+                    "which is not in the project. The label is skipped."
                 )
                 continue
-            segment.tag_id = tag_id
-            segment.id = None
-            segment.entity_id = None
-            resolved.append(segment)
+            label.tag_id = tag_id
+            label.id = None
+            label.entity_id = None
+            resolved.append(label)
         return resolved
 
     def _apply_spectrogram_settings(self, api: Api, project_id: int) -> None:

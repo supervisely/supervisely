@@ -2,8 +2,11 @@
 """Annotation of a single audio recording in a local project directory.
 
 An audio annotation is a list of :class:`~supervisely.audio.audio_segment.AudioSegment`
+and a list of :class:`~supervisely.audio.audio_recording_tag.AudioRecordingTag`,
 plus the shape of the recording they refer to. There are no objects and no
-figures: a label is a tag on a range of samples.
+figures: a label is a tag, either on a range of samples or on the whole
+recording. On disk both kinds share the ``tags`` list; a recording tag is the
+one with ``frameRange: null``, as on the platform.
 
 The recording's shape is stored because the platform does not keep it -- an
 audio entity's ``fileMeta`` is only ``{mime, size}`` -- and a sample range
@@ -14,6 +17,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from supervisely.audio.audio_recording_tag import AudioRecordingTag
 from supervisely.audio.audio_segment import AudioSegment
 from supervisely.io.json import load_json_file
 from supervisely.project.project_meta import ProjectMeta
@@ -33,6 +37,7 @@ class AudioAnnotation:
     :param channels: Number of channels.
     :param tags: Segment labels on the recording.
     :param description: Free-text description.
+    :param recording_tags: Labels on the whole recording.
 
     :Usage example:
 
@@ -45,6 +50,7 @@ class AudioAnnotation:
             sample_rate=16000,
             channels=1,
             tags=[sly.AudioSegment(name="Event", start=0, end=15999)],
+            recording_tags=[sly.AudioRecordingTag(name="Scene", value="indoor")],
         )
         ann.to_json()
     """
@@ -56,12 +62,16 @@ class AudioAnnotation:
         channels: Optional[int] = None,
         tags: Optional[list[AudioSegment]] = None,
         description: str = "",
+        recording_tags: Optional[list[AudioRecordingTag]] = None,
     ):
         self.sample_count = sample_count
         self.sample_rate = sample_rate
         self.channels = channels
         self.tags: list[AudioSegment] = list(tags) if tags is not None else []
         self.description = description
+        self.recording_tags: list[AudioRecordingTag] = (
+            list(recording_tags) if recording_tags is not None else []
+        )
 
     @property
     def duration_seconds(self) -> Optional[float]:
@@ -81,7 +91,8 @@ class AudioAnnotation:
             SAMPLE_COUNT: self.sample_count,
             SAMPLE_RATE: self.sample_rate,
             CHANNELS: self.channels,
-            TAGS: [tag.to_json() for tag in self.tags],
+            TAGS: [tag.to_json() for tag in self.recording_tags]
+            + [tag.to_json() for tag in self.tags],
         }
 
     @classmethod
@@ -93,9 +104,14 @@ class AudioAnnotation:
         :param project_meta: When given, every tag name is checked against it,
             the same guarantee the other modalities give.
         """
-        tags = [AudioSegment.from_json(tag) for tag in data.get(TAGS, [])]
+        tags, recording_tags = [], []
+        for tag in data.get(TAGS, []):
+            if AudioRecordingTag.is_recording_tag(tag):
+                recording_tags.append(AudioRecordingTag.from_json(tag))
+            else:
+                tags.append(AudioSegment.from_json(tag))
         if project_meta is not None:
-            for tag in tags:
+            for tag in recording_tags + tags:
                 if tag.name is not None and project_meta.get_tag_meta(tag.name) is None:
                     raise RuntimeError(
                         f"Tag {tag.name!r} is not found in the project meta"
@@ -106,6 +122,7 @@ class AudioAnnotation:
             channels=data.get(CHANNELS),
             tags=tags,
             description=data.get(DESCRIPTION, ""),
+            recording_tags=recording_tags,
         )
 
     @classmethod
@@ -122,6 +139,7 @@ class AudioAnnotation:
         channels: Optional[int] = None,
         tags: Optional[list[AudioSegment]] = None,
         description: Optional[str] = None,
+        recording_tags: Optional[list[AudioRecordingTag]] = None,
     ) -> "AudioAnnotation":
         """Return a copy with the given fields replaced."""
         return AudioAnnotation(
@@ -130,11 +148,14 @@ class AudioAnnotation:
             channels=channels if channels is not None else self.channels,
             tags=tags if tags is not None else self.tags,
             description=description if description is not None else self.description,
+            recording_tags=(
+                recording_tags if recording_tags is not None else self.recording_tags
+            ),
         )
 
     def __repr__(self) -> str:
         return (
             f"AudioAnnotation(sample_count={self.sample_count}, "
             f"sample_rate={self.sample_rate}, channels={self.channels}, "
-            f"tags={len(self.tags)})"
+            f"tags={len(self.tags)}, recording_tags={len(self.recording_tags)})"
         )

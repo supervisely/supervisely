@@ -32,9 +32,11 @@ def write_wav(path, seconds=0.25, channels=1):
     return str(path)
 
 
-def make_project(root, datasets=("ds0",), spectrogram=None, tags=("Event",)):
+def make_project(root, datasets=("ds0",), spectrogram=None, tags=("Event",), recording_tags=()):
+    tag_metas = [sly.TagMeta(t, sly.TagValueType.NONE) for t in tags]
+    tag_metas += [sly.TagMeta(t, sly.TagValueType.ANY_STRING) for t in recording_tags]
     meta = sly.ProjectMeta(
-        tag_metas=sly.TagMetaCollection([sly.TagMeta(t, sly.TagValueType.NONE) for t in tags]),
+        tag_metas=sly.TagMetaCollection(tag_metas),
         project_type=ProjectType.AUDIO.value,
         project_settings=sly.ProjectSettings(spectrogram=spectrogram),
     )
@@ -48,6 +50,10 @@ def make_project(root, datasets=("ds0",), spectrogram=None, tags=("Event",)):
             sample_rate=SR,
             channels=1,
             tags=[sly.AudioSegment(name=tags[0], start=10, end=2000, channel=0, tag_id=999, id=7)],
+            recording_tags=[
+                sly.AudioRecordingTag(name=t, value="indoor", tag_id=998, id=8)
+                for t in recording_tags
+            ],
         )
         dataset.add_item_file("rec.wav", wav, ann=ann)
     return str(root)
@@ -66,6 +72,7 @@ class FakeApi:
         self.items_count = items_count
         self.uploaded = []
         self.segments = {}
+        self.recording_tags = {}
         self.spectrogram_set = None
         self.datasets = {1: "ds"}
         api = self
@@ -119,8 +126,13 @@ class FakeApi:
                     infos.append(SimpleNamespace(id=len(api.uploaded), name=name))
                 return infos
 
-            def add_segments(self, project_id, entity_id, segments):
-                api.segments[entity_id] = [s._to_api_json(entity_id) for s in segments]
+            def add_tags(self, project_id, entity_id, segments=None, recording_tags=None):
+                if segments:
+                    api.segments[entity_id] = [s._to_api_json(entity_id) for s in segments]
+                if recording_tags:
+                    api.recording_tags[entity_id] = [
+                        t._to_api_json(entity_id) for t in recording_tags
+                    ]
 
             def set_spectrogram_settings(self, project_id, settings):
                 api.spectrogram_set = settings
@@ -271,3 +283,25 @@ def test_nested_datasets_keep_their_hierarchy(tmp_path):
     assert sorted(api.datasets.values()) == ["first", "second"]
     assert len(api.uploaded) == 2
     assert all(len(segments) == 1 for segments in api.segments.values())
+
+
+def test_recording_tags_are_imported(tmp_path):
+    make_project(tmp_path / "proj", recording_tags=("Scene",))
+    converter = detect(str(tmp_path / "proj"))
+    api = FakeApi()
+
+    converter.upload_dataset(api, 1, log_progress=False)
+
+    (payload,) = api.recording_tags[1]
+    assert payload["tagId"] == {t["name"]: t["id"] for t in api.meta["tags"]}["Scene"]
+    assert payload["frameRange"] is None
+    assert payload["value"] == "indoor"
+    assert payload["meta"] == {"channel": None}
+    assert len(api.segments[1]) == 1
+
+
+def test_recording_tag_with_unknown_tag_is_skipped(tmp_path):
+    make_project(tmp_path / "proj", recording_tags=("Scene",))
+    converter = detect(str(tmp_path / "proj"))
+    ann = converter.to_supervisely(converter.get_items()[0])
+    assert AudioConverter._resolve_tag_ids("rec.wav", ann.recording_tags, {"Event": 1}) == []

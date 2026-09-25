@@ -201,3 +201,126 @@ def test_auto_import_of_a_supervisely_audio_project(api, tmp_path):
         assert SpectrogramSettings.from_json(stored) == settings
     finally:
         api.project.remove(dst.id)
+
+
+def _label_snapshot(api, project_id):
+    """Every label of a project, keyed by dataset path and recording name,
+    with server ids resolved to tag names so two projects can be compared."""
+    names = {t["id"]: t["name"] for t in api.project.get_meta(project_id)["tags"]}
+    snapshot = {}
+    for parents, dataset in api.dataset.tree(project_id):
+        for info in api.audio.get_list(dataset.id, recursive=False):
+            segments, recording_tags = api.audio.split_tags(info.tags)
+            snapshot["/".join(parents + [dataset.name]) + "/" + info.name] = (
+                info.hash,
+                sorted(
+                    (names[s.tag_id], s.start, s.end, s.channel, s.value, sorted(s.meta.items()),
+                     sorted(s.custom_data.items()))
+                    for s in segments
+                ),
+                sorted(
+                    (names[t.tag_id], t.value, sorted(t.meta.items()), sorted(t.custom_data.items()))
+                    for t in recording_tags
+                ),
+            )
+    return snapshot
+
+
+def test_every_label_kind_survives_download_upload_and_import(api, tmp_path):
+    """Segments on a channel and on the mixdown, whole-recording tags of every
+    value type, customData, and a nested dataset -- through `sly.download` ->
+    `sly.upload`, and through Auto Import of the downloaded directory."""
+    from supervisely.audio.audio_recording_tag import AudioRecordingTag
+    from supervisely.convert.audio.audio_converter import AudioConverter
+
+    workspace_id = int(os.environ.get("SLY_WORKSPACE_ID", "1"))
+    created = []
+
+    def new_project(name):
+        info = api.project.create(
+            workspace_id, name, type=sly.ProjectType.AUDIO, change_name_if_conflict=True
+        )
+        created.append(info.id)
+        return info
+
+    try:
+        src = new_project("sdk-audio-labels-src")
+        meta = sly.ProjectMeta(
+            tag_metas=sly.TagMetaCollection(
+                [
+                    sly.TagMeta("Event", sly.TagValueType.NONE),
+                    sly.TagMeta("Level", sly.TagValueType.ANY_NUMBER),
+                    sly.TagMeta("Scene", sly.TagValueType.ANY_STRING),
+                    sly.TagMeta("Quality", sly.TagValueType.ONEOF_STRING, ["good", "bad"]),
+                    sly.TagMeta("Reviewed", sly.TagValueType.NONE),
+                ]
+            )
+        )
+        api.project.update_meta(src.id, meta.to_json())
+        ids = {t["name"]: t["id"] for t in api.project.get_meta(src.id)["tags"]}
+
+        top = api.dataset.create(src.id, "recordings")
+        night = api.dataset.create(src.id, "night", parent_id=top.id)
+        for dataset in (top, night):
+            info = api.audio.upload_path(dataset.id, "rec.wav", _write_wav(tmp_path / "rec.wav"))
+            api.audio.add_tags(
+                src.id,
+                info.id,
+                segments=[
+                    AudioSegment(tag_id=ids["Event"], start=0, end=15999, channel=1,
+                                 custom_data={"source": "model"}),
+                    AudioSegment(tag_id=ids["Level"], start=16000, end=31999, value=0.5,
+                                 meta={"reviewedBy": "anna"}),
+                ],
+                recording_tags=[
+                    AudioRecordingTag(tag_id=ids["Scene"], value="indoor", custom_data={"k": 1}),
+                    AudioRecordingTag(tag_id=ids["Quality"], value="good"),
+                    AudioRecordingTag(tag_id=ids["Reviewed"]),
+                ],
+            )
+
+        # --- edit in place, as the labeling tool does ----------------------
+        (info,) = api.audio.get_list(night.id, recursive=False)
+        segments, recording_tags = api.audio.get_tags(info.id)
+        level = next(s for s in segments if s.tag_id == ids["Level"])
+        level.start, level.end, level.value, level.channel = 17000, 30000, 0.75, 0
+        api.audio.update_segment(level)
+        quality = next(t for t in recording_tags if t.tag_id == ids["Quality"])
+        quality.value = "bad"
+        api.audio.update_recording_tag(quality)
+        reviewed = next(t for t in recording_tags if t.tag_id == ids["Reviewed"])
+        api.audio.remove_recording_tag(reviewed)
+
+        segments, recording_tags = api.audio.get_tags(info.id)
+        level = next(s for s in segments if s.tag_id == ids["Level"])
+        assert (level.start, level.end, level.value, level.channel) == (17000, 30000, 0.75, 0)
+        assert level.meta == {"reviewedBy": "anna"}
+        assert {t.tag_id: t.value for t in recording_tags} == {
+            ids["Scene"]: "indoor",
+            ids["Quality"]: "bad",
+        }
+        assert next(t for t in recording_tags if t.tag_id == ids["Scene"]).custom_data == {"k": 1}
+
+        expected = _label_snapshot(api, src.id)
+        assert len(expected) == 2
+        assert all(len(v[2]) >= 2 for v in expected.values()), "recording tags missing"
+
+        # --- sly.download -> sly.upload -------------------------------------
+        local = str(tmp_path / "downloaded")
+        sly.download(api, src.id, local, log_progress=False)
+        copy_name = api.project.get_free_name(workspace_id, "sdk-audio-labels-copy")
+        sly.upload(local, api, workspace_id, copy_name, log_progress=False)
+        uploaded = api.project.get_info_by_name(workspace_id, copy_name)
+        created.append(uploaded.id)
+        assert _label_snapshot(api, uploaded.id) == expected
+
+        # --- Auto Import of the same directory ------------------------------
+        dst = new_project("sdk-audio-labels-import")
+        dataset = api.dataset.create(dst.id, "import")
+        converter = AudioConverter(local).detect_format()
+        assert str(converter) == "supervisely"
+        converter.upload_dataset(api, dataset.id, log_progress=False)
+        assert sorted(v for v in _label_snapshot(api, dst.id).values()) == sorted(expected.values())
+    finally:
+        for project_id in created:
+            api.project.remove(project_id)

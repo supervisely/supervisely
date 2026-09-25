@@ -183,6 +183,6 @@ class SLYAudioConverter(AudioConverter):
             logger.warning(f"Failed to read audio annotation: {repr(e)}")
             return item.create_empty_annotation()
         if renamed_tags:
-            for segment in ann.tags:
-                segment.name = renamed_tags.get(segment.name, segment.name)
+            for tag in ann.tags + ann.recording_tags:
+                tag.name = renamed_tags.get(tag.name, tag.name)
         return ann

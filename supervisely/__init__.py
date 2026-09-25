@@ -193,6 +193,7 @@ from supervisely.tiny_timer import TinyTimer
 from supervisely.aug import aug
 from supervisely import audio
 
+from supervisely.audio.audio_recording_tag import AudioRecordingTag
 from supervisely.audio.audio_segment import AudioSegment
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
 from supervisely.audio_annotation.audio_annotation import AudioAnnotation

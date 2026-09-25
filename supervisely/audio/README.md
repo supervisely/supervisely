@@ -1,6 +1,7 @@
 # Audio modality
 
-Audio projects hold recordings labeled with **time segments**. The spectrogram
+Audio projects hold recordings labeled with **time segments** and with
+**recording tags** that label the whole file. The spectrogram
 they are labeled against is configured once for the whole project, so the picture
 every annotator was looking at can be reproduced later and fed to training.
 
@@ -41,6 +42,21 @@ segment = sly.AudioSegment.from_seconds(tag_id, start_sec=1.0, end_sec=2.0, samp
 ```
 
 `channel` is a zero-based channel index, or `None` for the mixdown.
+
+## Recording tags label the whole file
+
+The labeling tool applies a label either to a range or to the "Entire recording".
+The second kind is the same tag assignment with no range and no channel:
+
+```python
+tag = sly.AudioRecordingTag(tag_id=scene_tag_id, value="indoor")
+api.audio.add_recording_tag(project.id, recording.id, tag)
+
+# segments and recording tags together, in one request
+api.audio.add_tags(project.id, recording.id, segments=[segment], recording_tags=[tag])
+```
+
+A tag can be on a recording only once, as for whole-video tags.
 
 ## The spectrogram belongs to the project
 
@@ -107,14 +123,29 @@ the same analysis", and "does my training render match what the annotator saw".
 segments = api.audio.get_segments(recording_id)
 for s in segments:
     print(s.start, s.end, s.channel, s.meta)
+
+recording_tags = api.audio.get_recording_tags(recording_id)
+segments, recording_tags = api.audio.get_tags(recording_id)  # one request
 ```
 
-To delete one, pass the segment as read back — the endpoint needs its id, its
-tag id and the recording id together:
+To change or delete a label, pass it as read back — the endpoints need its id,
+and deleting also needs its tag id and the recording id:
 
 ```python
+segment = segments[0]
+segment.start, segment.end, segment.value = 17000, 30000, 0.75
+api.audio.update_segment(segment)          # what editing an interval in the tool does
+
+recording_tags[0].value = "outdoor"
+api.audio.update_recording_tag(recording_tags[0])
+
 api.audio.remove_segment(segments[0])
+api.audio.remove_recording_tag(recording_tags[0])
 ```
+
+An update replaces the label's `meta` whole, so read the label first rather than
+building a new one. Its `customData`, if any client set it, is left alone, and it
+is read back and written out by download, upload and import like everything else.
 
 Both `entities.list` and `entities.info` omit `tags` and their `meta` from the
 default projection, so `api.audio` asks for them explicitly
@@ -150,6 +181,8 @@ ann = dataset_fs.get_ann("rain.wav", project_fs.meta)
 ann.sample_rate, ann.sample_count, ann.channels   # the platform stores none of these
 for segment in ann.tags:
     print(segment.name, segment.start, segment.end, segment.channel)
+for tag in ann.recording_tags:
+    print(tag.name, tag.value)
 
 # the project's analysis travels in meta.json and is restored on upload
 sly.SpectrogramSettings.from_json(project_fs.meta.project_settings.spectrogram)
@@ -157,8 +190,11 @@ sly.SpectrogramSettings.from_json(project_fs.meta.project_settings.spectrogram)
 sly.upload_audio_project("/tmp/proj", api, workspace_id, "copy of engine-noise")
 ```
 
-On disk a segment is identified by tag **name**, not by the server id, so a
-downloaded project is readable without the server that issued the ids. The
+On disk a label is identified by tag **name**, not by the server id, so a
+downloaded project is readable without the server that issued the ids. Segments
+and recording tags share the annotation's `tags` list; a recording tag is the
+entry with `"frameRange": null`, which is how the platform stores it too. Nested
+datasets are recreated under their parents on upload. The
 recording's shape is stored in the annotation because the platform does not keep
 it, and without it a sample range cannot be converted to seconds.
 
@@ -167,8 +203,8 @@ it, and without it a sample range cannot be converted to seconds.
 `sly.ImportManager` is what the Auto Import app runs, so it works inside an
 app, in the app's data directory (`SLY_APP_DATA_DIR`). It accepts two inputs for
 an audio project: recordings in any folder structure, uploaded without labels, or
-a project in the layout above, uploaded with its segments. Segments are matched
-to the destination's tags by name; a conflicting tag is renamed, as for the
+a project in the layout above, uploaded with its segments and recording tags.
+Labels are matched to the destination's tags by name; a conflicting tag is renamed, as for the
 other modalities.
 
 ```python

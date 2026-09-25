@@ -58,6 +58,8 @@ class AudioSegment:
     :param labeler_login: Login of whoever created it.
     :param name: Name of the tag meta being applied. Local project directories
         store the name; the API works with ``tag_id``.
+    :param custom_data: The tag assignment's ``customData``, an object any
+        client may attach. Kept as-is so a round trip does not lose it.
 
     :Usage example:
 
@@ -81,6 +83,7 @@ class AudioSegment:
         entity_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
         name: Optional[str] = None,
+        custom_data: Optional[Dict[str, Any]] = None,
     ):
         # numbers.Integral, not int: sample indices routinely arrive as numpy
         # integers from np.argmax / np.flatnonzero. bool is an Integral too.
@@ -106,6 +109,7 @@ class AudioSegment:
         self.entity_id = entity_id
         self.labeler_login = labeler_login
         self.name = name
+        self.custom_data = dict(custom_data) if custom_data else {}
 
     @property
     def sample_count(self) -> int:
@@ -187,6 +191,8 @@ class AudioSegment:
         meta = self._meta_json()
         if meta:
             payload["meta"] = meta
+        if self.custom_data:
+            payload["customData"] = dict(self.custom_data)
         return payload
 
     @classmethod
@@ -225,6 +231,7 @@ class AudioSegment:
             id=data.get("id"),
             entity_id=data.get("entityId"),
             labeler_login=data.get("labelerLogin"),
+            custom_data=data.get("customData"),
         )
 
     def to_json(self) -> Dict[str, Any]:
@@ -242,6 +249,8 @@ class AudioSegment:
             data["value"] = self.value
         if self.meta:
             data["meta"] = dict(self.meta)
+        if self.custom_data:
+            data["customData"] = dict(self.custom_data)
         if self.tag_id is not None:
             data["tagId"] = self.tag_id
         if self.id is not None:
@@ -264,6 +273,7 @@ class AudioSegment:
             id=data.get("id"),
             labeler_login=data.get("labelerLogin"),
             name=data.get("name"),
+            custom_data=data.get("customData"),
         )
 
     def __repr__(self) -> str:

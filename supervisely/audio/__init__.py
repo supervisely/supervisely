@@ -7,6 +7,7 @@ from supervisely.audio.audio_io import (
     read_audio,
     select_channel,
 )
+from supervisely.audio.audio_recording_tag import AudioRecordingTag
 from supervisely.audio.audio_segment import (
     AudioSegment,
     samples_to_seconds,

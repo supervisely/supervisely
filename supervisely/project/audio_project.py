@@ -11,8 +11,9 @@ Layout on disk mirrors the other modalities::
             audio_info/rain.wav.json     # only with save_audio_info=True
 
 ``ann/<name>.json`` holds an :class:`~supervisely.audio_annotation.audio_annotation.AudioAnnotation`:
-the shape of the recording plus its segment labels. Tags are stored by **name**,
-so a downloaded project is readable without the server that issued the ids.
+the shape of the recording plus its labels -- segments and whole-recording
+tags. Tags are stored by **name**, so a downloaded project is readable without
+the server that issued the ids.
 
 The project's spectrogram settings travel in ``meta.json`` under
 ``projectSettings.spectrogram``, because that is where the platform keeps them:
@@ -30,9 +31,8 @@ from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.api.api import Api
-from supervisely.api.audio_api import AudioInfo
+from supervisely.api.audio_api import AudioApi, AudioInfo
 from supervisely.audio.audio_io import get_audio_info
-from supervisely.audio.audio_segment import AudioSegment
 from supervisely.audio_annotation.audio_annotation import AudioAnnotation
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.fs import get_file_ext, touch
@@ -331,13 +331,9 @@ def _build_annotation(
     info: AudioInfo, audio_path: str, tag_names: Dict[int, str], decoded: bool
 ) -> AudioAnnotation:
     """Turn a recording's server tags into a local annotation."""
-    segments = []
-    for tag in info.tags or []:
-        if tag.get("frameRange") is None and tag.get("startFrame") is None:
-            continue  # a recording-level tag, not a segment
-        segment = AudioSegment.from_api_json(tag)
-        segment.name = tag_names.get(segment.tag_id)
-        segments.append(segment)
+    segments, recording_tags = AudioApi.split_tags(info.tags)
+    for tag in segments + recording_tags:
+        tag.name = tag_names.get(tag.tag_id)
 
     shape = {}
     if decoded:
@@ -352,7 +348,7 @@ def _build_annotation(
             # The platform stores no audio metadata, so an undecodable file
             # leaves the shape unknown rather than guessed.
             logger.warning(f"Failed to read the header of {audio_path!r}: {e}")
-    return AudioAnnotation(tags=segments, **shape)
+    return AudioAnnotation(tags=segments, recording_tags=recording_tags, **shape)
 
 
 def upload_audio_project(
@@ -420,17 +416,14 @@ def upload_audio_project(
 
         for name, info in zip(names, uploaded):
             ann = dataset_fs.get_ann(name, project_fs.meta)
-            segments = []
-            for segment in ann.tags:
-                if segment.name is None:
-                    raise RuntimeError(
-                        f"Segment of {name!r} has no tag name, so it cannot be uploaded"
-                    )
-                if segment.name not in tag_ids:
-                    raise RuntimeError(f"Tag {segment.name!r} is missing from the project meta")
-                segment.tag_id = tag_ids[segment.name]
-                segments.append(segment)
-            if segments:
-                api.audio.add_segments(project.id, info.id, segments)
+            for tag in ann.tags + ann.recording_tags:
+                if tag.name is None:
+                    raise RuntimeError(f"A label of {name!r} has no tag name, so it cannot be uploaded")
+                if tag.name not in tag_ids:
+                    raise RuntimeError(f"Tag {tag.name!r} is missing from the project meta")
+                tag.tag_id = tag_ids[tag.name]
+            api.audio.add_tags(
+                project.id, info.id, segments=ann.tags, recording_tags=ann.recording_tags
+            )
 
     return project.id, project.name

@@ -143,3 +143,124 @@ def test_project_settings_without_a_spectrogram_stay_clean(meta):
     appear in their meta.json."""
     assert "spectrogram" not in sly.ProjectSettings().to_json()
     assert meta.project_settings.spectrogram is None
+
+
+def test_recording_tags_are_stored_next_to_segments(tmp_path, meta):
+    """On disk a whole-recording tag is an entry of `tags` with
+    `frameRange: null` -- the platform's own shape."""
+    meta = meta.add_tag_meta(sly.TagMeta("Scene", sly.TagValueType.ANY_STRING))
+    audio_path = write_wav(tmp_path / "rain.wav", seconds=0.5)
+    project = sly.AudioProject(str(tmp_path / "proj"), sly.OpenMode.CREATE)
+    project.set_meta(meta)
+    dataset = project.create_dataset("ds0")
+    ann = sly.AudioAnnotation(
+        tags=[sly.AudioSegment(name="Event", start=0, end=99)],
+        recording_tags=[
+            sly.AudioRecordingTag(name="Scene", value="indoor", custom_data={"k": 1})
+        ],
+    )
+    dataset.add_item_file("rain.wav", audio_path, ann=ann)
+
+    on_disk = sly.io.json.load_json_file(dataset.get_ann_path("rain.wav"))
+    assert {"name": "Scene", "frameRange": None, "value": "indoor", "customData": {"k": 1}} in on_disk["tags"]
+
+    restored = sly.AudioProject(str(tmp_path / "proj"), sly.OpenMode.READ).datasets.get("ds0")
+    restored = restored.get_ann("rain.wav", project.meta)
+    assert [(t.name, t.value, t.custom_data) for t in restored.recording_tags] == [
+        ("Scene", "indoor", {"k": 1})
+    ]
+    assert [(s.start, s.end) for s in restored.tags] == [(0, 99)]
+
+
+def test_unknown_recording_tag_is_rejected(meta):
+    ann_json = sly.AudioAnnotation(recording_tags=[sly.AudioRecordingTag(name="Nope")]).to_json()
+    with pytest.raises(RuntimeError):
+        sly.AudioAnnotation.from_json(ann_json, meta)
+
+
+def test_download_keeps_recording_tags(tmp_path):
+    from supervisely.api.audio_api import AudioApi
+    from supervisely.project.audio_project import _build_annotation
+
+    info = AudioApi(None)._convert_json_info(
+        {
+            "id": 5,
+            "name": "rain.wav",
+            "tags": [
+                {"id": 1, "tagId": 10, "value": "calm", "meta": {"channel": None}},
+                {"id": 2, "tagId": 11, "frameRange": [0, 99], "meta": {"channel": 1}},
+            ],
+        }
+    )
+    ann = _build_annotation(info, str(tmp_path / "x.wav"), {10: "Mood", 11: "Event"}, False)
+    assert [(t.name, t.value) for t in ann.recording_tags] == [("Mood", "calm")]
+    assert [(s.name, s.start, s.channel) for s in ann.tags] == [("Event", 0, 1)]
+
+
+class _UploadApi:
+    """Just enough of the API for upload_audio_project."""
+
+    def __init__(self):
+        from types import SimpleNamespace
+
+        self.ns = SimpleNamespace
+        self.datasets = []
+        self.tags = {}
+        self.meta = None
+        api = self
+
+        class _Project:
+            def create(self, workspace_id, name, type=None, change_name_if_conflict=False):
+                return api.ns(id=1, name=name)
+
+            def update_meta(self, id, meta):
+                api.meta = {**meta, "tags": [{**t, "id": 100 + i} for i, t in enumerate(meta["tags"])]}
+
+            def get_meta(self, id, with_settings=False):
+                return api.meta
+
+        class _Dataset:
+            def create(self, project_id, name, change_name_if_conflict=False, parent_id=None):
+                if "/" in name:
+                    raise ValueError(f"the server refuses {name!r}")
+                api.datasets.append((len(api.datasets) + 10, name, parent_id))
+                return api.ns(id=api.datasets[-1][0], name=name)
+
+        class _Audio:
+            def upload_paths(self, dataset_id, names, paths, progress_cb=None):
+                return [api.ns(id=dataset_id * 100 + i, name=n) for i, n in enumerate(names)]
+
+            def add_tags(self, project_id, entity_id, segments=None, recording_tags=None):
+                api.tags[entity_id] = (
+                    [s.tag_id for s in segments or []],
+                    [t.tag_id for t in recording_tags or []],
+                )
+
+        self.project, self.dataset, self.audio = _Project(), _Dataset(), _Audio()
+
+
+def test_upload_recreates_nested_datasets_and_recording_tags(tmp_path, meta):
+    """`sly.upload` of a project with `recordings/night` used to send the
+    path-style name to the server, which answers 400."""
+    meta = meta.add_tag_meta(sly.TagMeta("Scene", sly.TagValueType.ANY_STRING))
+    project = sly.AudioProject(str(tmp_path / "proj"), sly.OpenMode.CREATE)
+    project.set_meta(meta)
+    parent = project.create_dataset("recordings")
+    child = project.create_dataset("night", "recordings/datasets/night")
+    for i, ds in enumerate((parent, child)):
+        ds.add_item_file(
+            "a.wav",
+            write_wav(tmp_path / f"a{i}.wav", seconds=0.1),
+            ann=sly.AudioAnnotation(
+                tags=[sly.AudioSegment(name="Event", start=0, end=9)],
+                recording_tags=[sly.AudioRecordingTag(name="Scene", value="x")],
+            ),
+        )
+
+    api = _UploadApi()
+    sly.upload_audio_project(str(tmp_path / "proj"), api, 1, log_progress=False)
+
+    (parent_id, parent_name, grandparent), (_, child_name, child_parent) = api.datasets
+    assert (parent_name, grandparent) == ("recordings", None)
+    assert (child_name, child_parent) == ("night", parent_id)
+    assert list(api.tags.values()) == [([100], [101])] * 2

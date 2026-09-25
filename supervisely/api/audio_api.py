@@ -19,6 +19,7 @@ from typing import Any, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.audio.audio_recording_tag import AudioRecordingTag
 from supervisely.audio.audio_segment import AudioSegment
 from supervisely.audio.spectrogram_settings import SpectrogramSettings
 from supervisely.io.fs import ensure_base_path, get_file_hash
@@ -76,7 +77,8 @@ class AudioInfo(NamedTuple):
 
 
 class AudioApi(ModuleApiBase):
-    """API for audio recordings and their segment labels.
+    """API for audio recordings and their labels: segments, which cover a
+    range of samples, and recording tags, which cover the whole file.
 
     :param api: Parent :class:`Api` instance.
 
@@ -198,20 +200,52 @@ class AudioApi(ModuleApiBase):
     def get_segments(self, entity_id: int) -> list[AudioSegment]:
         """Return the segment labels on a recording.
 
-        Recording-level tags (no ``frameRange``) are skipped -- they are
-        classifications of the whole file, not segments.
+        Recording-level tags (no ``frameRange``) are not segments; read them
+        with :meth:`get_recording_tags`, or both at once with :meth:`get_tags`.
 
         :param entity_id: Audio entity id.
+        """
+        return self.get_tags(entity_id)[0]
+
+    def get_recording_tags(self, entity_id: int) -> list[AudioRecordingTag]:
+        """Return the labels on a whole recording -- the tags applied in the
+        labeling tool with the scope "Entire recording".
+
+        :param entity_id: Audio entity id.
+        """
+        return self.get_tags(entity_id)[1]
+
+    def get_tags(
+        self, entity_id: int
+    ) -> tuple[list[AudioSegment], list[AudioRecordingTag]]:
+        """Return every label on a recording in one request.
+
+        :param entity_id: Audio entity id.
+        :return: ``(segments, recording_tags)``.
         """
         info = self.get_info_by_id(entity_id)
         if info is None:
             raise KeyError(f"audio entity {entity_id} not found")
-        segments = []
-        for tag in info.tags or []:
-            if tag.get("frameRange") is None and tag.get("startFrame") is None:
-                continue
-            segments.append(AudioSegment.from_api_json(tag))
-        return segments
+        return self.split_tags(info.tags)
+
+    @staticmethod
+    def split_tags(
+        tags: Optional[list[dict[str, Any]]],
+    ) -> tuple[list[AudioSegment], list[AudioRecordingTag]]:
+        """Split an :class:`AudioInfo`'s raw ``tags`` into segments and
+        recording tags.
+
+        :param tags: ``AudioInfo.tags`` as returned by :meth:`get_list` or
+            :meth:`get_info_by_id`.
+        :return: ``(segments, recording_tags)``.
+        """
+        segments, recording_tags = [], []
+        for tag in tags or []:
+            if AudioRecordingTag.is_recording_tag(tag):
+                recording_tags.append(AudioRecordingTag.from_api_json(tag))
+            else:
+                segments.append(AudioSegment.from_api_json(tag))
+        return segments, recording_tags
 
     # ----------------------------------------------------------------- write
 
@@ -279,21 +313,82 @@ class AudioApi(ModuleApiBase):
         per label: it is the project's, see
         :meth:`get_spectrogram_settings`.
         """
-        if not segments:
-            return []
-        return self._api.post(
-            "entities.tags.bulk.add",
-            {
-                ApiField.PROJECT_ID: project_id,
-                "tags": [s._to_api_json(entity_id) for s in segments],
-            },
-        ).json()
+        return self.add_tags(project_id, entity_id, segments=segments)
 
     def add_segment(
         self, project_id: int, entity_id: int, segment: AudioSegment
     ) -> dict[str, Any]:
         """Attach a single segment label."""
         return self.add_segments(project_id, entity_id, [segment])[0]
+
+    def add_recording_tags(
+        self, project_id: int, entity_id: int, tags: list[AudioRecordingTag]
+    ) -> list[dict[str, Any]]:
+        """Attach labels to a whole recording.
+
+        The platform refuses the same tag twice on one recording, as it does
+        for whole-video tags; two values of one tag need two tag metas.
+        """
+        return self.add_tags(project_id, entity_id, recording_tags=tags)
+
+    def add_recording_tag(
+        self, project_id: int, entity_id: int, tag: AudioRecordingTag
+    ) -> dict[str, Any]:
+        """Attach a single label to a whole recording."""
+        return self.add_recording_tags(project_id, entity_id, [tag])[0]
+
+    def add_tags(
+        self,
+        project_id: int,
+        entity_id: int,
+        segments: Optional[list[AudioSegment]] = None,
+        recording_tags: Optional[list[AudioRecordingTag]] = None,
+    ) -> list[dict[str, Any]]:
+        """Attach segments and recording tags to a recording in one request.
+
+        :return: The created tag assignments, recording tags first, then
+            segments, each with its new ``id``.
+        """
+        payload = [t._to_api_json(entity_id) for t in recording_tags or []]
+        payload += [s._to_api_json(entity_id) for s in segments or []]
+        if not payload:
+            return []
+        return self._api.post(
+            "entities.tags.bulk.add",
+            {ApiField.PROJECT_ID: project_id, "tags": payload},
+        ).json()
+
+    def update_segment(self, segment: AudioSegment) -> None:
+        """Save a changed range, channel, value or ``meta`` of a segment
+        already on the platform -- what editing an interval in the labeling
+        tool does.
+
+        :param segment: Segment read with :meth:`get_segments`, then changed.
+        """
+        if segment.id is None:
+            raise ValueError("cannot update a segment without id: read it with get_segments")
+        body = {
+            ApiField.ID: segment.id,
+            "value": segment.value,
+            "frameRange": [segment.start, segment.end],
+            # meta is replaced whole, so a channel set back to None must be
+            # sent as null rather than left out.
+            "meta": {**segment._meta_json(), "channel": segment.channel},
+        }
+        self._api.post("image-tags.update-tag-value", body)
+
+    def update_recording_tag(self, tag: AudioRecordingTag) -> None:
+        """Save a changed value or ``meta`` of a recording tag already on the
+        platform.
+
+        :param tag: Tag read with :meth:`get_recording_tags`, then changed.
+        """
+        if tag.id is None:
+            raise ValueError(
+                "cannot update a recording tag without id: read it with get_recording_tags"
+            )
+        body = {ApiField.ID: tag.id, "value": tag.value, "meta": {**tag.meta, "channel": None}}
+        self._api.post("image-tags.update-tag-value", body)
 
     def remove_segment(self, segment: AudioSegment) -> None:
         """Remove one segment label from its recording.
@@ -312,26 +407,41 @@ class AudioApi(ModuleApiBase):
                 if segment.end - segment.start < 160:
                     api.audio.remove_segment(segment)
         """
+        self._remove_tag(segment, "a segment", "get_segments")
+
+    def remove_recording_tag(self, tag: AudioRecordingTag) -> None:
+        """Remove one label from a whole recording.
+
+        :param tag: Tag read with :meth:`get_recording_tags`, which carries the
+            three ids the endpoint needs.
+        """
+        self._remove_tag(tag, "a recording tag", "get_recording_tags")
+
+    def _remove_tag(
+        self, tag: Union[AudioSegment, AudioRecordingTag], kind: str, reader: str
+    ) -> None:
+        """Remove a tag assignment; the endpoint answers 400 without all of
+        its id, tag meta id and recording id."""
         missing = [
             name
             for name, value in (
-                ("id", segment.id),
-                ("tag_id", segment.tag_id),
-                ("entity_id", segment.entity_id),
+                ("id", tag.id),
+                ("tag_id", tag.tag_id),
+                ("entity_id", tag.entity_id),
             )
             if value is None
         ]
         if missing:
             raise ValueError(
-                f"cannot remove a segment without {', '.join(missing)}: "
-                "pass one read with api.audio.get_segments"
+                f"cannot remove {kind} without {', '.join(missing)}: "
+                f"pass one read with api.audio.{reader}"
             )
         self._api.post(
             "image-tags.remove-from-image",
             {
-                ApiField.ID: segment.id,
-                ApiField.TAG_ID: segment.tag_id,
-                ApiField.IMAGE_ID: segment.entity_id,
+                ApiField.ID: tag.id,
+                ApiField.TAG_ID: tag.tag_id,
+                ApiField.IMAGE_ID: tag.entity_id,
             },
         )
 
