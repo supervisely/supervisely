@@ -1531,3 +1531,72 @@ def test_a_volume_restore_counts_annotations_and_hands_over_complete_infos(tmp_p
     assert sorted(handed) == [(500, 900, dataset_id), (501, 900, dataset_id)]
     # The stub upload does not report, so this is the annotations alone: once each.
     assert progress == [1, 1]
+
+
+def test_a_volume_annotated_only_in_3d_is_not_called_diffable(tmp_path):
+    """A mask 3D hangs on the volume, not on a slice.
+
+    The check for server-side ids walked the planes and their slices, so a project annotated
+    only in 3D had nothing to look at and fell through to "these carry ids" - about figures
+    nobody had inspected. `iter_figures` emits spatial figures like any other, and a
+    comparison would then pair them on uuid keys that mean nothing across versions.
+    """
+    annotation = {
+        volume_constants.VOLUME_META: {},
+        volume_constants.KEY: "vol-1",
+        volume_constants.TAGS: [],
+        volume_constants.OBJECTS: [
+            {
+                volume_constants.KEY: "obj-1",
+                LabelJsonFields.OBJ_CLASS_NAME: "lesion",
+                volume_constants.TAGS: [],
+            }
+        ],
+        # No planes at all: every figure in this project is spatial.
+        volume_constants.PLANES: [],
+        volume_constants.SPATIAL_FIGURES: [
+            {
+                volume_constants.KEY: "fig-3d",
+                volume_constants.OBJECT_KEY: "obj-1",
+                ApiField.GEOMETRY_TYPE: "mask_3d",
+                ApiField.GEOMETRY: {"mask3DId": "x"},
+            }
+        ],
+    }
+
+    path = _volume_path(tmp_path, "only3d.bin", annotation)
+    with VersionSnapshot.open_archive(path) as snapshot:
+        assert snapshot.figure_ids_are_server_ids is False
+        assert snapshot.is_diffable is False
+        assert "no server-side figure ids" in snapshot.diff_unsupported_reason
+
+
+def test_a_volume_whose_3d_figures_carry_server_ids_is_diffable(tmp_path):
+    """The other half of the same rule: an id is there, so the pairing has something real."""
+    annotation = {
+        volume_constants.VOLUME_META: {},
+        volume_constants.KEY: "vol-1",
+        volume_constants.TAGS: [],
+        volume_constants.OBJECTS: [
+            {
+                volume_constants.KEY: "obj-1",
+                LabelJsonFields.OBJ_CLASS_NAME: "lesion",
+                volume_constants.TAGS: [],
+            }
+        ],
+        volume_constants.PLANES: [],
+        volume_constants.SPATIAL_FIGURES: [
+            {
+                volume_constants.KEY: "fig-3d",
+                volume_constants.ID: 4242,
+                volume_constants.OBJECT_KEY: "obj-1",
+                ApiField.GEOMETRY_TYPE: "mask_3d",
+                ApiField.GEOMETRY: {"mask3DId": "x"},
+            }
+        ],
+    }
+
+    path = _volume_path(tmp_path, "only3d_ids.bin", annotation)
+    with VersionSnapshot.open_archive(path) as snapshot:
+        assert snapshot.figure_ids_are_server_ids is True
+        assert snapshot.diff_unsupported_reason is None

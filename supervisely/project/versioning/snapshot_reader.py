@@ -228,8 +228,21 @@ class _PayloadBackend(_Backend):
         item_ids: Optional[Set[Any]] = None,
     ):
         """Tag assignments, one row each, whatever they hang on."""
+        physical = _physical_columns(_TAG_MAP, columns)
+        if physical is not None:
+            # `value` is decoded from the stored json rather than being a column of its own,
+            # so asking for it has to read the column it is decoded from.
+            if columns is None or SnapshotColumn.VALUE in columns:
+                physical = sorted(set(physical) | {VersionSchemaField.VALUE_JSON})
+            if item_ids is not None:
+                # Filtering is part of the read contract even when the caller projects the
+                # item id out of the returned rows.
+                physical = sorted(set(physical) | {VersionSchemaField.SRC_ITEM_ID})
         for batch in image_snapshot_io.iter_rows(
-            self._payload_dir, image_snapshot_io.TAGS_TABLE, batch_size=batch_size
+            self._payload_dir,
+            image_snapshot_io.TAGS_TABLE,
+            columns=physical,
+            batch_size=batch_size,
         ):
             yield [
                 _tag_row(row, columns)
@@ -1037,11 +1050,18 @@ class _VolumeSectionsBackend(_Backend):
 
         for batch in self.iter_annotations(batch_size=50):
             for entry in batch:
-                for plane in entry["annotation"].get(volume_constants.PLANES, []) or []:
+                annotation = entry["annotation"]
+                for plane in annotation.get(volume_constants.PLANES, []) or []:
                     for volume_slice in plane.get(volume_constants.SLICES, []) or []:
                         for figure in volume_slice.get(volume_constants.FIGURES, []) or []:
                             return figure.get(volume_constants.ID) is not None
-        # No slice figure anywhere: nothing to pair, so nothing to warn about either.
+                # A mask 3D hangs on the volume rather than on a slice, and `iter_figures`
+                # emits it like any other. A project annotated only that way has no slice
+                # figure at all, and reading the slices alone said "these carry ids" about
+                # figures nobody had looked at.
+                for figure in annotation.get(volume_constants.SPATIAL_FIGURES, []) or []:
+                    return figure.get(volume_constants.ID) is not None
+        # No figure anywhere: nothing to pair, so nothing to warn about either.
         return True
 
     def _iter_section(self, section: int, batch_size: int) -> Iterator[List[dict]]:

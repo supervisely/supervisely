@@ -1394,3 +1394,57 @@ def test_the_fetch_pool_keeps_a_window_in_flight_not_the_page(monkeypatch):
     api.image.figure.download = slow_download
     Project.build_snapshot(api, PROJECT_ID, batch_size=1, log_progress=False, fetch_workers=2)
     assert max(in_flight) <= 2
+
+
+def test_a_projected_tag_read_does_not_drag_the_whole_table(parquet_reader):
+    """Tags were the one kind read whole whatever the caller asked for.
+
+    Items, figures and objects all narrow the stored columns to what the projection needs;
+    `iter_tags` did not pass a projection at all, so a read of two small columns still
+    carried every tag's value json. The value itself is decoded from that column, so asking
+    for it has to keep reading it - that is the one case where it belongs.
+    """
+    from supervisely.project.versioning import image_snapshot_io
+    from supervisely.project.versioning.schema_fields import VersionSchemaField
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    asked = []
+    original = image_snapshot_io.iter_rows
+
+    def _recording(payload_dir, table, columns=None, batch_size=5000):
+        if table == image_snapshot_io.TAGS_TABLE:
+            asked.append(None if columns is None else sorted(columns))
+        return original(payload_dir, table, columns=columns, batch_size=batch_size)
+
+    image_snapshot_io.iter_rows = _recording
+    try:
+        narrow = _collect(
+            parquet_reader.iter_tags(columns=[SnapshotColumn.NAME, SnapshotColumn.OWNER_TYPE])
+        )
+        wanted_value = _collect(
+            parquet_reader.iter_tags(columns=[SnapshotColumn.NAME, SnapshotColumn.VALUE])
+        )
+    finally:
+        image_snapshot_io.iter_rows = original
+
+    assert narrow and set(narrow[0]) == {SnapshotColumn.NAME, SnapshotColumn.OWNER_TYPE}
+    # The heavy column is left behind when nothing needs it...
+    assert VersionSchemaField.VALUE_JSON not in asked[0]
+    # ...and read when the value is asked for, because that is what it is decoded from.
+    assert VersionSchemaField.VALUE_JSON in asked[1]
+    assert wanted_value and SnapshotColumn.VALUE in wanted_value[0]
+
+
+def test_a_filtered_tag_read_keeps_the_key_it_filters_on(parquet_reader):
+    """`item_ids` is part of the read contract even when the caller projects the id away."""
+    from supervisely.project.versioning.snapshot_reader import SnapshotColumn
+
+    # Whichever item the fixture's tags actually hang on.
+    one = {row[SnapshotColumn.ITEM_ID] for row in _collect(parquet_reader.iter_tags())}.pop()
+    rows = _collect(parquet_reader.iter_tags(columns=[SnapshotColumn.NAME], item_ids={one}))
+    everything = _collect(parquet_reader.iter_tags(item_ids={one}))
+
+    assert rows
+    # Filtered to the same rows as an unprojected read, and carrying only what was asked for.
+    assert len(rows) == len(everything)
+    assert all(set(row) == {SnapshotColumn.NAME} for row in rows)
