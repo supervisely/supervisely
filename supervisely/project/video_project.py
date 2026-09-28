@@ -1609,9 +1609,6 @@ class VideoProject(Project):
                 "figures": snapshot_schema.figures_schema(pyarrow),
                 "tags": tag_schema.tags_schema(pyarrow),
             }
-            # Written in row groups as they are collected. Accumulating every row first
-            # and building one table per kind at the end held the whole project: 1.9 GB
-            # of Python row dicts for a 14k-video project, before a byte was written.
             writers = {
                 name: ParquetTableWriter(
                     pyarrow, parquet, os.path.join(payload_dir, f"{name}.parquet"), table_schema

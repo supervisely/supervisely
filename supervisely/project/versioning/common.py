@@ -17,11 +17,20 @@ from supervisely.project.versioning.volume_schema import (
 # stay restorable for as long as their versions exist.
 IMAGE_SCHEMA_VERSION_V1 = "v1.0.0"
 
-# Parquet, same container as video and volume snapshots.
+# Parquet, same container and layout as v2.1.0. No image version was ever released as
+# this, and nothing writes it except `Project.repack_snapshot`, which converts a legacy
+# pickle into the columnar container so a version stored that way can be read in batches
+# instead of loaded whole on every open.
+#
+# The number is what keeps that conversion out of a comparison. A pickle stored figure
+# tags as `figures.list` rendered them - no name and no `updated_at` - so the converted
+# snapshot is columnar but cannot answer what a diff asks: which tag changed, and when.
+# `v2.1.0` means "columnar AND comparable", and this one is only the first half.
 IMAGE_SCHEMA_VERSION_V2 = "v2.0.0"
 
-# Same layout as v2.0.0, renumbered so that the version string carries one meaning in
-# every modality: columnar, ids are the server's, comparable with another version.
+# What every new image version is written as, and the only image format this release
+# publishes: columnar, ids are the server's, comparable with another version. One number
+# with one meaning in all three modalities.
 IMAGE_SCHEMA_VERSION_V2_1 = "v2.1.0"
 
 # Which format new image versions are written in. Changing it is safe in both
