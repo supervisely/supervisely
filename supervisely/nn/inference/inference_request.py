@@ -54,6 +54,7 @@ class InferenceRequest:
         self._pending_results = []
         self._final_result = None
         self._exception = None
+        self._exception_traceback = None
         self._stopped = threading.Event()
         self._paused_time = None
         self._paused = threading.Event()
@@ -181,6 +182,9 @@ class InferenceRequest:
     @exception.setter
     def exception(self, exc: Exception):
         self._exception = exc
+        self._exception_traceback = "".join(
+            traceback.format_exception(type(exc), exc, exc.__traceback__)
+        )
         self.set_stage(InferenceRequest.Stage.ERROR)
         self._updated()
 
@@ -238,7 +242,7 @@ class InferenceRequest:
         return {
             "type": type(self._exception).__name__,
             "message": str(self._exception),
-            "traceback": str(traceback.format_exc()),
+            "traceback": self._exception_traceback,
         }
 
     def to_json(self):

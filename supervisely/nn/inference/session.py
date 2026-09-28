@@ -20,6 +20,9 @@ from supervisely.nn.utils import DeployInfo
 from supervisely.sly_logger import logger
 
 
+_USE_CONFIGURED_TIMEOUT = object()
+
+
 class SessionJSON:
     """Client for running inference on a deployed model and returning raw JSON predictions."""
 
@@ -29,6 +32,8 @@ class SessionJSON:
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
+        async_start_timeout: Optional[float] = None,
+        pending_results_timeout: Optional[float] = 600,
     ):
         """
         A convenient class for inference of deployed models.
@@ -48,6 +53,10 @@ class SessionJSON:
         :type session_url: str, optional
         :param inference_settings: a dict or a path to YAML file with settings, defaults to None
         :type inference_settings: Union[dict, str], optional
+        :param async_start_timeout: seconds to wait for asynchronous inference to start. None disables the timeout, defaults to None
+        :type async_start_timeout: float, optional
+        :param pending_results_timeout: seconds to wait for new asynchronous inference results. None disables the timeout, defaults to 600
+        :type pending_results_timeout: float, optional
 
 
         :Usage Example:
@@ -93,6 +102,8 @@ class SessionJSON:
         self._async_inference_uuid = None
         self._stop_async_inference_flag = False
         self.inference_result = None
+        self.async_start_timeout = async_start_timeout
+        self.pending_results_timeout = pending_results_timeout
 
         if inference_settings is not None:
             self.set_inference_settings(inference_settings)
@@ -537,16 +548,57 @@ class SessionJSON:
         endpoint = "clear_inference_request"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
-    def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
+    def _raise_for_async_inference_error(self, resp: Dict[str, Any]) -> None:
+        exception = resp.get("exception")
+        if not exception and resp.get("stage") != "Error":
+            return
+
+        if isinstance(exception, dict):
+            exception_details = ": ".join(
+                str(exception[key]) for key in ("type", "message") if exception.get(key)
+            )
+            if not exception_details:
+                exception_details = "The serving app reported an inference error."
+            app_traceback = exception.get("traceback")
+            # Serving apps before this fix send "NoneType: None" instead of the real traceback
+            if app_traceback and app_traceback.strip() != "NoneType: None":
+                exception_details = f"{exception_details}\n{app_traceback}"
+        elif exception:
+            exception_details = str(exception)
+        else:
+            exception_details = "The serving app reported an inference error."
+        raise RuntimeError(f"Inference Error: {exception_details}")
+
+    def _wait_for_async_inference_start(
+        self, delay=1, timeout=_USE_CONFIGURED_TIMEOUT
+    ) -> Tuple[dict, bool]:
+        if timeout is _USE_CONFIGURED_TIMEOUT:
+            timeout = self.async_start_timeout
         logger.info("Preparing data on the model, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
         while not has_started and not timeout_exceeded:
             resp = self._get_inference_progress()
+            try:
+                self._raise_for_async_inference_error(resp)
+            except RuntimeError:
+                try:
+                    self._on_async_inference_end()
+                except Exception as cleanup_error:
+                    logger.warning(
+                        f"Failed to clean up the inference request after an error: {cleanup_error}"
+                    )
+                raise
             pending_results = resp.get("pending_results", None)
             has_results = bool(pending_results)
-            has_started = bool(resp.get("result")) or resp["progress"]["total"] != 1 or has_results
+            # A request cancelled or given no items finishes without results; the iterator then ends empty
+            has_started = (
+                bool(resp.get("result") or resp.get("final_result"))
+                or resp["progress"]["total"] != 1
+                or has_results
+                or bool(resp.get("finished"))
+            )
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout
@@ -556,13 +608,18 @@ class SessionJSON:
             raise Timeout("Timeout exceeded. The server didn't start the inference")
         return resp, has_started
 
-    def _wait_for_new_pending_results(self, delay=1, timeout=600) -> List[dict]:
+    def _wait_for_new_pending_results(
+        self, delay=1, timeout=_USE_CONFIGURED_TIMEOUT
+    ) -> List[dict]:
+        if timeout is _USE_CONFIGURED_TIMEOUT:
+            timeout = self.pending_results_timeout
         logger.debug("waiting pending results...")
         has_results = False
         timeout_exceeded = False
         t0 = time.time()
         while not has_results and not timeout_exceeded:
             resp = self._pop_pending_results()
+            self._raise_for_async_inference_error(resp)
             pending_results = resp["pending_results"]
             has_results = bool(pending_results)
             if resp["is_inferring"] is False:
@@ -722,6 +779,8 @@ class Session(SessionJSON):
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
+        async_start_timeout: Optional[float] = None,
+        pending_results_timeout: Optional[float] = 600,
     ):
         """
         A convenient class for inference of deployed models.
@@ -741,6 +800,10 @@ class Session(SessionJSON):
         :type session_url: str, optional
         :param inference_settings: a dict or a path to YAML file with settings, defaults to None
         :type inference_settings: Union[dict, str], optional
+        :param async_start_timeout: seconds to wait for asynchronous inference to start. None disables the timeout, defaults to None
+        :type async_start_timeout: float, optional
+        :param pending_results_timeout: seconds to wait for new asynchronous inference results. None disables the timeout, defaults to 600
+        :type pending_results_timeout: float, optional
 
 
         :Usage Example:
@@ -755,7 +818,14 @@ class Session(SessionJSON):
                 predicted_annotation = session.inference_image_id(image_id)
 
         """
-        super().__init__(api, task_id, session_url, inference_settings)
+        super().__init__(
+            api,
+            task_id,
+            session_url,
+            inference_settings,
+            async_start_timeout,
+            pending_results_timeout,
+        )
 
     def is_model_deployed(self):
         is_deployed = self.api.task.send_request(self._task_id, "is_deployed", {})
