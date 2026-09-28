@@ -7,6 +7,7 @@ import asyncio
 import json
 import re
 from collections import defaultdict
+from functools import partial
 from typing import (
     Any,
     AsyncGenerator,
@@ -24,7 +25,13 @@ import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
-from supervisely._utils import batched, logger, run_coroutine
+from supervisely._utils import (
+    batched,
+    get_semaphore_limit,
+    logger,
+    run_bounded,
+    run_coroutine,
+)
 from supervisely.annotation.label import LabelingStatus
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
@@ -739,17 +746,37 @@ class FigureApi(RemoveableBulkModuleApi):
             semaphore = self._api.get_default_semaphore()
 
         for batch_ids in batched(ids):
-            async with semaphore:
-                response = await self._api.post_async(
-                    "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
-                )
-                decoder = MultipartDecoder.from_response(response)
-                for part in decoder.parts:
-                    content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-                    # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-                    # The regex has 2 capture group: one for the prefix and one for the actual name value.
-                    figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
-                    yield figure_id, part.content
+            for figure_id, content in await self._download_geometries_batch_part(
+                batch_ids, semaphore
+            ):
+                yield figure_id, content
+
+    async def _download_geometries_batch_part(
+        self, batch_ids: List[int], semaphore: asyncio.Semaphore
+    ) -> List[Tuple[int, bytes]]:
+        """
+        Private method. Download geometries for a single batch of figure IDs.
+
+        :param batch_ids: Batch of figure IDs in Supervisely.
+        :type batch_ids: List[int]
+        :param semaphore: Semaphore to limit the number of concurrent downloads.
+        :type semaphore: asyncio.Semaphore
+        :returns: Pairs of figure ID and figure geometry.
+        :rtype: List[Tuple[int, bytes]]
+        """
+        async with semaphore:
+            response = await self._api.post_async(
+                "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
+            )
+        parts = []
+        decoder = MultipartDecoder.from_response(response)
+        for part in decoder.parts:
+            content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+            # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+            # The regex has 2 capture group: one for the prefix and one for the actual name value.
+            figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+            parts.append((figure_id, part.content))
+        return parts
 
     async def download_geometries_batch_async(
         self,
@@ -796,17 +823,36 @@ class FigureApi(RemoveableBulkModuleApi):
                     )
                 )
         """
-        geometries = {}
-        async for idx, part in self._download_geometries_generator_async(ids, semaphore):
-            if progress_cb is not None:
-                progress_cb(len(part))
-            geometry_json = json.loads(part)
-            geometries[idx] = geometry_json
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
 
-        if len(geometries) != len(ids):
-            raise RuntimeError("Not all geometries were downloaded")
-        ordered_results = [geometries[i] for i in ids]
-        return ordered_results
+        async def _fetch_batch(batch_ids: List[int]) -> List[Tuple[int, dict]]:
+            parts = await self._download_geometries_batch_part(batch_ids, semaphore)
+            # reported here rather than after the pool drains, so the bar tracks the
+            # download instead of jumping to full at the end
+            for _, content in parts:
+                if progress_cb is not None:
+                    progress_cb(len(content))
+            return [(idx, json.loads(content)) for idx, content in parts]
+
+        batches = list(batched(ids))
+        per_batch = await run_bounded(
+            [partial(_fetch_batch, batch) for batch in batches],
+            limit=get_semaphore_limit(semaphore),
+        )
+
+        geometries = {}
+        for parts in per_batch:
+            for idx, geometry in parts:
+                geometries[idx] = geometry
+
+        missing = [i for i in ids if i not in geometries]
+        if missing:
+            raise RuntimeError(
+                f"Not all geometries were downloaded: {len(missing)} of {len(ids)} missing, "
+                f"first missing figure IDs: {missing[:10]}"
+            )
+        return [geometries[i] for i in ids]
 
     async def upload_geometries_batch_async(
         self,

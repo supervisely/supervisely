@@ -8,6 +8,7 @@ import asyncio
 import json
 from collections import defaultdict
 from copy import deepcopy
+from functools import partial
 from typing import (
     Any,
     Callable,
@@ -23,7 +24,7 @@ from uuid import uuid4
 
 from tqdm import tqdm
 
-from supervisely._utils import batched, run_coroutine
+from supervisely._utils import batched, get_semaphore_limit, run_bounded, run_coroutine
 from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
 from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.annotation.tag import Tag
@@ -64,6 +65,19 @@ class AnnotationInfo(NamedTuple):
             ApiField.UPDATED_AT: self.updated_at,
             ApiField.DATASET_ID: self.dataset_id,
         }
+
+
+#: Server side cap on ``imageIds`` for the ``annotations.bulk.info`` endpoint.
+#: Larger batches are rejected with a 400 "must contain less than or equal to 100 items".
+BULK_INFO_MAX_BATCH_SIZE = 100
+
+#: Default ``imageIds`` per ``annotations.bulk.info`` request.
+#: Deliberately below the server cap: from about 60 ids up the server stops returning a
+#: stable order of tags inside an object, so identical requests yield annotations that
+#: differ byte for byte. The values are the same either way and tag order carries no
+#: meaning, but a reproducible download is worth more than the few percent that larger
+#: batches buy - the speed here comes from running batches concurrently, not from size.
+BULK_INFO_DEFAULT_BATCH_SIZE = 50
 
 
 class AnnotationApi(ModuleApi):
@@ -1824,10 +1838,12 @@ class AnnotationApi(ModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         semaphore: Optional[asyncio.Semaphore] = None,
         figure_filters: Optional[List[Dict[str, Any]]] = None,
+        batch_size: int = BULK_INFO_DEFAULT_BATCH_SIZE,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
         This method is optimized for downloading a large number of small size annotations with a single API call.
+        Batches are requested concurrently, bounded by the semaphore.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -1843,8 +1859,13 @@ class AnnotationApi(ModuleApi):
         :type semaphore: asyncio.Semaphore, optional
         :param figure_filters: Optional figure filters applied to labels in downloaded annotations. Uses the same filter format as `images.list`. See https://api.docs.supervisely.com/#tag/Figures/paths/~1figures.list/get for more details.
         :type figure_filters: List[Dict[str, Any]], optional
+        :param batch_size: Number of images per request, default :data:`BULK_INFO_DEFAULT_BATCH_SIZE`.
+                        Clamped to the server limit of :data:`BULK_INFO_MAX_BATCH_SIZE`. Raising it
+                        above the default costs reproducible tag order, see the constant.
+        :type batch_size: int, optional
         :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
+        :raises RuntimeError: If the server returned no annotation for some of the requested images.
 
         :Usage Example:
 
@@ -1889,6 +1910,8 @@ class AnnotationApi(ModuleApi):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
+        batch_size = max(1, min(batch_size, BULK_INFO_MAX_BATCH_SIZE))
+
         # use context to avoid redundant API calls
         context = self._api.optimization_context
         context_dataset_id = context.get("dataset_id")
@@ -1918,8 +1941,8 @@ class AnnotationApi(ModuleApi):
             semaphore=semaphore,
         )
 
-        id_to_ann = {}
-        for batch in batched(image_ids):
+        async def _process_batch(batch: List[int]) -> Dict[int, AnnotationInfo]:
+            """Fetch and assemble one batch of annotations. Returns image ID to AnnotationInfo."""
             json_data = {
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.IMAGE_IDS: batch,
@@ -1927,6 +1950,8 @@ class AnnotationApi(ModuleApi):
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                 ApiField.INTEGER_COORDS: False,
             }
+            # the semaphore is held for the request only: the alpha mask download below takes
+            # it again on its own, and holding it across both would deadlock the pool
             async with semaphore:
                 results = await self._api.post_async("annotations.bulk.info", json=json_data)
                 results = results.json()
@@ -1960,18 +1985,37 @@ class AnnotationApi(ModuleApi):
                             label_idx
                         ].update({BITMAP: geometry})
 
+            batch_anns = {}
             for ann_dict in results:
                 # Convert annotation to pixel coordinate system
                 ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
                     ann_dict[ApiField.ANNOTATION]
                 )
                 ann_info = self._convert_json_info(ann_dict)
-                id_to_ann[ann_info.image_id] = ann_info
+                batch_anns[ann_info.image_id] = ann_info
 
             if progress_cb is not None:
                 progress_cb(len(batch))
-        ordered_results = [id_to_ann[image_id] for image_id in image_ids]
-        return ordered_results
+            return batch_anns
+
+        batches = list(batched(image_ids, batch_size))
+        per_batch = await run_bounded(
+            [partial(_process_batch, batch) for batch in batches],
+            limit=get_semaphore_limit(semaphore),
+        )
+
+        id_to_ann = {}
+        for batch_anns in per_batch:
+            id_to_ann.update(batch_anns)
+
+        missing = [image_id for image_id in image_ids if image_id not in id_to_ann]
+        if missing:
+            raise RuntimeError(
+                f"Dataset {dataset_id}: server returned no annotation for "
+                f"{len(missing)} of {len(image_ids)} requested images, "
+                f"first missing IDs: {missing[:10]}"
+            )
+        return [id_to_ann[image_id] for image_id in image_ids]
 
     def append_labels_group(
         self,
