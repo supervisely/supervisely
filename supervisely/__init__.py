@@ -152,7 +152,7 @@ from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
 from supervisely.project.project_settings import ProjectSettings
 from supervisely.api.report_api import NotificationType
-from supervisely.api.image_api import ImageInfo
+from supervisely.api.image_api import AudioReference, ImageInfo
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.workspace_api import WorkspaceInfo
@@ -191,6 +191,18 @@ import supervisely._utils as utils
 from supervisely.tiny_timer import TinyTimer
 
 from supervisely.aug import aug
+from supervisely import audio
+
+from supervisely.audio.audio_recording_tag import AudioRecordingTag
+from supervisely.audio.audio_segment import AudioSegment
+from supervisely.audio.spectrogram_settings import SpectrogramSettings
+from supervisely.audio_annotation.audio_annotation import AudioAnnotation
+from supervisely.project.audio_project import (
+    AudioDataset,
+    AudioProject,
+    download_audio_project,
+    upload_audio_project,
+)
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 from supervisely.video_annotation.video_annotation import VideoAnnotation

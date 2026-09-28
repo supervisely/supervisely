@@ -2125,6 +2125,7 @@ class Dataset(KeyObject):
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
         is_val: Optional[bool] = None,
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ):
         """
         Convert Supervisely dataset to YOLO format.
@@ -2141,6 +2142,12 @@ class Dataset(KeyObject):
         :type progress_cb: :class:`Callable`, optional
         :param is_val: If True, the dataset is a validation dataset.
         :type is_val: bool, optional
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                                   type. Either "include" (labelled but not visible, trained)
+                                   or "ignore" (not labelled, skipped), or a dict mapping a
+                                   class name to one of them. Classes missing from the dict
+                                   use "include". Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: YOLO dataset in dictionary format.
         :rtype: dict
 
@@ -2168,6 +2175,7 @@ class Dataset(KeyObject):
             log_progress=log_progress,
             progress_cb=progress_cb,
             is_val=is_val,
+            disabled_keypoints=disabled_keypoints,
         )
 
     def to_pascal_voc(
@@ -4517,6 +4525,7 @@ class Project:
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
         val_datasets: Optional[List[str]] = None,
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ) -> None:
         """
         Convert Supervisely project to YOLO format.
@@ -4534,6 +4543,12 @@ class Project:
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
         :type val_datasets: List[str], optional
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                            type. Either "include" (labelled but not visible, trained) or
+                            "ignore" (not labelled, skipped), or a dict mapping a class name
+                            to one of them. Classes missing from the dict use "include".
+                            Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: None
         :rtype: NoneType
 
@@ -4564,6 +4579,7 @@ class Project:
             log_progress=log_progress,
             progress_cb=progress_cb,
             val_datasets=val_datasets,
+            disabled_keypoints=disabled_keypoints,
         )
 
     def to_pascal_voc(
@@ -4693,7 +4709,10 @@ def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> G
     for path in paths:
         if get_file_name_with_ext(path) == "meta.json":
             parent_dir = os.path.dirname(path)
-            project_dir = os.path.join(dir, parent_dir)
+            # A trailing separator makes Project() fail to determine the project name, so it
+            # cannot be left on the path. That happens when dir is the project dir itself:
+            # os.path.join(dir, "") appends one, and dir may already carry one of its own.
+            project_dir = os.path.join(dir, parent_dir) if parent_dir else os.path.normpath(dir)
             try:
                 project_class(project_dir, OpenMode.READ)
                 yield project_dir
@@ -5084,7 +5103,10 @@ def upload_project(
                 # Dataset is empty
                 continue
 
-            meta_dir = os.path.join(dir, ds_fs.name, "meta")
+            # Resolve from the dataset itself: dir may be an ancestor of the project dir, and
+            # ds_fs.name is relative to the project, so joining them missed the meta dir and
+            # silently dropped every image meta.
+            meta_dir = ds_fs.meta_dir
             if os.path.isdir(meta_dir):
                 metas = []
                 for name in names:

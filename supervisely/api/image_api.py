@@ -448,6 +448,83 @@ class ImageInfo(NamedTuple):
         return resize_image_url(self.full_storage_url)
 
 
+class AudioReference(NamedTuple):
+    """
+    Audio file attached to an image for reference.
+
+    Audio references are stored in the image meta under the :attr:`ApiField.AUDIO` key and are
+    shown in the Audio panel of the Image Labeling Toolbox. They are reference only: the audio
+    is never annotated, carries no figures or tags, and is not part of the annotation.
+
+    The audio file itself is not stored inside the project. Only the URL is, so the file has to
+    live somewhere the instance can serve it - Team Files is the usual place, see
+    :meth:`ImageApi.upload_audio_reference`.
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            reference = sly.AudioReference(
+                url="https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4/operator-note.mp3",
+                name="Operator note",
+                mime_type="audio/mpeg",
+            )
+    """
+
+    url: str
+    """Direct URL of the audio file."""
+    name: Optional[str] = None
+    """Human-readable label shown next to the player. Optional."""
+    mime_type: Optional[str] = None
+    """MIME type of the audio file, e.g. ``audio/mpeg``. Optional."""
+
+    def to_json(self) -> Dict[str, str]:
+        """
+        Convert the reference to the dict form stored in the image meta. Optional fields are
+        omitted when not set, rather than written as null.
+
+        :returns: Reference in dict format.
+        :rtype: Dict[str, str]
+        """
+        data = {ApiField.URL: self.url}
+        if self.name is not None:
+            data[ApiField.NAME] = self.name
+        if self.mime_type is not None:
+            data[ApiField.MIME_TYPE] = self.mime_type
+        return data
+
+    @classmethod
+    def from_json(cls, data: Dict[str, Any]) -> AudioReference:
+        """
+        Create a reference from its dict form.
+
+        :param data: Reference in dict format. The ``url`` key is required.
+        :type data: Dict[str, Any]
+        :raises TypeError: if data is not a dict.
+        :raises ValueError: if the ``url`` key is missing or empty.
+        :returns: Audio reference.
+        :rtype: :class:`AudioReference`
+        """
+        if not isinstance(data, dict):
+            raise TypeError(f"Audio reference must be a dict, got {type(data).__name__}: {data}")
+        url = data.get(ApiField.URL)
+        if not url or not isinstance(url, str):
+            raise ValueError(
+                f"Audio reference must have a non-empty '{ApiField.URL}' key, got: {data}"
+            )
+        return cls(
+            url=url,
+            name=data.get(ApiField.NAME),
+            mime_type=data.get(ApiField.MIME_TYPE),
+        )
+
+
+AudioReferenceLike = Union[AudioReference, Dict[str, Any]]
+"""A single audio reference, either as an :class:`AudioReference` or in its dict form."""
+
+
 class ImageApi(RemoveableBulkModuleApi):
     """API for working with images."""
 
@@ -3870,6 +3947,262 @@ class ImageApi(RemoveableBulkModuleApi):
                 # }
         """
         return self.edit(id=id, meta=meta, return_json=True)
+
+    @staticmethod
+    def _parse_audio_references(
+        meta: Dict[str, Any], id: Optional[int] = None
+    ) -> List[AudioReference]:
+        """
+        Read audio references out of an image meta dict.
+
+        Malformed entries are skipped with a warning rather than raising, so one bad entry
+        written by hand does not make the whole image unreadable.
+
+        :param meta: Image meta dictionary.
+        :type meta: Dict[str, Any]
+        :param id: Image ID, used for clearer log messages only.
+        :type id: int, optional
+        :returns: Audio references found in the meta.
+        :rtype: List[AudioReference]
+        """
+        raw = (meta or {}).get(ApiField.AUDIO)
+        if raw is None:
+            return []
+        prefix = f"Image {id}: " if id is not None else ""
+        if not isinstance(raw, list):
+            logger.warning(
+                f"{prefix}'{ApiField.AUDIO}' in image meta is {type(raw).__name__}, "
+                "expected a list of audio references. Ignoring it."
+            )
+            return []
+        references = []
+        for entry in raw:
+            try:
+                references.append(AudioReference.from_json(entry))
+            except (TypeError, ValueError) as e:
+                logger.warning(f"{prefix}skipping malformed audio reference: {e}")
+        return references
+
+    @staticmethod
+    def _normalize_audio_references(
+        references: Union[AudioReferenceLike, List[AudioReferenceLike]]
+    ) -> List[Dict[str, str]]:
+        """
+        Validate audio references and convert them to the dict form stored in the image meta.
+
+        :param references: A single reference or a list of them, as objects or dicts.
+        :type references: AudioReference or dict or list
+        :raises TypeError: if an entry is neither an :class:`AudioReference` nor a dict.
+        :raises ValueError: if an entry has no ``url``.
+        :returns: References in dict format.
+        :rtype: List[Dict[str, str]]
+        """
+        if isinstance(references, (AudioReference, dict)):
+            references = [references]
+        normalized = []
+        for entry in references:
+            if isinstance(entry, AudioReference):
+                normalized.append(entry.to_json())
+            else:
+                normalized.append(AudioReference.from_json(entry).to_json())
+        return normalized
+
+    @staticmethod
+    def update_audio_references(
+        meta: Dict[str, Any],
+        references: Union[AudioReferenceLike, List[AudioReferenceLike]],
+    ) -> Dict[str, Any]:
+        """
+        Update a copy of the meta dictionary with the given audio references.
+
+        Use this when you have a meta dict rather than an image ID - attaching audio at upload
+        time, for instance, where meta is passed to :meth:`upload_path` and friends.
+
+        :param meta: Image meta dictionary.
+        :type meta: Dict[str, Any]
+        :param references: Audio references to write.
+        :type references: AudioReference or dict or list
+        :returns: Updated meta dictionary.
+        :rtype: Dict[str, Any]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                reference = sly.AudioReference(url=audio_url, name="Operator note")
+                meta = api.image.update_audio_references({}, reference)
+                api.image.upload_path(dataset_id, "img.jpg", "/tmp/img.jpg", meta=meta)
+        """
+        meta_copy = copy.deepcopy(meta) if meta else {}
+        meta_copy[ApiField.AUDIO] = ImageApi._normalize_audio_references(references)
+        return meta_copy
+
+    def get_audio_references(self, id: int) -> List[AudioReference]:
+        """
+        Get the audio references attached to an Image.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :returns: Audio references attached to the Image, empty list if there are none.
+        :rtype: List[AudioReference]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                for reference in api.image.get_audio_references(id=3212008):
+                    print(reference.name, reference.url)
+                # Output: Operator note https://app.supervisely.com/<...>/operator-note.mp3
+        """
+        return self._parse_audio_references(self.get_info_by_id(id).meta, id=id)
+
+    def set_audio_references(
+        self,
+        id: int,
+        references: Union[AudioReferenceLike, List[AudioReferenceLike]],
+    ) -> Dict[str, Any]:
+        """
+        Replace the audio references attached to an Image. Other meta keys are preserved.
+
+        Pass an empty list to remove every reference.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param references: Audio references to attach.
+        :type references: AudioReference or dict or list
+        :returns: Image information in dict format with the new meta.
+        :rtype: Dict[str, Any]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                api.image.set_audio_references(
+                    id=3212008,
+                    references=[
+                        sly.AudioReference(url=first_url, name="Operator note"),
+                        sly.AudioReference(url=second_url, name="Second pass"),
+                    ],
+                )
+        """
+        meta = copy.deepcopy(self.get_info_by_id(id).meta or {})
+        meta[ApiField.AUDIO] = self._normalize_audio_references(references)
+        return self.update_meta(id=id, meta=meta)
+
+    def add_audio_reference(
+        self,
+        id: int,
+        reference: Union[AudioReferenceLike, List[AudioReferenceLike]],
+    ) -> Dict[str, Any]:
+        """
+        Append audio references to an Image, keeping the ones already attached.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param reference: Audio reference(s) to append.
+        :type reference: AudioReference or dict or list
+        :raises ValueError: if the image meta already holds a non-list value under ``audio``,
+            since appending would mean discarding it.
+        :returns: Image information in dict format with the new meta.
+        :rtype: Dict[str, Any]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                api.image.add_audio_reference(
+                    id=3212008,
+                    reference=sly.AudioReference(url=audio_url, name="Second pass"),
+                )
+        """
+        meta = copy.deepcopy(self.get_info_by_id(id).meta or {})
+        existing = meta.get(ApiField.AUDIO)
+        if existing is None:
+            existing = []
+        elif not isinstance(existing, list):
+            raise ValueError(
+                f"Image {id}: '{ApiField.AUDIO}' in image meta is {type(existing).__name__}, "
+                "expected a list. Use set_audio_references() to overwrite it."
+            )
+        meta[ApiField.AUDIO] = list(existing) + self._normalize_audio_references(reference)
+        return self.update_meta(id=id, meta=meta)
+
+    def upload_audio_reference(
+        self,
+        id: int,
+        team_id: int,
+        path: str,
+        name: Optional[str] = None,
+        remote_path: Optional[str] = None,
+    ) -> AudioReference:
+        """
+        Upload a local audio file to Team Files and attach it to an Image as a reference.
+
+        The project stores only the URL, so the file has to stay in Team Files for the player
+        to keep working.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param team_id: Team ID to upload the audio file to.
+        :type team_id: int
+        :param path: Local path to the audio file.
+        :type path: str
+        :param name: Label shown next to the player. Defaults to the file name without extension.
+        :type name: str, optional
+        :param remote_path: Path in Team Files. Defaults to ``/audio-references/<image id>/<file name>``.
+        :type remote_path: str, optional
+        :raises FileNotFoundError: if the local file does not exist.
+        :returns: The reference that was attached.
+        :rtype: :class:`AudioReference`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+
+                reference = api.image.upload_audio_reference(
+                    id=3212008,
+                    team_id=8,
+                    path="/tmp/operator-note.mp3",
+                    name="Operator note",
+                )
+                print(reference.url)
+        """
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"Audio file not found: {path}")
+        if remote_path is None:
+            remote_path = f"/audio-references/{id}/{get_file_name_with_ext(path)}"
+        file_info = self._api.file.upload(team_id, path, remote_path)
+        reference = AudioReference(
+            url=file_info.full_storage_url,
+            name=name if name is not None else get_file_name(path),
+            mime_type=file_info.mime,
+        )
+        self.add_audio_reference(id, reference)
+        return reference
 
     def edit(
         self,

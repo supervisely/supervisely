@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Callable, List, Literal, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import yaml
 from tqdm import tqdm
@@ -41,6 +41,22 @@ SLY_YOLO_TASK_TYPE_MAP = {
     TaskType.OBJECT_DETECTION: YOLOTaskType.DETECT,
     TaskType.INSTANCE_SEGMENTATION: YOLOTaskType.SEGMENT,
     TaskType.POSE_ESTIMATION: YOLOTaskType.POSE,
+}
+
+
+class DisabledKeypointsMode:
+    """Enum-like class for how disabled graph nodes are exported to YOLO: include, ignore."""
+
+    INCLUDE = "include"
+    """Export a disabled node as labelled but not visible, so YOLO trains on it."""
+
+    IGNORE = "ignore"
+    """Export a disabled node as not labelled, so YOLO skips it in the keypoint loss."""
+
+
+_DISABLED_KEYPOINTS_VISIBILITY = {
+    DisabledKeypointsMode.INCLUDE: 1,
+    DisabledKeypointsMode.IGNORE: 0,
 }
 
 
@@ -393,7 +409,16 @@ def keypoints_to_yolo_line(
     img_height: int,
     img_width: int,
     max_kpts_count: int,
+    disabled_keypoint_visibility: int = 1,
 ):
+    """
+    Convert the Supervisely GraphNodes geometry to a line in the YOLO pose format.
+
+    :param disabled_keypoint_visibility: Visibility flag written for a disabled node.
+                                         1 keeps the node in the keypoint loss, 0 excludes it.
+                                         Node coordinates are written either way.
+    :type disabled_keypoint_visibility: int, optional
+    """
     bbox = geometry.to_bbox()
     x, y, w, h = bbox.center.col, bbox.center.row, bbox.width, bbox.height
     x, y, w, h = x / img_width, y / img_height, w / img_width, h / img_height
@@ -402,7 +427,7 @@ def keypoints_to_yolo_line(
 
     for node in geometry.nodes.values():
         node: Node
-        visible = 2 if not node.disabled else 1
+        visible = 2 if not node.disabled else disabled_keypoint_visibility
         line += (
             f" {node.location.col / img_width:.6f} {node.location.row / img_height:.6f} {visible}"
         )
@@ -450,19 +475,74 @@ def convert_label_geometry_if_needed(
     return []
 
 
+def _disabled_keypoint_visibility(mode: str) -> int:
+    """Return the YOLO visibility flag that a :class:`DisabledKeypointsMode` value writes."""
+    visibility = _DISABLED_KEYPOINTS_VISIBILITY.get(mode)
+    if visibility is None:
+        raise ValueError(
+            f"Unsupported disabled keypoints mode: '{mode}'. Supported modes: "
+            f"'{DisabledKeypointsMode.INCLUDE}', '{DisabledKeypointsMode.IGNORE}'."
+        )
+    return visibility
+
+
+def _validate_disabled_keypoints(
+    disabled_keypoints: Union[str, Dict[str, str]],
+    class_names: Optional[List[str]] = None,
+) -> Union[str, Dict[str, str]]:
+    """
+    Validate a ``disabled_keypoints`` argument and return it unchanged.
+
+    Raises a ValueError on an unsupported mode. When ``class_names`` is given, warns about
+    per-class entries that match no class, because those would silently do nothing.
+    """
+    if isinstance(disabled_keypoints, dict):
+        modes = list(disabled_keypoints.values())
+        if class_names is not None:
+            unknown = [name for name in disabled_keypoints if name not in class_names]
+            if len(unknown) > 0:
+                logger.warning(
+                    "disabled_keypoints has entries for classes that are not in the project, "
+                    f"they will be ignored: {unknown}."
+                )
+    else:
+        modes = [disabled_keypoints]
+    for mode in modes:
+        _disabled_keypoint_visibility(mode)
+    return disabled_keypoints
+
+
+def _disabled_keypoints_mode_for_class(
+    disabled_keypoints: Union[str, Dict[str, str]],
+    class_name: str,
+) -> str:
+    """Resolve the mode that applies to ``class_name``, falling back to the default."""
+    if isinstance(disabled_keypoints, dict):
+        return disabled_keypoints.get(class_name, DisabledKeypointsMode.INCLUDE)
+    return disabled_keypoints
+
+
 def label_to_yolo_lines(
     label: Label,
     img_height: int,
     img_width: int,
     class_names: List[str],
     task_type: Literal["detect", "segment", "pose"],
+    disabled_keypoints: Union[str, Dict[str, str]] = DisabledKeypointsMode.INCLUDE,
 ) -> List[str]:
     """
     Convert the Supervisely Label to a line in the YOLO format.
+
+    :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task type.
+                               Either a :class:`DisabledKeypointsMode` value applied to every
+                               class, or a dict mapping a class name to one. Classes missing
+                               from the dict use "include". Ignored for other task types.
+    :type disabled_keypoints: str or dict, optional
     """
 
     labels = convert_label_geometry_if_needed(label, task_type)
-    class_idx = class_names.index(label.obj_class.name)
+    class_name = label.obj_class.name
+    class_idx = class_names.index(class_name)
 
     lines = []
     for label in labels:
@@ -483,12 +563,14 @@ def label_to_yolo_lines(
         elif task_type == YOLOTaskType.POSE:
             nodes_field = label.obj_class.geometry_type.items_json_field
             max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
+            mode = _disabled_keypoints_mode_for_class(disabled_keypoints, class_name)
             yolo_line = keypoints_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
                 max_kpts_count=max_kpts_count,
+                disabled_keypoint_visibility=_disabled_keypoint_visibility(mode),
             )
         else:
             raise ValueError(
@@ -506,10 +588,18 @@ def sly_ann_to_yolo(
     ann: Annotation,
     class_names: List[str],
     task_type: Literal["detect", "segment", "pose"] = "detect",
+    disabled_keypoints: Union[str, Dict[str, str]] = DisabledKeypointsMode.INCLUDE,
 ) -> List[str]:
     """
     Convert the Supervisely annotation to the YOLO format.
+
+    :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task type.
+                               Either a :class:`DisabledKeypointsMode` value applied to every
+                               class, or a dict mapping a class name to one. Classes missing
+                               from the dict use "include". Ignored for other task types.
+    :type disabled_keypoints: str or dict, optional
     """
+    _validate_disabled_keypoints(disabled_keypoints)
     h, w = ann.img_size
     yolo_lines = []
     for label in ann.labels:
@@ -519,6 +609,7 @@ def sly_ann_to_yolo(
             img_width=w,
             class_names=class_names,
             task_type=task_type,
+            disabled_keypoints=disabled_keypoints,
         )
         yolo_lines.extend(lines)
     return yolo_lines
@@ -532,8 +623,10 @@ def sly_ds_to_yolo(
     log_progress: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     is_val: Optional[bool] = None,
+    disabled_keypoints: Union[str, Dict[str, str]] = DisabledKeypointsMode.INCLUDE,
 ) -> str:
     task_type = validate_task_type(task_type)
+    _validate_disabled_keypoints(disabled_keypoints, [c.name for c in meta.obj_classes])
     if progress_cb is not None:
         log_progress = False
 
@@ -576,7 +669,7 @@ def sly_ds_to_yolo(
         shutil.copy2(img_path, images_dir / img_name)
 
         label_path = str(labels_dir / f"{get_file_name(img_name)}.txt")
-        yolo_lines = ann.to_yolo(class_names, task_type)
+        yolo_lines = ann.to_yolo(class_names, task_type, disabled_keypoints=disabled_keypoints)
         if len(yolo_lines) > 0:
             with open(label_path, "w") as f:
                 f.write("\n".join(yolo_lines))
@@ -631,6 +724,7 @@ def sly_project_to_yolo(
     log_progress: bool = False,
     progress_cb: Optional[Callable] = None,
     val_datasets: Optional[List[str]] = None,
+    disabled_keypoints: Union[str, Dict[str, str]] = DisabledKeypointsMode.INCLUDE,
 ):
     """
     Convert Supervisely project to YOLO format.
@@ -650,6 +744,11 @@ def sly_project_to_yolo(
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
     :type val_datasets: list, optional
+    :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task type.
+                            Either a :class:`DisabledKeypointsMode` value applied to every class,
+                            or a dict mapping a class name to one. Classes missing from the dict
+                            use "include". Ignored for other task types.
+    :type disabled_keypoints: str or dict, optional
     :returns: Path to the destination directory.
     :rtype: str
 
@@ -666,6 +765,7 @@ def sly_project_to_yolo(
             sly.Project(project_directory).to_yolo(log_progress=True)
     """
     task_type = validate_task_type(task_type)
+    _validate_disabled_keypoints(disabled_keypoints)
     if isinstance(project, str):
         project = Project(project, mode=OpenMode.READ)
 
@@ -700,6 +800,7 @@ def sly_project_to_yolo(
             log_progress=log_progress,
             progress_cb=progress_cb,
             is_val=is_val,
+            disabled_keypoints=disabled_keypoints,
         )
         logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
     logger.info(f"Project '{project.name}' has been converted to YOLO format.")
@@ -716,6 +817,7 @@ def to_yolo(
     progress_cb: Optional[Callable] = None,
     val_datasets: Optional[List[str]] = None,
     is_val: Optional[bool] = None,
+    disabled_keypoints: Union[str, Dict[str, str]] = DisabledKeypointsMode.INCLUDE,
 ) -> Union[None, str]:
     """
     Universal function to convert Supervisely project or dataset  to YOLO format.
@@ -748,6 +850,11 @@ def to_yolo(
     :type val_datasets: list, optional
     :param is_val: Whether the dataset is for validation.
     :type is_val: bool, optional
+    :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task type.
+                            Either a :class:`DisabledKeypointsMode` value applied to every class,
+                            or a dict mapping a class name to one. Classes missing from the dict
+                            use "include". Ignored for other task types.
+    :type disabled_keypoints: str or dict, optional
     :returns: None, list of YOLO lines, or path to the destination directory.
     :rtype: NoneType, list, str
 
@@ -786,6 +893,7 @@ def to_yolo(
             log_progress=log_progress,
             progress_cb=progress_cb,
             val_datasets=val_datasets,
+            disabled_keypoints=disabled_keypoints,
         )
     elif isinstance(input_data, Dataset):
         return sly_ds_to_yolo(
@@ -796,6 +904,7 @@ def to_yolo(
             log_progress=log_progress,
             progress_cb=progress_cb,
             is_val=is_val,
+            disabled_keypoints=disabled_keypoints,
         )
     else:
         raise ValueError("Unsupported input type. Only Project or Dataset are supported.")
