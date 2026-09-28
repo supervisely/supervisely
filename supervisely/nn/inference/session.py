@@ -559,8 +559,10 @@ class SessionJSON:
             )
             if not exception_details:
                 exception_details = "The serving app reported an inference error."
-            if exception.get("traceback"):
-                exception_details = f"{exception_details}\n{exception['traceback']}"
+            app_traceback = exception.get("traceback")
+            # Serving apps before this fix send "NoneType: None" instead of the real traceback
+            if app_traceback and app_traceback.strip() != "NoneType: None":
+                exception_details = f"{exception_details}\n{app_traceback}"
         elif exception:
             exception_details = str(exception)
         else:

@@ -65,6 +65,18 @@ def test_wait_for_async_inference_start_includes_app_traceback():
         session._wait_for_async_inference_start(delay=0)
 
 
+def test_placeholder_traceback_from_older_serving_apps_is_dropped():
+    session = _session()
+    session._get_inference_progress = lambda: _error_response("NoneType: None\n")
+    session._on_async_inference_end = lambda: None
+
+    with pytest.raises(RuntimeError) as exc_info:
+        session._wait_for_async_inference_start(delay=0)
+
+    assert "NoneType" not in str(exc_info.value)
+    assert str(exc_info.value).endswith("not found in the project.")
+
+
 def test_wait_for_new_pending_results_raises_terminal_error(monkeypatch):
     session = _session()
     responses = [_error_response()]
