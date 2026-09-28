@@ -10,7 +10,7 @@ from supervisely.nn.inference.session import Session, SessionJSON
 def _session():
     session = object.__new__(SessionJSON)
     session._async_inference_uuid = "inference-request"
-    session.async_start_timeout = 600
+    session.async_start_timeout = None
     session.pending_results_timeout = 600
     return session
 
@@ -95,43 +95,61 @@ def test_wait_for_new_pending_results_keeps_successful_completion():
     assert session._wait_for_new_pending_results(delay=0) == []
 
 
-def test_finished_response_without_results_raises():
-    session = _session()
-    session._get_inference_progress = lambda: {
-        "stage": "Finished",
+def _finished_without_results_response(stage, stopped):
+    return {
+        "stage": stage,
         "finished": True,
+        "stopped": stopped,
         "is_inferring": False,
         "progress": {"current": 0, "total": 1},
-        "pending_results": [],
-        "result": False,
+        "pending_results": 0,
+        "final_result": False,
         "exception": None,
     }
-    session._on_async_inference_end = lambda: None
-
-    with pytest.raises(RuntimeError, match="finished without returning results"):
-        session._wait_for_async_inference_start(delay=0)
 
 
-def test_wait_for_async_inference_start_has_finite_default_timeout(monkeypatch):
+@pytest.mark.parametrize(
+    "stage, stopped", [("Cancelled", True), ("Finished", False)], ids=["cancelled", "empty-input"]
+)
+def test_finished_without_results_ends_iteration_empty(stage, stopped):
     session = _session()
-    session._get_inference_progress = lambda: {
-        "progress": {"current": 0, "total": 1},
+    session._stop_async_inference_flag = False
+    session._get_inference_progress = lambda: _finished_without_results_response(stage, stopped)
+    session._pop_pending_results = lambda: {
+        **_finished_without_results_response(stage, stopped),
         "pending_results": [],
     }
     cleanup_calls = []
-    session.stop_async_inference = lambda: cleanup_calls.append("stop")
-    session._on_async_inference_end = lambda: cleanup_calls.append("clear")
-    times = iter([0, 601])
+    session._on_async_inference_end = lambda: cleanup_calls.append(True)
+
+    resp, has_started = session._wait_for_async_inference_start(delay=0)
+    iterator = session_module.AsyncInferenceIterator(resp["progress"]["total"], session)
+
+    assert has_started is True
+    assert list(iterator) == []
+    assert cleanup_calls == [True]
+
+
+def test_wait_for_async_inference_start_has_no_default_timeout(monkeypatch):
+    session = _session()
+    responses = iter(
+        [
+            {"progress": {"current": 0, "total": 1}, "pending_results": []},
+            {"progress": {"current": 0, "total": 2}, "pending_results": []},
+        ]
+    )
+    session._get_inference_progress = lambda: next(responses)
+    session.stop_async_inference = lambda: pytest.fail("a long preparation must not be stopped")
+    times = iter([0, 10_000, 20_000])
     monkeypatch.setattr(
         session_module,
         "time",
         SimpleNamespace(time=lambda: next(times), sleep=lambda delay: None),
     )
 
-    with pytest.raises(Timeout, match="didn't start"):
-        session._wait_for_async_inference_start(delay=0)
+    _, has_started = session._wait_for_async_inference_start(delay=0)
 
-    assert cleanup_calls == ["stop", "clear"]
+    assert has_started is True
 
 
 def test_wait_for_async_inference_start_keeps_successful_response():
@@ -159,7 +177,7 @@ def test_session_timeout_defaults_are_forwarded(monkeypatch, session_cls):
 
     session = session_cls(api=object(), session_url="http://model")
 
-    assert session.async_start_timeout == 600
+    assert session.async_start_timeout is None
     assert session.pending_results_timeout == 600
 
 

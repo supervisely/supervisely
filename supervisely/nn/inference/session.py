@@ -32,7 +32,7 @@ class SessionJSON:
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
-        async_start_timeout: Optional[float] = 600,
+        async_start_timeout: Optional[float] = None,
         pending_results_timeout: Optional[float] = 600,
     ):
         """
@@ -53,7 +53,7 @@ class SessionJSON:
         :type session_url: str, optional
         :param inference_settings: a dict or a path to YAML file with settings, defaults to None
         :type inference_settings: Union[dict, str], optional
-        :param async_start_timeout: seconds to wait for asynchronous inference to start. None disables the timeout, defaults to 600
+        :param async_start_timeout: seconds to wait for asynchronous inference to start. None disables the timeout, defaults to None
         :type async_start_timeout: float, optional
         :param pending_results_timeout: seconds to wait for new asynchronous inference results. None disables the timeout, defaults to 600
         :type pending_results_timeout: float, optional
@@ -548,18 +548,9 @@ class SessionJSON:
         endpoint = "clear_inference_request"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
-    def _raise_for_async_inference_error(
-        self, resp: Dict[str, Any], raise_on_finished_without_results: bool = False
-    ) -> None:
+    def _raise_for_async_inference_error(self, resp: Dict[str, Any]) -> None:
         exception = resp.get("exception")
-        has_result = bool(resp.get("result") or resp.get("final_result"))
-        has_pending_results = bool(resp.get("pending_results"))
-        finished_without_results = (
-            raise_on_finished_without_results
-            and resp.get("finished", False)
-            and not (has_result or has_pending_results)
-        )
-        if not exception and resp.get("stage") != "Error" and not finished_without_results:
+        if not exception and resp.get("stage") != "Error":
             return
 
         if isinstance(exception, dict):
@@ -572,8 +563,6 @@ class SessionJSON:
                 exception_details = f"{exception_details}\n{exception['traceback']}"
         elif exception:
             exception_details = str(exception)
-        elif finished_without_results:
-            exception_details = "Inference finished without returning results."
         else:
             exception_details = "The serving app reported an inference error."
         raise RuntimeError(f"Inference Error: {exception_details}")
@@ -590,9 +579,7 @@ class SessionJSON:
         while not has_started and not timeout_exceeded:
             resp = self._get_inference_progress()
             try:
-                self._raise_for_async_inference_error(
-                    resp, raise_on_finished_without_results=True
-                )
+                self._raise_for_async_inference_error(resp)
             except RuntimeError:
                 try:
                     self._on_async_inference_end()
@@ -603,10 +590,12 @@ class SessionJSON:
                 raise
             pending_results = resp.get("pending_results", None)
             has_results = bool(pending_results)
+            # A request cancelled or given no items finishes without results; the iterator then ends empty
             has_started = (
                 bool(resp.get("result") or resp.get("final_result"))
                 or resp["progress"]["total"] != 1
                 or has_results
+                or bool(resp.get("finished"))
             )
             if not has_started:
                 time.sleep(delay)
@@ -788,7 +777,7 @@ class Session(SessionJSON):
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
-        async_start_timeout: Optional[float] = 600,
+        async_start_timeout: Optional[float] = None,
         pending_results_timeout: Optional[float] = 600,
     ):
         """
@@ -809,7 +798,7 @@ class Session(SessionJSON):
         :type session_url: str, optional
         :param inference_settings: a dict or a path to YAML file with settings, defaults to None
         :type inference_settings: Union[dict, str], optional
-        :param async_start_timeout: seconds to wait for asynchronous inference to start. None disables the timeout, defaults to 600
+        :param async_start_timeout: seconds to wait for asynchronous inference to start. None disables the timeout, defaults to None
         :type async_start_timeout: float, optional
         :param pending_results_timeout: seconds to wait for new asynchronous inference results. None disables the timeout, defaults to 600
         :type pending_results_timeout: float, optional
