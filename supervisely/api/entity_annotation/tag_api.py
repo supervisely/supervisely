@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from supervisely._utils import batched, take_with_default
 from supervisely.annotation.tag_meta import (
@@ -114,18 +114,50 @@ class TagApi(ModuleApi):
             "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
         )
 
-    def get_name_to_id_map(self, project_id: int):
+    def get_name_to_id_map(self, project_id: int, refresh: bool = False):
         """
         Get dictionary with mapping tag name to tag ID for a given project ID.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
+        :param refresh: Read the project's tags again even if a map is cached.
+        :type refresh: bool
         :returns: Dictionary with mapping tag name to tag id for a given project ID.
         :rtype: dict
+
+        Inside an open :class:`ApiContext` the map is cached, and a tag meta added meanwhile
+        is not in it - pass ``refresh=True`` to read it again.
         """
+        from supervisely.api.api import API_CONTEXT_MARKER
+
+        context = getattr(self._api, "optimization_context", None) or {}
+        in_context = bool(context.get(API_CONTEXT_MARKER))
+        cache = context.setdefault("tag_name_to_id", {}) if in_context else {}
+        if project_id in cache and not refresh:
+            return cache[project_id]
 
         tags_info = self.get_list(project_id)
-        return {tag_info.name: tag_info.id for tag_info in tags_info}
+        mapping = {tag_info.name: tag_info.id for tag_info in tags_info}
+        if in_context:
+            # project tags do not change while a bulk operation runs, and re-reading them
+            # per item was over a third of the time of an annotation upload
+            cache[project_id] = mapping
+        return mapping
+
+    def _name_to_id_map_covering(self, project_id: int, names: Iterable[str]) -> Dict[str, int]:
+        """The name->id map, read again if a cached one lacks any of ``names``.
+
+        Inside an ApiContext the map is cached, and a name added to the meta meanwhile is
+        not in it; one re-read answers that instead of a KeyError.
+        """
+        from supervisely.api.api import API_CONTEXT_MARKER
+
+        mapping = self.get_name_to_id_map(project_id)
+        context = getattr(self._api, "optimization_context", None) or {}
+        # Outside a context the map was just read, and reading it again would find the same.
+        if context.get(API_CONTEXT_MARKER) and any(name not in mapping for name in names):
+            mapping = self.get_name_to_id_map(project_id, refresh=True)
+        return mapping
 
     @staticmethod
     def _frame_range_length_settings(
@@ -199,7 +231,10 @@ class TagApi(ModuleApi):
 
         class_name_to_id = None
         if any(tag_meta.applicable_classes for tag_meta in tag_metas):
-            class_name_to_id = self._api.object_class.get_name_to_id_map(project_id)
+            class_name_to_id = self._api.object_class._name_to_id_map_covering(
+                project_id,
+                [name for tag_meta in tag_metas for name in (tag_meta.applicable_classes or [])],
+            )
 
         payload = {
             ApiField.PROJECT_ID: project_id,
@@ -208,6 +243,9 @@ class TagApi(ModuleApi):
             ],
         }
         response = self._api.post("tags.bulk.add", payload)
+        # A name deleted and created again gets a new id, which a cached map would not see.
+        context = getattr(self._api, "optimization_context", None) or {}
+        context.get("tag_name_to_id", {}).pop(project_id, None)
         return response.json()
 
     def create(self, project_id: int, tag_meta: TagMeta) -> Dict:
@@ -384,7 +422,9 @@ class TagApi(ModuleApi):
                 raise ValueError(
                     "project_id is required to resolve applicable_classes names to class IDs"
                 )
-            class_name_to_id = self._api.object_class.get_name_to_id_map(project_id)
+            class_name_to_id = self._api.object_class._name_to_id_map_covering(
+                project_id, applicable_classes
+            )
             missing = [name for name in applicable_classes if name not in class_name_to_id]
             if missing:
                 raise ValueError(
@@ -433,7 +473,7 @@ class TagApi(ModuleApi):
         if tag_name_id_map is None and project_id is None:
             raise RuntimeError("Impossible to get ids for project tags")
         if tag_name_id_map is None:
-            tag_name_id_map = self.get_name_to_id_map(project_id)
+            tag_name_id_map = self._name_to_id_map_covering(project_id, [tag.name for tag in tags])
         tags_json = []
         tags_keys = []
         for tag in tags:
@@ -667,7 +707,9 @@ class TagApi(ModuleApi):
                 img_info = api.
         """
 
-        tag_name_id_map = self.get_name_to_id_map(project_id)
+        tag_name_id_map = self._name_to_id_map_covering(
+            project_id, [tag.name for object in objects for tag in object.tags]
+        )
 
         tags_to_add = []
         tags_keys = []
@@ -1055,7 +1097,9 @@ class TagApi(ModuleApi):
         """
 
         OBJ_ID_FIELD = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID
-        tag_name_id_map = self.get_name_to_id_map(project_id)
+        tag_name_id_map = self._name_to_id_map_covering(
+            project_id, [tag.name for tags in tags_map.values() for tag in tags]
+        )
 
         data = []
         for obj_id, tags in tags_map.items():

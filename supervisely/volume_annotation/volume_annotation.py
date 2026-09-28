@@ -618,10 +618,11 @@ class VolumeAnnotation:
             KEY: self.key().hex,
             TAGS: self.tags.to_json(key_id_map),
             OBJECTS: self.objects.to_json(key_id_map),
+            # With the map the slice figures keep the server's ids too, like the objects.
             PLANES: [
-                self.plane_sagittal.to_json(),
-                self.plane_coronal.to_json(),
-                self.plane_axial.to_json(),
+                self.plane_sagittal.to_json(key_id_map),
+                self.plane_coronal.to_json(key_id_map),
+                self.plane_axial.to_json(key_id_map),
             ],
             SPATIAL_FIGURES: [figure.to_json(key_id_map) for figure in self.spatial_figures],
         }
