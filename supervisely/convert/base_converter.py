@@ -87,6 +87,12 @@ class AvailableMeshConverters:
     PER_VERTEX_LABELS = "per_vertex_labels"
 
 
+class AvailableAudioConverters:
+    """Names of supported audio dataset converters."""
+
+    SLY = "supervisely"
+
+
 class AvailableVolumeConverters:
     """Names of supported 3D volume dataset converters."""
 

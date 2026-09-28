@@ -8,6 +8,7 @@ from supervisely import fs
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
+from supervisely.convert.audio.audio_converter import AudioConverter
 from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.high_color.high_color_depth import (
     HighColorDepthImageConverter,
@@ -110,6 +111,7 @@ class ImportManager:
             ProjectType.VOLUMES.value: VolumeConverter,
             ProjectType.POINT_CLOUD_EPISODES.value: PointcloudEpisodeConverter,
             ProjectType.MESHES.value: MeshConverter,
+            ProjectType.AUDIO.value: AudioConverter,
         }
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
