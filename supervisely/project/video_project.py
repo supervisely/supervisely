@@ -1486,11 +1486,14 @@ class VideoProject(Project):
         workspace_id: int,
         project_name: Optional[str] = None,
         with_custom_data: bool = True,
-        restore_workers: int = RESTORE_WORKERS,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
         project_description: Optional[str] = None,
+        # Appended rather than placed by meaning, and the same place the volume project puts
+        # it: inserted mid-signature it would take the argument of whoever passed
+        # `log_progress` positionally.
+        restore_workers: int = RESTORE_WORKERS,
     ) -> "ProjectInfo":
         """
         Restore a video project from an Arrow/Parquet-based binary snapshot.
