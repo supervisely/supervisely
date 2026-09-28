@@ -40,6 +40,7 @@ import supervisely.api.advanced_api as advanced_api
 import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
+import supervisely.api.audio_api as audio_api
 import supervisely.api.dataset_api as dataset_api
 import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
@@ -387,6 +388,7 @@ class Api:
         self.labeling_queue = labeling_queue_api.LabelingQueueApi(self)
         self.guides = guides_api.GuidesApi(self)
         self.video = video_api.VideoApi(self)
+        self.audio = audio_api.AudioApi(self)
         # self.project_class = project_class_api.ProjectClassApi(self)
         self.object_class = object_class_api.ObjectClassApi(self)
         self.report = report_api.ReportApi(self)

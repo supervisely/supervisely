@@ -3181,6 +3181,7 @@ class Annotation:
         self,
         class_names: List[str],
         task_type: Literal["detect", "segment", "pose"] = "detect",
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ) -> List[str]:
         """
         Convert Supervisely annotation to YOLO annotation format.
@@ -3190,6 +3191,12 @@ class Annotation:
         :type class_names: List[str]
         :param task_type: Task type, one of "detection", "segmentation", "pose".
         :type task_type: str
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                                   type. Either "include" (labelled but not visible, trained)
+                                   or "ignore" (not labelled, skipped), or a dict mapping a
+                                   class name to one of them. Classes missing from the dict
+                                   use "include". Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: List of objects in YOLO format.
         :rtype: list
 
@@ -3206,7 +3213,12 @@ class Annotation:
 
         from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
 
-        return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)
+        return sly_ann_to_yolo(
+            ann=self,
+            class_names=class_names,
+            task_type=task_type,
+            disabled_keypoints=disabled_keypoints,
+        )
 
     def to_pascal_voc(
         self,

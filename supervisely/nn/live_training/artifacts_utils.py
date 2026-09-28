@@ -1,12 +1,14 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Dict
 from datetime import datetime
 import supervisely as sly
 from supervisely import logger
 from supervisely.template.live_training.live_training_generator import LiveTrainingGenerator
+from supervisely.app.widgets import Progress
 import supervisely.io.json as sly_json
+import supervisely.io.fs as sly_fs
 from supervisely.nn.live_training.helpers import ClassMap
 import yaml
 
@@ -130,13 +132,24 @@ def upload_artifacts(
         has_logs = False
 
     logger.info("Uploading to Team Files")
-    api.file.upload_directory_fast(
-        team_id=team_id,
-        local_dir=str(output_dir),
-        remote_dir=remote_dir,
-        change_name_if_conflict=False,
-        replace_if_conflict=True
-    )
+    local_files = sly_fs.list_files_recursively(str(output_dir))
+    total_size = sum(sly_fs.get_file_size(file_path) for file_path in local_files)
+    upload_progress = Progress(hide_on_finish=True)
+    with upload_progress(
+        message="Uploading Live Training artifacts to Team Files",
+        total=total_size,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as pbar:
+        api.file.upload_directory_fast(
+            team_id=team_id,
+            local_dir=str(output_dir),
+            remote_dir=remote_dir,
+            change_name_if_conflict=False,
+            replace_if_conflict=True,
+            progress_cb=pbar.update,
+        )
 
     experiment_info = {
         "experiment_name": f"Live Training {task_type.capitalize()} - Task {task_id}",

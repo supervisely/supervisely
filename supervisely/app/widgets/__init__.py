@@ -52,6 +52,7 @@ from supervisely.app.widgets.select_tag_meta.select_tag_meta import SelectTagMet
 from supervisely.app.widgets.video_thumbnail.video_thumbnail import VideoThumbnail
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
+from supervisely.app.widgets.train_val_splits.split_method import SplitMethod
 from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSplits
 from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.textarea.textarea import TextArea

@@ -13,6 +13,7 @@ class ProjectType(StrEnum):
     POINT_CLOUDS = "point_clouds"
     POINT_CLOUD_EPISODES = "point_cloud_episodes"
     MESHES = "meshes"
+    AUDIO = "audio"
 
 
 # Constants for multispectral and multiview projects.

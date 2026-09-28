@@ -26,6 +26,7 @@ class Phase:
     WAITING_FOR_SAMPLES = "waiting_for_samples"
     INITIAL_TRAINING = "initial_training"
     TRAINING = "training"
+    STOPPING = "stopping"
 
 class LiveTraining:
     """Base implementation of an interactive/live training loop driven by requests (start/add sample/predict/status)."""
@@ -359,6 +360,15 @@ class LiveTraining:
                     f"EMA={result['ema_value']:.3f}"
                 )
 
+        status_message = f"{len(self.dataset)} images added"
+        if self.phase != Phase.WAITING_FOR_SAMPLES:
+            quality = self.evaluator.ema_value if self.evaluator else None
+            if quality is None or quality < 0.3:
+                status_message += " | Learning..."
+            else:
+                status_message += f" | Model Quality: {quality:.2f}"
+        sly.Progress(status_message, 1, log_extra={"hide_counter": True}).iter_done_report()
+
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
 
@@ -637,6 +647,7 @@ class LiveTraining:
 
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
+            self.phase = Phase.STOPPING
             self._process_requests_while_finishing("Training was stopped by user.")
             self._save_and_upload()
             sys.exit(0)

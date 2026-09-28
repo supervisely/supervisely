@@ -12,6 +12,7 @@ import random
 import shutil
 from collections import Counter, defaultdict, namedtuple
 from enum import Enum
+from functools import partial
 from pathlib import Path
 from typing import (
     Callable,
@@ -35,8 +36,10 @@ from supervisely._utils import (
     abs_url,
     batched,
     get_or_create_event_loop,
+    get_semaphore_limit,
     is_development,
     removesuffix,
+    run_bounded,
     snake_to_human,
 )
 from supervisely.annotation.annotation import (
@@ -2122,6 +2125,7 @@ class Dataset(KeyObject):
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
         is_val: Optional[bool] = None,
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ):
         """
         Convert Supervisely dataset to YOLO format.
@@ -2138,6 +2142,12 @@ class Dataset(KeyObject):
         :type progress_cb: :class:`Callable`, optional
         :param is_val: If True, the dataset is a validation dataset.
         :type is_val: bool, optional
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                                   type. Either "include" (labelled but not visible, trained)
+                                   or "ignore" (not labelled, skipped), or a dict mapping a
+                                   class name to one of them. Classes missing from the dict
+                                   use "include". Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: YOLO dataset in dictionary format.
         :rtype: dict
 
@@ -2165,6 +2175,7 @@ class Dataset(KeyObject):
             log_progress=log_progress,
             progress_cb=progress_cb,
             is_val=is_val,
+            disabled_keypoints=disabled_keypoints,
         )
 
     def to_pascal_voc(
@@ -4514,6 +4525,7 @@ class Project:
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
         val_datasets: Optional[List[str]] = None,
+        disabled_keypoints: Union[str, Dict[str, str]] = "include",
     ) -> None:
         """
         Convert Supervisely project to YOLO format.
@@ -4531,6 +4543,12 @@ class Project:
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
         :type val_datasets: List[str], optional
+        :param disabled_keypoints: How disabled graph nodes are exported, for the "pose" task
+                            type. Either "include" (labelled but not visible, trained) or
+                            "ignore" (not labelled, skipped), or a dict mapping a class name
+                            to one of them. Classes missing from the dict use "include".
+                            Ignored for other task types.
+        :type disabled_keypoints: str or dict, optional
         :returns: None
         :rtype: NoneType
 
@@ -4561,6 +4579,7 @@ class Project:
             log_progress=log_progress,
             progress_cb=progress_cb,
             val_datasets=val_datasets,
+            disabled_keypoints=disabled_keypoints,
         )
 
     def to_pascal_voc(
@@ -4690,7 +4709,10 @@ def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> G
     for path in paths:
         if get_file_name_with_ext(path) == "meta.json":
             parent_dir = os.path.dirname(path)
-            project_dir = os.path.join(dir, parent_dir)
+            # A trailing separator makes Project() fail to determine the project name, so it
+            # cannot be left on the path. That happens when dir is the project dir itself:
+            # os.path.join(dir, "") appends one, and dir may already carry one of its own.
+            project_dir = os.path.join(dir, parent_dir) if parent_dir else os.path.normpath(dir)
             try:
                 project_class(project_dir, OpenMode.READ)
                 yield project_dir
@@ -5081,7 +5103,10 @@ def upload_project(
                 # Dataset is empty
                 continue
 
-            meta_dir = os.path.join(dir, ds_fs.name, "meta")
+            # Resolve from the dataset itself: dir may be an ancestor of the project dir, and
+            # ds_fs.name is relative to the project, so joining them missed the meta dir and
+            # silently dropped every image meta.
+            meta_dir = ds_fs.meta_dir
             if os.path.isdir(meta_dir):
                 metas = []
                 for name in names:
@@ -6170,50 +6195,30 @@ async def _download_project_async(
                             ds_progress(1)
                 return to_download
 
-            async def run_tasks_with_semaphore_control(task_list: list, delay=0.05):
+            async def run_tasks_with_semaphore_control(task_list: list):
                 """
-                Execute tasks with semaphore control - create tasks only as semaphore permits become available.
+                Execute tasks with semaphore control - keep at most as many in flight as the
+                semaphore has permits.
                 task_list - list of coroutines or callables that create tasks
+
+                A failing task is logged and the rest keep going: one unreadable image must
+                not abandon the remaining items of the dataset.
                 """
                 random.shuffle(task_list)
-                running_tasks = set()
-                max_concurrent = getattr(semaphore, "_value", 10)
-
-                task_iter = iter(task_list)
                 completed_count = 0
 
-                while True:
-                    # Add new tasks while we have capacity
-                    while len(running_tasks) < max_concurrent:
-                        try:
-                            task_gen = next(task_iter)
-                            if callable(task_gen):
-                                task = asyncio.create_task(task_gen())
-                            else:
-                                task = asyncio.create_task(task_gen)
-                            running_tasks.add(task)
-                            await asyncio.sleep(delay)
-                        except StopIteration:
-                            break
+                async def guarded(task):
+                    nonlocal completed_count
+                    try:
+                        await (task() if callable(task) else task)
+                    except Exception as e:
+                        logger.error(f"Task error: {e}")
+                    completed_count += 1
 
-                    if not running_tasks:
-                        break
-
-                    # Wait for at least one task to complete
-                    done, running_tasks = await asyncio.wait(
-                        running_tasks, return_when=asyncio.FIRST_COMPLETED
-                    )
-
-                    # Process completed tasks
-                    for task in done:
-                        completed_count += 1
-                        try:
-                            await task
-                        except Exception as e:
-                            logger.error(f"Task error: {e}")
-
-                    # Clear the done set - this should be enough for memory cleanup
-                    done.clear()
+                await run_bounded(
+                    [partial(guarded, task) for task in task_list],
+                    limit=get_semaphore_limit(semaphore),
+                )
 
                 logger.debug(
                     f"{completed_count} tasks have been completed for dataset ID: {dataset.id}, Name: {dataset.name}"
@@ -6282,7 +6287,7 @@ async def _download_project_async(
                             progress_cb=ds_progress,
                         )
                         offset_tasks.append(offset_task)
-                    await run_tasks_with_semaphore_control(offset_tasks, 0.05)
+                    await run_tasks_with_semaphore_control(offset_tasks)
 
             tasks = []
             if resume_download is True:
