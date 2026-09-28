@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 from supervisely.io.fs import get_file_name_with_ext, list_files
 from supervisely.io.json import load_json_file
+from supervisely.project.audio_project import AudioProject
 from supervisely.project.data_version import DataVersion
 from supervisely.project.mesh_project import MeshProject
 from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
@@ -17,7 +18,13 @@ from supervisely.project.volume_project import VolumeProject
 def get_project_class(
     project_type: str,
 ) -> Union[
-    Project, VideoProject, VolumeProject, PointcloudProject, PointcloudEpisodeProject, MeshProject
+    Project,
+    VideoProject,
+    VolumeProject,
+    PointcloudProject,
+    PointcloudEpisodeProject,
+    MeshProject,
+    AudioProject,
 ]:
     type_mapping = {
         ProjectType.IMAGES.value: Project,
@@ -26,6 +33,7 @@ def get_project_class(
         ProjectType.POINT_CLOUDS.value: PointcloudProject,
         ProjectType.POINT_CLOUD_EPISODES.value: PointcloudEpisodeProject,
         ProjectType.MESHES.value: MeshProject,
+        ProjectType.AUDIO.value: AudioProject,
     }
     try:
         project_class = type_mapping[project_type]
@@ -44,6 +52,7 @@ def read_project(
         PointcloudProject,
         PointcloudEpisodeProject,
         MeshProject,
+        AudioProject,
     ]
 ]:
     """
