@@ -55,7 +55,11 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
         img_np = sly_api.image.download_np(state['image_id'])
         future = request_queue.put(
             RequestType.PREDICT,
-            {'image': img_np, 'image_id': state['image_id']}
+            {
+                'image': img_np,
+                'image_id': state['image_id'],
+                'instance_masks': state.get('instance_masks') is not False,
+            }
         )
         result = await _wait_for_result(future, response)
         return result
