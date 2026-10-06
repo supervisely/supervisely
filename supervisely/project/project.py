@@ -111,6 +111,17 @@ class CustomUnpickler(BaseRestrictedUnpickler):
         "_collections",
         "datetime",
     )
+    # backups hold data classes only; these packages hold classes that connect, run or write
+    # something when they are constructed
+    _BLOCKED_MODULE_PREFIXES = (
+        "supervisely.api.api",
+        "supervisely.app",
+        "supervisely.cli",
+        "supervisely.io",
+        "supervisely.nn",
+        "supervisely.sly_logger",
+        "supervisely.task",
+    )
 
     def __init__(self, file, **kwargs):
         """

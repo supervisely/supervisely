@@ -62,10 +62,45 @@ class BaseRestrictedUnpickler(pickle.Unpickler):
 
     Both attributes can be combined: exact entries in ``_ALLOWED`` are checked
     first; if no match is found the prefix list is tried next.
+
+    A prefix match only ever yields a class defined in an allowed module. Functions,
+    modules and names re-exported from other modules (e.g. ``os`` imported inside a
+    ``supervisely`` module) are blocked, and so is every builtin that is not a plain
+    data type (``exec``, ``eval``, ``getattr``, ...): pickle calls whatever it is given.
     """
 
     _ALLOWED: Dict[str, Set[str]] = {}
     _ALLOWED_MODULE_PREFIXES: Tuple[str, ...] = ()
+    # carved out of the prefixes above: pickle instantiates whatever class it resolves
+    _BLOCKED_MODULE_PREFIXES: Tuple[str, ...] = ()
+    _SAFE_BUILTINS = frozenset(
+        {
+            "bool",
+            "bytearray",
+            "bytes",
+            "complex",
+            "dict",
+            "float",
+            "frozenset",
+            "int",
+            "list",
+            "object",
+            "range",
+            "set",
+            "slice",
+            "str",
+            "tuple",
+        }
+    )
+
+    @staticmethod
+    def _has_prefix(module: str, prefixes: Tuple[str, ...]) -> bool:
+        return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
+
+    def _is_allowed_module(self, module: str) -> bool:
+        return self._has_prefix(module, self._ALLOWED_MODULE_PREFIXES) and not self._has_prefix(
+            module, self._BLOCKED_MODULE_PREFIXES
+        )
 
     def find_class(self, module: str, name: str):
         # 1. Exact module+class whitelist (highest priority, e.g. tight sinks)
@@ -74,11 +109,17 @@ class BaseRestrictedUnpickler(pickle.Unpickler):
             return super().find_class(module, name)
 
         # 2. Module-prefix whitelist (broader allow, e.g. all supervisely.*)
-        if self._ALLOWED_MODULE_PREFIXES and any(
-            module == prefix or module.startswith(prefix + ".")
-            for prefix in self._ALLOWED_MODULE_PREFIXES
-        ):
-            return super().find_class(module, name)
+        if self._is_allowed_module(module):
+            obj = super().find_class(module, name)
+            # judge the resolved object, not the requested name: "os.system" requested
+            # from an allowed module resolves to something defined elsewhere
+            defined_in = getattr(obj, "__module__", None)
+            if isinstance(obj, type) and isinstance(defined_in, str):
+                if defined_in == "builtins":
+                    if obj.__name__ in self._SAFE_BUILTINS:
+                        return obj
+                elif self._is_allowed_module(defined_in):
+                    return obj
 
         raise pickle.UnpicklingError(
             f"Blocked unsafe class during deserialization: {module}.{name}"
@@ -862,6 +903,75 @@ def archive_directory(
     return parts_paths
 
 
+def _check_tar_member(member: tarfile.TarInfo, root: str) -> None:
+    """Raise if extracting the member into root (a real path) would touch anything outside of it."""
+
+    def _is_inside(path: str) -> bool:
+        return os.path.commonpath([root, os.path.realpath(path)]) == root
+
+    member_path = os.path.join(root, member.name)
+    if not _is_inside(member_path) or member.isdev():
+        raise tarfile.TarError(f"Unsafe member in archive: {member.name!r}")
+    if member.issym():
+        link_target = os.path.join(os.path.dirname(member_path), member.linkname)
+    elif member.islnk():
+        link_target = os.path.join(root, member.linkname)
+    else:
+        return
+    if not _is_inside(link_target):
+        raise tarfile.TarError(f"Unsafe link in archive: {member.name!r}")
+
+
+def _tar_member_filter(member: tarfile.TarInfo, dest_path: str):
+    """tarfile extraction filter: the "data" filter, but an unsafe member is skipped with a
+    warning instead of aborting the extraction half-way."""
+    try:
+        return tarfile.data_filter(member, dest_path)
+    except tarfile.FilterError as e:
+        logger.warning(f"Skipping unsafe archive member {member.name!r}: {e}")
+        return None
+
+
+def _extractall_safely(tar: tarfile.TarFile, target_dir: str) -> None:
+    """Same as tar.extractall, but members that would be written outside of target_dir
+    (or link there) are skipped."""
+    if hasattr(tarfile, "data_filter"):
+        tar.extractall(target_dir, filter=_tar_member_filter)
+        return
+    # Python without tarfile extraction filters: validate each member right before it is
+    # extracted (works for archives opened in stream mode too)
+    root = os.path.realpath(target_dir)
+    for member in tar:
+        try:
+            _check_tar_member(member, root)
+        except tarfile.TarError as e:
+            logger.warning(f"Skipping unsafe archive member {member.name!r}: {e}")
+            continue
+        tar.extract(member, root)
+
+
+def _unpack_archive_safely(archive_path: str, target_dir: str) -> None:
+    """Same as shutil.unpack_archive, but tar members can not be written outside of target_dir."""
+    # shutil picks the format by extension; it keeps handling zip and every error case
+    fmt = next(
+        (
+            name
+            for name, extensions, _ in shutil.get_unpack_formats()
+            if any(archive_path.endswith(ext) for ext in extensions)
+        ),
+        None,
+    )
+    if (
+        fmt in (None, "zip")
+        or not os.path.isfile(archive_path)
+        or not tarfile.is_tarfile(archive_path)
+    ):
+        shutil.unpack_archive(archive_path, target_dir)
+        return
+    with tarfile.open(archive_path) as tar:
+        _extractall_safely(tar, target_dir)
+
+
 def unpack_archive(
     archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
 ) -> None:
@@ -918,7 +1028,7 @@ def unpack_archive(
                         output_file.write(data)
         archive_path = combined
 
-    shutil.unpack_archive(archive_path, target_dir)
+    _unpack_archive_safely(archive_path, target_dir)
     if is_split:
         silent_remove(archive_path)
     if remove_junk:
@@ -1664,7 +1774,7 @@ async def unpack_archive_async(
         archive_path = combined
 
     loop = get_or_create_event_loop()
-    await loop.run_in_executor(None, shutil.unpack_archive, archive_path, target_dir)
+    await loop.run_in_executor(None, _unpack_archive_safely, archive_path, target_dir)
     if is_split:
         silent_remove(archive_path)
     if remove_junk:

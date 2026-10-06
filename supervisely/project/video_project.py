@@ -20,7 +20,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
+from supervisely.io.fs import _extractall_safely, clean_dir, mkdir, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
@@ -1787,11 +1787,11 @@ class VideoProject(Project):
                 dctx = zstd.ZstdDecompressor()
                 with dctx.stream_reader(io.BytesIO(snapshot_bytes)) as reader:
                     with tarfile.open(fileobj=reader, mode="r|") as tar:
-                        tar.extractall(payload_dir)
+                        _extractall_safely(tar, payload_dir)
             except Exception:
                 tar_bytes = zstd.decompress(snapshot_bytes)
                 with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r") as tar:
-                    tar.extractall(payload_dir)
+                    _extractall_safely(tar, payload_dir)
 
             proj_info_path = os.path.join(payload_dir, "project_info.json")
             proj_meta_path = os.path.join(payload_dir, "project_meta.json")
