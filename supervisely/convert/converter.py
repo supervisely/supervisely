@@ -294,7 +294,11 @@ class ImportManager:
         return local_path
 
     def _unpack_archives(self, local_path):
-        """Unpack if input data contains an archive."""
+        """Unpack if input data contains an archive.
+
+        Raises the unpacking error if an archive cannot be unpacked (corrupted or unsupported
+        format), instead of leaving the archive in place for format detection.
+        """
 
         if self._upload_as_links:
             return
@@ -316,6 +320,7 @@ class ImportManager:
                             new_paths_to_scan.append(new_path)
                         except Exception as e:
                             logger.error(f"Error while unpacking '{file}': {repr(e)}")
+                            raise
 
             for archive in archives:
                 silent_remove(archive)
