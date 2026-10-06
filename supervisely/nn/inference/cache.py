@@ -160,6 +160,11 @@ class PersistentImageTTLCache(TTLCache):
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
 
+    def _check_path_in_base_dir(self, path: Path) -> None:
+        # keys may come from request data (e.g. uploaded file names)
+        if self._base_dir.resolve() not in path.resolve().parents:
+            raise ValueError(f"Cache path {str(path)!r} is outside of the cache directory")
+
     def save_image(self, key, image: Union[np.ndarray, BinaryIO, bytes], ext=".png") -> None:
         if not self._base_dir.exists():
             self._base_dir.mkdir()
@@ -168,6 +173,7 @@ class PersistentImageTTLCache(TTLCache):
             ext = ".png"
 
         filepath = self._base_dir / Path(key).with_suffix(ext)
+        self._check_path_in_base_dir(filepath)
         self[key] = filepath
 
         if filepath.exists():
@@ -194,6 +200,7 @@ class PersistentImageTTLCache(TTLCache):
         elif isinstance(source, str):
             ext = Path(source).suffix
         video_path = self._base_dir / f"video_{key}{ext}"
+        self._check_path_in_base_dir(video_path)
         self[key] = video_path
 
         if isinstance(source, (str, Path)):
@@ -564,8 +571,9 @@ class InferenceImageCache:
                             )
 
                     progress_cb = _progress_cb
+                # the name comes from the server the request points to: drop any path in it
                 temp_video_path = Path("/tmp/smart_cache").joinpath(
-                    f"_{sly.rand_str(6)}_" + video_info.name
+                    f"_{sly.rand_str(6)}_" + Path(video_info.name).name
                 )
                 api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
                 self.add_video_to_cache(video_id, temp_video_path)
@@ -608,9 +616,14 @@ class InferenceImageCache:
             return {"message": "Cache task started."}
 
     def cache_task(self, api: sly.Api, state: dict):
-        if "server_address" in state and "api_token" in state:
+        # require an explicit token: sly.Api falls back to the app's own token when it is None,
+        # which would send that token to the server address chosen by the caller
+        if state.get("server_address") and state.get("api_token"):
             api = sly.Api(state["server_address"], state["api_token"])
-        api.logger.debug("Request state in cache endpoint", extra=state)
+        sly.logger.debug(
+            "Request state in cache endpoint",
+            extra={k: v for k, v in state.items() if k != "api_token"},
+        )
         image_ids, task_type = self._parse_state(state)
         kwargs = {"return_images": False}
 
@@ -634,7 +647,10 @@ class InferenceImageCache:
         self._add_to_cache(name, frame)
 
     def cache_files_task(self, files: List[UploadFile], state: dict):
-        sly.logger.debug("Request state in cache endpoint", extra=state)
+        sly.logger.debug(
+            "Request state in cache endpoint",
+            extra={k: v for k, v in state.items() if k != "api_token"},
+        )
         image_ids, task_type = self._parse_state(state)
 
         if task_type in (
