@@ -1,5 +1,8 @@
 import os
 import shutil
+import tarfile
+import zipfile
+import zlib
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -297,6 +300,15 @@ class ImportManager:
         logger.info(f"Scanned remote directories:\n   - " + "\n   - ".join(unique_directories))
         return local_path
 
+    # what reading a damaged zip or tar raises, directly or wrapped by shutil
+    _CORRUPT_ARCHIVE_ERRORS = (
+        shutil.ReadError,
+        tarfile.TarError,
+        zipfile.BadZipFile,
+        EOFError,
+        zlib.error,
+    )
+
     def _unpack_archives(self, local_path) -> List[Tuple[str, Exception]]:
         """Unpack if input data contains an archive.
 
@@ -341,15 +353,17 @@ class ImportManager:
         reasons = []
         for path, error in skipped:
             name = os.path.basename(path)
+            details = str(error).replace(path, name)
             if not name.lower().endswith(tuple(unpack_exts)):
                 reasons.append(
                     f"'{name}' is not a supported archive format. Use a zip or tar archive instead."
                 )
-            else:
-                details = str(error).replace(path, name)
+            elif isinstance(error, self._CORRUPT_ARCHIVE_ERRORS):
                 reasons.append(
                     f"'{name}' is corrupt or incomplete ({details}). Upload the archive again."
                 )
+            else:
+                reasons.append(f"'{name}' could not be unpacked ({details}).")
 
         skipped_paths = {path for path, _ in skipped}
         if all(f in skipped_paths for f in list_files_recursively(self._input_data)):

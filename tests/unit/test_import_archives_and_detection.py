@@ -152,3 +152,22 @@ def test_valid_zip_is_unpacked_without_warning(import_env, tmp_path):
 
     assert [item.name for item in manager.get_items()] == ["a.png"]
     assert not any("could not be unpacked" in w for w in warnings)
+
+
+def test_unpack_failure_that_is_not_corruption_is_not_called_corrupt(import_env, monkeypatch):
+    src, _ = import_env
+    with zipfile.ZipFile(src / "data.zip", "w") as zf:
+        zf.writestr("a.txt", "x")
+
+    def no_space(*args, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(converter_module, "unpack_archive", no_space)
+    with pytest.raises(Exception) as exc_info:
+        ImportManager(str(src), ProjectType.IMAGES)
+
+    handled = handle_exception(exc_info.value)
+    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
+    assert "'data.zip' could not be unpacked" in handled.message
+    assert "No space left on device" in handled.message
+    assert "corrupt" not in handled.message
