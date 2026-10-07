@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from supervisely._utils import take_with_default
 from supervisely.collection.key_indexed_collection import KeyObject
@@ -57,6 +58,11 @@ class TagMetaJsonFields:
     FRAME_RANGE_MIN_LENGTH = "frame_range_min_length"
     """"""
     FRAME_RANGE_MAX_LENGTH = "frame_range_max_length"
+    """"""
+    DEFAULT = "default"
+    """"""
+    DEFAULT_VALUE = "default_value"
+    """"""
 
 
 class TagApplicableTo:
@@ -102,6 +108,12 @@ SUPPORTED_TARGET_TYPES = [
     TagTargetType.ALL,
     TagTargetType.FRAME_BASED,
     TagTargetType.GLOBAL,
+]
+
+SUPPORTED_DEFAULT_VALUE_TYPES = [
+    TagValueType.ANY_NUMBER,
+    TagValueType.ANY_STRING,
+    TagValueType.ONEOF_STRING,
 ]
 
 NO_FRAME_RANGE_LENGTH_LIMIT = 0
@@ -177,11 +189,65 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
+def validate_tag_default_value(
+    value_type: str, default_value, possible_values: Optional[List[str]] = None
+) -> None:
+    """
+    Check that a default value fits the tag value type, same as the server does.
+
+    Only ANY_NUMBER (a finite number), ANY_STRING (a non-empty string) and ONEOF_STRING
+    (one of ``possible_values``) tags can have a default value. None means "no default
+    value" and is always accepted.
+
+    :param value_type: TagValueType of the tag.
+    :type value_type: str
+    :param default_value: Default value to check.
+    :type default_value: str or int or float, optional
+    :param possible_values: Possible values of a ONEOF_STRING tag.
+    :type possible_values: List[str], optional
+    :raises ValueError: If the tag value type can't have a default value or the value does
+        not fit it.
+    """
+    if default_value is None:
+        return
+    if value_type not in SUPPORTED_DEFAULT_VALUE_TYPES:
+        raise ValueError(
+            "TagValueType is {!r}. default_value is supported only for {}".format(
+                value_type, SUPPORTED_DEFAULT_VALUE_TYPES
+            )
+        )
+    if value_type == TagValueType.ANY_NUMBER:
+        # bool is an int subclass, but True as a number value is always a mistake
+        if (
+            isinstance(default_value, bool)
+            or not isinstance(default_value, (int, float))
+            or not math.isfinite(default_value)
+        ):
+            raise ValueError(
+                "default_value = {!r} is invalid, should be a finite number".format(default_value)
+            )
+    elif value_type == TagValueType.ANY_STRING:
+        if not isinstance(default_value, str) or not default_value.strip():
+            raise ValueError(
+                "default_value = {!r} is invalid, should be a non-empty string".format(
+                    default_value
+                )
+            )
+    elif not isinstance(default_value, str) or default_value not in (possible_values or []):
+        raise ValueError(
+            "default_value = {!r} is invalid, should be one of possible values {}".format(
+                default_value, possible_values
+            )
+        )
+
+
 # Pickles predating #1214 have no _target_type, older ones have no frame range limits.
 @legacy_pickle_defaults(
     _target_type=TagTargetType.ALL,
     _frame_range_min_length=NO_FRAME_RANGE_LENGTH_LIMIT,
     _frame_range_max_length=NO_FRAME_RANGE_LENGTH_LIMIT,
+    _is_default=False,
+    _default_value=None,
 )
 class TagMeta(KeyObject, JsonSerializable):
     """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
@@ -199,6 +265,8 @@ class TagMeta(KeyObject, JsonSerializable):
         target_type: Optional[str] = None,
         frame_range_min_length: Optional[int] = None,
         frame_range_max_length: Optional[int] = None,
+        is_default: Optional[bool] = None,
+        default_value: Optional[Union[str, int, float]] = None,
     ):
         """
         :param name: Tag name.
@@ -225,8 +293,17 @@ class TagMeta(KeyObject, JsonSerializable):
         :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
             frame range tag. 0 or None means no limit.
         :type frame_range_max_length: int, optional
+        :param is_default: Attach the tag automatically to every new object of the applicable
+            classes in the labeling tool. Requires applicable_to=OBJECTS_ONLY and non-empty
+            applicable_classes. None means False.
+        :type is_default: bool, optional
+        :param default_value: Value the tag gets when it is assigned without a value. Only for
+            ANY_NUMBER (finite number), ANY_STRING (non-empty string) and ONEOF_STRING (one
+            of possible_values). None means no default value.
+        :type default_value: str or int or float, optional
         :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values;
-            frame range limits are negative or min is greater than max.
+            frame range limits are negative or min is greater than max; is_default is set for
+            a tag that is not limited to object classes; default_value does not fit value_type.
 
         :Usage Example:
 
@@ -246,6 +323,17 @@ class TagMeta(KeyObject, JsonSerializable):
                     target_type=sly.TagTargetType.FRAME_BASED,
                     frame_range_min_length=5,
                     frame_range_max_length=30,
+                )
+
+                # added automatically to new 'car' objects with value 'sedan'
+                meta_subtype = sly.TagMeta(
+                    'subtype',
+                    sly.TagValueType.ONEOF_STRING,
+                    possible_values=['sedan', 'truck'],
+                    applicable_to=sly.TagApplicableTo.OBJECTS_ONLY,
+                    applicable_classes=['car'],
+                    is_default=True,
+                    default_value='sedan',
                 )
         """
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
@@ -267,6 +355,8 @@ class TagMeta(KeyObject, JsonSerializable):
         self._frame_range_min_length, self._frame_range_max_length = (
             validate_frame_range_length_limits(frame_range_min_length, frame_range_max_length)
         )
+        self._is_default = take_with_default(is_default, False)
+        self._default_value = default_value
         # Instances are pickled into .bin backups: a new attribute here needs an
         # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
@@ -298,6 +388,19 @@ class TagMeta(KeyObject, JsonSerializable):
                     self._value_type
                 )
             )
+
+        if not isinstance(self._is_default, bool):
+            raise ValueError("is_default = {!r} is invalid, should be bool".format(is_default))
+        if self._is_default and (
+            self._applicable_to != TagApplicableTo.OBJECTS_ONLY or not self._applicable_classes
+        ):
+            raise ValueError(
+                "Tag {!r} can't be default: only a tag with applicable_to={!r} and non-empty "
+                "applicable_classes is added to objects by default".format(
+                    self._name, TagApplicableTo.OBJECTS_ONLY
+                )
+            )
+        validate_tag_default_value(self._value_type, self._default_value, self._possible_values)
 
         _validate_color(self._color)
 
@@ -553,6 +656,79 @@ class TagMeta(KeyObject, JsonSerializable):
             or self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT
         )
 
+    @property
+    def is_default(self) -> bool:
+        """
+        Whether the labeling tool attaches this tag automatically to every new object of
+        the applicable classes (and to objects whose class is changed to one of them).
+
+        :returns: True if the tag is added to objects by default, otherwise False
+        :rtype: bool
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_subtype = sly.TagMeta(
+                    'subtype',
+                    sly.TagValueType.ANY_STRING,
+                    applicable_to=sly.TagApplicableTo.OBJECTS_ONLY,
+                    applicable_classes=['car'],
+                    is_default=True,
+                )
+
+                print(meta_subtype.is_default)
+                # Output: True
+        """
+        return self._is_default
+
+    @property
+    def default_value(self) -> Optional[Union[str, int, float]]:
+        """
+        Value the tag gets when it is assigned without a value. None if there is none.
+
+        :returns: Default value
+        :rtype: str or int or float, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_speed = sly.TagMeta('speed', sly.TagValueType.ANY_NUMBER, default_value=60)
+
+                print(meta_speed.default_value)
+                # Output: 60
+        """
+        return self._default_value
+
+    def with_default_value(self, default_value: Optional[Union[str, int, float]]) -> TagMeta:
+        """
+        Return a copy of this TagMeta with the given default value.
+
+        Unlike :func:`clone`, the value is always replaced, so passing None removes the
+        default value instead of keeping the current one.
+
+        :param default_value: New default value, None to remove it.
+        :type default_value: str or int or float, optional
+        :raises ValueError: If the default value does not fit the tag value type.
+        :returns: New instance of TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                meta_speed = sly.TagMeta('speed', sly.TagValueType.ANY_NUMBER, default_value=60)
+
+                meta_speed = meta_speed.with_default_value(None)
+                print(meta_speed.default_value)
+                # Output: None
+        """
+        clone = self.clone()
+        validate_tag_default_value(self.value_type, default_value, self.possible_values)
+        clone._default_value = default_value
+        return clone
+
     def with_frame_range_length_limits(
         self,
         min_length: Optional[int] = None,
@@ -724,6 +900,12 @@ class TagMeta(KeyObject, JsonSerializable):
             jdict[TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH] = self.frame_range_min_length
         if self._frame_range_max_length > NO_FRAME_RANGE_LENGTH_LIMIT:
             jdict[TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH] = self.frame_range_max_length
+        # Omitted when unset, same as the server does: projects.meta.update keeps the stored
+        # value for a missing key, so older meta.json files never clear these settings.
+        if self._is_default:
+            jdict[TagMetaJsonFields.DEFAULT] = True
+        if self._default_value is not None:
+            jdict[TagMetaJsonFields.DEFAULT_VALUE] = self.default_value
 
         return jdict
 
@@ -783,6 +965,8 @@ class TagMeta(KeyObject, JsonSerializable):
             target_type = data.get(TagMetaJsonFields.TARGET_TYPE, TagTargetType.ALL)
             frame_range_min_length = data.get(TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH)
             frame_range_max_length = data.get(TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH)
+            is_default = data.get(TagMetaJsonFields.DEFAULT, False)
+            default_value = data.get(TagMetaJsonFields.DEFAULT_VALUE)
 
             return cls(
                 name=name,
@@ -796,6 +980,8 @@ class TagMeta(KeyObject, JsonSerializable):
                 target_type=target_type,
                 frame_range_min_length=frame_range_min_length,
                 frame_range_max_length=frame_range_max_length,
+                is_default=is_default,
+                default_value=default_value,
             )
         else:
             raise ValueError("Tags must be dict or str types.")
@@ -982,6 +1168,8 @@ class TagMeta(KeyObject, JsonSerializable):
         target_type: Optional[str] = None,
         frame_range_min_length: Optional[int] = None,
         frame_range_max_length: Optional[int] = None,
+        is_default: Optional[bool] = None,
+        default_value: Optional[Union[str, int, float]] = None,
     ) -> TagMeta:
         """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
@@ -1011,6 +1199,12 @@ class TagMeta(KeyObject, JsonSerializable):
         :param frame_range_max_length: Maximum length (in frames, inclusive) of a finished
             frame range tag. Pass 0 to disable the limit; None keeps the current value.
         :type frame_range_max_length: int, optional
+        :param is_default: Attach the tag automatically to new objects of the applicable classes.
+            None keeps the current value.
+        :type is_default: bool, optional
+        :param default_value: Value the tag gets when it is assigned without a value. None
+            keeps the current value; :func:`with_default_value` can also remove it.
+        :type default_value: str or int or float, optional
         :returns: New instance of TagMeta object
         :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
@@ -1050,6 +1244,8 @@ class TagMeta(KeyObject, JsonSerializable):
             frame_range_max_length=take_with_default(
                 frame_range_max_length, self.frame_range_max_length
             ),
+            is_default=take_with_default(is_default, self.is_default),
+            default_value=take_with_default(default_value, self.default_value),
         )
 
     def __str__(self):
@@ -1083,6 +1279,8 @@ class TagMeta(KeyObject, JsonSerializable):
             "Target type",
             "Frame range min length",
             "Frame range max length",
+            "Default",
+            "Default value",
         ]
 
     def get_row_ptable(self):
@@ -1097,6 +1295,8 @@ class TagMeta(KeyObject, JsonSerializable):
             self.target_type,
             self.frame_range_min_length,
             self.frame_range_max_length,
+            self.is_default,
+            self.default_value,
         ]
 
     def _set_id(self, id: int):
