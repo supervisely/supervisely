@@ -1,3 +1,5 @@
+import gzip
+import lzma
 import os
 import shutil
 import tarfile
@@ -33,6 +35,7 @@ from supervisely.io.fs import (
     is_archive,
     list_files_recursively,
     mkdir,
+    remove_dir,
     remove_junk_from_dir,
     silent_remove,
     touch,
@@ -307,12 +310,19 @@ class ImportManager:
         zipfile.BadZipFile,
         EOFError,
         zlib.error,
+        gzip.BadGzipFile,
+        lzma.LZMAError,
     )
+
+    # archives that cannot be unpacked; is_archive knows them only when the system has
+    # /etc/mime.types, which the import images do not
+    _UNSUPPORTED_ARCHIVE_EXTS = (".7z", ".rar")
 
     def _unpack_archives(self, local_path) -> List[Tuple[str, Exception]]:
         """Unpack if input data contains an archive.
 
-        An archive that cannot be unpacked is left in place and skipped.
+        An archive that cannot be unpacked is left in place and skipped, and whatever
+        it extracted before failing is removed.
 
         :returns: (path, error) of each skipped archive.
         """
@@ -330,15 +340,23 @@ class ImportManager:
                     continue
                 for file in files:
                     file_path = os.path.join(root, file)
-                    if is_archive(file_path=file_path):
+                    # lowercase: mimetypes misses an upper-case compression suffix (DATA.TAR.GZ)
+                    if is_archive(file_path=file.lower()) or file.lower().endswith(
+                        self._UNSUPPORTED_ARCHIVE_EXTS
+                    ):
+                        new_path = file_path.replace("".join(Path(file_path).suffixes), "")
+                        new_path_existed = os.path.exists(new_path)
                         try:
-                            new_path = file_path.replace("".join(Path(file_path).suffixes), "")
                             unpack_archive(file_path, new_path)
                             archives.append(file_path)
                             new_paths_to_scan.append(new_path)
                         except Exception as e:
                             logger.error(f"Error while unpacking '{file}': {repr(e)}")
                             skipped.append((file_path, e))
+                            # a broken archive is skipped whole, not imported in part; a folder
+                            # that was already there holds other input and is kept
+                            if not new_path_existed:
+                                remove_dir(new_path)
 
             for archive in archives:
                 silent_remove(archive)
@@ -353,7 +371,7 @@ class ImportManager:
         reasons = []
         for path, error in skipped:
             name = os.path.basename(path)
-            details = str(error).replace(path, name)
+            details = str(error).replace(path, name).replace(self._input_data + os.sep, "")
             if not name.lower().endswith(tuple(unpack_exts)):
                 reasons.append(
                     f"'{name}' is not a supported archive format. Use a zip or tar archive instead."

@@ -925,7 +925,16 @@ def unpack_archive(
                         output_file.write(data)
         archive_path = combined
 
-    shutil.unpack_archive(archive_path, target_dir)
+    # shutil matches extensions case-sensitively and would reject a name like DATA.ZIP
+    archive_format = next(
+        (
+            name
+            for name, extensions, _ in shutil.get_unpack_formats()
+            if archive_path.lower().endswith(tuple(extensions))
+        ),
+        None,
+    )
+    shutil.unpack_archive(archive_path, target_dir, format=archive_format)
     if is_split:
         silent_remove(archive_path)
     if remove_junk:

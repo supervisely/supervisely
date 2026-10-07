@@ -1,6 +1,9 @@
+import io
+import lzma
 import os
 import subprocess
 import sys
+import tarfile
 import textwrap
 import zipfile
 
@@ -19,6 +22,35 @@ from supervisely.project.project_type import ProjectType
 def _write_image(path, ext="png"):
     img = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
     Image.fromarray(img).save(path, format="JPEG" if ext in ("jpg", "jpeg") else ext.upper())
+
+
+def _png_bytes():
+    buf = io.BytesIO()
+    _write_image(buf)
+    return buf.getvalue()
+
+
+def _write_zip_of_images(path, count=10):
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_STORED) as zf:
+        for i in range(count):
+            zf.writestr(f"data/{i}.png", _png_bytes())
+
+
+def _write_tar_of_images(path, mode, count=10):
+    with tarfile.open(path, mode) as tf:
+        for i in range(count):
+            data = _png_bytes()
+            info = tarfile.TarInfo(f"data/{i}.png")
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+
+
+def _damage_middle(path):
+    """Flip bytes halfway through, so unpacking fails after extracting part of the archive."""
+    data = bytearray(path.read_bytes())
+    for i in range(len(data) // 2, len(data) // 2 + 64):
+        data[i] ^= 0xFF
+    path.write_bytes(bytes(data))
 
 
 @pytest.fixture
@@ -171,3 +203,95 @@ def test_unpack_failure_that_is_not_corruption_is_not_called_corrupt(import_env,
     assert "'data.zip' could not be unpacked" in handled.message
     assert "No space left on device" in handled.message
     assert "corrupt" not in handled.message
+
+
+@pytest.mark.parametrize("name", ["DATA.ZIP", "DATA.TAR.GZ"])
+def test_uppercase_archive_name_is_unpacked(import_env, tmp_path, name):
+    src, warnings = import_env
+    img = tmp_path / "a.png"
+    _write_image(img)
+    if name.endswith(".ZIP"):
+        with zipfile.ZipFile(src / name, "w") as zf:
+            zf.write(img, "data/a.png")
+    else:
+        with tarfile.open(src / name, "w:gz") as tf:
+            tf.add(img, "data/a.png")
+
+    manager = ImportManager(str(src), ProjectType.IMAGES)
+
+    assert [item.name for item in manager.get_items()] == ["a.png"]
+    assert not any("could not be unpacked" in w for w in warnings)
+
+
+def _truncate_half(path):
+    path.write_bytes(path.read_bytes()[: path.stat().st_size // 2])
+
+
+# Damage a zip in the middle: every member's CRC is checked. A tar is cut short instead:
+# tarfile stops at the end-of-archive marker and never checks the gzip or xz trailer, so
+# damage inside stored data would extract as garbage without an error.
+@pytest.mark.parametrize(
+    "name, write, damage",
+    [
+        ("data.zip", _write_zip_of_images, _damage_middle),
+        ("data.tar.gz", lambda path: _write_tar_of_images(path, "w:gz"), _truncate_half),
+        ("data.tar.xz", lambda path: _write_tar_of_images(path, "w:xz"), _truncate_half),
+    ],
+)
+def test_archive_broken_midway_is_corrupt_and_not_imported_in_part(
+    import_env, name, write, damage
+):
+    src, _ = import_env
+    write(src / name)
+    damage(src / name)
+
+    with pytest.raises(Exception) as exc_info:
+        ImportManager(str(src), ProjectType.IMAGES)
+
+    handled = handle_exception(exc_info.value)
+    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
+    assert f"'{name}' is corrupt or incomplete" in handled.message
+    unpacked_to = src.parent / "app_data" / "input" / "data"
+    assert not unpacked_to.exists()
+
+
+def test_decompression_error_is_called_corrupt(import_env, monkeypatch):
+    src, _ = import_env
+    _write_tar_of_images(src / "data.tar.xz", "w:xz")
+
+    def corrupt_input(*args, **kwargs):
+        raise lzma.LZMAError("Corrupt input data")
+
+    monkeypatch.setattr(converter_module, "unpack_archive", corrupt_input)
+    with pytest.raises(Exception) as exc_info:
+        ImportManager(str(src), ProjectType.IMAGES)
+
+    handled = handle_exception(exc_info.value)
+    assert "'data.tar.xz' is corrupt or incomplete (Corrupt input data)" in handled.message
+
+
+def test_archive_damaged_midway_next_to_images_imports_only_the_images(import_env):
+    src, warnings = import_env
+    for i in range(3):
+        _write_image(src / f"img_{i}.png")
+    _write_zip_of_images(src / "data.zip")
+    _damage_middle(src / "data.zip")
+
+    manager = ImportManager(str(src), ProjectType.IMAGES)
+
+    names = sorted(item.name for item in manager.get_items())
+    assert names == ["img_0.png", "img_1.png", "img_2.png"]
+    assert any("data.zip" in w and "corrupt or incomplete" in w for w in warnings)
+
+
+def test_failed_unpack_keeps_a_folder_of_the_same_name(import_env):
+    src, warnings = import_env
+    (src / "data").mkdir()
+    for i in range(2):
+        _write_image(src / "data" / f"{i}.png")
+    (src / "data.zip").write_bytes(os.urandom(64 * 1024))
+
+    manager = ImportManager(str(src), ProjectType.IMAGES)
+
+    assert sorted(item.name for item in manager.get_items()) == ["0.png", "1.png"]
+    assert any("data.zip" in w for w in warnings)
