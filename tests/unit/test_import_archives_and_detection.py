@@ -16,6 +16,7 @@ from supervisely.convert.converter import ImportManager
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.image_helper import validate_mimetypes
 from supervisely.io.exception_handlers import ErrorHandler, handle_exception
+from supervisely.io.fs import unpack_archive
 from supervisely.project.project_type import ProjectType
 
 
@@ -125,8 +126,8 @@ def test_only_a_corrupt_zip_fails_with_unpack_error_naming_it(import_env):
         ImportManager(str(src), ProjectType.IMAGES)
 
     handled = handle_exception(exc_info.value)
-    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
-    assert handled.code == 1006
+    assert isinstance(handled, ErrorHandler.APP.NothingToImportFromArchives)
+    assert handled.code == 1007
     assert "supervisely_import.zip" in handled.message
     assert "is not a zip file" in handled.message
     assert "Upload the archive again" in handled.message
@@ -141,7 +142,7 @@ def test_only_a_7z_fails_with_unsupported_format(import_env):
         ImportManager(str(src), ProjectType.IMAGES)
 
     handled = handle_exception(exc_info.value)
-    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
+    assert isinstance(handled, ErrorHandler.APP.NothingToImportFromArchives)
     assert "'data.7z' is not a supported archive format" in handled.message
     assert "zip or tar" in handled.message
 
@@ -199,7 +200,7 @@ def test_unpack_failure_that_is_not_corruption_is_not_called_corrupt(import_env,
         ImportManager(str(src), ProjectType.IMAGES)
 
     handled = handle_exception(exc_info.value)
-    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
+    assert isinstance(handled, ErrorHandler.APP.NothingToImportFromArchives)
     assert "'data.zip' could not be unpacked" in handled.message
     assert "No space left on device" in handled.message
     assert "corrupt" not in handled.message
@@ -249,7 +250,7 @@ def test_archive_broken_midway_is_corrupt_and_not_imported_in_part(
         ImportManager(str(src), ProjectType.IMAGES)
 
     handled = handle_exception(exc_info.value)
-    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
+    assert isinstance(handled, ErrorHandler.APP.NothingToImportFromArchives)
     assert f"'{name}' is corrupt or incomplete" in handled.message
     unpacked_to = src.parent / "app_data" / "input" / "data"
     assert not unpacked_to.exists()
@@ -295,3 +296,15 @@ def test_failed_unpack_keeps_a_folder_of_the_same_name(import_env):
 
     assert sorted(item.name for item in manager.get_items()) == ["0.png", "1.png"]
     assert any("data.zip" in w for w in warnings)
+
+
+def test_unpack_error_outside_import_keeps_the_generic_handler(tmp_path):
+    bad = tmp_path / "data.zip"
+    bad.write_bytes(os.urandom(1024))
+    with pytest.raises(Exception) as exc_info:
+        unpack_archive(str(bad), str(tmp_path / "out"))
+
+    handled = handle_exception(exc_info.value)
+    assert isinstance(handled, ErrorHandler.APP.FailedToUnpackArchive)
+    assert handled.code == 1006
+    assert handled.message.startswith("Error occurred while unpacking the archive.")

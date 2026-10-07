@@ -204,13 +204,26 @@ class ErrorHandler:
                 """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1006
                 self.title = "Failed to unpack archive"
-                if isinstance(exception, _ArchiveUnpackError):
-                    self.message = str(exception)
-                else:
-                    self.message = (
-                        "Error occurred while unpacking the archive. "
-                        "Please, check the archive format, size and it is not corrupted."
-                    )
+                self.message = (
+                    "Error occurred while unpacking the archive. "
+                    "Please, check the archive format, size and it is not corrupted."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class NothingToImportFromArchives(HandleException):
+            """Raised when the input held only archives that could not be unpacked; the message names each one and why."""
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
+                self.code = 1007
+                self.title = "Failed to unpack archive"
+                self.message = exception.args[0]
 
                 super().__init__(
                     exception,
@@ -849,7 +862,7 @@ ERROR_PATTERNS = {
         r".*shutil\.unpack_archive.*": ErrorHandler.APP.FailedToUnpackArchive,
         r".*api\.file\.download_directory.*": ErrorHandler.API.TeamFilesDirectoryDownloadError,
     },
-    _ArchiveUnpackError: {r".*": ErrorHandler.APP.FailedToUnpackArchive},
+    _ArchiveUnpackError: {r".*": ErrorHandler.APP.NothingToImportFromArchives},
     TarReadError: {
         r".*unexpected end of data.*": ErrorHandler.APP.FailedToReadArchive,
         r".*extractall.*": ErrorHandler.APP.FailedToUnpackArchive,
