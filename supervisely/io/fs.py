@@ -862,6 +862,13 @@ def archive_directory(
     return parts_paths
 
 
+class _ArchiveUnpackError(shutil.ReadError):
+    """Raised when input archives could not be unpacked and nothing else is left to import.
+
+    The message names each archive and says what to do; it is shown to the user as is.
+    """
+
+
 def unpack_archive(
     archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
 ) -> None:

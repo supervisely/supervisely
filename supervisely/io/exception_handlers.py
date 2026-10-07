@@ -11,6 +11,7 @@ from rich.console import Console
 
 from supervisely import is_community, is_development
 from supervisely.app import DialogWindowError
+from supervisely.io.fs import _ArchiveUnpackError
 from supervisely.sly_logger import EventType, logger
 
 # TODO: Add correct doc link.
@@ -203,10 +204,13 @@ class ErrorHandler:
                 """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1006
                 self.title = "Failed to unpack archive"
-                self.message = (
-                    "Error occurred while unpacking the archive. "
-                    "Please, check the archive format, size and it is not corrupted."
-                )
+                if isinstance(exception, _ArchiveUnpackError):
+                    self.message = str(exception)
+                else:
+                    self.message = (
+                        "Error occurred while unpacking the archive. "
+                        "Please, check the archive format, size and it is not corrupted."
+                    )
 
                 super().__init__(
                     exception,
@@ -845,6 +849,7 @@ ERROR_PATTERNS = {
         r".*shutil\.unpack_archive.*": ErrorHandler.APP.FailedToUnpackArchive,
         r".*api\.file\.download_directory.*": ErrorHandler.API.TeamFilesDirectoryDownloadError,
     },
+    _ArchiveUnpackError: {r".*": ErrorHandler.APP.FailedToUnpackArchive},
     TarReadError: {
         r".*unexpected end of data.*": ErrorHandler.APP.FailedToReadArchive,
         r".*extractall.*": ErrorHandler.APP.FailedToUnpackArchive,

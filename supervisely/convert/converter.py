@@ -1,6 +1,7 @@
 import os
+import shutil
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -23,9 +24,11 @@ from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.env import team_id as env_team_id
 from supervisely.io.fs import (
+    _ArchiveUnpackError,
     dir_exists,
     file_exists,
     is_archive,
+    list_files_recursively,
     mkdir,
     remove_junk_from_dir,
     silent_remove,
@@ -84,8 +87,9 @@ class ImportManager:
         self._input_data = os.path.abspath(get_data_dir())
         for data in input_data:
             self._prepare_input_data(data)
-        self._unpack_archives(self._input_data)
+        skipped_archives = self._unpack_archives(self._input_data)
         remove_junk_from_dir(self._input_data)
+        self._report_skipped_archives(skipped_archives)
 
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
@@ -293,11 +297,17 @@ class ImportManager:
         logger.info(f"Scanned remote directories:\n   - " + "\n   - ".join(unique_directories))
         return local_path
 
-    def _unpack_archives(self, local_path):
-        """Unpack if input data contains an archive."""
+    def _unpack_archives(self, local_path) -> List[Tuple[str, Exception]]:
+        """Unpack if input data contains an archive.
 
+        An archive that cannot be unpacked is left in place and skipped.
+
+        :returns: (path, error) of each skipped archive.
+        """
+
+        skipped = []
         if self._upload_as_links:
-            return
+            return skipped
         new_paths_to_scan = [local_path]
         while len(new_paths_to_scan) > 0:
             archives = []
@@ -316,9 +326,41 @@ class ImportManager:
                             new_paths_to_scan.append(new_path)
                         except Exception as e:
                             logger.error(f"Error while unpacking '{file}': {repr(e)}")
+                            skipped.append((file_path, e))
 
             for archive in archives:
                 silent_remove(archive)
+        return skipped
+
+    def _report_skipped_archives(self, skipped: List[Tuple[str, Exception]]) -> None:
+        """Fail if only archives that could not be unpacked were given, warn otherwise."""
+
+        if not skipped:
+            return
+        unpack_exts = [ext for _, exts, _ in shutil.get_unpack_formats() for ext in exts]
+        reasons = []
+        for path, error in skipped:
+            name = os.path.basename(path)
+            if not name.lower().endswith(tuple(unpack_exts)):
+                reasons.append(
+                    f"'{name}' is not a supported archive format. Use a zip or tar archive instead."
+                )
+            else:
+                details = str(error).replace(path, name)
+                reasons.append(
+                    f"'{name}' is corrupt or incomplete ({details}). Upload the archive again."
+                )
+
+        skipped_paths = {path for path, _ in skipped}
+        if all(f in skipped_paths for f in list_files_recursively(self._input_data)):
+            what = "the archive" if len(skipped) == 1 else "the archives"
+            raise _ArchiveUnpackError(
+                f"Nothing to import: {what} could not be unpacked. " + " ".join(reasons)
+            )
+        logger.warning(
+            f"Skipped {len(skipped)} archive(s) that could not be unpacked, "
+            "importing the rest of the data. " + " ".join(reasons)
+        )
 
     def _get_progress(
         self,
