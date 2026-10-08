@@ -191,7 +191,12 @@ def detect_tag_value_type(value) -> str:
 
 
 def _strip_string_default(value_type: str, default_value):
-    """The server trims an ANY_STRING default value, so the TagMeta stores it trimmed too."""
+    """
+    The server trims a string default value, so an ANY_STRING one is stored trimmed too.
+
+    A ONEOF_STRING default is compared with possible_values as given, which is stricter
+    than the server.
+    """
     if value_type == TagValueType.ANY_STRING and isinstance(default_value, str):
         return default_value.strip()
     return default_value
@@ -256,13 +261,13 @@ def _drop_stale_tag_defaults(
     Drop default settings that no longer fit the tag, as the server does with stored values.
 
     The server keeps isDefault/defaultValue in the tag settings when the tag changes later
-    (its classes are removed, a one of value is edited in the panel) and still emits them in
+    (for example, its classes are removed with projects.classes.remove) and still emits them in
     the project meta. Rejecting them would make the whole meta unreadable, so they are
     dropped with a warning instead. Values passed to the constructor are still validated.
     """
     if is_default and (applicable_to != TagApplicableTo.OBJECTS_ONLY or not applicable_classes):
         logger.warning(
-            "Tag %r is marked as default, but is not limited to object classes: "
+            "Tag %r is marked as default, but is not an objects-only tag with classes: "
             "the default flag is ignored",
             name,
         )
