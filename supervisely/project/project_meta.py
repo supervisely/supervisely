@@ -901,7 +901,22 @@ class ProjectMeta(JsonSerializable):
                 # }
         """
         res_items = self._delete_items(self._obj_classes, obj_class_names)
-        return self.clone(obj_classes=ObjClassCollection(res_items))
+        # A default tag needs at least one of its classes, else projects.meta.update
+        # rejects the meta. Clear the flag when the last one is deleted, as the server does.
+        deleted, kept = set(obj_class_names), {obj_class.name for obj_class in res_items}
+        tag_metas = [
+            (
+                tag_meta.clone(is_default=False)
+                if tag_meta.is_default
+                and deleted.intersection(tag_meta.applicable_classes)
+                and not kept.intersection(tag_meta.applicable_classes)
+                else tag_meta
+            )
+            for tag_meta in self._tag_metas
+        ]
+        return self.clone(
+            obj_classes=ObjClassCollection(res_items), tag_metas=TagMetaCollection(tag_metas)
+        )
 
     def delete_tag_meta(self, tag_name: str) -> ProjectMeta:
         """

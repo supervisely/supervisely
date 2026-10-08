@@ -2,6 +2,7 @@ import pickle
 
 import pytest
 
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import (
     TagApplicableTo,
     TagMeta,
@@ -9,6 +10,7 @@ from supervisely.annotation.tag_meta import (
     TagValueType,
 )
 from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 
@@ -275,3 +277,34 @@ def test_project_meta_with_stale_default_is_readable():
 def test_constructor_still_rejects_default_without_classes():
     with pytest.raises(ValueError):
         _default_subtype(applicable_classes=[])
+
+
+def test_deleting_the_last_class_of_a_default_tag_clears_the_flag():
+    meta = ProjectMeta(
+        obj_classes=[ObjClass("car", Rectangle), ObjClass("truck", Rectangle)],
+        tag_metas=[_default_subtype()],
+    )
+
+    meta = meta.delete_obj_class("car")
+
+    subtype = meta.get_tag_meta("subtype")
+    assert subtype.is_default is False
+    assert subtype.default_value == "sedan"
+    assert subtype.applicable_classes == ["car"]
+    assert TagMetaJsonFields.DEFAULT not in subtype.to_json()
+
+
+def test_deleting_one_of_the_classes_of_a_default_tag_keeps_the_flag():
+    meta = ProjectMeta(
+        obj_classes=[ObjClass("car", Rectangle), ObjClass("truck", Rectangle)],
+        tag_metas=[_default_subtype(applicable_classes=["car", "truck"])],
+    )
+
+    assert meta.delete_obj_class("car").get_tag_meta("subtype").is_default is True
+
+
+def test_deleting_an_unrelated_class_keeps_the_flag():
+    # A meta built with tags only (no classes) must not lose the flag.
+    meta = ProjectMeta(obj_classes=[ObjClass("bus", Rectangle)], tag_metas=[_default_subtype()])
+
+    assert meta.delete_obj_class("bus").get_tag_meta("subtype").is_default is True
