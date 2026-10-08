@@ -374,9 +374,9 @@ class ProjectMeta(JsonSerializable):
         """
         tags_json = self._tag_metas.to_json()
         # A default tag needs at least one of its classes in the meta, else
-        # projects.meta.update rejects the meta. Leave the flag out then: the server drops
-        # it too once the classes are gone, and it keeps the stored one when the key is
-        # missing.
+        # projects.meta.update rejects the meta. Leave the flag out then: for a missing key
+        # the server takes the stored flag and drops it itself, because none of the tag's
+        # classes are left in this meta.
         class_names = {obj_class.name for obj_class in self._obj_classes}
         for tag_json in tags_json:
             if tag_json.get(TagMetaJsonFields.DEFAULT) and not class_names.intersection(

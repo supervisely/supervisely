@@ -280,7 +280,8 @@ def _drop_stale_tag_defaults(
     if is_default and (applicable_to != TagApplicableTo.OBJECTS_ONLY or not applicable_classes):
         logger.warning(
             "Tag %r is marked as default, but is not an objects-only tag with classes: "
-            "the default flag is ignored",
+            "the default flag is ignored here, but the server keeps it and applies it again "
+            "if the tag gets classes",
             name,
         )
         is_default = False
