@@ -187,7 +187,7 @@ def test_with_default_value_replaces_and_removes():
 
 
 def test_project_meta_round_trip_keeps_defaults():
-    meta = ProjectMeta(tag_metas=[_default_subtype()])
+    meta = ProjectMeta(obj_classes=[ObjClass("car", Rectangle)], tag_metas=[_default_subtype()])
 
     restored = ProjectMeta.from_json(meta.to_json())
 
@@ -279,36 +279,51 @@ def test_constructor_still_rejects_default_without_classes():
         _default_subtype(applicable_classes=[])
 
 
-def test_deleting_the_last_class_of_a_default_tag_clears_the_flag():
+
+def _meta_json_subtype(meta):
+    return next(tag for tag in meta.to_json()["tags"] if tag["name"] == "subtype")
+
+
+# projects.meta.update rejects "default": true for a tag none of whose classes are in the
+# meta, so every way of dropping the classes has to leave the flag out of the JSON.
+@pytest.mark.parametrize(
+    "drop_classes",
+    [
+        lambda meta: meta.delete_obj_class("car"),
+        lambda meta: meta.clone(obj_classes=[ObjClass("truck", Rectangle)]),
+        lambda meta: ProjectMeta(obj_classes=[], tag_metas=meta.tag_metas),
+    ],
+    ids=["delete_obj_class", "clone", "constructor"],
+)
+def test_meta_json_leaves_out_default_flag_when_its_classes_are_gone(drop_classes):
     meta = ProjectMeta(
         obj_classes=[ObjClass("car", Rectangle), ObjClass("truck", Rectangle)],
         tag_metas=[_default_subtype()],
     )
 
-    meta = meta.delete_obj_class("car")
+    tag_json = _meta_json_subtype(drop_classes(meta))
 
-    subtype = meta.get_tag_meta("subtype")
-    assert subtype.is_default is False
-    assert subtype.default_value == "sedan"
-    assert subtype.applicable_classes == ["car"]
-    assert TagMetaJsonFields.DEFAULT not in subtype.to_json()
+    assert TagMetaJsonFields.DEFAULT not in tag_json
+    assert tag_json[TagMetaJsonFields.DEFAULT_VALUE] == "sedan"
+    assert tag_json[TagMetaJsonFields.APPLICABLE_CLASSES] == ["car"]
 
 
-def test_deleting_one_of_the_classes_of_a_default_tag_keeps_the_flag():
+def test_meta_json_keeps_default_flag_while_one_of_its_classes_is_left():
     meta = ProjectMeta(
         obj_classes=[ObjClass("car", Rectangle), ObjClass("truck", Rectangle)],
         tag_metas=[_default_subtype(applicable_classes=["car", "truck"])],
     )
 
-    assert meta.delete_obj_class("car").get_tag_meta("subtype").is_default is True
+    assert _meta_json_subtype(meta.delete_obj_class("car"))[TagMetaJsonFields.DEFAULT] is True
 
 
-def test_deleting_an_unrelated_class_keeps_the_flag():
-    # A meta built with tags only (no classes) must not lose the flag.
-    meta = ProjectMeta(obj_classes=[ObjClass("bus", Rectangle)], tag_metas=[_default_subtype()])
+def test_delete_then_re_add_class_keeps_default_flag():
+    meta = ProjectMeta(obj_classes=[ObjClass("car", Rectangle)], tag_metas=[_default_subtype()])
 
-    assert meta.delete_obj_class("bus").get_tag_meta("subtype").is_default is True
+    meta = meta.delete_obj_class("car").add_obj_class(ObjClass("car", Rectangle))
 
+    assert meta.get_tag_meta("subtype").is_default is True
+    assert _meta_json_subtype(meta)[TagMetaJsonFields.DEFAULT] is True
 
 def test_string_default_is_stored_trimmed_like_the_server_does():
     tag_meta = TagMeta("note", TagValueType.ANY_STRING, default_value="  checked  ")

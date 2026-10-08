@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 from supervisely._utils import take_with_default
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta import TagMeta, TagMetaJsonFields
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -372,9 +372,20 @@ class ProjectMeta(JsonSerializable):
                 #     ]
                 # }
         """
+        tags_json = self._tag_metas.to_json()
+        # A default tag needs at least one of its classes in the meta, else
+        # projects.meta.update rejects the meta. Leave the flag out then: the server drops
+        # it too once the classes are gone, and it keeps the stored one when the key is
+        # missing.
+        class_names = {obj_class.name for obj_class in self._obj_classes}
+        for tag_json in tags_json:
+            if tag_json.get(TagMetaJsonFields.DEFAULT) and not class_names.intersection(
+                tag_json.get(TagMetaJsonFields.APPLICABLE_CLASSES, [])
+            ):
+                del tag_json[TagMetaJsonFields.DEFAULT]
         res = {
             ProjectMetaJsonFields.OBJ_CLASSES: self._obj_classes.to_json(),
-            ProjectMetaJsonFields.TAGS: self._tag_metas.to_json(),
+            ProjectMetaJsonFields.TAGS: tags_json,
         }
         if self._project_type is not None:
             res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
@@ -901,22 +912,7 @@ class ProjectMeta(JsonSerializable):
                 # }
         """
         res_items = self._delete_items(self._obj_classes, obj_class_names)
-        # A default tag needs at least one of its classes, else projects.meta.update
-        # rejects the meta. Clear the flag when the last one is deleted, as the server does.
-        deleted, kept = set(obj_class_names), {obj_class.name for obj_class in res_items}
-        tag_metas = [
-            (
-                tag_meta.clone(is_default=False)
-                if tag_meta.is_default
-                and deleted.intersection(tag_meta.applicable_classes)
-                and not kept.intersection(tag_meta.applicable_classes)
-                else tag_meta
-            )
-            for tag_meta in self._tag_metas
-        ]
-        return self.clone(
-            obj_classes=ObjClassCollection(res_items), tag_metas=TagMetaCollection(tag_metas)
-        )
+        return self.clone(obj_classes=ObjClassCollection(res_items))
 
     def delete_tag_meta(self, tag_name: str) -> ProjectMeta:
         """
