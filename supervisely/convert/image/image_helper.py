@@ -1,4 +1,5 @@
 import mimetypes
+import os
 import re
 from pathlib import Path
 from typing import List, Union
@@ -50,8 +51,8 @@ def validate_mimetypes(name: str, path: str) -> list:
     mimetypes.add_type("image/webp", ".webp")  # to extend types_map
     mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
 
-    with open(path, "rb") as f:
-        mimetype = magic.from_buffer(f.read(), mime=True)
+    # libmagic reads only the file header; resolve symlinks, which it does not follow
+    mimetype = magic.from_file(os.path.realpath(path), mime=True)
     file_ext = get_file_ext(path).lower()
     if file_ext in mimetypes.guess_all_extensions(mimetype):
         return name
