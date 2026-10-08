@@ -733,7 +733,15 @@ class TagMeta(KeyObject, JsonSerializable):
         Return a copy of this TagMeta with the given default value.
 
         Unlike :func:`clone`, the value is always replaced, so passing None removes the
-        default value instead of keeping the current one.
+        default value from this TagMeta instead of keeping the current one.
+
+        .. note::
+
+            This does not remove the default value from a project on the server.
+            :func:`~supervisely.api.project_api.ProjectApi.update_meta` keeps the stored
+            ``default`` and ``default_value`` of a tag whose meta leaves them out, and a
+            TagMeta without a default leaves them out. Remove it in the project's tag
+            settings in the web app instead.
 
         :param default_value: New default value, None to remove it.
         :type default_value: str or int or float, optional
@@ -1234,10 +1242,12 @@ class TagMeta(KeyObject, JsonSerializable):
             frame range tag. Pass 0 to disable the limit; None keeps the current value.
         :type frame_range_max_length: int, optional
         :param is_default: Attach the tag automatically to new objects of the applicable classes.
-            None keeps the current value.
+            None keeps the current value. False does not clear the flag on the server through
+            :func:`~supervisely.api.project_api.ProjectApi.update_meta`, see
+            :func:`with_default_value`.
         :type is_default: bool, optional
         :param default_value: Value the tag gets when it is assigned without a value. None
-            keeps the current value; :func:`with_default_value` can also remove it.
+            keeps the current value; :func:`with_default_value` removes it from the TagMeta.
         :type default_value: str or int or float, optional
         :returns: New instance of TagMeta object
         :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
