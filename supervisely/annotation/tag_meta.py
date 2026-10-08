@@ -190,7 +190,7 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
-def validate_tag_default_value(
+def _validate_tag_default_value(
     value_type: str, default_value, possible_values: Optional[List[str]] = None
 ) -> None:
     """
@@ -261,7 +261,7 @@ def _drop_stale_tag_defaults(
         )
         is_default = False
     try:
-        validate_tag_default_value(value_type, default_value, possible_values)
+        _validate_tag_default_value(value_type, default_value, possible_values)
     except ValueError as e:
         logger.warning("Default value of tag %r is ignored: %s", name, e)
         default_value = None
@@ -427,7 +427,7 @@ class TagMeta(KeyObject, JsonSerializable):
                     self._name, TagApplicableTo.OBJECTS_ONLY
                 )
             )
-        validate_tag_default_value(self._value_type, self._default_value, self._possible_values)
+        _validate_tag_default_value(self._value_type, self._default_value, self._possible_values)
 
         _validate_color(self._color)
 
@@ -752,7 +752,7 @@ class TagMeta(KeyObject, JsonSerializable):
                 # Output: None
         """
         clone = self.clone()
-        validate_tag_default_value(self.value_type, default_value, self.possible_values)
+        _validate_tag_default_value(self.value_type, default_value, self.possible_values)
         clone._default_value = default_value
         return clone
 
