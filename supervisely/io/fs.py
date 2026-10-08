@@ -862,6 +862,13 @@ def archive_directory(
     return parts_paths
 
 
+class _ArchiveUnpackError(shutil.ReadError):
+    """Raised when input archives could not be unpacked and nothing else is left to import.
+
+    The message names each archive and says what to do; it is shown to the user as is.
+    """
+
+
 def unpack_archive(
     archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
 ) -> None:
@@ -918,7 +925,16 @@ def unpack_archive(
                         output_file.write(data)
         archive_path = combined
 
-    shutil.unpack_archive(archive_path, target_dir)
+    # shutil matches extensions case-sensitively and would reject a name like DATA.ZIP
+    archive_format = next(
+        (
+            name
+            for name, extensions, _ in shutil.get_unpack_formats()
+            if archive_path.lower().endswith(tuple(extensions))
+        ),
+        None,
+    )
+    shutil.unpack_archive(archive_path, target_dir, format=archive_format)
     if is_split:
         silent_remove(archive_path)
     if remove_junk:
