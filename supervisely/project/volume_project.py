@@ -4,8 +4,10 @@ from __future__ import annotations
 import io
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 import re
 import struct
+import threading
 from collections import defaultdict, namedtuple
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -15,7 +17,7 @@ from tqdm import tqdm
 import supervisely as sly
 import supervisely.volume_annotation.constants as volume_constants
 from supervisely._utils import batched
-from supervisely.api.api import Api
+from supervisely.api.api import ApiContext, Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.volume.volume_api import VolumeInfo
@@ -41,6 +43,12 @@ from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
+
+
+# See VideoProject: restoring annotations is round-trip bound, so a few at a time is the
+# difference between minutes and hours on a project of any size.
+RESTORE_WORKERS = int(os.environ.get("SLY_RESTORE_WORKERS", "8"))
+SNAPSHOT_FETCH_WORKERS = int(os.environ.get("SLY_SNAPSHOT_FETCH_WORKERS", "8"))
 
 
 class VolumeDataset(VideoDataset):
@@ -174,12 +182,18 @@ class VolumeProject(VideoProject):
         item_type = VolumeDataset
 
     _SERIALIZATION_MAGIC = b"SLYVOLPAR"
-    _SERIALIZATION_VERSION = 1
+    # 1: annotations carry uuid keys only. 2: they carry the server's ids as well, which
+    # is what makes two versions comparable. Both are readable.
+    _SERIALIZATION_VERSION = 2
+    _SUPPORTED_SERIALIZATION_VERSIONS = (1, 2)
     _SECTION_PROJECT_INFO = 1
     _SECTION_PROJECT_META = 2
     _SECTION_DATASETS = 3
     _SECTION_VOLUMES = 4
     _SECTION_ANNOTATIONS = 5
+    # Not a section in the file - the parser reports the header version under this key so
+    # a reader can tell which annotation shape it is looking at.
+    _SECTION_HEADER_VERSION = -1
 
     def __init__(self, directory: str, mode: OpenMode):
         """
@@ -306,6 +320,7 @@ class VolumeProject(VideoProject):
         return_bytesio: bool = False,
         schema_version: str = DEFAULT_VOLUME_SCHEMA_VERSION,
         batch_size: int = 50,
+        fetch_workers: int = SNAPSHOT_FETCH_WORKERS,
         *args,
         **kwargs,
     ) -> Union[str, io.BytesIO]:
@@ -337,7 +352,9 @@ class VolumeProject(VideoProject):
         :type progress_cb: tqdm or callable, optional
         :param return_bytesio: If True, return an in-memory BytesIO with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
         :type return_bytesio: bool, optional
-        :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
+        :param schema_version: Snapshot schema version. Controls the internal Parquet
+            layout/fields. Supported values are ``"v2.0.0"`` and ``"v2.1.0"``;
+            the default is ``"v2.1.0"``.
         :type schema_version: str, optional
         :param batch_size: Batch size for API calls determining how many items to download in one request. Default is 50.
         :type batch_size: int, optional
@@ -426,50 +443,80 @@ class VolumeProject(VideoProject):
             ann_by_volume_id: Dict[int, Dict[str, Any]] = {}
             spatial_figures_by_volume: Dict[int, Dict[int, Dict[str, Any]]] = {}
             volume_ids = [volume_info.id for volume_info in volumes]
-            for volume_ids_batch in batched(volume_ids, batch_size):
-                ann_jsons = api.volume.annotation.download_bulk(dataset_info.id, volume_ids_batch)
 
-                # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
-                # Build mappings:
-                # - volume_id -> ann_json
-                # - volume_id -> {figure_id -> spatial_figure_dict}
-                for ann_json in ann_jsons:
-                    volume_id = ann_json.get(ApiField.VOLUME_ID)
-                    if volume_id is None:
-                        continue
-                    ann_by_volume_id[volume_id] = ann_json
-                    figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
-                    fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
-                    for spatial_figure in figures_list:
-                        fig_id = spatial_figure.get("id")
-                        if fig_id is not None:
-                            fig_id_to_spatial_figure[fig_id] = spatial_figure
-                    spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
+            # Two round trips per batch and nothing between them depends on the batch
+            # before, so the batches of a dataset are fetched concurrently; the loop that
+            # consumes them below stays single-threaded and in order.
+            def _fetch_volume_batch(volume_ids_batch, ds_id=dataset_info.id):
+                return (
+                    volume_ids_batch,
+                    api.volume.annotation.download_bulk(ds_id, volume_ids_batch),
+                    api.volume.figure.download(ds_id, volume_ids_batch),
+                )
 
-                figures_dict = api.volume.figure.download(dataset_info.id, volume_ids_batch)
-                for volume_id, figure_infos in figures_dict.items():
-                    ann_json = ann_by_volume_id.get(volume_id)
-                    if ann_json is None:
-                        continue
-                    fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
-                    for figure_info in figure_infos:
-                        spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
-                        if spatial_figure is not None:
-                            spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
+            id_batches = list(batched(volume_ids, batch_size))
+            if len(id_batches) > 1 and fetch_workers > 1:
+                pool = ThreadPoolExecutor(max_workers=fetch_workers)
+                fetched = pool.map(_fetch_volume_batch, id_batches)
+            else:
+                pool = None
+                fetched = (_fetch_volume_batch(b) for b in id_batches)
 
-                for volume_info, ann_json in zip(volumes, ann_jsons):
-                    ann_dict = snapshot_schema.annotation_dict_from_raw(
-                        api=api,
-                        raw_ann_json=ann_json,
-                        project_meta_obj=project_meta_obj,
-                        key_id_map=key_id_map,
-                    )
-                    volume_records.append(volume_info._asdict())
-                    annotations[str(volume_info.id)] = ann_dict
-                    if progress_cb is not None:
-                        progress_cb(1)
-                    if ds_progress is not None:
-                        ds_progress(1)
+            # Built once for the dataset, not per batch: the mapping is over every volume in
+            # it, so rebuilding it for each batch is quadratic in the dataset's size.
+            volume_by_id = {volume.id: volume for volume in volumes}
+
+            # The pool is released even when the consuming loop raises; without this a
+            # failure part-way through a dataset leaves its fetch threads running.
+            try:
+                for volume_ids_batch, ann_jsons, figures_dict in fetched:
+
+                    # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
+                    # Build mappings:
+                    # - volume_id -> ann_json
+                    # - volume_id -> {figure_id -> spatial_figure_dict}
+                    for ann_json in ann_jsons:
+                        volume_id = ann_json.get(ApiField.VOLUME_ID)
+                        if volume_id is None:
+                            continue
+                        ann_by_volume_id[volume_id] = ann_json
+                        figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
+                        fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
+                        for spatial_figure in figures_list:
+                            fig_id = spatial_figure.get("id")
+                            if fig_id is not None:
+                                fig_id_to_spatial_figure[fig_id] = spatial_figure
+                        spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
+
+                    for volume_id, figure_infos in figures_dict.items():
+                        ann_json = ann_by_volume_id.get(volume_id)
+                        if ann_json is None:
+                            continue
+                        fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
+                        for figure_info in figure_infos:
+                            spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
+                            if spatial_figure is not None:
+                                spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
+
+                    for ann_json in ann_jsons:
+                        volume_info = volume_by_id.get(ann_json.get(ApiField.VOLUME_ID))
+                        if volume_info is None:
+                            continue
+                        ann_dict = snapshot_schema.annotation_dict_from_raw(
+                            api=api,
+                            raw_ann_json=ann_json,
+                            project_meta_obj=project_meta_obj,
+                            key_id_map=key_id_map,
+                        )
+                        volume_records.append(volume_info._asdict())
+                        annotations[str(volume_info.id)] = ann_dict
+                        if progress_cb is not None:
+                            progress_cb(1)
+                        if ds_progress is not None:
+                            ds_progress(1)
+            finally:
+                if pool is not None:
+                    pool.shutdown()
 
         project_info_dict = project_info._asdict()
         project_info_dict[VersionSchemaField.SCHEMA_VERSION] = schema_version
@@ -566,6 +613,7 @@ class VolumeProject(VideoProject):
         skip_missed: bool = False,
         project_description: Optional[str] = None,
         with_custom_data: bool = True,
+        restore_workers: int = RESTORE_WORKERS,
         *args,
         **kwargs,
     ) -> ProjectInfo:
@@ -582,7 +630,7 @@ class VolumeProject(VideoProject):
         :type project_name: str, optional
         :param log_progress: If True, show a progress bar (unless a custom ``progress_cb`` is provided).
         :type log_progress: bool
-        :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
+        :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress: once per volume uploaded, then once per annotation.
         :type progress_cb: tqdm or callable, optional
         :param skip_missed_entities: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
         :type skip_missed_entities: bool
@@ -706,10 +754,15 @@ class VolumeProject(VideoProject):
                 progress_cb=ds_progress,
             )
 
+            # volumes.bulk.add leaves project_id and dataset_id empty; both are known here,
+            # and without them every annotation append re-reads the volume first.
             for old_volume, new_volume in zip(dataset_volumes_to_upload, new_volume_infos):
-                volume_mapping[old_volume.get("id")] = new_volume
+                volume_mapping[old_volume.get("id")] = new_volume._replace(
+                    project_id=new_project_info.id, dataset_id=new_dataset_info.id
+                )
 
-        for volume_id_str, ann_json in annotations.items():
+        def _restore_one(item):
+            volume_id_str, ann_json = item
             new_volume_info = volume_mapping.get(int(volume_id_str))
             if new_volume_info is None:
                 if skip_missed:
@@ -717,10 +770,40 @@ class VolumeProject(VideoProject):
                         "Annotation for volume %s skipped because the source volume was not restored.",
                         volume_id_str,
                     )
-                continue
+                # Counted all the same: the bar's total is every annotation.
+                if anns_progress is not None:
+                    with progress_lock:
+                        anns_progress(1)
+                return
             ann_json["volumeId"] = new_volume_info.id
             ann = VolumeAnnotation.from_json(ann_json, project_meta, None)
-            api.volume.annotation.append(new_volume_info.id, ann, None)
+            # passing the info we already have spares a volumes.info round trip per item
+            api.volume.annotation.append(new_volume_info.id, ann, None, volume_info=new_volume_info)
+            if anns_progress is not None:
+                with progress_lock:
+                    anns_progress(1)
+
+        # Its own bar, as in the video restore: after the last dataset's volumes the
+        # annotations are the rest of the restore, and without one the last volumes bar
+        # sat at N/N for all of it.
+        anns_progress = progress_cb
+        if log_progress and progress_cb is None:
+            anns_progress = tqdm_sly(desc="Uploading annotations", total=len(annotations))
+        progress_lock = threading.Lock()
+
+        # Each annotation is several independent round trips, and the ApiContext keeps
+        # the per-project tag and class lookups out of every one of them.
+        try:
+            with ApiContext(api, project_id=new_project_info.id, project_meta=project_meta):
+                if restore_workers <= 1:
+                    for item in annotations.items():
+                        _restore_one(item)
+                else:
+                    with ThreadPoolExecutor(max_workers=restore_workers) as pool:
+                        list(pool.map(_restore_one, list(annotations.items())))
+        finally:
+            if anns_progress is not None and anns_progress is not progress_cb:
+                anns_progress.close()
 
         return api.project.get_info_by_id(new_project_info.id)
 
@@ -862,10 +945,10 @@ class VolumeProject(VideoProject):
         offset = len(magic)
         version = view[offset]
         offset += 1
-        if version != VolumeProject._SERIALIZATION_VERSION:
+        if version not in VolumeProject._SUPPORTED_SERIALIZATION_VERSIONS:
             logger.warning(
-                "VolumeProject binary payload version mismatch. expected=%d found=%d total_bytes=%d",
-                VolumeProject._SERIALIZATION_VERSION,
+                "VolumeProject binary payload version mismatch. expected=%s found=%d total_bytes=%d",
+                VolumeProject._SUPPORTED_SERIALIZATION_VERSIONS,
                 version,
                 len(view),
             )
@@ -887,6 +970,7 @@ class VolumeProject(VideoProject):
                 raise RuntimeError("Corrupted VolumeProject binary payload")
             sections[section_type] = view[offset : offset + length].tobytes()
             offset += length
+        sections[VolumeProject._SECTION_HEADER_VERSION] = version
         return sections
 
     @staticmethod
