@@ -311,6 +311,10 @@ class TagApi(ModuleApi):
                 tag_meta.frame_range_max_length or None,
             )
         )
+        if tag_meta.is_default:
+            settings[ApiField.IS_DEFAULT] = True
+        if tag_meta.default_value is not None:
+            settings[ApiField.DEFAULT_VALUE] = tag_meta.default_value
 
         tag_json = {
             ApiField.TITLE: tag_meta.name,
