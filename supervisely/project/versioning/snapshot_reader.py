@@ -639,7 +639,6 @@ class _ImagesV2Backend(_PayloadBackend):
             yield rows
 
 
-
 class _ImagesV1Backend(_Backend):
     """Images, pickle.
 
@@ -1068,7 +1067,7 @@ class _VolumeSectionsBackend(_Backend):
         blob = self._sections.get(section)
         if not blob:
             return
-        import pyarrow
+        import pyarrow  # pylint: disable=import-error
 
         for batch in image_snapshot_io.iter_rows_from_source(
             pyarrow.BufferReader(blob), batch_size=batch_size
