@@ -12,6 +12,7 @@ from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
 from supervisely.io.pickle_compat import legacy_pickle_defaults
+from supervisely.sly_logger import logger
 
 
 class TagValueType:
@@ -239,6 +240,32 @@ def validate_tag_default_value(
                 default_value, possible_values
             )
         )
+
+
+def _drop_stale_tag_defaults(
+    name, value_type, possible_values, applicable_to, applicable_classes, is_default, default_value
+):
+    """
+    Drop default settings that no longer fit the tag, as the server does with stored values.
+
+    The server keeps isDefault/defaultValue in the tag settings when the tag changes later
+    (its classes are removed, a one of value is edited in the panel) and still emits them in
+    the project meta. Rejecting them would make the whole meta unreadable, so they are
+    dropped with a warning instead. Values passed to the constructor are still validated.
+    """
+    if is_default and (applicable_to != TagApplicableTo.OBJECTS_ONLY or not applicable_classes):
+        logger.warning(
+            "Tag %r is marked as default, but is not limited to object classes: "
+            "the default flag is ignored",
+            name,
+        )
+        is_default = False
+    try:
+        validate_tag_default_value(value_type, default_value, possible_values)
+    except ValueError as e:
+        logger.warning("Default value of tag %r is ignored: %s", name, e)
+        default_value = None
+    return is_default, default_value
 
 
 # Pickles predating #1214 have no _target_type, older ones have no frame range limits.
@@ -965,8 +992,15 @@ class TagMeta(KeyObject, JsonSerializable):
             target_type = data.get(TagMetaJsonFields.TARGET_TYPE, TagTargetType.ALL)
             frame_range_min_length = data.get(TagMetaJsonFields.FRAME_RANGE_MIN_LENGTH)
             frame_range_max_length = data.get(TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH)
-            is_default = data.get(TagMetaJsonFields.DEFAULT, False)
-            default_value = data.get(TagMetaJsonFields.DEFAULT_VALUE)
+            is_default, default_value = _drop_stale_tag_defaults(
+                name,
+                value_type,
+                values,
+                applicable_to,
+                applicable_classes,
+                data.get(TagMetaJsonFields.DEFAULT, False),
+                data.get(TagMetaJsonFields.DEFAULT_VALUE),
+            )
 
             return cls(
                 name=name,

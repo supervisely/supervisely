@@ -223,3 +223,55 @@ def test_tag_api_bulk_add_payload_omits_unset_defaults():
 
     assert "isDefault" not in settings
     assert "defaultValue" not in settings
+
+
+# The server keeps isDefault/defaultValue when the tag's classes are removed later
+# (projects.classes.remove) or a one of value is edited in the panel, and still emits them.
+@pytest.mark.parametrize(
+    "stale",
+    [
+        {"classes": []},
+        {"applicable_type": TagApplicableTo.ALL},
+        {"values": ["truck"]},
+    ],
+)
+def test_from_json_drops_stale_defaults_the_server_emits(stale):
+    data = _default_subtype().to_json()
+    data.update(stale)
+
+    tag_meta = TagMeta.from_json(data)
+
+    if "values" in stale:
+        assert tag_meta.is_default is True
+        assert tag_meta.default_value is None
+    else:
+        assert tag_meta.is_default is False
+        assert tag_meta.default_value == "sedan"
+
+
+def test_project_meta_with_stale_default_is_readable():
+    meta_json = {
+        "classes": [],
+        "tags": [
+            {
+                "name": "subtype",
+                "value_type": TagValueType.ONEOF_STRING,
+                "values": SUBTYPES,
+                "color": "#0A141E",
+                "applicable_type": TagApplicableTo.OBJECTS_ONLY,
+                "classes": [],
+                "default": True,
+                "default_value": "sedan",
+            }
+        ],
+    }
+
+    meta = ProjectMeta.from_json(meta_json)
+
+    assert meta.get_tag_meta("subtype").is_default is False
+    assert "default" not in meta.to_json()["tags"][0]
+
+
+def test_constructor_still_rejects_default_without_classes():
+    with pytest.raises(ValueError):
+        _default_subtype(applicable_classes=[])
