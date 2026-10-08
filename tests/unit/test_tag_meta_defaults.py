@@ -308,3 +308,16 @@ def test_deleting_an_unrelated_class_keeps_the_flag():
     meta = ProjectMeta(obj_classes=[ObjClass("bus", Rectangle)], tag_metas=[_default_subtype()])
 
     assert meta.delete_obj_class("bus").get_tag_meta("subtype").is_default is True
+
+
+def test_string_default_is_stored_trimmed_like_the_server_does():
+    tag_meta = TagMeta("note", TagValueType.ANY_STRING, default_value="  checked  ")
+
+    assert tag_meta.default_value == "checked"
+    assert tag_meta.with_default_value(" n/a ").default_value == "n/a"
+    assert TagMeta.from_json(tag_meta.to_json()).default_value == "checked"
+
+
+def test_one_of_default_is_not_trimmed():
+    with pytest.raises(ValueError):
+        _default_subtype(default_value=" sedan ")

@@ -190,6 +190,13 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
+def _strip_string_default(value_type: str, default_value):
+    """The server trims an ANY_STRING default value, so the TagMeta stores it trimmed too."""
+    if value_type == TagValueType.ANY_STRING and isinstance(default_value, str):
+        return default_value.strip()
+    return default_value
+
+
 def _validate_tag_default_value(
     value_type: str, default_value, possible_values: Optional[List[str]] = None
 ) -> None:
@@ -325,8 +332,9 @@ class TagMeta(KeyObject, JsonSerializable):
             applicable_classes. None means False.
         :type is_default: bool, optional
         :param default_value: Value the tag gets when it is assigned without a value. Only for
-            ANY_NUMBER (finite number), ANY_STRING (non-empty string) and ONEOF_STRING (one
-            of possible_values). None means no default value.
+            ANY_NUMBER (finite number), ANY_STRING (non-empty string, stored trimmed as the
+            server does) and ONEOF_STRING (one of possible_values). None means no default
+            value.
         :type default_value: str or int or float, optional
         :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values;
             frame range limits are negative or min is greater than max; is_default is set for
@@ -383,7 +391,7 @@ class TagMeta(KeyObject, JsonSerializable):
             validate_frame_range_length_limits(frame_range_min_length, frame_range_max_length)
         )
         self._is_default = take_with_default(is_default, False)
-        self._default_value = default_value
+        self._default_value = _strip_string_default(self._value_type, default_value)
         # Instances are pickled into .bin backups: a new attribute here needs an
         # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
@@ -760,6 +768,7 @@ class TagMeta(KeyObject, JsonSerializable):
                 # Output: None
         """
         clone = self.clone()
+        default_value = _strip_string_default(self.value_type, default_value)
         _validate_tag_default_value(self.value_type, default_value, self.possible_values)
         clone._default_value = default_value
         return clone
