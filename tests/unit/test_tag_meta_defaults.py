@@ -1,5 +1,6 @@
 import pickle
 
+import numpy as np
 import pytest
 
 from supervisely.annotation.obj_class import ObjClass
@@ -336,3 +337,20 @@ def test_string_default_is_stored_trimmed_like_the_server_does():
 def test_one_of_default_is_not_trimmed():
     with pytest.raises(ValueError):
         _default_subtype(default_value=" sedan ")
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(np.int64(2), 2), (np.float32(2.5), 2.5), (np.float64(1.5), 1.5)],
+)
+def test_numpy_number_default_is_stored_as_a_plain_number(value, expected):
+    tag_meta = TagMeta("score", TagValueType.ANY_NUMBER, default_value=value)
+
+    assert tag_meta.default_value == expected
+    assert type(tag_meta.default_value) is type(expected)
+    assert type(tag_meta.with_default_value(value).default_value) is type(expected)
+
+
+def test_numpy_bool_is_not_a_number_default():
+    with pytest.raises(ValueError):
+        TagMeta("score", TagValueType.ANY_NUMBER, default_value=np.bool_(True))

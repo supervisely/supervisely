@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 from copy import deepcopy
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
@@ -190,15 +191,26 @@ def detect_tag_value_type(value) -> str:
     return TagValueType.ANY_STRING
 
 
-def _strip_string_default(value_type: str, default_value):
+def _normalize_default_value(value_type: str, default_value):
     """
-    The server trims a string default value, so an ANY_STRING one is stored trimmed too.
+    Bring a default value to the form the server stores.
 
-    A ONEOF_STRING default is compared with possible_values as given, which is stricter
-    than the server.
+    The server trims a string default value, so an ANY_STRING one is stored trimmed too. A
+    ONEOF_STRING default is compared with possible_values as given, which is stricter than
+    the server. An ANY_NUMBER default given as a numpy scalar is stored as a plain int or
+    float, so it can be sent as JSON.
     """
     if value_type == TagValueType.ANY_STRING and isinstance(default_value, str):
         return default_value.strip()
+    if (
+        value_type == TagValueType.ANY_NUMBER
+        and isinstance(default_value, numbers.Real)
+        and not isinstance(default_value, bool)
+        and type(default_value) not in (int, float)
+    ):
+        if isinstance(default_value, numbers.Integral):
+            return int(default_value)
+        return float(default_value)
     return default_value
 
 
@@ -396,7 +408,7 @@ class TagMeta(KeyObject, JsonSerializable):
             validate_frame_range_length_limits(frame_range_min_length, frame_range_max_length)
         )
         self._is_default = take_with_default(is_default, False)
-        self._default_value = _strip_string_default(self._value_type, default_value)
+        self._default_value = _normalize_default_value(self._value_type, default_value)
         # Instances are pickled into .bin backups: a new attribute here needs an
         # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
@@ -773,7 +785,7 @@ class TagMeta(KeyObject, JsonSerializable):
                 # Output: None
         """
         clone = self.clone()
-        default_value = _strip_string_default(self.value_type, default_value)
+        default_value = _normalize_default_value(self.value_type, default_value)
         _validate_tag_default_value(self.value_type, default_value, self.possible_values)
         clone._default_value = default_value
         return clone
