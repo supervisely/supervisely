@@ -276,6 +276,7 @@ def _drop_stale_tag_defaults(
     (for example, its classes are removed with projects.classes.remove) and still emits them in
     the project meta. Rejecting them would make the whole meta unreadable, so they are
     dropped with a warning instead. Values passed to the constructor are still validated.
+    A dropped value is left unset rather than cleared, so the stored one is not removed.
     """
     if is_default and (applicable_to != TagApplicableTo.OBJECTS_ONLY or not applicable_classes):
         logger.warning(
@@ -284,7 +285,7 @@ def _drop_stale_tag_defaults(
             "if the tag gets classes",
             name,
         )
-        is_default = False
+        is_default = None
     try:
         _validate_tag_default_value(value_type, default_value, possible_values)
     except ValueError as e:
@@ -300,6 +301,8 @@ def _drop_stale_tag_defaults(
     _frame_range_max_length=NO_FRAME_RANGE_LENGTH_LIMIT,
     _is_default=False,
     _default_value=None,
+    _clears_default=False,
+    _clears_default_value=False,
 )
 class TagMeta(KeyObject, JsonSerializable):
     """Tag metadata: name, value type (NONE, ANY_STRING, DATE, etc.), optional possible values. Immutable."""
@@ -347,12 +350,15 @@ class TagMeta(KeyObject, JsonSerializable):
         :type frame_range_max_length: int, optional
         :param is_default: Attach the tag automatically to every new object of the applicable
             classes in the labeling tool. Requires applicable_to=OBJECTS_ONLY and non-empty
-            applicable_classes. None means False.
+            applicable_classes. None leaves the flag unset, so
+            :func:`~supervisely.api.project_api.ProjectApi.update_meta` keeps the one the
+            project has stored; False turns it off there.
         :type is_default: bool, optional
         :param default_value: Value the tag gets when it is assigned without a value. Only for
             ANY_NUMBER (finite number), ANY_STRING (non-empty string, stored trimmed as the
             server does) and ONEOF_STRING (one of possible_values). None means no default
-            value.
+            value here, and update_meta keeps the stored one; use :func:`with_default_value`
+            to remove it from the project as well.
         :type default_value: str or int or float, optional
         :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values;
             frame range limits are negative or min is greater than max; is_default is set for
@@ -410,6 +416,10 @@ class TagMeta(KeyObject, JsonSerializable):
         )
         self._is_default = take_with_default(is_default, False)
         self._default_value = _normalize_default_value(self._value_type, default_value)
+        # An explicit False / a removed default value is sent to the server so it clears the
+        # stored one; an unset one is left out of the JSON and the stored one is kept.
+        self._clears_default = is_default is False
+        self._clears_default_value = False
         # Instances are pickled into .bin backups: a new attribute here needs an
         # entry in @legacy_pickle_defaults above, else old backups restore without it.
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
@@ -759,15 +769,10 @@ class TagMeta(KeyObject, JsonSerializable):
         Return a copy of this TagMeta with the given default value.
 
         Unlike :func:`clone`, the value is always replaced, so passing None removes the
-        default value from this TagMeta instead of keeping the current one.
-
-        .. note::
-
-            This does not remove the default value from a project on the server.
-            :func:`~supervisely.api.project_api.ProjectApi.update_meta` keeps the stored
-            ``default`` and ``default_value`` of a tag whose meta leaves them out, and a
-            TagMeta without a default leaves them out. Remove it in the project's tag
-            settings in the web app instead.
+        default value instead of keeping the current one. The removal is written to the JSON
+        as ``"default_value": null``, so
+        :func:`~supervisely.api.project_api.ProjectApi.update_meta` removes the stored
+        default value from the project too.
 
         :param default_value: New default value, None to remove it.
         :type default_value: str or int or float, optional
@@ -784,11 +789,17 @@ class TagMeta(KeyObject, JsonSerializable):
                 meta_speed = meta_speed.with_default_value(None)
                 print(meta_speed.default_value)
                 # Output: None
+
+                # remove the default value from the project as well
+                meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+                speed = meta.get_tag_meta('speed').with_default_value(None)
+                api.project.update_meta(project_id, meta.delete_tag_meta('speed').add_tag_meta(speed))
         """
         clone = self.clone()
         default_value = _normalize_default_value(self.value_type, default_value)
         _validate_tag_default_value(self.value_type, default_value, self.possible_values)
         clone._default_value = default_value
+        clone._clears_default_value = default_value is None
         return clone
 
     def with_frame_range_length_limits(
@@ -964,10 +975,15 @@ class TagMeta(KeyObject, JsonSerializable):
             jdict[TagMetaJsonFields.FRAME_RANGE_MAX_LENGTH] = self.frame_range_max_length
         # Omitted when unset, same as the server does: projects.meta.update keeps the stored
         # value for a missing key, so older meta.json files never clear these settings.
+        # False and null are written only when asked for, and clear the stored value.
         if self._is_default:
             jdict[TagMetaJsonFields.DEFAULT] = True
+        elif self._clears_default:
+            jdict[TagMetaJsonFields.DEFAULT] = False
         if self._default_value is not None:
             jdict[TagMetaJsonFields.DEFAULT_VALUE] = self.default_value
+        elif self._clears_default_value:
+            jdict[TagMetaJsonFields.DEFAULT_VALUE] = None
 
         return jdict
 
@@ -1033,11 +1049,11 @@ class TagMeta(KeyObject, JsonSerializable):
                 values,
                 applicable_to,
                 applicable_classes,
-                data.get(TagMetaJsonFields.DEFAULT, False),
+                data.get(TagMetaJsonFields.DEFAULT),
                 data.get(TagMetaJsonFields.DEFAULT_VALUE),
             )
 
-            return cls(
+            tag_meta = cls(
                 name=name,
                 value_type=value_type,
                 possible_values=values,
@@ -1052,6 +1068,12 @@ class TagMeta(KeyObject, JsonSerializable):
                 is_default=is_default,
                 default_value=default_value,
             )
+            # The server reads "default_value": null as "remove it", so keep that request.
+            tag_meta._clears_default_value = (
+                TagMetaJsonFields.DEFAULT_VALUE in data
+                and data[TagMetaJsonFields.DEFAULT_VALUE] is None
+            )
+            return tag_meta
         else:
             raise ValueError("Tags must be dict or str types.")
 
@@ -1269,12 +1291,11 @@ class TagMeta(KeyObject, JsonSerializable):
             frame range tag. Pass 0 to disable the limit; None keeps the current value.
         :type frame_range_max_length: int, optional
         :param is_default: Attach the tag automatically to new objects of the applicable classes.
-            None keeps the current value. False does not clear the flag on the server through
-            :func:`~supervisely.api.project_api.ProjectApi.update_meta`, see
-            :func:`with_default_value`.
+            None keeps the current value. False turns the flag off, also in the project when the
+            meta is sent with :func:`~supervisely.api.project_api.ProjectApi.update_meta`.
         :type is_default: bool, optional
         :param default_value: Value the tag gets when it is assigned without a value. None
-            keeps the current value; :func:`with_default_value` removes it from the TagMeta.
+            keeps the current value; :func:`with_default_value` removes it.
         :type default_value: str or int or float, optional
         :returns: New instance of TagMeta object
         :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
@@ -1299,7 +1320,7 @@ class TagMeta(KeyObject, JsonSerializable):
                 C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
                 meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
         """
-        return TagMeta(
+        cloned = TagMeta(
             name=take_with_default(name, self.name),
             value_type=take_with_default(value_type, self.value_type),
             possible_values=take_with_default(possible_values, self.possible_values),
@@ -1315,9 +1336,15 @@ class TagMeta(KeyObject, JsonSerializable):
             frame_range_max_length=take_with_default(
                 frame_range_max_length, self.frame_range_max_length
             ),
-            is_default=take_with_default(is_default, self.is_default),
+            # pass an unset flag on as None, so the clone does not start clearing it
+            is_default=take_with_default(
+                is_default, True if self._is_default else (False if self._clears_default else None)
+            ),
             default_value=take_with_default(default_value, self.default_value),
         )
+        if default_value is None:
+            cloned._clears_default_value = self._clears_default_value
+        return cloned
 
     def __str__(self):
         return (
