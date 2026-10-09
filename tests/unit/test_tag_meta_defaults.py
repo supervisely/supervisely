@@ -101,13 +101,28 @@ def test_from_json_reads_server_flat_keys():
     assert tag_meta.default_value == "sedan"
 
 
-def test_from_json_treats_null_default_value_as_unset():
-    tag_meta = TagMeta.from_json(
-        {"name": "speed", "value_type": "any_number", "default": False, "default_value": None}
-    )
+def test_from_json_keeps_explicit_false_and_null_as_clear_requests():
+    tag_json = {"name": "speed", "value_type": "any_number", "color": "#0A141E"}
+    tag_json.update({"default": False, "default_value": None})
+
+    tag_meta = TagMeta.from_json(tag_json)
 
     assert tag_meta.is_default is False
     assert tag_meta.default_value is None
+    assert tag_meta.to_json()["default"] is False
+    assert tag_meta.to_json()["default_value"] is None
+    assert TagMeta.from_json(tag_meta.to_json()).to_json() == tag_meta.to_json()
+
+
+# projects.meta.update keeps the stored value for a missing key and for "default": null.
+@pytest.mark.parametrize("extra", [{}, {"default": None}], ids=["missing", "null"])
+def test_from_json_leaves_unset_defaults_out(extra):
+    tag_json = {"name": "speed", "value_type": "any_number", "color": "#0A141E", **extra}
+
+    tag_meta = TagMeta.from_json(tag_json)
+
+    assert TagMetaJsonFields.DEFAULT not in tag_meta.to_json()
+    assert TagMetaJsonFields.DEFAULT_VALUE not in tag_meta.to_json()
 
 
 @pytest.mark.parametrize(
@@ -181,7 +196,7 @@ def test_with_default_value_replaces_and_removes():
     removed = tag_meta.with_default_value(None)
     assert removed.default_value is None
     assert removed.is_default is True
-    assert TagMetaJsonFields.DEFAULT_VALUE not in removed.to_json()
+    assert removed.to_json()[TagMetaJsonFields.DEFAULT_VALUE] is None
     assert tag_meta.default_value == "sedan"
     with pytest.raises(ValueError, match="default_value"):
         tag_meta.with_default_value("bus")
@@ -354,3 +369,102 @@ def test_numpy_number_default_is_stored_as_a_plain_number(value, expected):
 def test_numpy_bool_is_not_a_number_default():
     with pytest.raises(ValueError):
         TagMeta("score", TagValueType.ANY_NUMBER, default_value=np.bool_(True))
+
+
+def _json_defaults(tag_meta):
+    tag_json = tag_meta.to_json()
+    missing = "<missing>"
+    return (
+        tag_json.get(TagMetaJsonFields.DEFAULT, missing),
+        tag_json.get(TagMetaJsonFields.DEFAULT_VALUE, missing),
+    )
+
+
+def test_constructor_writes_explicit_false_and_omits_unset_flag():
+    unset = TagMeta("plain", TagValueType.ANY_STRING)
+    turned_off = TagMeta("plain", TagValueType.ANY_STRING, is_default=False)
+
+    assert _json_defaults(unset) == ("<missing>", "<missing>")
+    assert _json_defaults(turned_off) == (False, "<missing>")
+
+
+def test_clone_turns_default_off_in_json():
+    assert _json_defaults(_default_subtype().clone(is_default=False)) == (False, "sedan")
+
+
+def test_clone_does_not_turn_an_unset_flag_into_false():
+    tag_meta = TagMeta("plain", TagValueType.ANY_STRING)
+
+    assert _json_defaults(tag_meta.clone(name="other")) == ("<missing>", "<missing>")
+
+
+def test_clear_requests_survive_clone_and_other_copies():
+    tag_meta = _default_subtype().clone(is_default=False).with_default_value(None)
+
+    assert _json_defaults(tag_meta) == (False, None)
+    assert _json_defaults(tag_meta.clone(hotkey="S")) == (False, None)
+    assert _json_defaults(tag_meta.with_frame_range_length_limits(2, 5)) == (False, None)
+    assert _json_defaults(tag_meta.add_possible_value("bus")) == (False, None)
+
+
+def test_setting_a_value_again_drops_the_clear_request():
+    tag_meta = _default_subtype().with_default_value(None)
+
+    assert _json_defaults(tag_meta.with_default_value("truck")) == (True, "truck")
+    assert _json_defaults(tag_meta.clone(default_value="truck")) == (True, "truck")
+    assert _json_defaults(tag_meta.clone(is_default=True)) == (True, None)
+
+
+def test_stale_default_from_json_is_left_out_not_cleared():
+    data = _default_subtype().to_json()
+    data.update({"classes": [], "values": ["truck"]})
+
+    tag_meta = TagMeta.from_json(data)
+
+    assert _json_defaults(tag_meta) == ("<missing>", "<missing>")
+
+
+def test_project_meta_keeps_clear_requests():
+    tag_meta = _default_subtype().clone(is_default=False).with_default_value(None)
+    meta = ProjectMeta(obj_classes=[ObjClass("car", Rectangle)], tag_metas=[tag_meta])
+
+    restored = ProjectMeta.from_json(meta.to_json())
+
+    assert _meta_json_subtype(restored)[TagMetaJsonFields.DEFAULT] is False
+    assert _meta_json_subtype(restored)[TagMetaJsonFields.DEFAULT_VALUE] is None
+    # "default": false is accepted for a tag none of whose classes are in the meta
+    assert _meta_json_subtype(restored.delete_obj_class("car"))[TagMetaJsonFields.DEFAULT] is False
+
+
+def test_legacy_pickle_without_clear_attributes_restores_no_clear_requests():
+    tag_meta = _default_subtype()
+    del tag_meta.__dict__["_clears_default"]
+    del tag_meta.__dict__["_clears_default_value"]
+
+    restored = pickle.loads(pickle.dumps(tag_meta))
+    restore_legacy_defaults(restored)
+
+    assert _json_defaults(restored) == (True, "sedan")
+    assert _json_defaults(restored.clone(hotkey="S")) == (True, "sedan")
+
+
+def test_tag_api_bulk_add_payload_omits_clear_requests():
+    tag_api = TagApi.__new__(TagApi)
+    tag_meta = _default_subtype().clone(is_default=False).with_default_value(None)
+
+    settings = tag_api._tag_meta_json(tag_meta, {"car": 5})["settings"]
+
+    assert "isDefault" not in settings
+    assert "defaultValue" not in settings
+
+
+def test_legacy_pickle_of_a_plain_tag_still_leaves_defaults_out():
+    tag_meta = TagMeta("plain", TagValueType.ANY_STRING)
+    del tag_meta.__dict__["_clears_default"]
+    del tag_meta.__dict__["_clears_default_value"]
+
+    restored = pickle.loads(pickle.dumps(tag_meta))
+    restore_legacy_defaults(restored)
+
+    assert _json_defaults(restored) == ("<missing>", "<missing>")
+    assert _json_defaults(restored.clone(hotkey="P")) == ("<missing>", "<missing>")
