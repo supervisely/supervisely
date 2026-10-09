@@ -456,3 +456,15 @@ def test_tag_api_bulk_add_payload_omits_clear_requests():
 
     assert "isDefault" not in settings
     assert "defaultValue" not in settings
+
+
+def test_legacy_pickle_of_a_plain_tag_still_leaves_defaults_out():
+    tag_meta = TagMeta("plain", TagValueType.ANY_STRING)
+    del tag_meta.__dict__["_clears_default"]
+    del tag_meta.__dict__["_clears_default_value"]
+
+    restored = pickle.loads(pickle.dumps(tag_meta))
+    restore_legacy_defaults(restored)
+
+    assert _json_defaults(restored) == ("<missing>", "<missing>")
+    assert _json_defaults(restored.clone(hotkey="P")) == ("<missing>", "<missing>")
