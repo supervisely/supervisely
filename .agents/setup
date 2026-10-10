@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Everything `.agents/check fast` needs, installed once after a clone, into
+# .agents/.venv (git-ignored). Run by a developer by hand and by the agent
+# runtime right after it clones the repo. Idempotent: re-running it with a warm
+# uv cache takes seconds and keeps the existing venv.
+#
+# Requires uv (https://docs.astral.sh/uv/) and network access to PyPI.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+venv='.agents/.venv'
+
+if [ ! -x "${venv}/bin/python" ]; then
+    echo "\$ uv venv ${venv}"
+    uv venv "${venv}"
+fi
+
+# The SDK's own dependencies, plus the two tools the check runs. RELEASE_VERSION
+# short-circuits the version lookup in setup.py, which otherwise calls the GitHub
+# releases API and produces a PEP 440-invalid version on a branch whose name
+# contains a slash.
+echo "\$ uv pip install --python ${venv} -e . pytest pylint"
+RELEASE_VERSION='0.0.0.dev0' uv pip install --python "${venv}" -e . pytest pylint
+
+# Keep the dependencies, drop the package itself: `python -m pytest` then imports
+# supervisely from the working directory, so the check tests the tree it runs in
+# rather than a snapshot taken at install time — and the pre-existing-failure
+# comparison in .agents/check can import a second, older checkout the same way.
+echo "\$ uv pip uninstall --python ${venv} supervisely"
+uv pip uninstall --python "${venv}" supervisely

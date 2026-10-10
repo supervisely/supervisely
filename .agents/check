@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+# What has to be green before a change to this repo is published, in the form
+# every caller runs it: a developer, and the agent runtime after each implement
+# round (`.agents/check fast`).
+#
+#   fast  pylint on the changed .py files (the same errors-only check the PR
+#         workflow runs) + the offline unit suite, tests/unit. Under a minute,
+#         no Docker, no Supervisely instance.
+#   full  the same, with the unit suite run whether or not .py files changed.
+#         The rest of tests/ needs a live instance and credentials and is not
+#         part of either mode.
+#
+# AGENTTOOLS_BASE is the commit to diff against; without it, the merge base with
+# origin/master.
+#
+# tests/unit and pylint are both red on master for reasons that predate any one
+# change (missing optional dependencies, import-order-sensitive tests). So when
+# a sub-check reports problems, the same sub-check is run again on a detached
+# checkout of the base commit and only problems that are NOT there too fail the
+# check; what was compared is printed. Nothing here writes to the working tree.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${root}"
+
+mode="${1:-}"
+if [ "${mode}" != 'fast' ] && [ "${mode}" != 'full' ]; then
+    echo 'usage: .agents/check <fast|full>' >&2
+    exit 2
+fi
+
+venv="${root}/.agents/.venv"
+if [ ! -x "${venv}/bin/python" ]; then
+    echo '$ .agents/setup'
+    "${root}/.agents/setup"
+fi
+py="${venv}/bin/python"
+
+base="${AGENTTOOLS_BASE:-$(git merge-base HEAD origin/master)}"
+status=0
+
+# A detached checkout of the base commit, created on demand and only when
+# something is already failing. Empty if the base commit is not in this clone.
+base_tree=''
+base_tmp=''
+
+cleanup() {
+    if [ -n "${base_tree}" ]; then
+        git worktree remove --force "${base_tree}" >/dev/null 2>&1 || true
+    fi
+    [ -n "${base_tmp}" ] && rm -rf "${base_tmp}"
+    return 0
+}
+trap cleanup EXIT
+
+ensure_base_tree() {
+    [ -n "${base_tree}" ] && return 0
+    git cat-file -e "${base}^{commit}" 2>/dev/null || return 1
+    base_tmp="$(mktemp -d)"
+    git worktree add --detach --quiet "${base_tmp}/tree" "${base}" || return 1
+    base_tree="${base_tmp}/tree"
+    return 0
+}
+
+# Committed changes, working tree changes and untracked files, all against base.
+mapfile -t changed < <(
+    {
+        git diff --name-only "${base}" --
+        git ls-files --others --exclude-standard
+    } | sort -u
+)
+
+py_changed=()
+for path in "${changed[@]}"; do
+    [ "${path%.py}" != "${path}" ] && py_changed+=("${path}")
+done
+
+# What the PR workflow lints: changed .py files outside tests/, that still exist.
+lint_files=()
+for path in "${py_changed[@]}"; do
+    case "${path}" in
+    tests/*) continue ;;
+    esac
+    [ -f "${path}" ] && lint_files+=("${path}")
+done
+
+# pylint, errors and fatals only (setup.cfg equivalent lives in .pylintrc, which
+# disables the C/W/R categories). --generated-members matches the workflow.
+# The message template drops nothing but makes the comparison below possible:
+# line numbers move when code around an error moves, the message does not.
+pylint_messages() {
+    local dir="$1"
+    shift
+    (
+        cd "${dir}"
+        PYTHONPATH="${dir}" "${py}" -m pylint \
+            --score=n \
+            --msg-template='{path}:{line}: {msg_id}: {msg}' \
+            --generated-members='cv2.*,signal.*,zstd.*' \
+            "$@" 2>&1 || true
+    ) | grep -E '^[^ ]+:[0-9]+: [A-Z][0-9]+: ' || true
+}
+
+fingerprints() {
+    sed -E 's/^([^:]+):[0-9]+: /\1: /' | sort -u
+}
+
+check_pylint() {
+    if [ "${#lint_files[@]}" -eq 0 ]; then
+        echo 'pylint: no changed .py files outside tests/'
+        return 0
+    fi
+
+    echo "\$ pylint ${lint_files[*]}"
+    local head_msgs
+    head_msgs="$(pylint_messages "${root}" "${lint_files[@]}")"
+    if [ -z "${head_msgs}" ]; then
+        return 0
+    fi
+    echo "${head_msgs}"
+
+    if ! ensure_base_tree; then
+        echo "cannot check out ${base} to tell new errors from old ones; treating all of them as new"
+        status=1
+        return 0
+    fi
+
+    local base_files=()
+    local path
+    for path in "${lint_files[@]}"; do
+        [ -f "${base_tree}/${path}" ] && base_files+=("${path}")
+    done
+
+    local base_msgs=''
+    if [ "${#base_files[@]}" -gt 0 ]; then
+        base_msgs="$(pylint_messages "${base_tree}" "${base_files[@]}")"
+    fi
+
+    local new
+    new="$(comm -23 \
+        <(printf '%s\n' "${head_msgs}" | fingerprints) \
+        <(printf '%s\n' "${base_msgs}" | fingerprints))"
+
+    if [ -z "${new}" ]; then
+        echo "all of the above already report at ${base} (compared ${#base_files[@]} file(s), line numbers ignored)"
+        return 0
+    fi
+
+    echo "new pylint errors vs ${base}:"
+    echo "${new}"
+    status=1
+}
+
+# "FAILED tests/unit/x.py::test_y - ..." / "ERROR tests/unit/x.py" from -q.
+failed_ids() {
+    sed -nE 's/^(FAILED|ERROR) ([^ ]+).*/\2/p' | sort -u
+}
+
+check_unit() {
+    echo '$ python -m pytest -q -p no:cacheprovider tests/unit'
+    local out rc=0
+    out="$("${py}" -m pytest -q -p no:cacheprovider tests/unit 2>&1)" || rc=$?
+    if [ "${rc}" -eq 0 ]; then
+        printf '%s\n' "${out}" | tail -n 1
+        return 0
+    fi
+    printf '%s\n' "${out}"
+
+    local head_failed
+    head_failed="$(printf '%s\n' "${out}" | failed_ids)"
+    if [ -z "${head_failed}" ]; then
+        # No failure list to compare (crash, usage error, interrupted run).
+        status=1
+        return 0
+    fi
+
+    if ! ensure_base_tree; then
+        echo "cannot check out ${base} to tell new failures from old ones; treating all of them as new"
+        status=1
+        return 0
+    fi
+
+    local base_files=()
+    local path
+    while read -r path; do
+        [ -n "${path}" ] && [ -f "${base_tree}/${path}" ] && base_files+=("${path}")
+    done < <(printf '%s\n' "${head_failed}" | cut -d: -f1 | sort -u)
+
+    local base_failed=''
+    if [ "${#base_files[@]}" -gt 0 ]; then
+        echo "\$ (at ${base}) python -m pytest -q -p no:cacheprovider ${base_files[*]}"
+        base_failed="$(
+            cd "${base_tree}" &&
+                { "${py}" -m pytest -q -p no:cacheprovider "${base_files[@]}" 2>&1 || true; } |
+                failed_ids
+        )"
+    fi
+
+    local new
+    new="$(comm -23 \
+        <(printf '%s\n' "${head_failed}") \
+        <(printf '%s\n' "${base_failed}" | sort -u))"
+
+    if [ -z "${new}" ]; then
+        echo "every failure above also fails at ${base}; none of them is new"
+        return 0
+    fi
+
+    echo "new test failures vs ${base}:"
+    echo "${new}"
+    status=1
+}
+
+check_pylint
+
+if [ "${mode}" = 'full' ] || [ "${#py_changed[@]}" -gt 0 ]; then
+    check_unit
+else
+    echo 'tests/unit: no .py files changed'
+fi
+
+exit "${status}"
