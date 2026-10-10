@@ -7,7 +7,12 @@
 # Requires uv (https://docs.astral.sh/uv/) and network access to PyPI.
 set -euo pipefail
 
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+# Normally the parent of .agents/, but this script is also run from a copy kept
+# elsewhere (the agent runtime runs the base commit's copy, with the repo root
+# as the working directory), so fall back to asking git.
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+[ -e "${root}/.agents/setup" ] || root="$(git rev-parse --show-toplevel)"
+cd "${root}"
 
 venv='.agents/.venv'
 
@@ -16,12 +21,15 @@ if [ ! -x "${venv}/bin/python" ]; then
     uv venv "${venv}"
 fi
 
-# The SDK's own dependencies, plus the two tools the check runs. RELEASE_VERSION
-# short-circuits the version lookup in setup.py, which otherwise calls the GitHub
-# releases API and produces a PEP 440-invalid version on a branch whose name
-# contains a slash.
-echo "\$ uv pip install --python ${venv} -e . pytest pylint"
-RELEASE_VERSION='0.0.0.dev0' uv pip install --python "${venv}" -e . pytest pylint
+# The SDK's own dependencies, plus the two tools the check runs, plus the two
+# optional imports tests/unit walks into: pycocotools (COCO detection, declared
+# only in the model-benchmark and training extras, which would drag in torch)
+# and nibabel (NIfTI detection, declared in no extra at all -- only in
+# docker_images/import_export/Dockerfile). RELEASE_VERSION short-circuits the
+# version lookup in setup.py, which otherwise calls the GitHub releases API and
+# produces a PEP 440-invalid version on a branch whose name contains a slash.
+echo "\$ uv pip install --python ${venv} -e . pytest pylint pycocotools nibabel"
+RELEASE_VERSION='0.0.0.dev0' uv pip install --python "${venv}" -e . pytest pylint pycocotools nibabel
 
 # Keep the dependencies, drop the package itself: `python -m pytest` then imports
 # supervisely from the working directory, so the check tests the tree it runs in
