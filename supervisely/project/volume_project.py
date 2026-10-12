@@ -1276,7 +1276,11 @@ def download_volume_project(
                 figs_ids_map = {fig.id: fig for fig in figs}
                 for ann_fig in ann.figures + ann.spatial_figures:
                     fig = figs_ids_map.get(ann_fig.geometry.sly_id)
-                    ann_fig.custom_data.update(fig.custom_data)
+                    # With an x-job-id header, figures.list returns only the job's classes while
+                    # the annotation still holds every figure on the volume. Figures of other
+                    # classes are kept without custom_data: neither call returns it for them.
+                    if fig is not None and fig.custom_data:
+                        ann_fig.custom_data.update(fig.custom_data)
 
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
