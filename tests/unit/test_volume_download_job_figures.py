@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.volume_project import download_volume_project
@@ -22,6 +23,7 @@ VOLUME_ID = 10
 IN_JOB_FIGURE_ID = 101
 OUT_OF_JOB_FIGURE_ID = 102
 NO_CUSTOM_DATA_FIGURE_ID = 103
+OUT_OF_JOB_SPATIAL_FIGURE_ID = 104
 
 
 def _figure(figure_id, object_id, row):
@@ -42,6 +44,7 @@ def _ann_json():
         "objects": [
             {"id": 1, "classTitle": "in_job", "tags": []},
             {"id": 2, "classTitle": "out_of_job", "tags": []},
+            {"id": 3, "classTitle": "out_of_job_3d", "tags": []},
         ],
         "volumeMeta": {
             "ACS": "RAS",
@@ -72,13 +75,25 @@ def _ann_json():
             {"name": "sagittal", "normal": {"x": 1, "y": 0, "z": 0}, "slices": []},
             {"name": "coronal", "normal": {"x": 0, "y": 1, "z": 0}, "slices": []},
         ],
-        "spatialFigures": [],
+        # The server returns spatial figures without geometry; masks are downloaded separately.
+        "spatialFigures": [
+            {
+                "id": OUT_OF_JOB_SPATIAL_FIGURE_ID,
+                "objectId": 3,
+                "geometryType": Mask3D.geometry_name(),
+                "geometry": {},
+            }
+        ],
     }
 
 
 def _api(listed_figures):
     meta = ProjectMeta(
-        obj_classes=[ObjClass("in_job", Rectangle), ObjClass("out_of_job", Rectangle)]
+        obj_classes=[
+            ObjClass("in_job", Rectangle),
+            ObjClass("out_of_job", Rectangle),
+            ObjClass("out_of_job_3d", Mask3D),
+        ]
     )
     api = MagicMock()
     api.project.get_meta.return_value = meta.to_json()
@@ -97,12 +112,14 @@ def _saved_custom_data(dest_dir):
         ann = json.load(f)
     with open(os.path.join(dest_dir, "key_id_map.json")) as f:
         figure_ids = json.load(f)["figures"]
-    return {
-        figure_ids[figure["key"]]: figure.get("customData")
+    figures = [
+        figure
         for plane in ann["planes"]
         for slice_ in plane["slices"]
         for figure in slice_["figures"]
-    }
+    ]
+    figures += ann["spatialFigures"]
+    return {figure_ids[figure["key"]]: figure.get("customData") for figure in figures}
 
 
 @pytest.mark.parametrize("listed_custom_data", [{"source": "job"}, {}, None])
@@ -119,10 +136,12 @@ def test_figures_outside_job_classes_are_kept_without_custom_data(tmp_path, list
     download_volume_project(api, 1, dest_dir, [1], download_volumes=False, progress_cb=lambda n: None)
 
     custom_data = _saved_custom_data(dest_dir)
-    assert set(custom_data) == {IN_JOB_FIGURE_ID, OUT_OF_JOB_FIGURE_ID, NO_CUSTOM_DATA_FIGURE_ID}
-    assert custom_data[IN_JOB_FIGURE_ID] == (listed_custom_data or {})
-    assert custom_data[OUT_OF_JOB_FIGURE_ID] == {}
-    assert custom_data[NO_CUSTOM_DATA_FIGURE_ID] == {}
+    assert custom_data == {
+        IN_JOB_FIGURE_ID: listed_custom_data or {},
+        OUT_OF_JOB_FIGURE_ID: {},
+        NO_CUSTOM_DATA_FIGURE_ID: {},
+        OUT_OF_JOB_SPATIAL_FIGURE_ID: {},
+    }
 
 
 def test_custom_data_of_every_listed_figure_is_merged(tmp_path):
@@ -132,6 +151,7 @@ def test_custom_data_of_every_listed_figure_is_merged(tmp_path):
             SimpleNamespace(id=IN_JOB_FIGURE_ID, custom_data={"a": 1}),
             SimpleNamespace(id=OUT_OF_JOB_FIGURE_ID, custom_data={"b": 2}),
             SimpleNamespace(id=NO_CUSTOM_DATA_FIGURE_ID, custom_data={}),
+            SimpleNamespace(id=OUT_OF_JOB_SPATIAL_FIGURE_ID, custom_data={"c": 3}),
         ]
     )
     dest_dir = str(tmp_path / "project")
@@ -142,4 +162,5 @@ def test_custom_data_of_every_listed_figure_is_merged(tmp_path):
         IN_JOB_FIGURE_ID: {"a": 1},
         OUT_OF_JOB_FIGURE_ID: {"b": 2},
         NO_CUSTOM_DATA_FIGURE_ID: {},
+        OUT_OF_JOB_SPATIAL_FIGURE_ID: {"c": 3},
     }
