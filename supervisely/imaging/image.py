@@ -5,6 +5,7 @@
 import base64
 import io
 import os.path
+import tempfile
 from enum import Enum
 from typing import List, Optional, Tuple, Union
 
@@ -279,6 +280,17 @@ def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
             )
 
 
+def _read_nrrd_bytes_from_file(image_bytes: bytes) -> np.ndarray:
+    fd, path = tempfile.mkstemp(suffix=".nrrd")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(image_bytes)
+        data, _ = nrrd.read(path, index_order="C")
+        return data
+    finally:
+        silent_remove(path)
+
+
 def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarray:
     """
     Loads an byte image and returns it in RGB format.
@@ -302,8 +314,11 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
     if image_bytes.startswith(b"NRRD"):
         file_like = io.BytesIO(image_bytes)
         header = nrrd.read_header(file_like)
-        data = nrrd.read_data(header, file_like, index_order="C")
-        return data
+        if header.get("encoding") in ("gzip", "gz", "bzip2", "bz2"):
+            return nrrd.read_data(header, file_like, index_order="C")
+        # pynrrd<1.0 reads uncompressed (raw, ascii) data with np.fromfile,
+        # which needs a real file descriptor and fails on a BytesIO.
+        return _read_nrrd_bytes_from_file(image_bytes)
 
     image_np_arr = np.asarray(bytearray(image_bytes), dtype="uint8")
     if keep_alpha is True:
