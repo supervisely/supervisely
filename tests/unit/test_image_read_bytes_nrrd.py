@@ -79,6 +79,7 @@ def test_read_bytes_nrrd_encoding_aliases(encoding):
 @pytest.mark.parametrize(
     "skip_fields, prefix",
     [("byte skip: 4\n", b"\x00" * 4), ("line skip: 2\n", b"one\ntwo\n"), ("byte skip: -1\n", b"junk")],
+    ids=["byte_skip", "line_skip", "byte_skip_from_end"],
 )
 def test_read_bytes_raw_nrrd_skips(skip_fields, prefix):
     data = np.arange(12, dtype=np.float32).reshape(3, 4)
@@ -111,12 +112,13 @@ def test_read_bytes_truncated_raw_nrrd_raises_and_cleans_up(tmp_path, monkeypatc
     assert list(tmp_path.iterdir()) == []
 
 
-def test_read_bytes_relative_detached_data_file_is_not_resolved(tmp_path, monkeypatch):
+@pytest.mark.parametrize("field", ["data file", "datafile"])
+def test_read_bytes_relative_detached_data_file_is_not_resolved(field, tmp_path, monkeypatch):
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     (tmp_path / "data.raw").write_bytes(bytes(range(16)))
     raw = (
         b"NRRD0004\ntype: uint8\ndimension: 1\nsizes: 16\n"
-        b"encoding: raw\ndata file: data.raw\n\n"
+        b"encoding: raw\n" + field.encode() + b": data.raw\n\n"
     )
 
     with pytest.raises(nrrd.NRRDError):
