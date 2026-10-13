@@ -36,17 +36,59 @@ def _arrays():
     }
 
 
-@pytest.mark.parametrize("encoding", ["raw", "ascii", "gzip", "bzip2"])
+@pytest.mark.parametrize("encoding", ["raw", "gzip", "bzip2"])
 @pytest.mark.parametrize("name", sorted(_arrays()))
 def test_read_bytes_nrrd_round_trip(name, encoding):
     data = _arrays()[name]
-    if encoding == "ascii" and data.dtype.kind == "f":
-        pytest.skip("ascii stores floats as text; exact round trip is not expected")
 
     result = read_bytes(_nrrd_bytes(data, header={"encoding": encoding}))
 
     assert result.shape == data.shape
     assert result.dtype == data.dtype
+    np.testing.assert_array_equal(result, data)
+
+
+@pytest.mark.parametrize("name", sorted(_arrays()))
+def test_read_bytes_ascii_nrrd(name):
+    data = _arrays()[name]
+
+    result = read_bytes(_nrrd_bytes(data, header={"encoding": "ascii"}))
+
+    # ascii data has no byte order, so it comes back in native order
+    assert result.dtype == data.dtype.newbyteorder("=")
+    np.testing.assert_array_equal(result, data)
+
+
+@pytest.mark.parametrize("encoding", ["raw", "ascii", "ASCII", "text", "txt", "gzip", "gz", "bzip2", "bz2"])
+def test_read_bytes_nrrd_encoding_aliases(encoding):
+    data = np.arange(24, dtype=np.int16).reshape(4, 6)
+    if encoding in ("gzip", "gz", "bzip2", "bz2"):
+        payload = _nrrd_bytes(data, header={"encoding": encoding}).split(b"\n\n", 1)[1]
+    elif encoding in ("ascii", "ASCII", "text", "txt"):
+        payload = " ".join(str(v) for v in data.ravel()).encode() + b"\n"
+    else:
+        payload = data.astype("<i2").tobytes()
+    header = (
+        "NRRD0004\ntype: int16\ndimension: 2\nsizes: 6 4\nendian: little\n"
+        "encoding: {}\n\n".format(encoding)
+    ).encode()
+
+    np.testing.assert_array_equal(read_bytes(header + payload), data)
+
+
+@pytest.mark.parametrize(
+    "skip_fields, prefix",
+    [("byte skip: 4\n", b"\x00" * 4), ("line skip: 2\n", b"one\ntwo\n"), ("byte skip: -1\n", b"junk")],
+)
+def test_read_bytes_raw_nrrd_skips(skip_fields, prefix):
+    data = np.arange(12, dtype=np.float32).reshape(3, 4)
+    header = (
+        "NRRD0004\ntype: float\ndimension: 2\nsizes: 4 3\nendian: little\n"
+        "encoding: raw\n{}\n".format(skip_fields)
+    ).encode()
+
+    result = read_bytes(header + prefix + data.astype("<f4").tobytes())
+
     np.testing.assert_array_equal(result, data)
 
 
