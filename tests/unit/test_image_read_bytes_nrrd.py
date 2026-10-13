@@ -67,3 +67,15 @@ def test_read_bytes_truncated_raw_nrrd_raises_and_cleans_up(tmp_path, monkeypatc
         read_bytes(raw[:-16])
 
     assert list(tmp_path.iterdir()) == []
+
+
+def test_read_bytes_relative_detached_data_file_is_not_resolved(tmp_path, monkeypatch):
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    (tmp_path / "data.raw").write_bytes(bytes(range(16)))
+    raw = (
+        b"NRRD0004\ntype: uint8\ndimension: 1\nsizes: 16\n"
+        b"encoding: raw\ndata file: data.raw\n\n"
+    )
+
+    with pytest.raises(nrrd.NRRDError):
+        read_bytes(raw)

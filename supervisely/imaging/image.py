@@ -314,7 +314,9 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
     if image_bytes.startswith(b"NRRD"):
         file_like = io.BytesIO(image_bytes)
         header = nrrd.read_header(file_like)
-        if header.get("encoding") in ("gzip", "gz", "bzip2", "bz2"):
+        compressed = header.get("encoding") in ("gzip", "gz", "bzip2", "bz2")
+        detached = "data file" in header or "datafile" in header
+        if compressed or detached:
             return nrrd.read_data(header, file_like, index_order="C")
         # pynrrd<1.0 reads uncompressed (raw, ascii) data with np.fromfile,
         # which needs a real file descriptor and fails on a BytesIO.
