@@ -309,7 +309,7 @@ class DataVersion(ModuleApiBase):
         :raises Exception: If the version was committed but enabling its preview failed. The
             version exists, its preview may be missing or incomplete, and the error from the
             preview step is re-raised. Rebuild the preview with
-            ``enable_preview(project_id, version_id, overwrite=True)``.
+            :func:`enable_preview` and ``overwrite=True``.
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -391,17 +391,12 @@ class DataVersion(ModuleApiBase):
             if committed:
                 # The reservation is gone once the version is committed, so cancelling it
                 # would only fail and hide this error.
-                version_label = f"ID: {version_id}"
-                try:
-                    # The local map can be out of step with the server, so ask the server.
-                    version_info = self.get_info_by_id(project_info.id, version_id)
-                    if version_info is not None:
-                        version_label = f"{version_info.version} (ID: {version_id})"
-                except Exception:
-                    pass
+                # The ID, not the number from the local map: the map can be out of step
+                # with the server.
                 logger.error(
-                    f"Version {version_label} was created, but its preview may be missing or incomplete. "
-                    f"Rebuild it with enable_preview(project_id, version_id, overwrite=True). Exception: {e}"
+                    f"Version with ID {version_id} was created, but its preview may be missing or incomplete. "
+                    f"Rebuild it with api.project.version.enable_preview({project_info.id}, {version_id}, overwrite=True). "
+                    f"Exception: {repr(e)}"
                 )
                 raise
             if self.cancel_reservation(version_id, commit_token):

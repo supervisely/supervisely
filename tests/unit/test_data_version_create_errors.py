@@ -43,7 +43,6 @@ def _version_api(project_type=ProjectType.IMAGES.value):
     dv.commit = mock.MagicMock()
     dv.cancel_reservation = mock.MagicMock(side_effect=_already_committed_error())
     dv.enable_preview = mock.MagicMock(side_effect=PreviewError("preview failed"))
-    dv.get_info_by_id = mock.MagicMock(return_value=SimpleNamespace(version=2))
     return dv, project_info
 
 
@@ -87,29 +86,20 @@ def test_successful_preview_returns_the_version_id():
     dv.cancel_reservation.assert_not_called()
 
 
-def test_preview_failure_logs_the_version_number_the_server_assigned():
+def test_preview_failure_logs_the_version_id_and_how_to_rebuild_the_preview():
     dv, project_info = _version_api()
-    # The local map says the next number is 2; the server numbered it 5.
-    dv.get_info_by_id = mock.MagicMock(return_value=SimpleNamespace(version=5))
-
-    with mock.patch("supervisely.project.data_version.logger") as log:
-        with pytest.raises(PreviewError):
-            dv.create(project_info, "v2", enable_preview=True)
-
-    message = log.error.call_args[0][0]
-    assert message.startswith("Version 5 (ID: 2) was created")
-    assert "overwrite=True" in message
-
-
-def test_preview_failure_log_survives_a_failed_version_lookup():
-    dv, project_info = _version_api()
-    dv.get_info_by_id = mock.MagicMock(side_effect=RuntimeError("lookup failed"))
+    # The local map would number this version 8, whatever the server says.
+    dv.versions = {"1": {"number": 7}, "latest": 1}
+    dv.get_info_by_id = mock.MagicMock(side_effect=AssertionError("no request on the error path"))
 
     with mock.patch("supervisely.project.data_version.logger") as log:
         with pytest.raises(PreviewError, match="preview failed"):
             dv.create(project_info, "v2", enable_preview=True)
 
-    assert log.error.call_args[0][0].startswith("Version ID: 2 was created")
+    message = log.error.call_args[0][0]
+    assert message.startswith("Version with ID 2 was created")
+    assert "api.project.version.enable_preview(1, 2, overwrite=True)" in message
+    assert "PreviewError" in message
 
 
 def test_map_write_failure_after_preview_raises_its_own_error():
