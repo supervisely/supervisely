@@ -306,6 +306,10 @@ class DataVersion(ModuleApiBase):
         :type enable_preview: bool
         :returns: Version ID
         :rtype: int
+        :raises Exception: If the version was committed but enabling its preview failed. The
+            version exists, its preview may be missing or incomplete, and the error from the
+            preview step is re-raised. Rebuild the preview with
+            :func:`enable_preview` and ``overwrite=True``.
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -331,6 +335,7 @@ class DataVersion(ModuleApiBase):
             return None
         if version_id is None and commit_token is None:
             return latest
+        committed = False
         try:
 
             file_info = self._compress_and_upload(path, preserve_local_binary=enable_preview)
@@ -356,6 +361,7 @@ class DataVersion(ModuleApiBase):
                 title=version_title,
                 description=version_description,
             )
+            committed = True
             if enable_preview:
                 if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
                     try:
@@ -382,6 +388,17 @@ class DataVersion(ModuleApiBase):
             if self._local_binary_path is not None:
                 remove_dir(os.path.dirname(self._local_binary_path))
                 self._local_binary_path = None
+            if committed:
+                # The reservation is gone once the version is committed, so cancelling it
+                # would only fail and hide this error.
+                # The ID, not the number from the local map: the map can be out of step
+                # with the server.
+                logger.error(
+                    f"Version with ID {version_id} was created, but its preview may be missing or incomplete. "
+                    f"Rebuild it with api.project.version.enable_preview({project_info.id}, {version_id}, overwrite=True). "
+                    f"Exception: {repr(e)}"
+                )
+                raise
             if self.cancel_reservation(version_id, commit_token):
                 logger.error(f"Version creation failed. Reservation was cancelled. Exception: {e}")
             else:
