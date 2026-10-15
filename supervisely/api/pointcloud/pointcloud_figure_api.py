@@ -274,7 +274,10 @@ class PointcloudFigureApi(FigureApi):
         """
         if kwargs.get("image_ids", False) is not False:
             pointcloud_ids = kwargs["image_ids"]  # backward compatibility
-        return super().download(dataset_id, pointcloud_ids, skip_geometry)
+        figures = super().download(dataset_id, pointcloud_ids, skip_geometry)
+        if skip_geometry:
+            return figures
+        return self.hydrate_figure_infos_dict(figures)
 
     def upload_indices_batch(self, figure_ids: List[int], indices_batch: List[List[int]]) -> None:
         """
@@ -335,6 +338,29 @@ class PointcloudFigureApi(FigureApi):
         if len(geometries) != len(figure_ids):
             raise RuntimeError("Not all point cloud geometries were downloaded")
         return [geometries[figure_id] for figure_id in figure_ids]
+
+    def hydrate_figure_infos_dict(
+        self, figures_by_entity: Dict[int, List[FigureInfo]]
+    ) -> Dict[int, List[FigureInfo]]:
+        """
+        Hydrate separated ``point_cloud`` indices in a mapping returned by figure downloads.
+        """
+        refs = []
+        for entity_id, figures in figures_by_entity.items():
+            for idx, figure in enumerate(figures):
+                if self._should_hydrate_figure_info(figure):
+                    refs.append((entity_id, idx, figure.id))
+
+        if len(refs) == 0:
+            return figures_by_entity
+
+        hydrated = {entity_id: list(figures) for entity_id, figures in figures_by_entity.items()}
+        indices_batch = self.download_indices_batch([figure_id for _, _, figure_id in refs])
+        for (entity_id, idx, _), indices in zip(refs, indices_batch):
+            hydrated[entity_id][idx] = hydrated[entity_id][idx]._replace(
+                geometry={INDICES: indices}
+            )
+        return hydrated
 
     def inject_geometries_into_annotations(self, anns_json: List[Dict]) -> List[Dict]:
         """
@@ -401,3 +427,9 @@ class PointcloudFigureApi(FigureApi):
         if isinstance(indices, list):
             return indices
         return None
+
+    @staticmethod
+    def _should_hydrate_figure_info(figure: FigureInfo) -> bool:
+        if figure.geometry_type != Pointcloud.geometry_name() or figure.id is None:
+            return False
+        return PointcloudFigureApi._extract_indices(figure.geometry) is None
