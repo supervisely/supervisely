@@ -81,7 +81,8 @@ INSTALL_REQUIRES = [
     "numpy>=1.19, <=2.5.4",
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "prettytable>=3.8.0, <4.0.0",
-    "pillow>=12.3.0, <=12.3.0; python_version >= '3.10'",
+    "pillow>=13.0.0, <=13.0.0; python_version >= '3.11'",
+    "pillow>=12.3.0, <=12.3.0; python_version == '3.10'",
     "pillow>=5.4.1, <12.0.0; python_version < '3.10'",
     "python-json-logger>=0.1.11, <=3.0.1",
     "packaging>=20.0",
@@ -94,7 +95,8 @@ INSTALL_REQUIRES = [
     "python-dotenv>=0.19.2, <=1.0.1; python_version < '3.10'",
     "python-dotenv==1.2.2; python_version >= '3.10'",
     "pynrrd>=0.4.2, <1.0.0",
-    "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
+    "SimpleITK>=2.1.1.2, <=2.5.6; python_version >= '3.9'",
+    "SimpleITK>=2.1.1.2, <=2.4.1.0; python_version < '3.9'",  # 2.5.0 does not have packaging for python 3.8
     "pydicom>=3.0.2, <4.0.0; python_version >= '3.10'",
     "pydicom>=2.3.0, <3.0.0; python_version < '3.10'",
     "stringcase>=1.2.0, <2.0.0",
