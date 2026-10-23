@@ -779,7 +779,10 @@ class Mask3D(Geometry):
         """
         import SimpleITK as sitk
 
-        from supervisely.volume.volume import _sitk_image_orient_ras
+        from supervisely.volume.volume import (
+            _ignore_numpy_shape_deprecation,
+            _sitk_image_orient_ras,
+        )
 
         # Convert bool data to uint8 for SimpleITK compatibility
         data_for_sitk = self.data.astype(np.uint8) if self.data.dtype == np.bool_ else self.data
@@ -797,7 +800,8 @@ class Mask3D(Geometry):
         sitk_volume = _sitk_image_orient_ras(sitk_volume)
 
         # Extract transformed data and update object
-        self.data = sitk.GetArrayFromImage(sitk_volume)
+        with _ignore_numpy_shape_deprecation():
+            self.data = sitk.GetArrayFromImage(sitk_volume)
         new_direction = np.array(sitk_volume.GetDirection()).reshape(3, 3)
         new_spacing = np.array(sitk_volume.GetSpacing())
         new_space_directions = (new_direction.T * new_spacing[:, None]).tolist()
