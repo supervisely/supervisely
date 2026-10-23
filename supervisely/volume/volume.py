@@ -473,10 +473,21 @@ def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     return found_series
 
 
-# warnings.catch_warnings() swaps one process-wide filter list; overlapping calls from
-# several threads would restore each other's state and leave the filter installed.
-_NUMPY_SHAPE_WARNING_LOCK = threading.RLock()
 _NUMPY_SETS_SHAPE_DEPRECATED = np.lib.NumpyVersion(np.__version__) >= "2.5.0.dev0"
+
+# warnings.catch_warnings() swaps one process-wide filter list; overlapping calls of
+# _ignore_numpy_shape_deprecation from several threads would restore each other's state
+# and leave the filter installed. A forked child gets a fresh lock, not a held copy.
+_NUMPY_SHAPE_WARNING_LOCK = threading.RLock()
+
+
+def _reset_numpy_shape_warning_lock():
+    global _NUMPY_SHAPE_WARNING_LOCK
+    _NUMPY_SHAPE_WARNING_LOCK = threading.RLock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_numpy_shape_warning_lock)
 
 
 @contextmanager
