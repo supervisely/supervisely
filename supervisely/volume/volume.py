@@ -3,6 +3,8 @@
 
 
 import os
+import warnings
+from contextlib import contextmanager
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
@@ -279,7 +281,8 @@ def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple[np.nda
     # sitk.WriteImage(sitk_volume, "/work/output/sitk.nrrd", useCompression=False, compressionLevel=9)
     # with open("/work/output/test.nrrd", "wb") as file:
     #     file.write(b)
-    volume_np = sitk.GetArrayFromImage(sitk_volume)
+    with _ignore_numpy_shape_deprecation():
+        volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
 
@@ -467,6 +470,22 @@ def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     if logging:
         logger.info(f"Total {len(found_series)} series in directory {root_dir}")
     return found_series
+
+
+@contextmanager
+def _ignore_numpy_shape_deprecation():
+    """Silence NumPy 2.5's "Setting the shape on a NumPy array" DeprecationWarning.
+
+    SimpleITK (sitk.GetArrayFromImage) and scikit-image (measure.marching_cubes) still set
+    ndarray.shape internally. Scoped to the wrapped call so the user's own code still sees it.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Setting the shape on a NumPy array",
+            category=DeprecationWarning,
+        )
+        yield
 
 
 def _sitk_image_orient_ras(sitk_volume: sitk.Image) -> sitk.Image:
@@ -782,7 +801,8 @@ def read_nrrd_serie_volume_np(paths: str) -> Tuple[np.ndarray, dict]:
     import SimpleITK as sitk
 
     sitk_volume, meta = read_nrrd_serie_volume(paths)
-    volume_np = sitk.GetArrayFromImage(sitk_volume)
+    with _ignore_numpy_shape_deprecation():
+        volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
 
@@ -845,7 +865,8 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
 
     nifti_image = sitk.ReadImage(path)
     nifti_image = _sitk_image_orient_ras(nifti_image)
-    data = sitk.GetArrayFromImage(nifti_image)
+    with _ignore_numpy_shape_deprecation():
+        data = sitk.GetArrayFromImage(nifti_image)
     data = np.transpose(data, (2, 1, 0))
 
     direction = np.array(nifti_image.GetDirection()).reshape(3, 3)
@@ -930,7 +951,10 @@ def convert_3d_geometry_to_mesh(
     space_directions = geometry.space_directions or volume_meta.get("space directions")
     space_origin = geometry.space_origin or volume_meta.get("space origin")
 
-    verts, faces, normals, _ = measure.marching_cubes(geometry.data, level=level, spacing=spacing)
+    with _ignore_numpy_shape_deprecation():
+        verts, faces, normals, _ = measure.marching_cubes(
+            geometry.data, level=level, spacing=spacing
+        )
     mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
     if apply_decimation and 0 < decimation_fraction < 1:
