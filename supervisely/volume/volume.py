@@ -3,6 +3,7 @@
 
 
 import os
+import threading
 import warnings
 from contextlib import contextmanager
 from typing import List, Optional, Tuple, Union
@@ -472,14 +473,23 @@ def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     return found_series
 
 
+# warnings.catch_warnings() swaps one process-wide filter list; overlapping calls from
+# several threads would restore each other's state and leave the filter installed.
+_NUMPY_SHAPE_WARNING_LOCK = threading.RLock()
+_NUMPY_SETS_SHAPE_DEPRECATED = np.lib.NumpyVersion(np.__version__) >= "2.5.0.dev0"
+
+
 @contextmanager
 def _ignore_numpy_shape_deprecation():
     """Silence NumPy 2.5's "Setting the shape on a NumPy array" DeprecationWarning.
 
     SimpleITK (sitk.GetArrayFromImage) and scikit-image (measure.marching_cubes) still set
-    ndarray.shape internally. Scoped to the wrapped call so the user's own code still sees it.
+    ndarray.shape internally. Scoped to the wrapped call and a no-op before NumPy 2.5.
     """
-    with warnings.catch_warnings():
+    if not _NUMPY_SETS_SHAPE_DEPRECATED:
+        yield
+        return
+    with _NUMPY_SHAPE_WARNING_LOCK, warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore",
             message="Setting the shape on a NumPy array",
