@@ -6,12 +6,13 @@ from dotenv import load_dotenv
 import os
 
 
-def remove_file_run(team_id: int, path: str) -> bool:
+def remove_file_run(team_id: int, path: str, api=None) -> bool:
     console = Console()
 
-    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if api is False:
-        return False
+    if api is None:
+        api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+        if api is False:
+            return False
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} not exists\n", style="bold red")
@@ -28,12 +29,13 @@ def remove_file_run(team_id: int, path: str) -> bool:
         return False
 
 
-def remove_directory_run(team_id: int, path: str) -> bool:
+def remove_directory_run(team_id: int, path: str, api=None) -> bool:
     console = Console()
 
-    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if api is False:
-        return False
+    if api is None:
+        api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+        if api is False:
+            return False
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(f"\nError: Team with ID={team_id} doesn't exist\n", style="bold red")
