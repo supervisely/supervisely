@@ -218,14 +218,14 @@ def test_deep_parent_traversal_member_blocked(tmp_path: Path, unpacker, ext, mod
 
 @pytest.mark.parametrize("unpacker", UNPACKERS)
 @pytest.mark.parametrize("ext, mode", TAR_FORMATS)
-def test_absolute_path_member_contained(tmp_path: Path, unpacker, ext, mode, sly_log):
-    """An absolute-path member must not be written to that absolute location.
+def test_absolute_path_member_skipped(tmp_path: Path, unpacker, ext, mode, sly_log):
+    """An absolute-path member is skipped with a warning, on every platform.
 
-    On Windows the drive survives stripping, so the member is skipped with a
-    warning; on POSIX the leading separator is stripped and the file is kept
-    *inside* the target.  Either way the attacker-chosen absolute path stays
-    empty and no exception is raised.  We aim the absolute path at a sibling
-    inside ``tmp_path`` so nothing touches a real system location.
+    tarfile's ``data`` filter would strip the leading separator and extract the
+    member inside the target; the SDK skips it instead, as the fallback branch
+    does, so an archive gives the same result on every Python.  We aim the
+    absolute path at a sibling inside ``tmp_path`` so nothing touches a real
+    system location.
     """
     target = tmp_path / "extract"
     target.mkdir()
@@ -239,10 +239,37 @@ def test_absolute_path_member_contained(tmp_path: Path, unpacker, ext, mode, sly
     assert not escaped.exists(), "absolute-path member was written outside target_dir"
     assert error is None, f"unsafe member aborted the extraction: {error!r}"
     _assert_safe_members_extracted(target)
-    if os.name == "nt":
-        assert _skip_warnings(sly_log, "PWNED_abs.txt"), "no skip warning was logged"
-    else:
-        assert (target / abs_name.lstrip("/")).is_file(), "stripped member not kept inside target"
+    assert _skip_warnings(sly_log, "PWNED_abs.txt"), "no skip warning was logged"
+    assert not (target / abs_name.lstrip("/")).exists(), "absolute member kept inside target"
+
+
+@pytest.mark.parametrize("unpacker", UNPACKERS)
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param("/PWNED_root.txt", id="posix-root"),
+        pytest.param("\\PWNED_backslash.txt", id="backslash-root"),
+        pytest.param("C:/PWNED_drive.txt", id="windows-drive"),
+    ],
+)
+@pytest.mark.parametrize("filters", [True, False], ids=["data_filter", "fallback"])
+def test_absolute_member_forms_skipped(tmp_path: Path, unpacker, name, filters, monkeypatch, sly_log):
+    """POSIX, backslash and drive-letter absolute names are skipped with a warning on
+    both extraction branches, and the rest of the archive is still extracted."""
+    if not filters:
+        monkeypatch.delattr(tarfile, "data_filter", raising=False)
+    target = tmp_path / "extract"
+    target.mkdir()
+    archive = tmp_path / "evil_abs_forms.tar"
+    _write_tar(archive, "w", _with_safe_members(_reg_member(name)))
+
+    error = _unpack_collecting_error(unpacker, archive, target)
+
+    assert error is None, f"unsafe member aborted the extraction: {error!r}"
+    _assert_safe_members_extracted(target)
+    assert _skip_warnings(sly_log, "PWNED_"), "no skip warning was logged"
+    extracted = {p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file()}
+    assert extracted == {"good.txt", "after/ok.txt"}, f"absolute member extracted: {extracted}"
 
 
 @pytest.mark.parametrize("unpacker", UNPACKERS)

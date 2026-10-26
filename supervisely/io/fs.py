@@ -6,6 +6,7 @@ import base64
 import errno
 import hashlib
 import mimetypes
+import ntpath
 import os
 import pickle
 import re
@@ -903,6 +904,11 @@ def archive_directory(
     return parts_paths
 
 
+def _is_absolute_member_name(name: str) -> bool:
+    """POSIX or Windows absolute path ("/x", "\\x", "C:/x")."""
+    return name.startswith(("/", "\\")) or os.path.isabs(name) or bool(ntpath.splitdrive(name)[0])
+
+
 def _check_tar_member(member: tarfile.TarInfo, root: str) -> None:
     """Raise if extracting the member into root (a real path) would touch anything outside of it."""
 
@@ -910,6 +916,8 @@ def _check_tar_member(member: tarfile.TarInfo, root: str) -> None:
         return os.path.commonpath([root, os.path.realpath(path)]) == root
 
     member_path = os.path.join(root, member.name)
+    if _is_absolute_member_name(member.name):
+        raise tarfile.TarError(f"Absolute path in archive: {member.name!r}")
     if not _is_inside(member_path) or member.isdev():
         raise tarfile.TarError(f"Unsafe member in archive: {member.name!r}")
     if member.issym():
@@ -925,6 +933,11 @@ def _check_tar_member(member: tarfile.TarInfo, root: str) -> None:
 def _tar_member_filter(member: tarfile.TarInfo, dest_path: str):
     """tarfile extraction filter: the "data" filter, but an unsafe member is skipped with a
     warning instead of aborting the extraction half-way."""
+    # the data filter strips a leading "/" and extracts such a member inside dest_path; skip
+    # it instead, as the fallback branch does, so an archive behaves the same on every Python
+    if _is_absolute_member_name(member.name):
+        logger.warning(f"Skipping unsafe archive member {member.name!r}: absolute path")
+        return None
     try:
         member = tarfile.data_filter(member, dest_path)
     except tarfile.FilterError as e:

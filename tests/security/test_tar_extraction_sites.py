@@ -286,16 +286,6 @@ def _absolute_name(sandbox: Path) -> str:
     return str(sandbox / "PWNED_abs.txt").replace(os.sep, "/")
 
 
-def _absolute_member_skipped(name: str, branch: str) -> bool:
-    """Whether the fix skips an absolute member (with a warning) or keeps it inside.
-
-    The ``data`` filter strips a leading ``/`` and extracts the rest inside the
-    destination (POSIX); a name that is still absolute after that (a Windows drive) is
-    skipped.  The manual branch skips every absolute member.
-    """
-    return branch == "manual_checks" or os.path.isabs(name.lstrip("/" + os.sep))
-
-
 def _attack_members(kind: str, sandbox: Path, depth: int) -> list:
     """Hostile members for a destination that is ``depth`` levels below ``sandbox``."""
     up = "../" * depth
@@ -315,13 +305,6 @@ ATTACK_WARNING_FRAGMENT = {
     "absolute_path": "PWNED_abs.txt",
     "hardlink_overwrite": "'hl'",
 }
-
-
-def _attack_is_skipped(kind: str, sandbox: Path, branch: str) -> bool:
-    """Whether the fix skips the attack member with a warning (see above for absolute)."""
-    if kind == "absolute_path":
-        return _absolute_member_skipped(_absolute_name(sandbox), branch)
-    return True
 
 
 ATTACKS = [
@@ -388,12 +371,11 @@ def test_extractall_parent_traversal_blocked(sandbox, target, branch, opener, na
 
 
 @pytest.mark.parametrize("opener", OPENERS)
-def test_extractall_absolute_member_contained(sandbox, target, branch, opener, skip_warnings):
-    """An absolute member name never reaches that absolute location.
+def test_extractall_absolute_member_skipped(sandbox, target, branch, opener, skip_warnings):
+    """An absolute member name is skipped with a warning on both branches.
 
-    The ``data`` filter skips it where the name stays absolute (Windows drive) and
-    strips the leading separator elsewhere, which keeps the file inside the
-    destination; the manual branch skips it.
+    The ``data`` filter alone would strip the leading separator and keep the file inside
+    the destination; the SDK skips it there too, so both branches agree.
     """
     name = _absolute_name(sandbox)
     data = _tar_bytes([_reg(name), _reg("after.txt", b"after")])
@@ -403,12 +385,8 @@ def test_extractall_absolute_member_contained(sandbox, target, branch, opener, s
 
     assert _snapshot_of(sandbox, target) == before, "absolute member was written outside"
     assert exc is None, f"extraction was aborted instead of skipping the member: {exc!r}"
-    if _absolute_member_skipped(name, branch):
-        _assert_skipped(skip_warnings, "PWNED_abs.txt")
-        assert _files_in(target) == {"after.txt": b"after"}
-    else:
-        # leading "/" stripped by the data filter: the member lands inside target_dir
-        assert _files_in(target) == {"after.txt": b"after", name.lstrip("/"): b"owned"}
+    _assert_skipped(skip_warnings, "PWNED_abs.txt")
+    assert _files_in(target) == {"after.txt": b"after"}
 
 
 @needs_symlinks
@@ -638,8 +616,7 @@ def test_download_directory_archive_cannot_write_outside(
         _snapshot_of(sandbox, local_save_path) == before
     ), "download_directory wrote outside of local_save_path"
     assert exc is None, f"download failed instead of skipping the unsafe member: {exc!r}"
-    if _attack_is_skipped(kind, sandbox, branch):
-        _assert_skipped(skip_warnings, ATTACK_WARNING_FRAGMENT[kind])
+    _assert_skipped(skip_warnings, ATTACK_WARNING_FRAGMENT[kind])
     files = _files_in(local_save_path)
     assert files["a.txt"] == b"file-a"
     assert files["sub/b.txt"] == b"file-b"
@@ -872,8 +849,7 @@ def test_restore_snapshot_archive_cannot_write_outside(
     assert exc is None, f"restore failed instead of skipping the unsafe member: {exc!r}"
     # the first branch extracted everything it could; nothing fell back to the other one
     assert tar_read_modes == [_first_mode(zstd_branch)]
-    if _attack_is_skipped(kind, sandbox, branch):
-        _assert_skipped(skip_warnings, ATTACK_WARNING_FRAGMENT[kind])
+    _assert_skipped(skip_warnings, ATTACK_WARNING_FRAGMENT[kind])
     platform_api.project.create.assert_called_once()
     create_args = platform_api.project.create.call_args
     assert create_args.args[:3] == (5, SNAPSHOT_PROJECT_NAME, sly.ProjectType.VIDEOS)
@@ -913,8 +889,7 @@ def test_restore_snapshot_bytes_cannot_write_outside(
     assert tar_read_modes == [_first_mode(zstd_branch)], "the extraction itself failed"
     assert exc is not None
     assert not isinstance(exc, tarfile.TarError), f"unsafe member was not skipped: {exc!r}"
-    if _attack_is_skipped(kind, sandbox, branch):
-        _assert_skipped(skip_warnings, ATTACK_WARNING_FRAGMENT[kind])
+    _assert_skipped(skip_warnings, ATTACK_WARNING_FRAGMENT[kind])
     platform_api.project.create.assert_not_called()
 
 
