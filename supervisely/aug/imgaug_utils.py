@@ -1,4 +1,5 @@
 import inspect
+import types
 from collections import OrderedDict
 from supervisely.sly_logger import logger
 from supervisely.annotation.annotation import Annotation
@@ -104,14 +105,18 @@ def get_function(category_name, aug_name):
     except ModuleNotFoundError as e:
         logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
         raise e
-    try:
-        submodule = getattr(iaa, category_name)
-        aug_f = getattr(submodule, aug_name)
-        return aug_f
-    except Exception as e:
-        logger.error(repr(e))
-        # raise e
+    # category and name come from pipeline configs (e.g. JSON files in Team Files): only accept
+    # augmenter classes from imgaug's augmenter modules. A bare getattr also reached modules that
+    # imgaug re-exports, such as iaa.os.system, and ran them with the config's params.
+    submodule = getattr(iaa, str(category_name), None)
+    is_augmenters_module = isinstance(submodule, types.ModuleType) and submodule.__name__.startswith(
+        "imgaug.augmenters."
+    )
+    aug_f = getattr(submodule, str(aug_name), None) if is_augmenters_module else None
+    if not (isinstance(aug_f, type) and issubclass(aug_f, iaa.meta.Augmenter)):
+        logger.error(f"Unknown augmentation: {category_name}.{aug_name}")
         return None
+    return aug_f
 
 
 def build_pipeline(aug_infos, random_order=False):
@@ -127,6 +132,8 @@ def build_pipeline(aug_infos, random_order=False):
         params = aug_info["params"]
 
         aug_func = get_function(category_name, aug_name)
+        if aug_func is None:
+            raise ValueError(f"Unknown augmentation in pipeline: {category_name}.{aug_name}")
 
         for param_name, param_val in params.items():
             if isinstance(param_val, dict):
