@@ -26,6 +26,7 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
     PointcloudEpisodeConverter,
 )
 from supervisely.convert.video.video_converter import VideoConverter
+from supervisely.convert.volume.dicom.dicom_converter import DICOMConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.env import team_id as env_team_id
 from supervisely.io.fs import (
@@ -58,6 +59,7 @@ class ImportManager:
         team_id: Optional[int] = None,
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
+        anonymize_dicom: Optional[bool] = None,
     ):
         """:param input_data: Path(s) to input data (archives or directories).
         :type input_data: Union[str, List[str]]
@@ -69,6 +71,9 @@ class ImportManager:
         :type labeling_interface: LabelingInterface
         :param upload_as_links: If True, upload as links.
         :type upload_as_links: bool
+        :param anonymize_dicom: Replace PatientID and PatientName of DICOM volumes with
+            "anonymized". None keeps the converter default (on).
+        :type anonymize_dicom: bool, optional
 
         :raises ValueError: If team_id invalid or project type unsupported.
         """
@@ -100,6 +105,8 @@ class ImportManager:
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
             self._converter.team_id = self._team_id
+        if anonymize_dicom is not None and isinstance(self._converter, DICOMConverter):
+            self._converter.anonymize = anonymize_dicom
 
     @property
     def modality(self):
