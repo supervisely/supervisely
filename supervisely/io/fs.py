@@ -926,10 +926,14 @@ def _tar_member_filter(member: tarfile.TarInfo, dest_path: str):
     """tarfile extraction filter: the "data" filter, but an unsafe member is skipped with a
     warning instead of aborting the extraction half-way."""
     try:
-        return tarfile.data_filter(member, dest_path)
+        member = tarfile.data_filter(member, dest_path)
     except tarfile.FilterError as e:
         logger.warning(f"Skipping unsafe archive member {member.name!r}: {e}")
         return None
+    # "a/../b.txt" stays inside dest_path, but tarfile would try to create the directory "a/.."
+    # and fail with FileExistsError
+    normalized = os.path.normpath(member.name)
+    return member if normalized == member.name else member.replace(name=normalized, deep=False)
 
 
 def _extractall_safely(tar: tarfile.TarFile, target_dir: str) -> None:
@@ -947,17 +951,19 @@ def _extractall_safely(tar: tarfile.TarFile, target_dir: str) -> None:
         except tarfile.TarError as e:
             logger.warning(f"Skipping unsafe archive member {member.name!r}: {e}")
             continue
+        member.name = os.path.normpath(member.name)  # see _tar_member_filter
         tar.extract(member, root)
 
 
 def _unpack_archive_safely(archive_path: str, target_dir: str) -> None:
     """Same as shutil.unpack_archive, but tar members can not be written outside of target_dir."""
-    # shutil picks the format by extension; it keeps handling zip and every error case
+    # shutil picks the format by extension; it keeps handling zip and every error case.
+    # It matches extensions case-sensitively and would reject a name like DATA.ZIP.
     fmt = next(
         (
             name
             for name, extensions, _ in shutil.get_unpack_formats()
-            if any(archive_path.endswith(ext) for ext in extensions)
+            if archive_path.lower().endswith(tuple(extensions))
         ),
         None,
     )
@@ -966,10 +972,17 @@ def _unpack_archive_safely(archive_path: str, target_dir: str) -> None:
         or not os.path.isfile(archive_path)
         or not tarfile.is_tarfile(archive_path)
     ):
-        shutil.unpack_archive(archive_path, target_dir)
+        shutil.unpack_archive(archive_path, target_dir, format=fmt)
         return
     with tarfile.open(archive_path) as tar:
         _extractall_safely(tar, target_dir)
+
+
+class _ArchiveUnpackError(shutil.ReadError):
+    """Raised when input archives could not be unpacked and nothing else is left to import.
+
+    The message names each archive and says what to do; it is shown to the user as is.
+    """
 
 
 def unpack_archive(

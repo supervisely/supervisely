@@ -15,6 +15,7 @@ object is usable after the restore path runs restore_legacy_defaults()
 over it, the way Project.upload_bin() does.
 """
 
+import inspect
 import pickle
 
 import pytest
@@ -28,6 +29,7 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.io.pickle_compat import restore_legacy_defaults
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import ProjectSettings
+from supervisely.project.versioning.common import IMAGE_SCHEMA_VERSION_V1
 
 
 def _roundtrip(obj):
@@ -47,6 +49,13 @@ def _roundtrip_meta(meta):
         *restored.tag_metas,
     )
     return restored
+
+
+def test_public_image_binary_download_keeps_the_dependency_free_default():
+    """Importing the SDK without the versioning extra must not change this old call."""
+    default = inspect.signature(sly.Project.download_bin).parameters["schema_version"].default
+
+    assert default == IMAGE_SCHEMA_VERSION_V1
 
 
 def test_obj_class_unpickle_missing_geometry_type_name():

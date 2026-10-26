@@ -751,6 +751,8 @@ class ApiField:
     """"""
     FRAME_RANGE_MAX_LENGTH = "frameRangeMaxLength"
     """"""
+    IS_DEFAULT = "isDefault"
+    """"""
     VALUES = "values"
     """"""
     APPLICABLE_TYPE = "applicableType"

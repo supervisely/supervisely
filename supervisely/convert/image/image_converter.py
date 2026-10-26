@@ -241,8 +241,8 @@ class ImageConverter(BaseConverter):
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
         mimetypes.add_type("image/bmp", ".bmp")  # to extend types_map
 
-        with open(path, "rb") as f:
-            mimetype = magic.from_buffer(f.read(), mime=True)
+        # libmagic reads only the file header; resolve symlinks, which it does not follow
+        mimetype = magic.from_file(os.path.realpath(path), mime=True)
         file_ext = mimetypes.guess_extension(mimetype)
         if file_ext is None:
             return False

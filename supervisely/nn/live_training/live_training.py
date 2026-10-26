@@ -304,13 +304,16 @@ class LiveTraining:
     def predict(self, model: nn.Module, image_np, image_info) -> list:
         """
         Run inference on a single image and return predictions as a list of sly figures in json format.
+
+        image_info: {'id': image id, 'instance_masks': bool} - for segmentation, whether to split
+        each class mask into separate objects (True, default) or return one mask per class (False).
         """
         raise NotImplementedError
 
     def _handle_predict(self, data: dict):
         image_np = data['image']
         image_id = data['image_id']
-        image_info = {'id': image_id}   
+        image_info = {'id': image_id, 'instance_masks': data.get('instance_masks', True)}
         model = self.model
         was_training = model.training
         model.eval()
