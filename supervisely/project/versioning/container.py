@@ -74,18 +74,15 @@ def pack_payload_dir(payload_dir: str, tmp_root: str) -> io.BytesIO:
 
 
 def _extractall(tar: tarfile.TarFile, payload_dir: str) -> None:
-    """Extract with the 'data' filter where the interpreter has one.
+    """Extract without letting a member escape ``payload_dir``.
 
-    A snapshot is downloaded from Team Files, so it is not trusted input: the filter is
-    what stops a crafted archive from writing outside ``payload_dir``. It is the default
-    from 3.14 and available from 3.12; on the older interpreters ``python_requires``
-    still admits, the keyword may not exist, hence the fallback rather than a version
-    check.
+    A snapshot is downloaded from Team Files, so it is not trusted input. Unsafe members are
+    skipped with a warning, also on interpreters without tarfile extraction filters (< 3.12),
+    where a plain ``extractall`` would write them anywhere.
     """
-    try:
-        tar.extractall(payload_dir, filter="data")
-    except TypeError:
-        tar.extractall(payload_dir)
+    from supervisely.io.fs import _extractall_safely
+
+    _extractall_safely(tar, payload_dir)
 
 
 def unpack_snapshot(snapshot_bytes: bytes, payload_dir: str) -> None:

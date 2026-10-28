@@ -1018,7 +1018,9 @@ def get_filename_from_headers(url):
         content_disposition = response.headers.get("Content-Disposition")
         if content_disposition:
             filename = re.findall('filename="?([^"]+)"?', content_disposition)
-            if filename:
+            # the header is controlled by the remote server: keep the name, drop any path
+            filename = [os.path.basename(f.replace("\\", "/")) for f in filename]
+            if filename and filename[0] not in ("", ".", ".."):
                 return filename[0]
         filename = url.split("/")[-1] or "downloaded_file"
         return filename

@@ -1,5 +1,6 @@
 import mimetypes
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
@@ -23,6 +24,57 @@ from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_fil
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 
+# Images without annotations: map input folders to nested datasets (True) or put every image
+# into the target dataset (False). Changing it changes what Auto Import does for its users.
+DEFAULT_FOLDERS_AS_DATASETS = False
+
+FOLDER_ITEMS = "items"
+FOLDER_DATASETS = "datasets"
+
+
+def _collapse_top_levels(chains: List[List[str]]) -> int:
+    """Number of leading single-folder levels to drop from the top of the tree.
+
+    Stops when an image lies directly at the current level, the level has more than one
+    folder, or its single folder holds images itself (same rule as Import Images v1.3.0).
+    """
+    k = 0
+    while True:
+        cur = [c[k:] for c in chains]
+        if not cur or any(len(c) == 0 for c in cur):
+            return k
+        tops = {c[0] for c in cur}
+        if len(tops) != 1:
+            return k
+        top = next(iter(tops))
+        if any(c == [top] for c in cur):
+            return k
+        k += 1
+
+
+def group_items_by_folders(items: List[BaseConverter.BaseItem], input_root: str) -> Dict:
+    """Group items into a dataset tree that follows the folders they lie in.
+
+    The folder the input was copied to (one per input path) is the root, as the selected folder
+    is in Import Images; when there is a single input, its folder is not a dataset. Leading
+    folders that only hold one subfolder are dropped. Returns
+    ``{"items": [root items], "datasets": {folder: {"items": [...], "datasets": {...}}}}``.
+    """
+    chains = []
+    for item in items:
+        rel = os.path.relpath(os.path.dirname(os.path.abspath(item.path)), input_root)
+        chains.append([] if rel in (".", "") else list(Path(rel).parts))
+    if chains and all(chains) and len({c[0] for c in chains}) == 1:
+        chains = [c[1:] for c in chains]
+    k = _collapse_top_levels(chains)
+    tree = {FOLDER_ITEMS: [], FOLDER_DATASETS: {}}
+    for item, chain in zip(items, chains):
+        node = tree
+        for part in chain[k:]:
+            node = node[FOLDER_DATASETS].setdefault(part, {FOLDER_ITEMS: [], FOLDER_DATASETS: {}})
+        node[FOLDER_ITEMS].append(item)
+    return tree
+
 
 class ImageConverter(BaseConverter):
     """Base converter for image projects (collects images and uploads images + annotations to Supervisely)."""
@@ -31,6 +83,9 @@ class ImageConverter(BaseConverter):
         ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
     ]
     modality = "images"
+    # set on the converter that collected plain images because no annotation format was found
+    _plain_images_input = False
+    _folders_as_datasets = None
 
     class Item(BaseConverter.BaseItem):
         """Base image item used by image converters (path + optional annotation/meta and image shape)."""
@@ -104,6 +159,17 @@ class ImageConverter(BaseConverter):
         return self._converter.format
 
     @property
+    def folders_as_datasets(self) -> bool:
+        """Whether images without annotations are uploaded into datasets that follow their folders."""
+        if self._folders_as_datasets is None:
+            return DEFAULT_FOLDERS_AS_DATASETS
+        return self._folders_as_datasets
+
+    @folders_as_datasets.setter
+    def folders_as_datasets(self, value: bool) -> None:
+        self._folders_as_datasets = value
+
+    @property
     def ann_ext(self) -> str:
         return None
 
@@ -132,6 +198,13 @@ class ImageConverter(BaseConverter):
         progress_cb=None,
     ) -> None:
         """Upload converted data to Supervisely"""
+        if entities is None and self._plain_images_input and self.folders_as_datasets:
+            tree = group_items_by_folders(self._items, self._input_data)
+            if tree[FOLDER_DATASETS]:
+                return self._upload_folders_as_datasets(
+                    api, dataset_id, tree, batch_size, log_progress, progress_cb
+                )
+
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
 
@@ -226,6 +299,56 @@ class ImageConverter(BaseConverter):
             f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
         )
 
+    def _upload_folders_as_datasets(
+        self,
+        api: Api,
+        dataset_id: int,
+        tree: Dict,
+        batch_size: int,
+        log_progress: bool,
+        progress_cb=None,
+    ) -> None:
+        """Upload a folder tree from :func:`group_items_by_folders` as nested datasets.
+
+        Images at the input root go into the target dataset and folders become datasets nested
+        inside it, as for Import Images into an existing dataset. The target dataset is never
+        renamed and nothing is created outside it: the converter cannot tell a dataset the caller
+        just created from an empty dataset the user picked.
+        """
+        target = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_id = target.project_id
+        progress = None
+        if progress_cb is None and log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading")
+
+        def _upload_node(node: Dict, ds_id: int, ds_path: str) -> None:
+            items = node[FOLDER_ITEMS]
+            logger.info(
+                f"Dataset: {ds_path}, items: {len(items)}, "
+                f"nested datasets: {len(node[FOLDER_DATASETS])}"
+            )
+            if items:  # an empty list would make upload_dataset take all items
+                ImageConverter.upload_dataset(
+                    self,
+                    api,
+                    ds_id,
+                    batch_size,
+                    log_progress=log_progress,
+                    entities=items,
+                    progress_cb=progress_cb,
+                )
+            for name in sorted(node[FOLDER_DATASETS]):
+                child = api.dataset.create(
+                    project_id, name, parent_id=ds_id, change_name_if_conflict=True
+                )
+                _upload_node(node[FOLDER_DATASETS][name], child.id, f"{ds_path}/{child.name}")
+
+        logger.info("Uploading images into datasets that follow the input folders")
+        _upload_node(tree, target.id, target.name)
+
+        if is_development() and progress is not None:
+            progress.close()
+
     def validate_image(self, path: str) -> str:
         if self.upload_as_links:
             return self.remote_files_map.get(path)
@@ -265,6 +388,7 @@ class ImageConverter(BaseConverter):
 
         meta_dirs = [d for d in dirs_filter(self._input_data, _is_meta_dir)]
         if len(meta_dirs) == 0:
+            self._plain_images_input = True
             return super()._collect_items_if_format_not_detected()
         else:
             logger.debug("Found folders with meta information for images.")

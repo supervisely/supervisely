@@ -961,8 +961,14 @@ def create(
                 server_address = sly_env.server_address(raise_not_found=False)
                 if server_address is not None:
                     server_address = Api.normalize_server_address(server_address)
+                # this route has no authentication: only a local development UI gets the app's
+                # own token; at the instance the UI uses the token of the logged-in user
+                api_token = (
+                    os.environ.get(API_TOKEN) if advanced_debug or is_development() else None
+                )
             elif production_at_instance:
                 server_address = "/"
+                api_token = None
             else:
                 raise ValueError(
                     "'Unrecognized running mode, should be one of ['advanced_debug', 'development', 'production']."
@@ -972,7 +978,7 @@ def create(
                 content={
                     TASK_ID: os.environ.get(TASK_ID),
                     SERVER_ADDRESS: server_address,
-                    API_TOKEN: os.environ.get(API_TOKEN),
+                    API_TOKEN: api_token,
                 }
             )
             return response
