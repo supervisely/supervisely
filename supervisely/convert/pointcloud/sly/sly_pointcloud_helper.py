@@ -1,4 +1,5 @@
-from typing import Dict, List, Union
+import os
+from typing import Dict, List, Optional, Union
 
 from supervisely import (
     AnyGeometry,
@@ -14,6 +15,47 @@ from supervisely.io.fs import get_file_name
 from supervisely.io.json import load_json_file
 
 SLY_ANN_KEYS = ["figures", "objects", "tags"]
+
+POINTCLOUD_DIR = "pointcloud"
+NESTED_DATASETS_DIR = "datasets"
+
+
+def get_dataset_dir(pcd_path: str) -> Optional[str]:
+    """The dataset folder of a cloud stored as ``<dataset>/pointcloud/<name>``, else None."""
+    item_dir = os.path.dirname(pcd_path)
+    if os.path.basename(item_dir) != POINTCLOUD_DIR:
+        return None
+    return os.path.dirname(item_dir)
+
+
+def get_dataset_name(ds_dir: str) -> str:
+    """Full dataset name from the project layout: ``ds0/datasets/child`` -> ``ds0/child``."""
+    parts = [os.path.basename(ds_dir)]
+    parent = os.path.dirname(ds_dir)
+    while os.path.basename(parent) == NESTED_DATASETS_DIR and os.path.dirname(parent) != parent:
+        ds_dir = os.path.dirname(parent)
+        parts.insert(0, os.path.basename(ds_dir))
+        parent = os.path.dirname(ds_dir)
+    return "/".join(parts)
+
+
+def add_dataset_node(project: Dict, dataset_name: str) -> Dict:
+    """Return the node of ``dataset_name`` ("parent/child") in ``project``, creating it if needed.
+
+    Nodes are ``{"items": [...], "datasets": {child name: node}}``.
+    """
+    parts = dataset_name.split("/")
+    node = project.setdefault(parts[0], {"items": [], "datasets": {}})
+    for part in parts[1:]:
+        node = node["datasets"].setdefault(part, {"items": [], "datasets": {}})
+    return node
+
+
+def count_datasets(project: Dict) -> int:
+    """Number of datasets in ``project`` that hold items."""
+    return sum(
+        int(bool(node["items"])) + count_datasets(node["datasets"]) for node in project.values()
+    )
 
 
 def get_meta_from_annotation(ann_path: str, meta: Union[ProjectMeta, None]) -> ProjectMeta:
