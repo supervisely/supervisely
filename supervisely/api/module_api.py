@@ -353,6 +353,8 @@ class ApiField:
     """"""
     FIGURE_ID = "figureId"
     """"""
+    LOCAL_FIGURE_ID = "localFigureId"
+    """"""
     FIGURE_IDS = "figureIds"
     """"""
     VALUE = "value"
