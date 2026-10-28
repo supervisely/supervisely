@@ -58,6 +58,7 @@ class ImportManager:
         team_id: Optional[int] = None,
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
+        folders_as_datasets: Optional[bool] = None,
     ):
         """:param input_data: Path(s) to input data (archives or directories).
         :type input_data: Union[str, List[str]]
@@ -69,6 +70,12 @@ class ImportManager:
         :type labeling_interface: LabelingInterface
         :param upload_as_links: If True, upload as links.
         :type upload_as_links: bool
+        :param folders_as_datasets: Images without annotations only: if True, every input folder
+            becomes a (nested) dataset and images keep their names within it; if False, all images
+            go into the target dataset. None uses
+            :data:`~supervisely.convert.image.image_converter.DEFAULT_FOLDERS_AS_DATASETS`.
+            Ignored for other modalities and for detected annotation formats.
+        :type folders_as_datasets: bool, optional
 
         :raises ValueError: If team_id invalid or project type unsupported.
         """
@@ -100,6 +107,8 @@ class ImportManager:
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
             self._converter.team_id = self._team_id
+        if folders_as_datasets is not None and isinstance(self._converter, ImageConverter):
+            self._converter.folders_as_datasets = folders_as_datasets
 
     @property
     def modality(self):
