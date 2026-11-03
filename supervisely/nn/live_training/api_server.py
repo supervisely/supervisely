@@ -49,15 +49,16 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
         
     @app.post("/predict")
     async def predict(request: Request, response: Response):
-        """Run inference on an image."""
+        """Run inference on one or several images."""
         sly_api = _api_from_request(request)
         state = request.state.state
-        img_np = sly_api.image.download_np(state['image_id'])
+        image_ids = _get_requested_image_ids(state)
+        images_np = [sly_api.image.download_np(image_id) for image_id in image_ids]
         future = request_queue.put(
             RequestType.PREDICT,
             {
-                'image': img_np,
-                'image_id': state['image_id'],
+                'images': images_np,
+                'image_ids': image_ids,
                 'instance_masks': state.get('instance_masks') is not False,
             }
         )
@@ -66,10 +67,19 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
     
     @app.post("/add-sample")
     async def add_sample(request: Request, response: Response):
-        """Add a new training sample."""
+        """Add one or several new training samples."""
         sly_api = _api_from_request(request)
         state = request.state.state
-        image_infos = _get_training_sample_image_infos(sly_api, state['image_id'], lt)
+        image_infos = []
+        seen_ids = set()
+        for image_id in _get_requested_image_ids(state):
+            if image_id in seen_ids:
+                # Already added as part of a previously resolved multiview group
+                continue
+            for image_info in _get_training_sample_image_infos(sly_api, image_id, lt):
+                if image_info.id not in seen_ids:
+                    seen_ids.add(image_info.id)
+                    image_infos.append(image_info)
         result = None
         for image_info in image_infos:
             img_np = sly_api.image.download_np(image_info.id)
@@ -110,6 +120,20 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
         return result
 
     return app
+
+
+def _get_requested_image_ids(state: dict) -> List[int]:
+    """Return image ids from request state: ``image_ids`` if given, otherwise ``[image_id]``.
+
+    Duplicates are removed, order is preserved.
+    """
+    image_ids = state.get("image_ids")
+    if not image_ids:
+        image_id = state.get("image_id")
+        if image_id is None:
+            raise HTTPException(400, detail="Either 'image_id' or 'image_ids' must be provided.")
+        image_ids = [image_id]
+    return list(dict.fromkeys(image_ids))
 
 
 def _get_training_sample_image_infos(
@@ -167,6 +191,8 @@ def _get_multiview_tag_id(api: sly.Api, project_id: int, lt: "LiveTraining" = No
     if tag_meta is not None:
         return tag_meta.sly_id
     return None
+
+
 async def _wait_for_result(future: asyncio.Future, response: Response, timeout: float = 600.0):
     """Wait for the future to complete with a timeout."""
     try:
