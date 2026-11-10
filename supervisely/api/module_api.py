@@ -207,6 +207,8 @@ class ApiField:
     """"""
     EXCLUDE_IMAGES_WITH_TAGS = ([], "exclude_images_with_tags")
     """"""
+    READ_ONLY_CLASSES = (["meta", "readOnlyClasses"], "read_only_classes")
+    """"""
     SIZEB = (["size"], "sizeb")
     """"""
     FRAMES = "frames"
