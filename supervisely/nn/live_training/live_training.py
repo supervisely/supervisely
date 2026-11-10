@@ -310,23 +310,41 @@ class LiveTraining:
         """
         raise NotImplementedError
 
+    def predict_batch(self, model: nn.Module, images_np: list, images_info: list) -> list:
+        """
+        Run inference on several images. Returns a list with one list of sly figures (json) per image,
+        in the same order as images_np.
+
+        Default implementation calls predict() for each image. Override for batched inference.
+        """
+        return [
+            self.predict(model, image_np=image_np, image_info=image_info)
+            for image_np, image_info in zip(images_np, images_info)
+        ]
+
     def _handle_predict(self, data: dict):
-        image_np = data['image']
-        image_id = data['image_id']
-        image_info = {'id': image_id, 'instance_masks': data.get('instance_masks', True)}
+        images_np = data['images']
+        image_ids = data['image_ids']
+        instance_masks = data.get('instance_masks', True)
+        images_info = [{'id': image_id, 'instance_masks': instance_masks} for image_id in image_ids]
         model = self.model
         was_training = model.training
         model.eval()
         try:
-            objects_raw = self.predict(self.model, image_np=image_np, image_info=image_info)
+            objects_per_image = self.predict_batch(self.model, images_np=images_np, images_info=images_info)
 
-            if self.evaluator:
-                image_shape = image_np.shape[:2]
-                self.evaluator.store_prediction(image_id, objects_raw, image_shape)
+            objects = []
+            for image_id, image_np, objects_raw in zip(image_ids, images_np, objects_per_image):
+                if self.evaluator:
+                    image_shape = image_np.shape[:2]
+                    self.evaluator.store_prediction(image_id, objects_raw, image_shape)
+                # Flat list of objects for all images, each object points to its image
+                objects.extend({**obj, 'image_id': image_id} for obj in objects_raw)
 
             return {
-                'objects': objects_raw,
-                'image_id': image_id,
+                'objects': objects,
+                'image_id': image_ids[0],
+                'image_ids': image_ids,
                 'status': self.status(),
             }
         finally:
