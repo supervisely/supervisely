@@ -86,6 +86,13 @@ def test_info_reads_jobs_list_title_shape():
     assert info.read_only_classes == ["hint_box"]
 
 
+def test_info_tolerates_unexpected_read_only_class_items():
+    info = LabelingJobApi(_api(None))._convert_json_info(
+        _job_json({"readOnlyClasses": ["hint_box", {"id": 3}, 4]})
+    )
+    assert info.read_only_classes == ["hint_box"]
+
+
 def test_info_is_none_when_server_omits_read_only_classes():
     info = LabelingJobApi(_api(None))._convert_json_info(_job_json())
     assert info.read_only_classes is None

@@ -285,13 +285,24 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                     continue
                 elif (
                     field_name == ApiField.CLASSES_TO_LABEL or field_name == ApiField.TAGS_TO_LABEL
-                ) or (field_name == ApiField.READ_ONLY_CLASSES and value is not None):
+                ):
                     new_value = []
                     for fv in value:
                         key = ApiField.NAME
                         if ApiField.NAME not in fv:
                             key = "title"
                         new_value.append(fv[key])
+                    field_values.append(new_value)
+                    continue
+                elif field_name == ApiField.READ_ONLY_CLASSES and value is not None:
+                    new_value = []
+                    for fv in value:
+                        if isinstance(fv, str):
+                            new_value.append(fv)
+                        elif isinstance(fv, dict):
+                            name = fv.get(ApiField.NAME) or fv.get("title")
+                            if name is not None:
+                                new_value.append(name)
                     field_values.append(new_value)
                     continue
                 elif field_name == ApiField.IMAGES_RANGE:
