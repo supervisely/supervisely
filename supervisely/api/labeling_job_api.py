@@ -407,7 +407,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param allow_restore: If True, allows restoring a previously deleted labeling job with the same name in the same dataset.
         :type allow_restore: bool
-        :param read_only_classes: Names of classes whose objects labelers can see but not select, edit, move or delete. The server rejects any change to them. A class can't be both in ``classes_to_label`` and in ``read_only_classes``. Requires Supervisely 6.18.11 or later.
+        :param read_only_classes: Names of classes whose objects labelers can see but not select, edit, move or delete. The server rejects any change to them. Names must match the project's class names exactly, and a class can't be both in ``classes_to_label`` and in ``read_only_classes``. Requires Supervisely 6.18.11 or later.
         :type read_only_classes: List[str], optional
         :returns: List of LabelingJobInfo objects with information about new Labeling Jobs.
         :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
