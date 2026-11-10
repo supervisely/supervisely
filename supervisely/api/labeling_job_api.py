@@ -96,6 +96,7 @@ class LabelingJobInfo(NamedTuple):
     entities: list
     priority: int
     guide_id: Optional[int] = None
+    read_only_classes: Optional[list] = None
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -209,6 +210,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.ENTITIES,
             ApiField.PRIORITY,
             ApiField.M_GUIDE_ID,
+            ApiField.READ_ONLY_CLASSES,
         ]
 
     @staticmethod
@@ -292,6 +294,17 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                         new_value.append(fv[key])
                     field_values.append(new_value)
                     continue
+                elif field_name == ApiField.READ_ONLY_CLASSES and value is not None:
+                    new_value = []
+                    for fv in value:
+                        if isinstance(fv, str):
+                            new_value.append(fv)
+                        elif isinstance(fv, dict):
+                            name = fv.get(ApiField.NAME) or fv.get("title")
+                            if name is not None:
+                                new_value.append(name)
+                    field_values.append(new_value)
+                    continue
                 elif field_name == ApiField.IMAGES_RANGE:
                     value = (value["start"], value["end"])
 
@@ -345,6 +358,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         guide_id: Optional[int] = None,
         allow_restore: bool = False,
         read_only_tags: Optional[List[str]] = None,
+        read_only_classes: Optional[List[str]] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -393,6 +407,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param allow_restore: If True, allows restoring a previously deleted labeling job with the same name in the same dataset.
         :type allow_restore: bool
+        :param read_only_classes: Names of classes whose objects labelers can see but not select, edit, move or delete. The server rejects any change to them. Names must match the project's class names exactly, and a class can't be both in ``classes_to_label`` and in ``read_only_classes``. Requires Supervisely 6.18.11 or later.
+        :type read_only_classes: List[str], optional
         :returns: List of LabelingJobInfo objects with information about new Labeling Jobs.
         :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
 
@@ -483,6 +499,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         if read_only_tags is not None:
             meta["readOnlyTags"] = read_only_tags
+        if read_only_classes is not None:
+            meta["readOnlyClasses"] = read_only_classes
 
         if guide_id is not None:
             try:
@@ -1617,6 +1635,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             images_range=job_info.images_range,
             reviewer_id=reviewer_id,
             images_ids=[entity["id"] for entity in job_info.entities],
+            read_only_classes=job_info.read_only_classes,
             # TODO dynamic_classes=job_info.dynamic_classes,
             # TODO dynamic_tags=job_info.dynamic_tags,
         )
