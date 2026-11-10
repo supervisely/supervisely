@@ -1,9 +1,9 @@
 """Read-only classes in labeling jobs.
 
 ``api.labeling_job.create(read_only_classes=...)`` sends ``meta.readOnlyClasses``. ``jobs.info``
-returns it as ``[{"id", "name"}]``, and ``LabelingJobInfo.read_only_classes`` holds the names, so
-``clone`` carries them into the new job. Instances that predate the setting omit it, and the
-field is then ``None``.
+returns it as ``[{"id", "name"}]`` and ``jobs.list`` as ``[{"id", "title"}]``;
+``LabelingJobInfo.read_only_classes`` holds the names, so ``clone`` carries them into the new job.
+Instances that predate the setting omit it, and the field is then ``None``.
 """
 
 from unittest.mock import MagicMock
@@ -77,6 +77,13 @@ def test_info_holds_read_only_class_names():
     )
     assert info.read_only_classes == ["hint_box"]
     assert info.classes_to_label == ["vehicle"]
+
+
+def test_info_reads_jobs_list_title_shape():
+    info = LabelingJobApi(_api(None))._convert_json_info(
+        _job_json({"readOnlyClasses": [{"id": 2, "title": "hint_box"}]})
+    )
+    assert info.read_only_classes == ["hint_box"]
 
 
 def test_info_is_none_when_server_omits_read_only_classes():
