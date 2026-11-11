@@ -17,9 +17,9 @@ class SeyondPcapEpisodesConverter(SeyondPcapConverter, PointcloudEpisodeConverte
     """Imports Seyond lidar pcap captures as point cloud episodes.
 
     The captures of each sensor are chained by time: the next capture continues the episode
-    when it starts within ``episodes.maxGapSec`` (1 s by default) of the previous one's last
-    frame, and while the episode stays within ``episodes.maxFrames`` (``sensors.json``). A
-    capture is never split. Each episode is a dataset; one episode goes to the target dataset.
+    when it starts within ``episodes.maxGapSec`` (1 s by default) after the previous one's last
+    frame starts, and while the episode stays within ``episodes.maxFrames`` (``sensors.json``).
+    Captures that overlap in time start separate episodes. A capture is never split. Each episode is a dataset; one episode goes to the target dataset.
     """
 
     def __init__(
@@ -46,7 +46,9 @@ class SeyondPcapEpisodesConverter(SeyondPcapConverter, PointcloudEpisodeConverte
             if (
                 current is not None
                 and current[-1].sensor == item.sensor
-                and item.start_time - current[-1].end_time <= self._config.max_gap_sec
+                # a capture that overlaps the previous one (the same file twice, or a
+                # re-recording) never continues it: the tool numbers frames per file
+                and 0 <= item.start_time - current[-1].end_time <= self._config.max_gap_sec
                 and (
                     self._config.max_frames is None
                     or sum(i.frame_count for i in current) + item.frame_count
