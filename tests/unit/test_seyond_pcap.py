@@ -267,7 +267,7 @@ def _capture_set(root, gap_sec=0.0):
     root.mkdir(parents=True, exist_ok=True)
     falcon_capture(root / "t7_front_falcon_2026-01-01--00-00-00.pcap", [1, 1, 2, 3])
     falcon_capture(
-        root / "t7_front_falcon_2026-01-01--00-01-00.pcap", [3, 4, 5], start=1_700_000_000.03 + gap_sec
+        root / "t7_front_falcon_2026-01-01--00-01-00.pcap", [3, 4, 5], start=1_700_000_000.04 + gap_sec
     )
     falcon_capture(root / "t7_front_falcon_2026-01-01--00-05-00.pcap", [9], start=1_700_000_300.0)
     (root / "sensors.json").write_text(json.dumps({"t7_front": ROLL_MINUS_90}))
@@ -491,3 +491,64 @@ def test_a_failure_partway_removes_only_what_it_was_adding(tmp_path, monkeypatch
     # the first capture's dataset stays whole; the second one is removed; the third never made
     assert len(api.datasets) == 2
     assert api.removed == [("dataset", 102)]
+
+
+def test_an_empty_meta_json_is_a_project_only_when_linked(tmp_path):
+    root = _capture_set(tmp_path / "in")
+    (root / "meta.json").write_bytes(b"")
+    assert SeyondPcapConverter(str(root), None, False).validate_format()
+
+
+def test_the_same_one_frame_capture_twice_never_chains(tmp_path):
+    root = tmp_path / "in"
+    for folder in ("a", "b"):
+        (root / folder).mkdir(parents=True)
+        falcon_capture(root / folder / "t7_front_falcon_2026-01-01--00-00-00.pcap", [1])
+    converter = SeyondPcapEpisodesConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert [len(items) for _, items in converter._group_items()] == [1, 1]
+
+
+def test_supervisely_annotations_with_captures_are_refused_without_meta(tmp_path):
+    from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
+        SLYPointcloudConverter,
+    )
+
+    root = tmp_path / "in"
+    (root / "ds" / "pointcloud").mkdir(parents=True)
+    (root / "ds" / "ann").mkdir()
+    falcon_capture(root / "ds" / "pointcloud" / "c_0000.pcap", [1])
+    (root / "ds" / "ann" / "c_0000.pcap.json").write_text(
+        json.dumps({"description": "", "key": "0" * 32, "tags": [], "objects": [], "figures": []})
+    )
+    with pytest.raises(ValueError, match="Export Seyond lidar pcap"):
+        SLYPointcloudConverter(str(root), None, False).validate_format()
+
+
+def test_config_and_junk_are_not_reported_as_left_out(tmp_path, warnings):
+    root = _capture_set(tmp_path / "in")
+    (root / "sub").mkdir()
+    (root / "sub" / "sensors.json").write_text("{}")
+    (root / "__MACOSX").mkdir()
+    (root / "__MACOSX" / "._sensors.json").write_bytes(b"x")
+    assert SeyondPcapConverter(str(root), None, False).validate_format()
+    left_out = [w for w in warnings if "not imported (" in w]
+    assert len(left_out) == 1 and "sensors.json" not in left_out[0] and ".log" in left_out[0]
+
+
+def test_items_added_before_a_bad_response_are_removed(tmp_path, monkeypatch):
+    root = tmp_path / "in"
+    root.mkdir()
+    falcon_capture(root / "only.pcap", [1, 2])
+    converter = SeyondPcapConverter(str(root), None, False)
+    assert converter.validate_format()
+    monkeypatch.setattr(converter, "merge_metas_with_conflicts", lambda api, ds: (None, {}, {}))
+    api = _FakeApi(fail_on=0)
+
+    def broken(d):
+        raise KeyError("name")
+
+    api.pointcloud._convert_json_info = broken
+    with pytest.raises(KeyError):
+        converter.upload_dataset(api, 1, log_progress=False)
+    assert api.removed == [("items", [1000, 1001])]

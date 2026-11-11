@@ -213,17 +213,22 @@ class SeyondPcapConverter(PointcloudConverter):
                     pcap_paths.append(path)
                 elif file == SENSORS_CONFIG_NAME and config_path is None:
                     config_path = path
-                elif file == "meta.json" and self._is_project_meta(path):
+                elif file == "meta.json" and self._is_project_meta(path, self.upload_as_links):
                     has_sly_project = True
-                elif file not in JUNK_FILES:
+                elif (
+                    file != SENSORS_CONFIG_NAME
+                    and file not in JUNK_FILES
+                    and not file.startswith("._")
+                    and not any(part in JUNK_FILES for part in os.path.relpath(root, self._input_data).split(os.sep))
+                ):
                     other_files.append(path)
         return pcap_paths, config_path, labels_dir, has_sly_project, other_files
 
     @staticmethod
-    def _is_project_meta(path: str) -> bool:
+    def _is_project_meta(path: str, linked: bool) -> bool:
         """A Supervisely project's meta.json, not any file that happens to have the name."""
         if os.path.getsize(path) == 0:
-            return True  # a linked stand-in: cannot be read here, assume the project
+            return linked  # a linked stand-in cannot be read here: assume the project
         try:
             data = load_json_file(path)
         except Exception:
@@ -323,8 +328,7 @@ class SeyondPcapConverter(PointcloudConverter):
         frame_keys: Dict[Tuple[str, int], int] = {}
         frame_offset = 0
         for item in items:
-            infos = self._add_capture(api, dataset.id, item, frame_offset, existing_names)
-            added_ids.extend(info.id for info in infos)
+            infos = self._add_capture(api, dataset.id, item, frame_offset, existing_names, added_ids)
             for frame, info in zip(item.index.frames, infos):
                 item_frame = frame_offset + frame.index if self._is_pcd_episode else frame.index
                 frame_to_pointcloud_ids[item_frame] = info.id
@@ -388,9 +392,18 @@ class SeyondPcapConverter(PointcloudConverter):
         return ApiField.HASH, file_hash
 
     def _add_capture(
-        self, api: Api, dataset_id: int, item: Item, frame_offset: int, existing_names: set
+        self,
+        api: Api,
+        dataset_id: int,
+        item: Item,
+        frame_offset: int,
+        existing_names: set,
+        added_ids: List[int],
     ):
-        """Add every frame of a capture in one request, so the dataset counts the file once."""
+        """Add every frame of a capture in one request, so the dataset counts the file once.
+
+        The ids of the items added are appended to ``added_ids`` as soon as the request returns.
+        """
         key, value = self._capture_data(api, item)
         width = max(4, len(str(item.frame_count - 1)))
         stem = get_file_name(item.path)
@@ -419,7 +432,9 @@ class SeyondPcapConverter(PointcloudConverter):
             "point-clouds.bulk.add",
             {ApiField.DATASET_ID: dataset_id, ApiField.POINTCLOUDS: entries},
         )
-        infos = [api.pointcloud._convert_json_info(info) for info in response.json()]
+        added = response.json()
+        added_ids.extend(info[ApiField.ID] for info in added if ApiField.ID in info)
+        infos = [api.pointcloud._convert_json_info(info) for info in added]
         by_name = {info.name: info for info in infos}
         return [by_name[entry[ApiField.NAME]] for entry in entries]
 
