@@ -186,11 +186,6 @@ def to_iso_timestamp(seconds: float) -> str:
     return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond // 1000:03d}Z"
 
 
-def is_pcap_header(header: bytes) -> bool:
-    """True if ``header`` (at least the first 4 bytes of a file) starts a classic pcap file."""
-    return _byte_order(header) is not None
-
-
 def _byte_order(header: bytes) -> Optional[str]:
     if len(header) < 4:
         return None
@@ -359,15 +354,3 @@ def _count_header(result: SeyondPcapIndex, frame: bytes, start: int, end: int) -
     if end - start > _INNO_LIDAR_TYPE_OFFSET:
         lidar_type = frame[start + _INNO_LIDAR_TYPE_OFFSET]
         result.lidar_types[lidar_type] = result.lidar_types.get(lidar_type, 0) + 1
-
-
-def is_seyond_pcap(path: str, max_records: int = 2000) -> bool:
-    """True if the file is a classic pcap file whose first records carry Seyond lidar data.
-
-    Reads at most ``max_records`` records, so it is cheap on a large capture. It says nothing
-    about whether the labeling tool can decode the capture; see :func:`index_pcap`.
-    """
-    try:
-        return index_pcap(path, max_records=max_records).is_seyond
-    except (SeyondPcapError, OSError):
-        return False
