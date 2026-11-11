@@ -362,3 +362,19 @@ def test_a_capture_is_downloaded_once_for_its_frames(tmp_path):
     _download_pointcloud_file(download, info(11, "b.pcd", "P"), str(tmp_path / "b.pcd"), downloaded)
     assert calls == [0, 10, 11]  # .pcd items keep one download each
     assert all((tmp_path / f"{i}.pcap").read_bytes() == b"capture bytes" for i in range(3))
+
+
+def test_renamed_tags_reach_object_tags_without_a_renamed_class():
+    from supervisely.convert.pointcloud.sly.sly_pointcloud_helper import rename_in_json
+    from supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper import (
+        rename_in_json as rename_in_episode_json,
+    )
+
+    for rename in (rename_in_json, rename_in_episode_json):
+        ann = {"tags": [{"name": "state"}], "objects": [{"classTitle": "car", "tags": [{"name": "state"}]}]}
+        ann = rename(ann, {}, {"state": "state_1"})
+        assert ann["objects"][0]["tags"][0]["name"] == "state_1"
+        assert ann["tags"][0]["name"] == "state_1"
+        assert rename({"tags": [], "objects": [{"classTitle": "car", "tags": []}]}, {"car": "car_1"}, None)[
+            "objects"
+        ][0]["classTitle"] == "car_1"
