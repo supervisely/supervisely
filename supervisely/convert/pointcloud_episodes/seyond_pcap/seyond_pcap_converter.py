@@ -40,23 +40,24 @@ class SeyondPcapEpisodesConverter(SeyondPcapConverter, PointcloudEpisodeConverte
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SEYOND_PCAP
 
+    def _continues(self, episode: List[SeyondPcapConverter.Item], item: SeyondPcapConverter.Item) -> bool:
+        """Whether a capture continues an episode of the same sensor."""
+        last = episode[-1]
+        if last.sensor != item.sensor:
+            return False
+        # a capture that overlaps the previous one (the same file twice, or a re-recording)
+        # never continues it: the tool numbers frames per file
+        if not 0 < item.start_time - last.end_time <= self._config.max_gap_sec:
+            return False
+        if self._config.max_frames is None:
+            return True
+        return sum(i.frame_count for i in episode) + item.frame_count <= self._config.max_frames
+
     def _group_items(self) -> List[Tuple[str, List[SeyondPcapConverter.Item]]]:
         episodes: List[List[SeyondPcapConverter.Item]] = []
         for item in self._items:  # sorted by sensor, then start time
-            current = episodes[-1] if episodes else None
-            if (
-                current is not None
-                and current[-1].sensor == item.sensor
-                # a capture that overlaps the previous one (the same file twice, or a
-                # re-recording) never continues it: the tool numbers frames per file
-                and 0 < item.start_time - current[-1].end_time <= self._config.max_gap_sec
-                and (
-                    self._config.max_frames is None
-                    or sum(i.frame_count for i in current) + item.frame_count
-                    <= self._config.max_frames
-                )
-            ):
-                current.append(item)
+            if episodes and self._continues(episodes[-1], item):
+                episodes[-1].append(item)
             else:
                 episodes.append([item])
 
