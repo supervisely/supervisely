@@ -18,6 +18,7 @@ from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.fs import dir_exists, get_file_name, list_files, mkdir, touch
 from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.pointcloud.seyond_pcap import _refuse_pcap_items
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
@@ -1021,6 +1022,9 @@ def upload_pointcloud_episode_project(
 ) -> Tuple[int, str]:
     # STEP 0 - create project remotely
     project_fs = PointcloudEpisodeProject.read_single(directory)
+    _refuse_pcap_items(
+        dataset_fs.get_item_paths(item_name)[0] for dataset_fs in project_fs for item_name in dataset_fs
+    )
     project_name = project_fs.name if project_name is None else project_name
 
     if api.project.exists(workspace_id, project_name):

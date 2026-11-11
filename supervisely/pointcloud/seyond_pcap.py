@@ -162,6 +162,24 @@ class SeyondPcapIndex:
         )
 
 
+#: Why a project with capture items cannot go through the Supervisely format paths.
+_SUPERVISELY_FORMAT_REFUSAL = (
+    "The data has point cloud items from lidar pcap captures (.pcap). Uploading them in "
+    "Supervisely format would lose each item's frame in its capture and store the capture once "
+    "per frame. Export the project with the 'Export Seyond lidar pcap' app and import that "
+    "folder with Auto Import instead."
+)
+
+
+def _refuse_pcap_items(paths) -> None:
+    """Raise if any of the item paths is a pcap capture: see :data:`_SUPERVISELY_FORMAT_REFUSAL`.
+
+    :raises ValueError: If a path ends with ``.pcap``.
+    """
+    if any(str(path).lower().endswith(PCAP_EXT) for path in paths):
+        raise ValueError(_SUPERVISELY_FORMAT_REFUSAL)
+
+
 def to_iso_timestamp(seconds: float) -> str:
     """Seconds since the epoch as ``YYYY-MM-DDTHH:MM:SS.mmmZ`` (UTC)."""
     moment = datetime.fromtimestamp(seconds, tz=timezone.utc)

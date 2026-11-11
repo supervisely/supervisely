@@ -32,6 +32,7 @@ from supervisely.io.fs import (
     touch,
 )
 from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.pointcloud.seyond_pcap import _refuse_pcap_items
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely.project.project import Dataset, OpenMode
@@ -1322,6 +1323,9 @@ def upload_pointcloud_project(
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
+    _refuse_pcap_items(
+        dataset_fs.get_item_paths(item_name)[0] for dataset_fs in project_fs for item_name in dataset_fs
+    )
     if project_name is None:
         project_name = project_fs.name
 
