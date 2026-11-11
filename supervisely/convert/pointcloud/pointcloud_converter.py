@@ -29,7 +29,8 @@ CONVERTIBLE_EXTENSIONS = [".bin"]
 class PointcloudConverter(BaseConverter):
     """Base converter for pointcloud projects (uploads pointclouds, annotations, and optional related images)."""
 
-    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTIBLE_EXTENSIONS
+    # a pcap capture is never one point cloud: only SeyondPcapConverter imports it
+    allowed_exts = [e for e in ALLOWED_POINTCLOUD_EXTENSIONS if e != PCAP_EXT] + CONVERTIBLE_EXTENSIONS
     modality = "pointclouds"
 
     class Item(BaseConverter.BaseItem):

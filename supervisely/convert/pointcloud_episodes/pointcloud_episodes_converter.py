@@ -27,7 +27,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 class PointcloudEpisodeConverter(BaseConverter):
     """Base converter for pointcloud episodes (frame-indexed pointclouds + a shared episode annotation)."""
 
-    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
+    # a pcap capture is never one frame: only SeyondPcapEpisodesConverter imports it
+    allowed_exts = [e for e in ALLOWED_POINTCLOUD_EXTENSIONS if e != PCAP_EXT]
     modality = "pointcloud episodes"
 
     class Item(BaseConverter.BaseItem):
