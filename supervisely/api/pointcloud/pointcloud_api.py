@@ -46,6 +46,7 @@ POINT_CLOUD_MIME_TYPES = {
     ".las": "application/vnd.las",
     ".laz": "application/vnd.laz",
     ".ply": "application/x-ply",
+    ".pcap": "application/vnd.tcpdump.pcap",
 }
 from supervisely.imaging import image as sly_image
 
@@ -1074,7 +1075,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 # Point clouds uploaded to Supervisely with IDs: [19618685, 19618686]
         """
 
-        team_files_exts = set(POINT_CLOUD_MIME_TYPES) - {".pcd"}
+        # .pcd and .pcap (a Seyond capture) are uploaded by hash, the rest through Team Files
+        team_files_exts = set(POINT_CLOUD_MIME_TYPES) - {".pcd", ".pcap"}
         tf_indices = [i for i, p in enumerate(paths) if get_file_ext(p).lower() in team_files_exts]
         hash_indices = [i for i in range(len(paths)) if i not in set(tf_indices)]
 

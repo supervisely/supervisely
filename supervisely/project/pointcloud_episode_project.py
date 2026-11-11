@@ -18,11 +18,16 @@ from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.fs import dir_exists, get_file_name, list_files, mkdir, touch
 from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.pointcloud.seyond_pcap import _refuse_pcap_items
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
 )
-from supervisely.project.pointcloud_project import PointcloudDataset, PointcloudProject
+from supervisely.project.pointcloud_project import (
+    PointcloudDataset,
+    PointcloudProject,
+    _download_pointcloud_file,
+)
 from supervisely.project.project import OpenMode
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
@@ -807,6 +812,7 @@ def download_pointcloud_episode_project(
     if dataset_ids is not None:
         filter_fn = lambda ds: ds.id in dataset_ids
 
+    downloaded_files = {}  # capture hash or link -> its first downloaded path
     for parents, dataset in api.dataset.tree(project_id):
         if not filter_fn(dataset):
             continue
@@ -874,7 +880,12 @@ def download_pointcloud_episode_project(
                 pointcloud_file_path = dataset_fs.generate_item_path(pointcloud_name)
                 if download_pcd:
                     try:
-                        api.pointcloud_episode.download_path(pointcloud_id, pointcloud_file_path)
+                        _download_pointcloud_file(
+                            api.pointcloud_episode.download_path,
+                            pointcloud_info,
+                            pointcloud_file_path,
+                            downloaded_files,
+                        )
                     except Exception as e:
                         logger.info(
                             "INFO FOR DEBUGGING",
@@ -1011,6 +1022,9 @@ def upload_pointcloud_episode_project(
 ) -> Tuple[int, str]:
     # STEP 0 - create project remotely
     project_fs = PointcloudEpisodeProject.read_single(directory)
+    _refuse_pcap_items(
+        dataset_fs.get_item_paths(item_name)[0] for dataset_fs in project_fs for item_name in dataset_fs
+    )
     project_name = project_fs.name if project_name is None else project_name
 
     if api.project.exists(workspace_id, project_name):

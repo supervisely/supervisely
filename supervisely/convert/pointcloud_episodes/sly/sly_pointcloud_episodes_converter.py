@@ -9,6 +9,7 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
+from supervisely.pointcloud.seyond_pcap import _refuse_pcap_items
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
@@ -107,6 +108,8 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
 
         if not sly_ann_detected:
             return False
+        # a Supervisely project: its capture items would lose their frames (and are refused)
+        _refuse_pcap_items(pcd_dict.values())
 
         self._items = []
         updated_frames_pcd_map = {}
