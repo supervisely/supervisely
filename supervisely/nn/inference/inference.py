@@ -234,7 +234,6 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
-        self._autostart_delay_time = 5 * 60  # 5 min
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -3444,20 +3443,7 @@ class Inference:
 
             @call_on_autostart()
             def autostart_func():
-                gpu_count = get_gpu_count()
-                if gpu_count > 1:
-                    # run autostart after 5 min
-                    def delayed_autostart():
-                        logger.debug("Found more than one GPU, autostart will be delayed.")
-                        time.sleep(self._autostart_delay_time)
-                        if not self._model_served:
-                            logger.debug("Deploying the model via autostart...")
-                            self.gui.deploy_with_current_params()
-
-                    self._executor.submit(delayed_autostart)
-                else:
-                    # run autostart immediately
-                    self.gui.deploy_with_current_params()
+                self.gui.deploy_with_current_params()
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
