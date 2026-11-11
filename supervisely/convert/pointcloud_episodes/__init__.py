@@ -11,3 +11,6 @@ from supervisely.convert.pointcloud_episodes.kitti_360.kitti_360_converter impor
 from supervisely.convert.pointcloud_episodes.semantic_kitti.semantic_kitti_converter import (
     SemanticKITTIConverter,
 )
+from supervisely.convert.pointcloud_episodes.seyond_pcap.seyond_pcap_converter import (
+    SeyondPcapEpisodesConverter,
+)

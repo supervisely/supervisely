@@ -155,11 +155,18 @@ class ImportManager:
             dst_file = os.path.join(get_data_dir(), os.path.basename(input_data))
             fs.copy_file(input_data, dst_file)
         elif self._api.storage.exists(self._team_id, input_data):
-            if self._upload_as_links and str(self._modality) in [
-                ProjectType.IMAGES.value,
-                ProjectType.VIDEOS.value,
-                ProjectType.MESHES.value,
-            ]:
+            if self._upload_as_links and (
+                str(self._modality)
+                in [
+                    ProjectType.IMAGES.value,
+                    ProjectType.VIDEOS.value,
+                    ProjectType.MESHES.value,
+                ]
+                or (
+                    not self._is_team_files_path(input_data)
+                    and self._is_pcap_links_input([input_data])
+                )
+            ):
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data)
             else:
@@ -174,12 +181,26 @@ class ImportManager:
                     self._build_team_files_id_map(input_data, local_path, is_dir=False)
                 return local_path
         elif self._api.storage.dir_exists(self._team_id, input_data):
-            if self._upload_as_links and str(self._modality) in [
-                ProjectType.IMAGES.value,
-                ProjectType.VIDEOS.value,
-                ProjectType.POINT_CLOUDS.value,
-                ProjectType.MESHES.value,
-            ]:
+            if self._upload_as_links and (
+                str(self._modality)
+                in [
+                    ProjectType.IMAGES.value,
+                    ProjectType.VIDEOS.value,
+                    ProjectType.POINT_CLOUDS.value,
+                    ProjectType.MESHES.value,
+                ]
+                or (
+                    not self._is_team_files_path(input_data)
+                    and self._is_pcap_links_input(
+                        [
+                            f.path
+                            for f in self._api.storage.list(
+                                self._team_id, input_data, include_folders=False
+                            )
+                        ]
+                    )
+                )
+            ):
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)
             else:
@@ -197,6 +218,23 @@ class ImportManager:
             raise RuntimeError(f"Input data not found: {input_data}")
 
     _CLOUD_STORAGE_PREFIXES = ("s3://", "azure://", "google://", "agent://", "fs://")
+
+    # point cloud files whose presence keeps a remote folder on the download path
+    _NOT_PCAP_POINTCLOUD_EXTS = (".pcd", ".ply", ".las", ".laz", ".bin", ".bag")
+
+    def _is_pcap_links_input(self, remote_paths: List[str]) -> bool:
+        """Point clouds or episodes from lidar pcap captures, to be linked rather than downloaded.
+
+        A capture is one file with many frames, so its items can reference it where it is. A folder
+        that also holds other point cloud files keeps the usual path, which downloads it.
+        """
+        if str(self._modality) not in [
+            ProjectType.POINT_CLOUDS.value,
+            ProjectType.POINT_CLOUD_EPISODES.value,
+        ]:
+            return False
+        exts = [os.path.splitext(path)[1].lower() for path in remote_paths]
+        return ".pcap" in exts and not any(ext in self._NOT_PCAP_POINTCLOUD_EXTS for ext in exts)
 
     def _is_team_files_path(self, path: str) -> bool:
         return not any(path.startswith(prefix) for prefix in self._CLOUD_STORAGE_PREFIXES)
