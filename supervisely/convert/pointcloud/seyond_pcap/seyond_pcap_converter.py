@@ -25,7 +25,13 @@ from supervisely.convert.pointcloud.seyond_pcap.seyond_pcap_helper import (
     sensor_key,
 )
 from supervisely.convert.pointcloud.sly.sly_pointcloud_helper import rename_in_json
-from supervisely.io.fs import get_file_ext, get_file_hash, get_file_name, silent_remove
+from supervisely.io.fs import (
+    JUNK_FILES,
+    get_file_ext,
+    get_file_hash,
+    get_file_name,
+    silent_remove,
+)
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.seyond_pcap import (
     PCAP_EXT,
@@ -118,7 +124,7 @@ class SeyondPcapConverter(PointcloudConverter):
         return sum(item.frame_count for item in self._items)
 
     def validate_format(self) -> bool:
-        pcap_paths, config_path, labels_dir, has_sly_project = self._scan_input()
+        pcap_paths, config_path, labels_dir, has_sly_project, other_files = self._scan_input()
         if not pcap_paths or has_sly_project:
             # a Supervisely project with pcap items is the Supervisely converter's
             return False
@@ -129,11 +135,16 @@ class SeyondPcapConverter(PointcloudConverter):
         self._labels_root = os.path.dirname(labels_dir) if labels_dir else None
         root = self._labels_root or self._input_data
 
-        items, skipped = [], []
+        items, skipped, not_seyond = [], [], []
         for path in pcap_paths:
             remote_path = self._remote_path(path)
-            index = self._index_capture(path, remote_path)
-            if index is None or not index.is_seyond:
+            try:
+                index = self._index_capture(path, remote_path)
+            except SeyondPcapError as e:
+                not_seyond.append((os.path.basename(path), str(e)))
+                continue
+            if not index.is_seyond:
+                not_seyond.append((os.path.basename(path), index.unsupported_reason()))
                 continue
             reason = index.unsupported_reason()
             if reason is not None:
@@ -142,15 +153,27 @@ class SeyondPcapConverter(PointcloudConverter):
             source_file = os.path.relpath(path, root).replace(os.sep, "/")
             items.append(self.Item(path, index, source_file, sensor_key(path), None, remote_path))
 
-        for name, reason in skipped:
-            logger.warning(f"Skipped Seyond capture '{name}': {reason}.")
         if not items:
             if skipped:
                 raise RuntimeError(
                     f"Found {len(skipped)} Seyond lidar pcap capture(s), but none can be imported: "
                     f"{skipped[0][1]}."
                 )
+            for name, reason in not_seyond:
+                logger.warning(f"'{name}' is not a Seyond lidar capture ({reason}), so it is not imported.")
             return False
+
+        for name, reason in skipped:
+            logger.warning(f"Skipped Seyond capture '{name}': {reason}.")
+        for name, reason in not_seyond:
+            logger.warning(f"'{name}' is not a Seyond lidar capture ({reason}), so it is not imported.")
+        if other_files:
+            shown = ", ".join(sorted(os.path.basename(p) for p in other_files)[:10])
+            more = f" and {len(other_files) - 10} more" if len(other_files) > 10 else ""
+            logger.warning(
+                f"Importing the Seyond captures only: {len(other_files)} other file(s) are not "
+                f"imported ({shown}{more}). Import other point clouds separately."
+            )
 
         self._config = SensorsConfig.load(config_path)
         unmounted = set()
@@ -177,10 +200,12 @@ class SeyondPcapConverter(PointcloudConverter):
 
     def _scan_input(self):
         pcap_paths, config_path, labels_dir, has_sly_project = [], None, None, False
+        other_files = []
         for root, dirs, files in os.walk(self._input_data):
             dirs.sort()
-            if os.path.basename(root) == LABELS_DIR_NAME and LABELS_META_NAME in files:
-                labels_dir = labels_dir or root
+            if LABELS_DIR_NAME in os.path.relpath(root, self._input_data).split(os.sep):
+                if os.path.basename(root) == LABELS_DIR_NAME and LABELS_META_NAME in files:
+                    labels_dir = labels_dir or root
                 continue
             for file in sorted(files):
                 path = os.path.join(root, file)
@@ -188,17 +213,33 @@ class SeyondPcapConverter(PointcloudConverter):
                     pcap_paths.append(path)
                 elif file == SENSORS_CONFIG_NAME and config_path is None:
                     config_path = path
-                elif file == "meta.json":
+                elif file == "meta.json" and self._is_project_meta(path):
                     has_sly_project = True
-        return pcap_paths, config_path, labels_dir, has_sly_project
+                elif file not in JUNK_FILES:
+                    other_files.append(path)
+        return pcap_paths, config_path, labels_dir, has_sly_project, other_files
+
+    @staticmethod
+    def _is_project_meta(path: str) -> bool:
+        """A Supervisely project's meta.json, not any file that happens to have the name."""
+        if os.path.getsize(path) == 0:
+            return True  # a linked stand-in: cannot be read here, assume the project
+        try:
+            data = load_json_file(path)
+        except Exception:
+            return False
+        return isinstance(data, dict) and ("classes" in data or "tags" in data)
 
     def _remote_path(self, path: str) -> Optional[str]:
         if not self.upload_as_links or not self.remote_files_map:
             return None
         return self.remote_files_map.get(os.path.abspath(path))
 
-    def _index_capture(self, path: str, remote_path: Optional[str]) -> Optional[SeyondPcapIndex]:
-        """Index a capture; a linked one is streamed to a temporary file and removed after."""
+    def _index_capture(self, path: str, remote_path: Optional[str]) -> SeyondPcapIndex:
+        """Index a capture; a linked one is streamed to a temporary file and removed after.
+
+        :raises SeyondPcapError: If the file is not a classic pcap file.
+        """
         local_path, temp_path = path, None
         try:
             if remote_path is not None and os.path.getsize(path) == 0:
@@ -209,9 +250,6 @@ class SeyondPcapConverter(PointcloudConverter):
                 self._api.storage.download(self._team_id, remote_path, temp_path)
                 local_path = temp_path
             return index_pcap(local_path)
-        except SeyondPcapError as e:
-            logger.debug(f"'{os.path.basename(path)}' is not a Seyond capture: {e}")
-            return None
         finally:
             if temp_path is not None:
                 silent_remove(temp_path)
@@ -238,65 +276,90 @@ class SeyondPcapConverter(PointcloudConverter):
         """Upload each capture once and add one item per frame that reuses it."""
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
         groups = self._group_items()
-        datasets = self._target_datasets(api, dataset_id, groups)
+        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        used_names = set()
+        if len(groups) > 1:
+            nested = api.dataset.get_list(dataset_info.project_id, parent_id=dataset_id)
+            used_names = {ds.name for ds in nested}
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.frames_count, "Adding lidar frames...")
         else:
             progress, progress_cb = None, None
 
-        for (name, items), dataset in zip(groups, datasets):
-            existing_names = {info.name for info in api.pointcloud.get_list(dataset.id)}
-            frame_to_pointcloud_ids: Dict[int, int] = {}
-            frame_keys: Dict[Tuple[str, int], int] = {}
-            frame_offset = 0
-            for item in items:
-                infos = self._add_capture(api, dataset.id, item, frame_offset, existing_names)
-                for frame, info in zip(item.index.frames, infos):
-                    item_frame = frame_offset + frame.index if self._is_pcd_episode else frame.index
-                    frame_to_pointcloud_ids[item_frame] = info.id
-                    frame_keys[(item.source_file, frame.index)] = item_frame
-                    if not self._is_pcd_episode:
-                        self._append_single_labels(
-                            api, info.id, (item.source_file, frame.index), meta,
-                            renamed_classes, renamed_tags,
-                        )
-                if self._is_pcd_episode:
-                    frame_offset += item.frame_count
-                if progress_cb is not None:
-                    progress_cb(item.frame_count)
-
-            if self._is_pcd_episode:
-                ann = self._episode_annotation(
-                    frame_offset, frame_keys, meta, renamed_classes, renamed_tags
+        for name, items in groups:
+            # each dataset is created just before its upload, and a group that fails is taken
+            # out again: what an interrupted import leaves is whole episodes and captures only
+            dataset = self._target_dataset(api, dataset_info, name, used_names, len(groups) == 1)
+            added_ids: List[int] = []
+            try:
+                self._upload_group(
+                    api, dataset, items, meta, renamed_classes, renamed_tags, progress_cb, added_ids
                 )
-                api.pointcloud_episode.annotation.append(
-                    dataset.id, ann, frame_to_pointcloud_ids, KeyIdMap()
-                )
+            except Exception:
+                self._remove_partial_group(api, dataset, dataset_info, added_ids)
+                raise
             logger.info(f"Dataset '{dataset.name}' (ID: {dataset.id}) has been uploaded.")
 
         if progress is not None and is_development():
             progress.close()
 
+    @staticmethod
+    def _remove_partial_group(api: Api, dataset, dataset_info, added_ids: List[int]) -> None:
+        try:
+            if dataset.id != dataset_info.id:
+                api.dataset.remove(dataset.id)
+            elif added_ids:
+                api.pointcloud.remove_batch(added_ids)
+        except Exception as e:
+            logger.warning(f"Could not remove the partly imported dataset '{dataset.name}': {e}")
+
+    def _upload_group(
+        self, api, dataset, items, meta, renamed_classes, renamed_tags, progress_cb, added_ids
+    ) -> None:
+        """Add the captures of one dataset (an episode, or a capture) and their labels."""
+        existing_names = {info.name for info in api.pointcloud.get_list(dataset.id)}
+        frame_to_pointcloud_ids: Dict[int, int] = {}
+        frame_keys: Dict[Tuple[str, int], int] = {}
+        frame_offset = 0
+        for item in items:
+            infos = self._add_capture(api, dataset.id, item, frame_offset, existing_names)
+            added_ids.extend(info.id for info in infos)
+            for frame, info in zip(item.index.frames, infos):
+                item_frame = frame_offset + frame.index if self._is_pcd_episode else frame.index
+                frame_to_pointcloud_ids[item_frame] = info.id
+                frame_keys[(item.source_file, frame.index)] = item_frame
+                if not self._is_pcd_episode:
+                    self._append_single_labels(
+                        api, info.id, (item.source_file, frame.index), meta,
+                        renamed_classes, renamed_tags,
+                    )
+            if self._is_pcd_episode:
+                frame_offset += item.frame_count
+            if progress_cb is not None:
+                progress_cb(item.frame_count)
+
+        if self._is_pcd_episode:
+            ann = self._episode_annotation(
+                frame_offset, frame_keys, meta, renamed_classes, renamed_tags
+            )
+            api.pointcloud_episode.annotation.append(
+                dataset.id, ann, frame_to_pointcloud_ids, KeyIdMap()
+            )
+
     def _group_items(self) -> List[Tuple[str, List[Item]]]:
         """Point clouds: one dataset per capture."""
         return [(get_file_name(item.path), [item]) for item in self._items]
 
-    def _target_datasets(self, api: Api, dataset_id: int, groups: List[Tuple[str, List[Item]]]):
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
-        if len(groups) == 1:
-            return [dataset_info]
-        nested = api.dataset.get_list(dataset_info.project_id, parent_id=dataset_id)
-        used_names = {ds.name for ds in nested}
-        datasets = []
-        for name, _ in groups:
-            ds_name = generate_free_name(used_names, name, extend_used_names=True)
-            datasets.append(
-                api.dataset.create(
-                    dataset_info.project_id, ds_name, change_name_if_conflict=True, parent_id=dataset_id
-                )
-            )
-        return datasets
+    @staticmethod
+    def _target_dataset(api: Api, dataset_info, name: str, used_names: set, only_one: bool):
+        """The target dataset for one group, or a new dataset nested in it when there are several."""
+        if only_one:
+            return dataset_info
+        ds_name = generate_free_name(used_names, name, extend_used_names=True)
+        return api.dataset.create(
+            dataset_info.project_id, ds_name, change_name_if_conflict=True, parent_id=dataset_info.id
+        )
 
     def _capture_data(self, api: Api, item: Item) -> Tuple[str, str]:
         """How the items reference the capture: its link in cloud storage, or its uploaded hash.

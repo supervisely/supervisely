@@ -30,7 +30,6 @@ from supervisely.pointcloud.pointcloud import is_valid_ext
 from supervisely.pointcloud.seyond_pcap import (
     SeyondPcapError,
     index_pcap,
-    is_seyond_pcap,
     to_iso_timestamp,
 )
 from supervisely.project.pointcloud_project import _download_pointcloud_file
@@ -194,7 +193,6 @@ def test_not_pcap(tmp_path):
     other.write_bytes(b"not a capture at all")
     with pytest.raises(SeyondPcapError):
         index_pcap(other)
-    assert not is_seyond_pcap(str(other))
 
 
 def test_timestamps():
@@ -319,7 +317,7 @@ def test_not_seyond_or_a_supervisely_project_is_left_to_other_converters(tmp_pat
     capture(root / "dns.pcap", [ethernet(ipv4_udp(b"\x12\x34" + bytes(80)))])
     assert not SeyondPcapConverter(str(root), None, False).validate_format()
     project = _capture_set(tmp_path / "project")
-    (project / "meta.json").write_text("{}")
+    (project / "meta.json").write_text(json.dumps({"classes": [], "tags": []}))
     assert not SeyondPcapEpisodesConverter(str(project), None, False).validate_format()
 
 
@@ -378,3 +376,118 @@ def test_renamed_tags_reach_object_tags_without_a_renamed_class():
         assert rename({"tags": [], "objects": [{"classTitle": "car", "tags": []}]}, {"car": "car_1"}, None)[
             "objects"
         ][0]["classTitle"] == "car_1"
+
+
+# ---- review findings ----
+
+
+@pytest.fixture
+def warnings(monkeypatch):
+    from supervisely.convert.pointcloud.seyond_pcap import seyond_pcap_converter
+
+    messages = []
+    monkeypatch.setattr(seyond_pcap_converter.logger, "warning", lambda msg, *a, **k: messages.append(msg))
+    return messages
+
+
+def test_files_left_out_are_named(tmp_path, warnings):
+    root = _capture_set(tmp_path / "in")
+    (root / "scan.pcd").write_bytes(b"# .PCD v0.7")
+    capture(root / "dns.pcap", [ethernet(ipv4_udp(b"\x12\x34" + bytes(80)))])
+    (root / "pcapng.pcap").write_bytes(b"\x0a\x0d\x0d\x0a" + bytes(40))
+    converter = SeyondPcapConverter(str(root), None, False)
+    assert converter.validate_format()
+    text = "\n".join(warnings)
+    assert "scan.pcd" in text and "not imported" in text
+    assert "'dns.pcap' is not a Seyond lidar capture" in text
+    assert "pcapng" in text
+
+
+def test_the_generic_converters_do_not_offer_pcap():
+    from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
+        PointcloudEpisodeConverter,
+    )
+
+    assert ".pcap" not in PointcloudConverter.allowed_exts
+    assert ".pcap" not in PointcloudEpisodeConverter.allowed_exts
+
+
+def test_a_json_named_meta_is_not_a_project(tmp_path):
+    root = _capture_set(tmp_path / "in")
+    (root / "meta.json").write_text(json.dumps({"vehicle": "t7"}))
+    assert SeyondPcapConverter(str(root), None, False).validate_format()
+
+
+def test_overlapping_captures_never_share_an_episode(tmp_path):
+    # the same capture twice, in two folders: one sensor, the same times
+    root = tmp_path / "in"
+    for folder in ("a", "b"):
+        (root / folder).mkdir(parents=True)
+        falcon_capture(root / folder / "t7_front_falcon_2026-01-01--00-00-00.pcap", [1, 2, 3])
+    converter = SeyondPcapEpisodesConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert [len(items) for _, items in converter._group_items()] == [1, 1]
+
+
+def test_supervisely_format_with_captures_is_refused(tmp_path):
+    from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
+        SLYPointcloudConverter,
+    )
+
+    project = tmp_path / "project"
+    (project / "ds" / "pointcloud").mkdir(parents=True)
+    (project / "ds" / "ann").mkdir()
+    (project / "meta.json").write_text(json.dumps({"classes": [], "tags": []}))
+    falcon_capture(project / "ds" / "pointcloud" / "c_0000.pcap", [1])
+    (project / "ds" / "ann" / "c_0000.pcap.json").write_text(
+        json.dumps({"description": "", "key": "0" * 32, "tags": [], "objects": [], "figures": []})
+    )
+    with pytest.raises(ValueError, match="Export Seyond lidar pcap"):
+        SLYPointcloudConverter(str(project), None, False).validate_format()
+    assert not SeyondPcapConverter(str(project), None, False).validate_format()
+
+
+class _FakeApi:
+    """Just enough of the API for upload_dataset, failing on the n-th capture."""
+
+    def __init__(self, fail_on):
+        self.fail_on, self.calls, self.datasets, self.removed = fail_on, 0, [], []
+        api = self
+        info = lambda i: types.SimpleNamespace(id=i, name=f"d{i}", project_id=1, parent_id=None)
+        self.dataset = types.SimpleNamespace(
+            get_info_by_id=lambda i: info(i),
+            get_list=lambda *a, **k: [],
+            create=lambda project_id, name, **k: api.datasets.append(name) or info(100 + len(api.datasets)),
+            remove=lambda i: api.removed.append(("dataset", i)),
+        )
+        self.pointcloud = types.SimpleNamespace(
+            get_list=lambda *a, **k: [],
+            remove_batch=lambda ids: api.removed.append(("items", list(ids))),
+            _upload_data_bulk=lambda *a, **k: ["H"],
+            _convert_json_info=lambda d: types.SimpleNamespace(**d),
+        )
+        self.pointcloud_episode = types.SimpleNamespace(
+            annotation=types.SimpleNamespace(append=lambda *a, **k: None)
+        )
+
+    def post(self, method, data):
+        self.calls += 1
+        if self.calls == self.fail_on:
+            raise RuntimeError("network down")
+        entries = data["pointClouds"]
+        return types.SimpleNamespace(
+            json=lambda: [{"id": self.calls * 1000 + i, "name": e["name"]} for i, e in enumerate(entries)]
+        )
+
+
+def test_a_failure_partway_removes_only_what_it_was_adding(tmp_path, monkeypatch):
+    root = _capture_set(tmp_path / "in")
+    converter = SeyondPcapConverter(str(root), None, False)
+    assert converter.validate_format()
+    monkeypatch.setattr(converter, "merge_metas_with_conflicts", lambda api, ds: (None, {}, {}))
+    api = _FakeApi(fail_on=2)
+    with pytest.raises(RuntimeError, match="network down"):
+        converter.upload_dataset(api, 1, log_progress=False)
+    # the first capture's dataset stays whole; the second one is removed; the third never made
+    assert len(api.datasets) == 2
+    assert api.removed == [("dataset", 102)]
