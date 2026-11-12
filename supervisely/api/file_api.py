@@ -645,8 +645,8 @@ class FileApi(ModuleApiBase):
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
         self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
-        tr = tarfile.open(local_temp_archive)
-        tr.extractall(local_save_path)
+        with tarfile.open(local_temp_archive) as tr:
+            sly_fs._extractall_safely(tr, local_save_path)
         silent_remove(local_temp_archive)
         temp_dir = os.path.join(local_save_path, rand_str(10))
         to_move_dir = os.path.join(local_save_path, os.path.basename(os.path.normpath(remote_path)))

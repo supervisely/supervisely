@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 import cv2
 import numpy as np
@@ -38,7 +39,15 @@ class OsnetReIDModel:
             self.model.half()
 
     def load_pretrained_weights(self, weight_path: Path):
-        checkpoint = torch.load(weight_path, map_location=self.device)
+        try:
+            checkpoint = torch.load(weight_path, map_location=self.device, weights_only=True)
+        except pickle.UnpicklingError as e:
+            # the path comes from request settings: never fall back to a full pickle load
+            raise RuntimeError(
+                f"ReID weights {weight_path} must be a plain state_dict (or a dict with a "
+                f"'state_dict' key) of tensors; re-save the checkpoint as "
+                f"torch.save(checkpoint['state_dict'], path). {e}"
+            ) from e
         state_dict = checkpoint.get("state_dict", checkpoint)
         model_dict = self.model.state_dict()
 

@@ -150,7 +150,7 @@ class InferenceVideoInterface:
                     progress["current"] += len(chunk)
 
         self._local_video_path = os.path.join(
-            self._imgs_dir, f"{time.time_ns()}_{self.video_info.name}"
+            self._imgs_dir, f"{time.time_ns()}_{os.path.basename(self.video_info.name)}"
         )
         download_video(self._local_video_path, self.video_info, self._preparing_progress)
         return videos_to_frames(

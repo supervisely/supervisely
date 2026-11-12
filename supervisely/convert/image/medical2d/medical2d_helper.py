@@ -10,7 +10,10 @@ import pydicom
 from pydicom import FileDataset
 from supervisely import image, logger, volume
 from supervisely.annotation.tag import Tag
-from supervisely.convert.volume.dicom.dicom_helper import convert_to_monochrome2
+from supervisely.convert.volume.dicom.dicom_helper import (
+    convert_to_monochrome2,
+    decompress,
+)
 from supervisely.io.fs import (
     dir_exists,
     get_file_ext,
@@ -74,7 +77,7 @@ def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str],
 def is_dicom_file(path: str) -> bool:
     """Checks if file is dicom file by given path."""
     try:
-        pydicom.read_file(str(Path(path).resolve()), stop_before_pixels=True)
+        pydicom.dcmread(str(Path(path).resolve()), stop_before_pixels=True)
         result = True
     except Exception as ex:
         logger.warning("'{}' appears not to be a DICOM file\n({})".format(path, ex))
@@ -146,10 +149,10 @@ def convert_dcm_to_nrrd(
     curr_convert_dir = os.path.join(converted_dir, original_name)
     mkdir(curr_convert_dir)
 
-    dcm = pydicom.read_file(image_path)
+    dcm = pydicom.dcmread(image_path)
     try:
         if dcm.file_meta.TransferSyntaxUID.is_compressed:
-            dcm.decompress()
+            decompress(dcm)
     except AttributeError:
         logger.warning("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
     dcm = convert_to_monochrome2(image_path, dcm)
