@@ -3,7 +3,7 @@ import uvicorn
 import threading
 import asyncio
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from .request_queue import RequestQueue, RequestType
 from .utils import TrainingStoppedException
@@ -41,11 +41,28 @@ def start_api_server(
 def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = None) -> FastAPI:
 
     @app.post("/start")
-    async def start(response: Response):
-        """Start the live training process."""
-        future = request_queue.put(RequestType.START)
+    async def start(request: Request, response: Response):
+        """
+        Start the live training process.
+
+        The payload holds the session setup (all fields optional; empty payload = train all classes):
+        {"classes": [class_id], "ignore_unselected": bool, "overlap": "last_added" | "class_priority",
+         "class_order": [class_id], "seed": {"dataset_ids": [dataset_id], "filters": [...]} | null}
+        seed = null means the "pretrain on existing annotations" step was skipped.
+        """
+        data = await _get_start_payload(request)
+        future = request_queue.put(RequestType.START, data)
         result = await _wait_for_result(future, response, timeout=None)
         return result
+
+    @app.get("/settings")
+    @app.post("/settings")
+    async def settings():
+        """Session setup received with /start (same format), or null before the session is started."""
+        if lt is None:
+            return None
+        await _wait_for_continue_checkpoint(lt)
+        return lt.get_settings()
         
     @app.post("/predict")
     async def predict(request: Request, response: Response):
@@ -108,18 +125,37 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
         # must wait until the checkpoint is fully restored, otherwise the UI
         # polls status mid-restore (phase still ready_to_start) and re-shows
         # the "Start Live Training" button. Requests before START pass through.
-        if (
-            lt is not None
-            and lt.checkpoint_mode == "continue"
-            and lt._start_received.is_set()
-            and not lt._continue_checkpoint_loaded.is_set()
-        ):
-            await asyncio.to_thread(lt._continue_checkpoint_loaded.wait)
+        await _wait_for_continue_checkpoint(lt)
         future = request_queue.put(RequestType.STATUS)
         result = await _wait_for_result(future, response)
         return result
 
     return app
+
+
+async def _wait_for_continue_checkpoint(lt: "LiveTraining" = None):
+    """In "continue" mode, after START, wait until the checkpoint (and the session state) is restored."""
+    if (
+        lt is not None
+        and lt.checkpoint_mode == "continue"
+        and lt._start_received.is_set()
+        and not lt._continue_checkpoint_loaded.is_set()
+    ):
+        await asyncio.to_thread(lt._continue_checkpoint_loaded.wait)
+
+
+async def _get_start_payload(request: Request) -> Optional[dict]:
+    """Read the /start payload: the "state" of the Supervisely request envelope, or the raw JSON body."""
+    state = getattr(request.state, "state", None)
+    if isinstance(state, dict) and state:
+        return state
+    try:
+        body = await request.json()
+    except Exception:
+        return None
+    if isinstance(body, dict) and "classes" in body:
+        return body
+    return None
 
 
 def _get_requested_image_ids(state: dict) -> List[int]:

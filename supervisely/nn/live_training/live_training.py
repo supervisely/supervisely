@@ -17,13 +17,17 @@ from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
 from .loss_plateau_detector import LossPlateauDetector
 from .utils import TrainingStoppedException, BackgroundRequestHandler, set_exception, set_result
+from .settings import LiveTrainingSettings, OverlapMode
 from pathlib import Path
+from typing import List, Optional
 
 class Phase:
     """String constants describing the live-training lifecycle phases."""
 
     READY_TO_START = "ready_to_start"
     WAITING_FOR_SAMPLES = "waiting_for_samples"
+    # Training on existing annotations (seed) chosen before Start
+    PRETRAIN_ON_EXISTING_ANNOTATIONS = "pretrain_on_existing_annotations"
     INITIAL_TRAINING = "initial_training"
     TRAINING = "training"
     STOPPING = "stopping"
@@ -111,6 +115,20 @@ class LiveTraining:
         self._last_activity_time = None
         self._background_request_handler: BackgroundRequestHandler = None
 
+        # Session setup received with START (classes, overlap rule, seed). Fixed for the session.
+        self.settings: Optional[LiveTrainingSettings] = None
+        # Unselected classes painted as ignore (255) when settings.ignore_unselected is set
+        self._ignore_class_ids: set = set()
+        # Seed: existing annotations to train on before live labeling
+        self._seed_images: List[sly.ImageInfo] = []
+        self._seed_total = 0
+        self._seed_loaded_ids: List[int] = []
+        self._seed_failed = 0
+        self._seed_loading_done = threading.Event()
+        self._seed_thread: threading.Thread = None
+        # Samples may be added from the seed loader thread and from request handlers
+        self._dataset_lock = threading.Lock()
+
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
 
@@ -129,8 +147,13 @@ class LiveTraining:
             'training_paused': self._is_paused,
             'ready_to_predict': self.ready_to_predict,
             'initial_iters': self.initial_iters,
-            'model_quality': self.evaluator.ema_value if self.evaluator else None
+            'model_quality': self.evaluator.ema_value if self.evaluator else None,
+            'seed_progress': self._seed_progress(),
         }
+
+    def get_settings(self) -> Optional[dict]:
+        """Session settings in the /start payload format, or None before START."""
+        return self.settings.to_json() if self.settings is not None else None
 
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -138,10 +161,7 @@ class LiveTraining:
         self._last_upload_time = time.time()
         self._last_activity_time = time.time()
 
-        work_dir_path = Path(self.work_dir)
-        work_dir_path.mkdir(parents=True, exist_ok=True)
-        model_meta_path = work_dir_path / "model_meta.json"
-        sly.json.dump_json_file(self.project_meta.to_json(), str(model_meta_path))
+        Path(self.work_dir).mkdir(parents=True, exist_ok=True)
 
         try:
             self.phase = Phase.READY_TO_START
@@ -161,8 +181,7 @@ class LiveTraining:
                 self._save_and_upload()
 
     def _run_from_scratch(self):
-        self.phase = Phase.WAITING_FOR_SAMPLES
-        self._wait_for_initial_samples()
+        self._prepare_initial_samples()
         self._process_requests_while_initializing()
         self.train(checkpoint_path=None)
 
@@ -170,8 +189,10 @@ class LiveTraining:
         try:
             checkpoint_path, state = self._load_checkpoint()
             self.load_state(state)
+            self._apply_settings()
             image_ids = state.get("image_ids", [])
             if image_ids:
+                # Seed images of the previous session are among image_ids: no new seeding
                 self._restore_dataset(image_ids)
         finally:
             # Release any /status requests blocked behind the checkpoint
@@ -184,10 +205,20 @@ class LiveTraining:
 
     def _run_finetune(self):
         checkpoint_path, _ = self._load_checkpoint()
-        self.phase = Phase.WAITING_FOR_SAMPLES
-        self._wait_for_initial_samples()
+        self._prepare_initial_samples()
         self._process_requests_while_initializing()
         self.train(checkpoint_path=checkpoint_path)
+
+    def _prepare_initial_samples(self):
+        """Start seeding from existing annotations (if any) and wait for enough samples to start training."""
+        if self._seed_total > 0:
+            self.phase = Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS
+            self._start_seed_loader()
+            self._wait_for_seed_samples()
+            if self.phase == Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS:
+                return
+        self.phase = Phase.WAITING_FOR_SAMPLES
+        self._wait_for_initial_samples()
 
     def _wait_for_start(self):
         request = self.request_queue.get()
@@ -200,24 +231,204 @@ class LiveTraining:
             request = self.request_queue.get()
         # When START is received — refresh meta in case classes were added after app launch
         self.project_meta = self._fetch_project_meta(self.project_id)
-        self.class_map = self._init_class_map(self.project_meta)
-        if self.dataset is not None:
-            self.dataset.update_class_map(self.class_map.class2idx)
         try:
-            self._validate_class_map()
+            self._setup_session(request.data)
         except ValueError as e:
             # Deliver the error as the direct response to the START request,
             # then re-raise so the session fails loud instead of training
-            # a model with num_classes=0.
+            # with invalid settings (e.g. a model with num_classes=0).
             request.future.set_exception(e)
             raise
         status = self.status()
-        status['phase'] = Phase.WAITING_FOR_SAMPLES
+        if self._seed_total > 0:
+            status['phase'] = Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS
+        else:
+            status['phase'] = Phase.WAITING_FOR_SAMPLES
         # Flip _start_received before resolving the START future so any
         # /status the client sends after seeing the START response is
         # guaranteed to observe the flag set.
         self._start_received.set()
         request.future.set_result(status)
+
+    def _setup_session(self, start_data: Optional[dict]):
+        """
+        Apply the session setup received with START: classes to train, overlap rule
+        and seed (existing annotations). Without settings in the payload all eligible
+        classes are trained, as before.
+
+        :raises ValueError: if the settings are invalid.
+        """
+        eligible_classes = self._get_eligible_classes(self.project_meta)
+        settings = None
+        if self.checkpoint_mode == 'continue':
+            # Setup is restored from the checkpoint in _run_continue (load_state)
+            if start_data and start_data.get("classes") is not None:
+                logger.info("Continue mode: session settings are restored from the checkpoint, /start settings are ignored")
+        else:
+            settings = LiveTrainingSettings.from_json(start_data)
+        if settings is None:
+            settings = LiveTrainingSettings.default(eligible_classes)
+        else:
+            settings.validate(self.project_meta, eligible_classes)
+        self.settings = settings
+        logger.info(f"Live training settings: {settings.to_json()}")
+
+        self.class_map = self._init_class_map(self.project_meta, selected_ids=settings.classes)
+        self._validate_class_map()
+        self._apply_settings()
+
+        if settings.has_seed:
+            self._seed_images = self._resolve_seed_images(settings)
+            self._seed_total = len(self._seed_images)
+            logger.info(f"Existing annotations: {self._seed_total} images will be used for training")
+
+    def _apply_settings(self):
+        """Propagate class map and rasterization settings to the dataset and evaluator."""
+        settings = self.settings
+        selected_ids = set(self.class_map.sly_ids)
+        id2class = {obj_class.sly_id: obj_class for obj_class in self.project_meta.obj_classes}
+
+        self._ignore_class_ids = set()
+        if settings.ignore_unselected and self.task_type == TaskType.SEMANTIC_SEGMENTATION:
+            self._ignore_class_ids = {
+                obj_class.sly_id
+                for obj_class in self._get_eligible_classes(self.project_meta)
+                if obj_class.sly_id not in selected_ids
+            }
+        ignore_class_names = [id2class[class_id].name for class_id in self._ignore_class_ids]
+
+        class_priority = None
+        if settings.overlap == OverlapMode.CLASS_PRIORITY:
+            class_priority = [id2class[c].name for c in settings.class_order if c in id2class]
+
+        if self.dataset is not None:
+            self.dataset.update_class_map(self.class_map.class2idx)
+            if hasattr(self.dataset, "set_rasterization"):
+                self.dataset.set_rasterization(ignore_class_names, class_priority)
+        if self.evaluator is not None:
+            self.evaluator.class2idx = self.class_map.class2idx
+            self.evaluator.ignore_class_names = set(ignore_class_names)
+
+        if ignore_class_names:
+            logger.info(f"Unselected classes are ignored during training: {ignore_class_names}")
+        if class_priority:
+            logger.info(f"Overlap rule: class priority (top first): {class_priority}")
+
+        work_dir_path = Path(self.work_dir)
+        work_dir_path.mkdir(parents=True, exist_ok=True)
+        model_meta = sly.ProjectMeta(obj_classes=self.class_map.obj_classes)
+        sly.json.dump_json_file(model_meta.to_json(), str(work_dir_path / "model_meta.json"))
+
+    def _seed_progress(self) -> Optional[dict]:
+        if self._seed_total == 0:
+            return None
+        if self.dataset is None or self.phase != Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS:
+            # Seeding finished (or the session continues from a checkpoint)
+            return {'done': self._seed_total, 'total': self._seed_total}
+        sampled = self.dataset.sampled_image_ids
+        done = sum(1 for image_id in self._seed_loaded_ids if image_id in sampled)
+        total = self._seed_total - self._seed_failed
+        return {'done': min(done, total), 'total': total}
+
+    def _resolve_seed_images(self, settings: LiveTrainingSettings) -> List[sly.ImageInfo]:
+        """Resolve seed dataset ids + image filters into a list of images (nested datasets included)."""
+        dataset_ids = []
+        for dataset_id in settings.seed_dataset_ids:
+            dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+            if dataset_info is None:
+                raise ValueError(f"Dataset with id {dataset_id} not found.")
+            if dataset_info.project_id != self.project_id:
+                raise ValueError(
+                    f"Dataset '{dataset_info.name}' (id {dataset_id}) does not belong to the project {self.project_id}."
+                )
+            dataset_ids.append(dataset_id)
+            nested = self.api.dataset.get_nested(self.project_id, dataset_id)
+            dataset_ids.extend(ds.id for ds in nested)
+        dataset_ids = list(dict.fromkeys(dataset_ids))
+
+        images = {}
+        for dataset_id in dataset_ids:
+            try:
+                infos = self.api.image.get_filtered_list(
+                    dataset_id=dataset_id, filters=settings.seed_filters or None
+                )
+            except Exception as e:
+                raise ValueError(f"Failed to list images of dataset {dataset_id} with the given filters: {e}") from e
+            for info in infos:
+                images.setdefault(info.id, info)
+        return list(images.values())
+
+    def _start_seed_loader(self):
+        self._seed_loading_done.clear()
+        self._seed_thread = threading.Thread(target=self._load_seed_images, daemon=True, name="SeedLoader")
+        self._seed_thread.start()
+
+    def _load_seed_images(self, batch_size: int = 16):
+        """Download seed images with annotations and add them to the training set (runs in a thread)."""
+        by_dataset = {}
+        for info in self._seed_images:
+            by_dataset.setdefault(info.dataset_id, []).append(info)
+        try:
+            for dataset_id, infos in by_dataset.items():
+                for batch in sly.batched(infos, batch_size):
+                    ids = [info.id for info in batch]
+                    try:
+                        images_np = self.api.image.download_nps(dataset_id, ids)
+                        ann_jsons = self.api.annotation.download_json_batch(dataset_id, ids)
+                    except Exception as e:
+                        logger.error(f"Failed to download {len(ids)} seed images: {e}", exc_info=True)
+                        self._seed_failed += len(ids)
+                        continue
+                    for info, image_np, ann_json in zip(batch, images_np, ann_jsons):
+                        try:
+                            ann_json = self._filter_annotation(ann_json)
+                            ann = sly.Annotation.from_json(ann_json, self.project_meta)
+                            self.add_sample(
+                                image_id=info.id,
+                                image_np=image_np,
+                                annotation=ann,
+                                image_name=info.name,
+                            )
+                            self._seed_loaded_ids.append(info.id)
+                        except Exception as e:
+                            logger.error(f"Failed to add seed image {info.id}: {e}", exc_info=True)
+                            self._seed_failed += 1
+                    logger.info(
+                        f"Existing annotations: {len(self._seed_loaded_ids)}/{self._seed_total} images loaded"
+                    )
+        finally:
+            self._seed_loading_done.set()
+        if self._seed_failed:
+            logger.warning(f"Existing annotations: {self._seed_failed} images failed to load and were skipped")
+
+    def _wait_for_seed_samples(self):
+        """Wait until the seed gives enough samples to start training. Requests are served meanwhile."""
+        target = min(self.initial_samples, self._seed_total)
+        while len(self.dataset) < target and not self._seed_loading_done.is_set():
+            if not self.request_queue.is_empty():
+                self._process_pending_requests()
+            time.sleep(0.3)
+        if len(self.dataset) < self.initial_samples and self._seed_loading_done.is_set():
+            # Seed is too small to start: wait for samples from the labeling tool as usual
+            logger.info(
+                f"Existing annotations gave {len(self.dataset)} samples, "
+                f"{self.initial_samples} are needed to start training"
+            )
+            self.phase = Phase.WAITING_FOR_SAMPLES
+
+    def _check_seed_finished(self):
+        """Switch from the seed phase to live training once every seed image was trained on."""
+        if self.phase != Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS:
+            return
+        if not self._seed_loading_done.is_set():
+            return
+        sampled = self.dataset.sampled_image_ids
+        if all(image_id in sampled for image_id in self._seed_loaded_ids):
+            # The model is already trained on existing annotations: no initial training phase
+            self.phase = Phase.TRAINING
+            logger.info(
+                f"Trained on all {len(self._seed_loaded_ids)} existing images. Switching to live training"
+            )
 
     def _wait_until_samples_added(
         self,
@@ -359,7 +570,8 @@ class LiveTraining:
             annotation: sly.Annotation,
             image_name: str
         ) -> dict:
-        return self.dataset.add_or_update(image_id, image_np, annotation, image_name)
+        with self._dataset_lock:
+            return self.dataset.add_or_update(image_id, image_np, annotation, image_name)
 
     def _handle_add_sample(self, data: dict):
         ann_json = data['annotation']
@@ -403,23 +615,33 @@ class LiveTraining:
         project_meta = sly.ProjectMeta.from_json(project_meta)
         return project_meta
 
-    def _init_class_map(self, project_meta: sly.ProjectMeta) -> ClassMap:
+    def _get_eligible_classes(self, project_meta: sly.ProjectMeta) -> List[sly.ObjClass]:
+        """Project classes whose geometry fits the task (all classes if filter_classes_by_task is off)."""
         obj_classes = list(project_meta.obj_classes)
-
-        if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
-            obj_classes.insert(0, sly.ObjClass(name='_background_', geometry_type=sly.Bitmap))
-
         if self.filter_classes_by_task:
             allowed_geometries = self._task2geometries[self.task_type] + [sly.AnyGeometry]
             obj_classes = [
                 obj_class for obj_class in obj_classes
                 if obj_class.geometry_type in allowed_geometries
             ]
+        return obj_classes
+
+    def _init_class_map(self, project_meta: sly.ProjectMeta, selected_ids: List[int] = None) -> ClassMap:
+        """
+        :param selected_ids: Class ids chosen for training. If None, all eligible classes are used.
+        """
+        obj_classes = self._get_eligible_classes(project_meta)
+        if selected_ids is not None:
+            selected_ids = set(selected_ids)
+            obj_classes = [obj_class for obj_class in obj_classes if obj_class.sly_id in selected_ids]
+
+        if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
+            obj_classes.insert(0, sly.ObjClass(name='_background_', geometry_type=sly.Bitmap))
 
         return ClassMap(obj_classes)
 
     def _validate_class_map(self):
-        if len(self.class_map) > 0:
+        if any(obj_class.name != '_background_' for obj_class in self.class_map.obj_classes):
             return
         if self.filter_classes_by_task and self.task_type is not None:
             allowed_geometries = self._task2geometries[self.task_type]
@@ -444,7 +666,8 @@ class LiveTraining:
         dropped_objects = []
         for obj in ann_json['objects']:
             sly_id = obj['classId']
-            if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
+            is_known = sly_id in self.class_map.sly_ids or sly_id in self._ignore_class_ids
+            if is_known and obj['geometryType'] in allowed_geometries:
                 filtered_objects.append(obj)
             else:
                 dropped_objects.append(obj)
@@ -470,7 +693,9 @@ class LiveTraining:
             self._should_pause_after_continue = False
             logger.info("New sample added. Resuming training...")
             self._is_paused = False
-        if self.loss_plateau_detector is not None:
+        self._check_seed_finished()
+        # No plateau pause while training on existing annotations: no new samples come in this phase
+        if self.loss_plateau_detector is not None and self.phase != Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS:
             is_plateau = self.loss_plateau_detector.step(loss, self.iter)
             if is_plateau:
                 self._is_paused = True
@@ -505,6 +730,7 @@ class LiveTraining:
 
         self.class_map = class_map
         self._validate_class_map()
+        self._apply_settings()
         self._process_pending_requests()
         return checkpoint_path, state
 
@@ -518,12 +744,24 @@ class LiveTraining:
             'dataset_size': len(self.dataset) if self.dataset else 0,
             'is_paused': self._is_paused,
             'evaluator': self.evaluator.state_dict() if self.evaluator else None,
+            'settings': self.get_settings(),
+            'seed_total': self._seed_total,
         }
         return state
 
     def load_state(self, state: dict):
         self.phase = state.get('phase', Phase.READY_TO_START)
         self.iter = state.get('iter', 0)
+        if self.phase == Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS:
+            # Seed images loaded so far are restored as regular samples; the seed is not resumed
+            self.phase = Phase.TRAINING
+        settings = LiveTrainingSettings.from_json(state.get('settings'))
+        if settings is None:
+            # Checkpoint from a version without session settings: classes come from the checkpoint
+            class_ids = [c.sly_id for c in self.class_map.obj_classes if c.sly_id is not None]
+            settings = LiveTrainingSettings(classes=class_ids, class_order=list(class_ids))
+        self.settings = settings
+        self._seed_total = state.get('seed_total', 0)
         self._loss = state.get('loss', None)
         self.image_ids = state.get('image_ids', [])
         if state.get('is_paused', False):
