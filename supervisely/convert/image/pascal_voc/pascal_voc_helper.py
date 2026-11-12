@@ -341,7 +341,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     def from_ann_to_instance_mask(ann: Annotation, contour_thickness: int = 3):
         mask = np.zeros((ann.img_size[0], ann.img_size[1], 3), dtype=np.uint8)
         for label in ann.labels:
-            if label.obj_class.geometry_type == Rectangle:
+            if type(label.geometry) is Rectangle:  # boxes are XML-only, also in AnyShape classes
                 continue
 
             if label.obj_class.name == "neutral":
@@ -359,7 +359,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
         exist_colors = [[0, 0, 0], default_classes_colors["neutral"]]
         mask = np.zeros((ann.img_size[0], ann.img_size[1], 3), dtype=np.uint8)
         for label in ann.labels:
-            if label.obj_class.geometry_type == Rectangle:
+            if type(label.geometry) is Rectangle:  # boxes are XML-only, also in AnyShape classes
                 continue
 
             if label.obj_class.name == "neutral":
@@ -593,6 +593,8 @@ def sly_ds_to_pascal_voc(
             jpg_name = f"{unique_name}.jpg"
             jpg_image_path = os.path.join(result_images_dir, jpg_name)
             img = Image.open(img_path)
+            if img.mode not in ("RGB", "L"):  # JPEG cannot store alpha, palettes, 16 bits, ...
+                img = img.convert("RGB")
             img.save(jpg_image_path, "JPEG")
         else:
             jpg_name = f"{unique_name}{img_ext}"

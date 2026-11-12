@@ -1,12 +1,11 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 import yaml
 from tqdm import tqdm
 
-from supervisely._utils import generate_free_name
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.geometry.alpha_mask import AlphaMask
@@ -410,6 +409,7 @@ def keypoints_to_yolo_line(
     img_width: int,
     max_kpts_count: int,
     disabled_keypoint_visibility: int = 1,
+    node_order: Optional[List[str]] = None,
 ):
     """
     Convert the Supervisely GraphNodes geometry to a line in the YOLO pose format.
@@ -418,6 +418,11 @@ def keypoints_to_yolo_line(
                                          1 keeps the node in the keypoint loss, 0 excludes it.
                                          Node coordinates are written either way.
     :type disabled_keypoint_visibility: int, optional
+    :param node_order: Node ids in the order of the class's keypoint template. Keypoint k of
+                       every line must be the same node, so nodes are written in this order and
+                       a node the geometry does not have is written as ``0 0 0`` in its slot.
+                       If None, the nodes are written in the order the geometry stores them.
+    :type node_order: list, optional
     """
     bbox = geometry.to_bbox()
     x, y, w, h = bbox.center.col, bbox.center.row, bbox.width, bbox.height
@@ -425,14 +430,19 @@ def keypoints_to_yolo_line(
 
     line = f"{class_idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
 
-    for node in geometry.nodes.values():
-        node: Node
+    nodes = geometry.nodes
+    node_ids = list(nodes) if node_order is None else list(node_order)
+    for node_id in node_ids:
+        node: Node = nodes.get(node_id)
+        if node is None:
+            line += " 0 0 0"
+            continue
         visible = 2 if not node.disabled else disabled_keypoint_visibility
         line += (
             f" {node.location.col / img_width:.6f} {node.location.row / img_height:.6f} {visible}"
         )
-    if len(geometry.nodes) < max_kpts_count:
-        for _ in range(max_kpts_count - len(geometry.nodes)):
+    if len(node_ids) < max_kpts_count:
+        for _ in range(max_kpts_count - len(node_ids)):
             line += " 0 0 0"
 
     return line
@@ -562,15 +572,16 @@ def label_to_yolo_lines(
             )
         elif task_type == YOLOTaskType.POSE:
             nodes_field = label.obj_class.geometry_type.items_json_field
-            max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
+            template_nodes = list(label.obj_class.geometry_config[nodes_field])
             mode = _disabled_keypoints_mode_for_class(disabled_keypoints, class_name)
             yolo_line = keypoints_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
-                max_kpts_count=max_kpts_count,
+                max_kpts_count=len(template_nodes),
                 disabled_keypoint_visibility=_disabled_keypoint_visibility(mode),
+                node_order=template_nodes or None,  # no template: the label's order
             )
         else:
             raise ValueError(
@@ -615,6 +626,22 @@ def sly_ann_to_yolo(
     return yolo_lines
 
 
+def _free_stem_name(used_stems: Set[str], name: str) -> str:
+    """Return ``name`` with a stem that is not in ``used_stems``, and record that stem.
+
+    YOLO pairs ``images/<split>/<stem>.<ext>`` with ``labels/<split>/<stem>.txt``, so two images
+    that differ only in extension (``a.jpg``, ``a.png``) must not share a stem. On a clash the
+    stem gets ``_1``, ``_2``, ... (``a_1.png``), as in the export-to-yolov8 and
+    convert-supervisely-to-yolov5-format apps.
+    """
+    stem, ext = os.path.splitext(name)
+    candidate, i = stem, 1
+    while candidate in used_stems:
+        candidate, i = f"{stem}_{i}", i + 1
+    used_stems.add(candidate)
+    return candidate + ext
+
+
 def sly_ds_to_yolo(
     dataset: Dataset,
     meta: ProjectMeta,
@@ -651,7 +678,9 @@ def sly_ds_to_yolo(
 
     # * convert annotations and copy images
     class_names = [obj_class.name for obj_class in meta.obj_classes]
-    used_names = set(os.listdir(train_images_dir)) | set(os.listdir(val_images_dir))
+    used_stems = {
+        get_file_name(name) for name in os.listdir(train_images_dir) + os.listdir(val_images_dir)
+    }
     for name in dataset.get_items_names():
         ann_path = dataset.get_ann_path(name)
         ann = Annotation.load_json_file(ann_path, meta)
@@ -665,7 +694,7 @@ def sly_ds_to_yolo(
 
         img_path = Path(dataset.get_img_path(name))
         img_name = f"{dataset.short_name}_{get_file_name_with_ext(img_path)}"
-        img_name = generate_free_name(used_names, img_name, with_ext=True, extend_used_names=True)
+        img_name = _free_stem_name(used_stems, img_name)
         shutil.copy2(img_path, images_dir / img_name)
 
         label_path = str(labels_dir / f"{get_file_name(img_name)}.txt")

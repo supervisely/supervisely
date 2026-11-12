@@ -12,6 +12,7 @@ import random
 import concurrent.futures
 import queue
 import re
+import threading
 
 from supervisely.worker_api.agent_api import AgentAPI
 
@@ -46,6 +47,77 @@ class AppCommandNotFound(Exception):
     """Raised when an incoming app command has no registered callback handler."""
 
     pass
+
+
+class _DaemonThreadPoolExecutor(concurrent.futures.Executor):
+    """A thread pool like ThreadPoolExecutor, but its workers do not keep the process alive.
+
+    AppService workers can block for good: the publisher waits on the agent's endless event
+    stream, and a periodic function can be in the middle of a long sleep. ThreadPoolExecutor joins
+    its workers at interpreter exit, so a stopped app would never exit. These workers are daemon
+    threads, and whatever still runs when the interpreter exits is abandoned.
+    """
+
+    def __init__(self, max_workers=None, thread_name_prefix="AppService"):
+        if max_workers is None:
+            max_workers = min(32, (os.cpu_count() or 1) + 4)  # ThreadPoolExecutor's default
+        self._max_workers = max_workers
+        self._thread_name_prefix = thread_name_prefix
+        self._work_queue = queue.SimpleQueue()
+        self._idle = threading.Semaphore(0)
+        self._threads = set()
+        self._shutdown = False
+        self._lock = threading.Lock()
+
+    def submit(self, fn, *args, **kwargs):
+        with self._lock:
+            if self._shutdown:
+                raise RuntimeError("cannot schedule new futures after shutdown")
+            future = concurrent.futures.Future()
+            self._work_queue.put((future, fn, args, kwargs))
+            if not self._idle.acquire(blocking=False) and len(self._threads) < self._max_workers:
+                thread = threading.Thread(
+                    target=self._worker,
+                    name=f"{self._thread_name_prefix}_{len(self._threads)}",
+                    daemon=True,
+                )
+                thread.start()
+                self._threads.add(thread)
+            return future
+
+    def _worker(self):
+        while True:
+            work_item = self._work_queue.get()
+            if work_item is None:
+                return
+            future, fn, args, kwargs = work_item
+            del work_item
+            if future.set_running_or_notify_cancel():
+                try:
+                    result = fn(*args, **kwargs)
+                except BaseException as exc:  # pylint: disable=broad-except
+                    future.set_exception(exc)
+                else:
+                    future.set_result(result)
+            del future, fn, args, kwargs
+            self._idle.release()
+
+    def shutdown(self, wait=True, *, cancel_futures=False):
+        with self._lock:
+            self._shutdown = True
+            if cancel_futures:
+                while True:
+                    try:
+                        work_item = self._work_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    if work_item is not None:
+                        work_item[0].cancel()
+            for _ in self._threads:
+                self._work_queue.put(None)
+        if wait:
+            for thread in list(self._threads):
+                thread.join()
 
 
 REQUEST_ID = "request_id"
@@ -159,7 +231,7 @@ class AppService:
         asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
 
     def _run_executors(self):
-        self.executor = concurrent.futures.ThreadPoolExecutor()
+        self.executor = _DaemonThreadPoolExecutor()
         self.loop = self._get_or_create_event_loop()
         self.logger.trace(f"Operating system: {sys.platform}")
         # May want to catch other signals too
@@ -540,14 +612,9 @@ class AppService:
 
         # wait for some threads to stop normally
         await asyncio.sleep(5)
+        # threads that are still busy (e.g. on the agent stream) are daemon threads: they do not
+        # keep the process from exiting
         self.executor.shutdown(wait=False)
-
-        self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
-        for thread in self.executor._threads:
-            try:
-                thread._tstate_lock.release()
-            except Exception:
-                pass
 
         self.logger.info(f"Flushing metrics")
         self.loop.stop()

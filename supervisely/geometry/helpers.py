@@ -24,30 +24,33 @@ def _geometry_to_mask_base(
     crop_image_shape: Optional[Tuple] = None,
 ) -> List[Union[AlphaMask, Bitmap]]:
 
-    thickness = radius + 1
-
-    bbox = geometry.to_bbox()
-    extended_bbox = Rectangle(
-        top=bbox.top - radius,
-        left=bbox.left - radius,
-        bottom=bbox.bottom + radius,
-        right=bbox.right + radius,
-    )
-
-    # Set appropriate fill value and color for the geometry type
     if isinstance(geometry, AlphaMask):
-        fill_value, color = 0, 255
+        # Drawing an alpha mask on a boolean canvas blends it into 0/1, which keeps only the
+        # pixels with alpha 255 (and nothing at all when there are none). Every pixel with
+        # non-zero alpha belongs to the object, as for its area, bbox and polygon conversion.
+        mask_data = geometry.data if geometry_type is AlphaMask else geometry.data > 0
+        origin = geometry.origin
     else:
-        fill_value, color = False, True
+        thickness = radius + 1
+        bbox = geometry.to_bbox()
+        extended_bbox = Rectangle(
+            top=bbox.top - radius,
+            left=bbox.left - radius,
+            bottom=bbox.bottom + radius,
+            right=bbox.right + radius,
+        )
+        mask_data = np.full(shape=(extended_bbox.height, extended_bbox.width), fill_value=False)
+        geometry = geometry.translate(-extended_bbox.top, -extended_bbox.left)
+        geometry.draw(mask_data, color=True, thickness=thickness)
+        origin = PointLocation(extended_bbox.top, extended_bbox.left)
 
-    bitmap_data = np.full(shape=(extended_bbox.height, extended_bbox.width), fill_value=False)
-    geometry = geometry.translate(-extended_bbox.top, -extended_bbox.left)
-    geometry.draw(bitmap_data, color=True, thickness=thickness)
+    if not np.any(mask_data):
+        # Bitmap and AlphaMask cannot be empty; Geometry.convert() warns about the empty result.
+        return []
 
-    origin = PointLocation(extended_bbox.top, extended_bbox.left)
-    bitmap_geometry = geometry_type(data=bitmap_data, origin=origin)
+    bitmap_geometry = geometry_type(data=mask_data, origin=origin)
     if crop_image_shape is not None:
-        crop_rect = Rectangle.from_size(*crop_image_shape)
+        crop_rect = Rectangle.from_size(crop_image_shape)
         return bitmap_geometry.crop(crop_rect)
     return [bitmap_geometry]
 

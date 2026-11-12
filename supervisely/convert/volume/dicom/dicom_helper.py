@@ -3,6 +3,7 @@ from typing import List
 
 import nrrd
 import numpy as np
+import pydicom
 from pydicom import FileDataset
 from supervisely import logger
 from supervisely.io.fs import file_exists
@@ -39,9 +40,49 @@ def dcm_to_nrrd(id: str, paths: List[str]) -> str:
     return nrrd_path, volume_meta
 
 
-def read_and_convert_to_monochrome2(dcm_path: str):
-    import pydicom
+# pydicom 3 (Python >= 3.10) removed read_file/write_file and changed what Dataset.decompress() and
+# Dataset.pixel_array do with colour data. The helpers below give the same result on pydicom 2 and 3.
+PYDICOM_3 = int(pydicom.__version__.split(".", 1)[0]) >= 3
 
+
+def decompress(dcm: FileDataset) -> FileDataset:
+    """Decompress a dataset in place the way pydicom 2 did, on pydicom 2 and 3.
+
+    pydicom 3 changed two defaults of :meth:`Dataset.decompress`: it converts YBR colour data to RGB
+    (``as_rgb=True``), which hides the YBR_FULL_422 data that :func:`convert_to_monochrome2` turns
+    into a monochrome image, and it replaces the SOP Instance UID with a new one
+    (``generate_instance_uid=True``), which then ends up in the image metadata. Both are switched off.
+    """
+    if PYDICOM_3:
+        dcm.decompress(as_rgb=False, generate_instance_uid=False)
+    else:
+        dcm.decompress()
+    return dcm
+
+
+def _ybr_pixel_array(dcm: FileDataset) -> np.ndarray:
+    """Pixel data of a YBR_FULL_422 dataset as YBR (Y in channel 0), not RGB, on pydicom 2 and 3.
+
+    pydicom 3 converts YBR to RGB by default, and after :func:`decompress` the data is no longer
+    subsampled although the Photometric Interpretation still says YBR_FULL_422, which pydicom 3
+    rejects; pydicom 2 returned the decoded YBR array in both cases.
+    """
+    if not PYDICOM_3:
+        return dcm.pixel_array
+
+    from pydicom.pixels import pixel_array
+
+    kwargs = {"as_rgb": False}
+    transfer_syntax = dcm.get("file_meta", {}).get("TransferSyntaxUID")
+    if transfer_syntax is not None and not pydicom.uid.UID(transfer_syntax).is_compressed:
+        frames = int(dcm.get("NumberOfFrames", 1) or 1)
+        full_size = dcm.Rows * dcm.Columns * frames * 3 * ((dcm.BitsAllocated + 7) // 8)
+        if len(dcm.PixelData) >= full_size:
+            kwargs["photometric_interpretation"] = "YBR_FULL"
+    return pixel_array(dcm, **kwargs)
+
+
+def read_and_convert_to_monochrome2(dcm_path: str):
     try:
         dcm = pydicom.dcmread(dcm_path)
     except Exception as e:
@@ -50,7 +91,7 @@ def read_and_convert_to_monochrome2(dcm_path: str):
 
     try:
         if dcm.file_meta.TransferSyntaxUID.is_compressed:
-            dcm.decompress()
+            decompress(dcm)
     except Exception as e:
         logger.warning("Failed to decompress DICOM file: " + str(e))
         return
@@ -62,7 +103,7 @@ def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
     if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
         # * Convert dicom to monochrome
         monochrome = None
-        pixel_array = dcm.pixel_array
+        pixel_array = _ybr_pixel_array(dcm)
 
         if len(pixel_array.shape) == 4 and pixel_array.shape[-1] == 3:
             monochrome = pixel_array[..., 0].astype(np.uint8)

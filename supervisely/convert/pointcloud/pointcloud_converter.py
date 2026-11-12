@@ -93,8 +93,16 @@ class PointcloudConverter(BaseConverter):
         dataset_id: int,
         batch_size: int = 1,
         log_progress=True,
+        entities: Optional[List[Item]] = None,
+        progress_cb=None,
     ):
-        """Upload converted data to Supervisely"""
+        """Upload converted data to Supervisely
+
+        :param entities: Items to upload; defaults to all items collected by the converter.
+            Pass a subset when uploading one dataset at a time.
+        :param progress_cb: External progress callback. When provided, the method does not
+            create its own progress bar.
+        """
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -116,17 +124,17 @@ class PointcloudConverter(BaseConverter):
                 f"Failed to fetch existing related image names for dataset ID:{dataset_id}: {repr(e)}"
             )
 
-        if log_progress:
+        progress = None
+        if progress_cb is None and log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading pointclouds...")
-        else:
-            progress_cb = None
 
         upload_fn = api.pointcloud.upload_paths
         if self.upload_as_links and self.supports_links:
             upload_fn = api.pointcloud.upload_links
 
         key_id_map = KeyIdMap()
-        for batch in batched(self._items, batch_size=batch_size):
+        items = self._items if entities is None else entities
+        for batch in batched(items, batch_size=batch_size):
             item_names = []
             item_paths = []
             team_file_ids = []
@@ -301,12 +309,11 @@ class PointcloudConverter(BaseConverter):
                 except Exception as e:
                     logger.debug(f"Unexpected error during related image figures upload: {repr(e)}")
 
-            if log_progress:
+            if progress_cb is not None:
                 progress_cb(len(batch))
 
-        if log_progress:
-            if is_development():
-                progress.close()
+        if progress is not None and is_development():
+            progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def _collect_items_if_format_not_detected(self) -> Tuple[List[Item], bool, Set[str]]:
