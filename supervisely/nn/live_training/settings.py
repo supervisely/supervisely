@@ -28,6 +28,8 @@ class LiveTrainingSettings:
           "seed": {"dataset_ids": [11, 12, 13], "filters": [...]}
         }
 
+    ``seed`` may be ``null``: the user skipped the "pretrain on existing annotations" step.
+
     The settings are fixed for the whole session and returned unchanged by ``/settings``.
     """
 

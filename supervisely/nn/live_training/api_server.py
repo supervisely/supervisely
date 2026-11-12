@@ -47,7 +47,8 @@ def create_api(app: FastAPI, request_queue: RequestQueue, lt: "LiveTraining" = N
 
         The payload holds the session setup (all fields optional; empty payload = train all classes):
         {"classes": [class_id], "ignore_unselected": bool, "overlap": "last_added" | "class_priority",
-         "class_order": [class_id], "seed": {"dataset_ids": [dataset_id], "filters": [...]}}
+         "class_order": [class_id], "seed": {"dataset_ids": [dataset_id], "filters": [...]} | null}
+        seed = null means the "pretrain on existing annotations" step was skipped.
         """
         data = await _get_start_payload(request)
         future = request_queue.put(RequestType.START, data)

@@ -149,9 +149,6 @@ class LiveTraining:
             'initial_iters': self.initial_iters,
             'model_quality': self.evaluator.ema_value if self.evaluator else None,
             'seed_progress': self._seed_progress(),
-            'classes': list(self.settings.classes) if self.settings else None,
-            'overlap': self.settings.overlap if self.settings else None,
-            'class_order': list(self.settings.class_order) if self.settings else None,
         }
 
     def get_settings(self) -> Optional[dict]:
@@ -427,7 +424,8 @@ class LiveTraining:
             return
         sampled = self.dataset.sampled_image_ids
         if all(image_id in sampled for image_id in self._seed_loaded_ids):
-            self.phase = Phase.INITIAL_TRAINING
+            # The model is already trained on existing annotations: no initial training phase
+            self.phase = Phase.TRAINING
             logger.info(
                 f"Trained on all {len(self._seed_loaded_ids)} existing images. Switching to live training"
             )
@@ -756,7 +754,7 @@ class LiveTraining:
         self.iter = state.get('iter', 0)
         if self.phase == Phase.PRETRAIN_ON_EXISTING_ANNOTATIONS:
             # Seed images loaded so far are restored as regular samples; the seed is not resumed
-            self.phase = Phase.TRAINING if self.iter >= self.initial_iters else Phase.INITIAL_TRAINING
+            self.phase = Phase.TRAINING
         settings = LiveTrainingSettings.from_json(state.get('settings'))
         if settings is None:
             # Checkpoint from a version without session settings: classes come from the checkpoint
