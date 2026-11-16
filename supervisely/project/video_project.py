@@ -2435,9 +2435,10 @@ def _cached_video_matches(
     Check whether a video already in a local dataset is the same as the one on the server,
     so a resumed download can keep it instead of adding it again.
 
-    It matches when its saved item info has the same ``id`` and ``updated_at`` as ``video_info``
-    and, if videos are downloaded, its file on disk has the server's size. A video without saved
-    item info, or whose size the server does not report, never matches.
+    It matches when its file is on disk, its saved item info has the same ``id`` and
+    ``updated_at`` as ``video_info`` and, if videos are downloaded, the file has the server's
+    size. A video without saved item info, or whose size the server does not report, never
+    matches.
     """
     if not dataset_fs.item_exists(video_info.name):
         return False
@@ -2449,10 +2450,10 @@ def _cached_video_matches(
         return False
     if getattr(cached_info, "updated_at", None) != video_info.updated_at:
         return False
+    video_path = dataset_fs.get_item_path(video_info.name)
+    if not os.path.isfile(video_path):
+        return False
     if download_videos:
-        video_path = dataset_fs.get_item_path(video_info.name)
-        if not os.path.isfile(video_path):
-            return False
         server_size = (video_info.file_meta or {}).get("size")
         if server_size is None or os.path.getsize(video_path) != int(server_size):
             return False

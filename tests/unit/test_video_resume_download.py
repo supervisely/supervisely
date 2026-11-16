@@ -229,3 +229,20 @@ def test_resume_does_not_keep_a_replaced_video_of_the_same_size(tmp_path, use_as
 
     assert api.downloaded == [101]
     _assert_matches_server(dest_dir, api.videos)
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+def test_resume_without_videos_restores_missing_files(tmp_path, use_async):
+    """Items left with only their annotations get their placeholders back without videos."""
+    dest_dir = str(tmp_path / "project")
+    api = _FakeApi([_video(1), _video(2)])
+    _download(api, dest_dir, use_async, download_videos=False)
+    ds = VideoProject(dest_dir, OpenMode.READ).datasets.get("ds")
+    for name in ds.get_items_names():
+        os.remove(ds.get_item_path(name))
+
+    _download(api, dest_dir, use_async, download_videos=False, resume_download=True)
+
+    for name in ("clip_1.mp4", "clip_2.mp4"):
+        assert os.path.isfile(ds.get_item_path(name))
+    assert api.downloaded == []
