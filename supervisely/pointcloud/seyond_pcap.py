@@ -296,6 +296,8 @@ def index_pcap(
     while max_records is None or records < max_records:
         head = f.read(_PCAP_RECORD_HEADER_SIZE)
         if len(head) < _PCAP_RECORD_HEADER_SIZE:
+            # a capture cut off inside a record header is truncated too
+            result.truncated = len(head) > 0
             break
         ts_sec, ts_frac, captured_len, _ = record_header.unpack(head)
         frame = f.read(captured_len)

@@ -184,6 +184,15 @@ def test_a_capture_cut_mid_record_keeps_what_came_before(tmp_path):
     assert index.frame_count == 2 and index.truncated
 
 
+def test_a_capture_cut_mid_record_header_is_truncated(tmp_path):
+    path = falcon_capture(tmp_path / "a.pcap", [1, 2])
+    with open(path, "ab") as f:
+        f.write(bytes(7))
+    index = index_pcap(path)
+    assert index.frame_count == 2 and index.truncated
+    assert not index_pcap(falcon_capture(tmp_path / "b.pcap", [1, 2])).truncated
+
+
 def test_not_pcap(tmp_path):
     pcapng = tmp_path / "a.pcapng.pcap"
     pcapng.write_bytes(b"\x0a\x0d\x0d\x0a" + bytes(40))
