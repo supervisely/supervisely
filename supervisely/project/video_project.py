@@ -23,7 +23,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
+from supervisely.io.fs import clean_dir, mkdir, silent_remove, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
@@ -2598,12 +2598,14 @@ def download_video_project(
                 video_file_path = dataset_fs.generate_item_path(video_name)
 
                 # When resuming, keep a video already in the dataset if it matches the server
-                # and only refresh its annotation and info; replace it otherwise.
-                is_cached = resume_download and _cached_video_matches(
+                # and only refresh its annotation and info; download it again otherwise. Its
+                # info is removed first, so a download cut off below leaves it untrusted.
+                in_dataset = resume_download and dataset_fs.item_exists(video_name)
+                is_cached = in_dataset and _cached_video_matches(
                     dataset_fs, video_info, download_videos
                 )
-                if resume_download and not is_cached:
-                    dataset_fs.delete_item(video_name)
+                if in_dataset and not is_cached:
+                    silent_remove(dataset_fs.get_item_info_path(video_name))
 
                 if include_custom_data:
                     CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")
@@ -2656,7 +2658,7 @@ def download_video_project(
                 try:
                     dataset_fs.add_item_file(
                         video_name,
-                        None if is_cached else video_file_path,
+                        None if in_dataset else video_file_path,
                         ann=video_ann,
                         _validate_item=False,
                         _use_hardlink=True,
@@ -3003,10 +3005,12 @@ async def _download_project_item_async(
     video_file_path = dataset_fs.generate_item_path(video.name)
 
     # When resuming, keep a video already in the dataset if it matches the server
-    # and only refresh its annotation and info; replace it otherwise.
-    is_cached = resume_download and _cached_video_matches(dataset_fs, video, download_videos)
-    if resume_download and not is_cached:
-        dataset_fs.delete_item(video.name)
+    # and only refresh its annotation and info; download it again otherwise. Its
+    # info is removed first, so a download cut off below leaves it untrusted.
+    in_dataset = resume_download and dataset_fs.item_exists(video.name)
+    is_cached = in_dataset and _cached_video_matches(dataset_fs, video, download_videos)
+    if in_dataset and not is_cached:
+        silent_remove(dataset_fs.get_item_info_path(video.name))
 
     if include_custom_data:
         CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")

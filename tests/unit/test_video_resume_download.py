@@ -25,7 +25,10 @@ from supervisely.project.video_project import (
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 PROJECT_ID = 1
-VideoInfo = namedtuple("VideoInfo", ["id", "name", "updated_at", "file_meta", "custom_data"])
+VideoInfo = namedtuple(
+    "VideoInfo",
+    ["id", "name", "updated_at", "file_meta", "custom_data", "project_id", "dataset_id"],
+)
 
 
 def _content(video_id):
@@ -39,6 +42,8 @@ def _video(video_id, updated_at="2026-01-01T00:00:00.000Z", with_size=True):
         updated_at=updated_at,
         file_meta={"size": str(len(_content(video_id)))} if with_size else {},
         custom_data={},
+        project_id=PROJECT_ID,
+        dataset_id=10,
     )
 
 
@@ -53,6 +58,7 @@ class _FakeApi:
     def __init__(self, videos):
         self.videos = videos
         self.downloaded = []
+        self.cut_off = set()
         dataset = SimpleNamespace(id=10, name="ds")
         self.project = MagicMock()
         self.project.get_meta.return_value = ProjectMeta().to_json()
@@ -80,6 +86,9 @@ class _FakeApi:
         self.downloaded.append(video_id)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as f:
+            if video_id in self.cut_off:
+                f.write(_content(video_id)[:10])
+                raise ConnectionError("stream reset")
             f.write(_content(video_id))
 
     def get_default_semaphore(self):
@@ -179,4 +188,27 @@ def test_resume_after_async_failed_partway_in_another_dataset(tmp_path):
     _download(api, dest_dir, use_async=False, resume_download=True)
 
     assert api.downloaded == []
+    _assert_matches_server(dest_dir, api.videos)
+
+
+def test_resume_after_a_replacement_was_cut_off(tmp_path):
+    """A stale video whose new download is cut off stays in a readable dataset, untrusted."""
+    dest_dir = str(tmp_path / "project")
+    api = _FakeApi([_video(1), _video(2), _video(3)])
+    _download(api, dest_dir, use_async=True)
+
+    api.videos[0] = _video(1, updated_at="2026-02-01T00:00:00.000Z")
+    api.cut_off = {1}
+    with pytest.raises(ConnectionError):
+        _download(api, dest_dir, use_async=True, resume_download=True)
+
+    ds = VideoProject(dest_dir, OpenMode.READ).datasets.get("ds")
+    assert sorted(ds.get_items_names()) == ["clip_1.mp4", "clip_2.mp4", "clip_3.mp4"]
+    assert not os.path.exists(ds.get_item_info_path("clip_1.mp4"))
+
+    api.cut_off = set()
+    api.downloaded.clear()
+    _download(api, dest_dir, use_async=False, resume_download=True)
+
+    assert api.downloaded == [1]
     _assert_matches_server(dest_dir, api.videos)
