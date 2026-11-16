@@ -101,7 +101,7 @@ def _register_avif_opener() -> None:
         has_avif = False
     if not has_avif:
         raise ImportError(
-            "AVIF support is not installed. Install Pillow 11.2+ with AVIF support "
+            "AVIF support is not installed. Install Pillow 11.3+ (Python 3.9+) "
             "or the 'pillow-avif-plugin' package."
         )
 
