@@ -196,3 +196,16 @@ def test_mislabeled_png_does_not_overwrite_an_existing_png(tmp_path, name):
     assert existing.read_bytes() == existing_bytes
     with Image.open(result) as img:
         assert np.array_equal(np.asarray(img), np.asarray(_pixels(2)))
+
+
+def test_jfif_that_cannot_be_renamed_is_kept_as_is(monkeypatch, tmp_path):
+    path = tmp_path / "img.jfif"
+    _pixels().save(path, format="JPEG")
+
+    def deny(src, dst):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(image_helper.os, "rename", deny)
+
+    assert validate_image(str(path)) == str(path)
+    assert path.exists()

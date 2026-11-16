@@ -45,8 +45,11 @@ def validate_image(path: str) -> tuple:
             elif ext.lower() == ".jfif":
                 # JFIF is JPEG: keep the bytes, only give it the extension the platform stores
                 new_path = _free_path(path, ".jpeg")
-                os.rename(path, new_path)
-                path = new_path
+                try:
+                    os.rename(path, new_path)
+                    path = new_path
+                except OSError as e:  # e.g. a read-only folder: upload it as .jfif
+                    logger.debug(f"Could not rename {path} to .jpeg: {repr(e)}")
         return path
     except Exception as e:
         logger.warning(f"Skip image: {repr(e)}", extra={"file_path": path})
