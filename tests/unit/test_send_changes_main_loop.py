@@ -28,6 +28,7 @@ def isolated_state(monkeypatch):
     monkeypatch.delenv("SUPERVISELY_MULTIUSER_APP_MODE", raising=False)
     monkeypatch.setattr(utils, "_main_loop", None)
     utils._main_loop_blocked.clear()
+    utils._queued.clear()
     yield
     Singleton._instances.clear()
     Singleton._instances.update(saved_instances)
@@ -114,21 +115,21 @@ def test_falls_back_without_server_loop():
     assert _run_in_worker(lambda: utils._run_on_main_loop(where()), 5) is not None
 
 
-def test_server_loop_thread_caller_does_not_wait(server_loop):
-    # an async route calling the sync API: waiting on its own loop would deadlock
-    ran_on = []
+def test_server_loop_thread_caller_sends_before_returning(server_loop):
+    # an async route calling the sync API: it cannot wait for its own loop
+    ran = []
 
-    async def where():
-        ran_on.append(asyncio.get_running_loop())
+    async def send():
+        ran.append(threading.current_thread() is not server_thread[0])
+
+    server_thread = []
 
     async def caller():
-        result = utils._run_on_main_loop(where())
-        return result, list(ran_on)
+        server_thread.append(threading.current_thread())
+        utils._run_on_main_loop(send())
+        return list(ran)
 
-    result, ran_before_return = asyncio.run_coroutine_threadsafe(caller(), server_loop).result(5)
-    assert result is None and ran_before_return == []
-    _wait_for(lambda: ran_on)
-    assert ran_on == [server_loop]
+    assert asyncio.run_coroutine_threadsafe(caller(), server_loop).result(5) == [True]
 
 
 def test_server_loop_caller_while_a_send_holds_the_lock(server_loop, monkeypatch):
@@ -434,3 +435,34 @@ def test_error_in_a_send_nobody_waits_for_is_logged(server_loop, monkeypatch):
     assert _run_in_worker(lambda: utils._run_on_main_loop(fail()), 5) is None
     _wait_for(lambda: warnings)
     assert isinstance(warnings[0]["exc_info"], TypeError)
+
+
+def test_a_stalled_send_does_not_delay_other_threads(server_loop):
+    async def stalled():
+        await asyncio.sleep(3)
+
+    async def quick():
+        return "done"
+
+    threading.Thread(
+        target=lambda: utils._run_on_main_loop(stalled(), key="user-1"), daemon=True
+    ).start()
+    time.sleep(0.2)
+    started = time.monotonic()
+    assert _run_in_worker(lambda: utils._run_on_main_loop(quick(), key="user-2"), 5) == "done"
+    assert time.monotonic() - started < 1
+
+
+def test_cancelled_queued_send_does_not_swallow_later_ones(server_loop):
+    async def value(v):
+        return v
+
+    def cancel_all():
+        for task in asyncio.all_tasks(server_loop):
+            task.cancel()
+
+    _block(server_loop, 1.5)
+    assert _run_in_worker(lambda: utils._run_on_main_loop(value(1), key="store"), 5) is None
+    server_loop.call_soon_threadsafe(cancel_all)  # e.g. the server stopping
+    _wait_for(lambda: "store" not in utils._queued)
+    assert _run_in_worker(lambda: utils._run_on_main_loop(value(2), key="store"), 5) == 2
