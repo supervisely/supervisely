@@ -1,6 +1,7 @@
 import mimetypes
 import os
 import re
+import threading
 from pathlib import Path
 from typing import List, Union
 
@@ -21,6 +22,7 @@ from supervisely.io.fs import (
 Image.MAX_IMAGE_PIXELS = None
 EXT_TO_CONVERT = [".heic", ".avif", ".heif"]
 _HEIF_EXTS = [".heic", ".heif"]
+_CONVERT_LOCK = threading.Lock()  # convert_to_jpg flips the process-wide LOAD_TRUNCATED_IMAGES
 
 
 def validate_image(path: str) -> tuple:
@@ -47,7 +49,8 @@ def validate_image(path: str) -> tuple:
                 silent_remove(path)
                 path = new_path
             elif ext.lower() == ".jfif":
-                # JFIF is JPEG: keep the bytes, only give it the extension the platform stores
+                # JFIF is JPEG: keep the bytes, only rename it to .jpeg (the platform
+                # would otherwise store it as <name>.jfif.jpeg)
                 new_path = _free_path(path, ".jpeg")
                 try:
                     os.rename(path, new_path)
@@ -136,16 +139,17 @@ def convert_to_jpg(path) -> str:
     new_path = _free_path(path, ".jpeg")
     # the SDK loads truncated images by default; pillow-heif then returns an all-black
     # picture for a truncated HEIC, so fail on it instead and keep the original
-    load_truncated = ImageFile.LOAD_TRUNCATED_IMAGES
-    ImageFile.LOAD_TRUNCATED_IMAGES = False
-    try:
-        with Image.open(path) as image:
-            image.convert("RGB").save(new_path, format="JPEG")
-    except Exception:
-        silent_remove(new_path)  # do not leave a half-written JPEG behind
-        raise
-    finally:
-        ImageFile.LOAD_TRUNCATED_IMAGES = load_truncated
+    with _CONVERT_LOCK:
+        load_truncated = ImageFile.LOAD_TRUNCATED_IMAGES
+        ImageFile.LOAD_TRUNCATED_IMAGES = False
+        try:
+            with Image.open(path) as image:
+                image.convert("RGB").save(new_path, format="JPEG")
+        except Exception:
+            silent_remove(new_path)  # do not leave a half-written JPEG behind
+            raise
+        finally:
+            ImageFile.LOAD_TRUNCATED_IMAGES = load_truncated
     silent_remove(path)
     return new_path
 
