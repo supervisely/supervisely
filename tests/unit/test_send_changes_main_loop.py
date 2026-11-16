@@ -27,6 +27,7 @@ def isolated_state(monkeypatch):
     Singleton._nested_instances.clear()
     monkeypatch.delenv("SUPERVISELY_MULTIUSER_APP_MODE", raising=False)
     monkeypatch.setattr(utils, "_main_loop", None)
+    utils._main_loop_blocked.clear()
     yield
     Singleton._instances.clear()
     Singleton._instances.update(saved_instances)
@@ -189,21 +190,49 @@ def test_broadcast_drops_broken_and_stalled_clients(server_loop, monkeypatch):
     assert manager.active_connections == [healthy]
 
 
-def test_falls_back_when_server_loop_waits_for_caller(server_loop):
+def test_blocked_server_loop_keeps_the_send_queued(server_loop):
     # the server loop blocks on a thread that sends changes (e.g. joining a worker on stop)
+    ran_on = []
+
     async def where():
-        return asyncio.get_running_loop()
+        ran_on.append(asyncio.get_running_loop())
 
     async def join_worker():
-        return _run_in_worker(lambda: utils._run_on_main_loop(where()), 10)
+        started = time.monotonic()
+        result = _run_in_worker(lambda: utils._run_on_main_loop(where()), 10)
+        return result, time.monotonic() - started
 
-    used = asyncio.run_coroutine_threadsafe(join_worker(), server_loop).result(15)
-    assert used is not server_loop
-    # once the loop has run the abandoned hand-off, sends go back to it
+    result, waited = asyncio.run_coroutine_threadsafe(join_worker(), server_loop).result(15)
+    assert result is None and waited < 5
     deadline = time.monotonic() + 5
-    while utils._main_loop_blocked.is_set() and time.monotonic() < deadline:
+    while not ran_on and time.monotonic() < deadline:
         time.sleep(0.05)
-    assert _run_in_worker(lambda: utils._run_on_main_loop(where()), 5) is server_loop
+    assert ran_on == [server_loop]  # it ran later, on the server loop, not elsewhere
+    assert not utils._main_loop_blocked.is_set()
+    assert _run_in_worker(lambda: utils._run_on_main_loop(_running_loop()), 5) is server_loop
+
+
+def test_busy_server_loop_never_sends_from_another_loop(server_loop):
+    ran_on = []
+
+    async def where():
+        ran_on.append(asyncio.get_running_loop())
+
+    async def busy():
+        time.sleep(2.5)  # sync work on the loop thread
+
+    asyncio.run_coroutine_threadsafe(busy(), server_loop)
+    time.sleep(0.1)
+    for _ in range(3):
+        _run_in_worker(lambda: utils._run_on_main_loop(where()), 5)
+    deadline = time.monotonic() + 5
+    while len(ran_on) < 3 and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert ran_on == [server_loop] * 3
+
+
+async def _running_loop():
+    return asyncio.get_running_loop()
 
 
 def test_returns_none_when_server_cancels_it(server_loop):
@@ -241,3 +270,71 @@ def test_cancelled_lock_wait_does_not_leave_lock_held(server_loop):
     lock.release()  # the pending acquire attempt may still win the lock
     time.sleep(0.5)
     assert not lock.locked()
+
+
+class _Client:
+    def __init__(self, stall=False):
+        self.stall = stall
+        self.sent = []
+        self.closed = threading.Event()
+
+    async def send_json(self, d):
+        if self.stall:
+            await asyncio.sleep(3600)
+        self.sent.append(d)
+
+    async def close(self):
+        await asyncio.sleep(0.01)  # a close frame waits for the transport too
+        self.closed.set()
+
+
+def test_stalled_clients_are_dropped_together_and_closed(server_loop, monkeypatch):
+    stalled = [_Client(stall=True) for _ in range(3)]
+    healthy = _Client()
+    manager = WebsocketManager()
+    monkeypatch.setattr(manager, "active_connections", stalled + [healthy])
+    monkeypatch.setattr(WebsocketManager, "_send_timeout", 0.5)
+
+    started = time.monotonic()
+    asyncio.run_coroutine_threadsafe(manager.broadcast({"data": []}), server_loop).result(5)
+    assert time.monotonic() - started < 1.2  # one timeout, not three
+    assert healthy.sent == [{"data": []}]
+    assert manager.active_connections == [healthy]
+    assert all(client.closed.wait(2) for client in stalled)
+
+
+def test_client_dropped_off_the_server_loop_is_closed(monkeypatch):
+    stalled = _Client(stall=True)
+    manager = WebsocketManager()
+    monkeypatch.setattr(manager, "active_connections", [stalled])
+    monkeypatch.setattr(WebsocketManager, "_send_timeout", 0.2)
+
+    utils.run_sync(manager.broadcast({"data": []}))
+    assert stalled.closed.is_set()
+    assert manager.active_connections == []
+
+
+def test_widget_websocket_action_survives_backpressure(server_loop, monkeypatch):
+    from supervisely.app.widgets import ReloadableArea, Text
+
+    class ActionBackpressure(_BackpressuredSocket):
+        def __init__(self, loop):
+            super().__init__(loop)
+            self.writable = asyncio.run_coroutine_threadsafe(_new_event(), loop).result(5)
+            self.loop.call_soon_threadsafe(self.writable.set)
+
+        async def send_json(self, d):
+            if "runAction" in d:  # the large message: the buffer fills until the client drains
+                self.loop.call_soon_threadsafe(self.writable.clear)
+                self.drain_later(0.3)
+                await asyncio.sleep(0.05)
+            await super().send_json(d)
+
+    area = ReloadableArea(content=Text("a"))
+    socket = ActionBackpressure(server_loop)
+    time.sleep(0.05)
+    monkeypatch.setattr(WebsocketManager(), "active_connections", [socket])
+
+    # the unwrapped method: the instance wrapper also re-renders the page for offline sessions
+    _run_in_worker(lambda: ReloadableArea.reload(area), 10)
+    assert any("runAction" in d for d in socket.sent)
