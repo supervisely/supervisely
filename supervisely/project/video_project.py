@@ -2428,6 +2428,37 @@ class VideoProject(Project):
     # --------------------- #
 
 
+def _cached_video_matches(
+    dataset_fs: VideoDataset, video_info: VideoInfo, download_videos: bool
+) -> bool:
+    """
+    Check whether a video already in a local dataset is the same as the one on the server,
+    so a resumed download can keep it instead of adding it again.
+
+    It matches when its saved item info has the same ``id`` and ``updated_at`` as ``video_info``
+    and, if videos are downloaded, its file on disk has the server's size. A video without saved
+    item info never matches.
+    """
+    if not dataset_fs.item_exists(video_info.name):
+        return False
+    try:
+        cached_info = dataset_fs.get_item_info(video_info.name)
+    except Exception:
+        return False
+    if getattr(cached_info, "id", None) != video_info.id:
+        return False
+    if getattr(cached_info, "updated_at", None) != video_info.updated_at:
+        return False
+    if download_videos:
+        video_path = dataset_fs.get_item_path(video_info.name)
+        if not os.path.isfile(video_path):
+            return False
+        server_size = (video_info.file_meta or {}).get("size")
+        if server_size is not None and os.path.getsize(video_path) != int(server_size):
+            return False
+    return True
+
+
 def download_video_project(
     api: Api,
     project_id: int,
@@ -2459,6 +2490,8 @@ def download_video_project(
     :type log_progress: bool
     :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
+    :param resume_download: Resume a download into ``dest_dir`` that already holds part of the project. A video already there is kept if it was saved with its video info (``save_video_info=True``) and its info and file size match the server; otherwise it is downloaded again.
+    :type resume_download: bool, optional
 
     :returns: None.
     :rtype: NoneType
@@ -2564,13 +2597,21 @@ def download_video_project(
 
                 video_file_path = dataset_fs.generate_item_path(video_name)
 
+                # When resuming, keep a video already in the dataset if it matches the server
+                # and only refresh its annotation and info; replace it otherwise.
+                is_cached = resume_download and _cached_video_matches(
+                    dataset_fs, video_info, download_videos
+                )
+                if resume_download and not is_cached:
+                    dataset_fs.delete_item(video_name)
+
                 if include_custom_data:
                     CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")
                     mkdir(CUSTOM_DATA_DIR)
                     custom_data_path = os.path.join(CUSTOM_DATA_DIR, f"{video_name}.json")
                     dump_json_file(custom_data, custom_data_path)
 
-                if download_videos:
+                if download_videos and not is_cached:
                     try:
                         video_file_size = video_info.file_meta.get("size")
                         if ds_progress is not None and video_file_size is not None:
@@ -2595,7 +2636,7 @@ def download_video_project(
                             },
                         )
                         raise e
-                else:
+                elif not is_cached:
                     touch(video_file_path)
                 item_info = video_info._asdict() if save_video_info else None
                 try:
@@ -2615,7 +2656,7 @@ def download_video_project(
                 try:
                     dataset_fs.add_item_file(
                         video_name,
-                        video_file_path,
+                        None if is_cached else video_file_path,
                         ann=video_ann,
                         _validate_item=False,
                         _use_hardlink=True,
@@ -2808,6 +2849,8 @@ async def download_video_project_async(
     :type progress_cb: tqdm or callable, optional
     :param include_custom_data: Include custom data in the download.
     :type include_custom_data: bool, optional
+    :param resume_download: Resume a download into ``dest_dir`` that already holds part of the project. A video already there is kept if it was saved with its video info (``save_video_info=True``) and its info and file size match the server; otherwise it is downloaded again.
+    :type resume_download: bool, optional
     :returns: None.
     :rtype: NoneType
 
@@ -2896,6 +2939,7 @@ async def download_video_project_async(
                 download_videos=download_videos,
                 save_video_info=save_video_info,
                 progress_cb=progress_cb,
+                resume_download=resume_download,
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
@@ -2940,6 +2984,7 @@ async def _download_project_item_async(
     download_videos: bool,
     save_video_info: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    resume_download: bool = False,
 ) -> None:
     """
     This function downloads a video item from the project in Supervisely platform asynchronously.
@@ -2957,13 +3002,19 @@ async def _download_project_item_async(
 
     video_file_path = dataset_fs.generate_item_path(video.name)
 
+    # When resuming, keep a video already in the dataset if it matches the server
+    # and only refresh its annotation and info; replace it otherwise.
+    is_cached = resume_download and _cached_video_matches(dataset_fs, video, download_videos)
+    if resume_download and not is_cached:
+        dataset_fs.delete_item(video.name)
+
     if include_custom_data:
         CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")
         mkdir(CUSTOM_DATA_DIR)
         custom_data_path = os.path.join(CUSTOM_DATA_DIR, f"{video.name}.json")
         await dump_json_file_async(video.custom_data, custom_data_path)
 
-    if download_videos:
+    if download_videos and not is_cached:
         try:
             video_file_size = video.file_meta.get("size")
             if progress_cb is not None and video_file_size is not None:
@@ -2986,7 +3037,7 @@ async def _download_project_item_async(
         except Exception as e:
             _log_warning(video, video_file_path)
             raise e
-    else:
+    elif not is_cached:
         await touch_async(video_file_path)
     item_info = video._asdict() if save_video_info else None
 
