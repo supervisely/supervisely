@@ -347,6 +347,27 @@ def test_semantic_labels_converter_leaves_pcap_files_alone(tmp_path):
     assert [os.path.basename(item.path) for item in converter.get_items()] == ["0001.pcd"]
 
 
+def test_upload_dir_leaves_pcap_files_alone(tmp_path):
+    from supervisely.api.pointcloud.pointcloud_api import PointcloudApi
+
+    root = tmp_path / "in"
+    (root / "sub").mkdir(parents=True)
+    falcon_capture(root / "a.pcap", [1])
+    falcon_capture(root / "sub" / "B.PCAP", [1])
+    (root / "0001.pcd").write_text("x")
+    (root / "sub" / "0002.ply").write_text("x")
+    uploaded = {}
+
+    def upload_paths(dataset_id, names, paths, progress_cb=None):
+        uploaded[dataset_id] = sorted(names)
+        return []
+
+    api = types.SimpleNamespace(upload_paths=upload_paths, get_free_names=lambda _, names: names)
+    PointcloudApi.upload_dir(api, 1, str(root), recursive=True)
+    PointcloudApi.upload_dir(api, 2, str(root), recursive=False)
+    assert uploaded == {1: ["0001.pcd", "0002.ply"], 2: ["0001.pcd"]}
+
+
 def test_remote_folders_of_captures_are_linked():
     manager = types.SimpleNamespace(
         _modality=ProjectType.POINT_CLOUD_EPISODES,
