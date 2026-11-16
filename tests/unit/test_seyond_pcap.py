@@ -337,6 +337,13 @@ def test_generic_converter_never_takes_a_pcap_as_one_point_cloud(tmp_path):
     assert items == [] and ".pcap" in unsupported
 
 
+def test_a_meta_json_that_is_not_a_project_meta_does_not_hide_the_captures(tmp_path):
+    root = _capture_set(tmp_path / "in")
+    (root / "meta.json").write_text(json.dumps({"tags": []}))
+    converter = SeyondPcapConverter(str(root), None, False)
+    assert converter.validate_format() and converter.get_items()
+
+
 def test_semantic_labels_converter_leaves_pcap_files_alone(tmp_path):
     from supervisely.convert.pointcloud.pcd_semantic_labels.pcd_semantic_labels_converter import (
         PCDSemanticLabelsConverter,

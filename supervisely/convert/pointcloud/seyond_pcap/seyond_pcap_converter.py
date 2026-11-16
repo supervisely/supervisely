@@ -231,10 +231,11 @@ class SeyondPcapConverter(PointcloudConverter):
         if os.path.getsize(path) == 0:
             return linked  # a linked stand-in cannot be read here: assume the project
         try:
-            data = load_json_file(path)
+            # the same test the Supervisely format converters apply to their key file
+            ProjectMeta.from_json(load_json_file(path))
         except Exception:
             return False
-        return isinstance(data, dict) and ("classes" in data or "tags" in data)
+        return True
 
     def _remote_path(self, path: str) -> Optional[str]:
         if not self.upload_as_links or not self.remote_files_map:
