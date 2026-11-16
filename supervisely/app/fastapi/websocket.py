@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 import supervisely.io.env as sly_env
+import supervisely.app.fastapi.utils as utils
 from supervisely.app.fastapi.utils import _set_main_loop
 from supervisely.app.singleton import Singleton
 from supervisely.sly_logger import logger
@@ -86,11 +87,18 @@ class WebsocketManager(metaclass=Singleton):
                 extra={"error": repr(exc)},
             )
             self.disconnect(connection)
-            # close in the background: it waits for the same client, and the page reconnects
-            # only after the close frame reaches it
-            closing = asyncio.ensure_future(self._close_quietly(connection))
-            self._closing.add(closing)
-            closing.add_done_callback(self._closing.discard)
+            # the page reconnects only after the close frame reaches it. On the server loop,
+            # close in the background: it waits for the same client. Elsewhere the loop ends
+            # with this call, so give it a moment here.
+            if asyncio.get_running_loop() is utils._main_loop:
+                closing = asyncio.ensure_future(self._close_quietly(connection))
+                self._closing.add(closing)
+                closing.add_done_callback(self._closing.discard)
+            else:
+                try:
+                    await asyncio.wait_for(self._close_quietly(connection), timeout=1)
+                except asyncio.TimeoutError:
+                    pass
 
     @staticmethod
     async def _close_quietly(connection: WebSocket):
