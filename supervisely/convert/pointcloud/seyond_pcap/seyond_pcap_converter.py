@@ -54,7 +54,8 @@ class SeyondPcapConverter(PointcloudConverter):
 
     - Each item's ``meta`` holds ``frame``, ``timestamp`` (the capture time of the frame's first
       packet, UTC), ``sensorsData.extrinsicMatrix`` when ``sensors.json`` gives the sensor's mount,
-      and ``source``: ``{"file", "frameInFile", "sensor"}``, which the export reads.
+      and ``source``: ``{"file", "frameInFile", "sensor"}``. Current instances drop ``source``;
+      the export works the capture and frame out from ``frame`` and the item name without it.
     - Point clouds: one dataset per capture, ``meta.frame`` is the frame in the file.
     - Point cloud episodes (:class:`SeyondPcapEpisodesConverter`): the captures of each sensor are
       chained by time into episodes, ``meta.frame`` continues across them.
