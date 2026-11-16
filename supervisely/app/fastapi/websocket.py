@@ -28,6 +28,7 @@ class WebsocketManager(metaclass=Singleton):
         self._connection_users: Dict[WebSocket, Optional[Union[int, str]]] = {}
         self._cookie_user_map: Dict[str, Tuple[Union[int, str], float]] = {}
         self._cookie_ttl_seconds = 60 * 60
+        self._closing = set()
 
     def set_app(self, app: FastAPI):
         if self.app is not None:
@@ -73,19 +74,30 @@ class WebsocketManager(metaclass=Singleton):
         else:
             targets = list(self.active_connections)
 
-        for connection in list(targets):
-            try:
-                await asyncio.wait_for(connection.send_json(d), timeout=self._send_timeout)
-            except Exception as exc:  # one broken client must not stop the others
-                logger.warning(
-                    "Dropping app websocket client that failed to receive changes",
-                    extra={"error": repr(exc)},
-                )
-                self.disconnect(connection)
-                try:
-                    await asyncio.wait_for(connection.close(), timeout=1)
-                except Exception:
-                    pass
+        if targets:
+            await asyncio.gather(*(self._send(connection, d) for connection in targets))
+
+    async def _send(self, connection: WebSocket, d: dict):
+        try:
+            await asyncio.wait_for(connection.send_json(d), timeout=self._send_timeout)
+        except Exception as exc:  # one broken client must not stop the others
+            logger.warning(
+                "Dropping app websocket client that failed to receive changes",
+                extra={"error": repr(exc)},
+            )
+            self.disconnect(connection)
+            # close in the background: it waits for the same client, and the page reconnects
+            # only after the close frame reaches it
+            closing = asyncio.ensure_future(self._close_quietly(connection))
+            self._closing.add(closing)
+            closing.add_done_callback(self._closing.discard)
+
+    @staticmethod
+    async def _close_quietly(connection: WebSocket):
+        try:
+            await connection.close()
+        except Exception:
+            pass
 
     async def endpoint(self, websocket: WebSocket):
         await self.connect(websocket)
