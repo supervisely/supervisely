@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import copy
 import enum
-import functools
 import json
 import os
 import queue
@@ -39,12 +38,27 @@ from supervisely.sly_logger import logger
 _pool = ThreadPoolExecutor()
 
 
+def _release_if_acquired(lock: threading.Lock):
+    def callback(attempt):
+        if not attempt.cancelled() and attempt.exception() is None and attempt.result():
+            lock.release()
+
+    return callback
+
+
 @contextlib.asynccontextmanager
 async def async_lock(lock: threading.Lock):
-    loop = asyncio.get_event_loop()
     # poll with timeout: avoids deadlock when nested locks compete for _pool slots
-    while not await loop.run_in_executor(_pool, functools.partial(lock.acquire, timeout=0.1)):
-        pass
+    while True:
+        attempt = _pool.submit(lock.acquire, timeout=0.1)
+        try:
+            acquired = await asyncio.wrap_future(attempt)
+        except asyncio.CancelledError:
+            # cancelled while the attempt may still succeed: release what nobody will
+            attempt.add_done_callback(_release_if_acquired(lock))
+            raise
+        if acquired:
+            break
     try:
         yield  # the lock is held
     finally:
