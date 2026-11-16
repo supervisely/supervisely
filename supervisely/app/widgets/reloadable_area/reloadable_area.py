@@ -1,7 +1,7 @@
 from supervisely.app.widgets import Widget, DynamicWidget
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.app.fastapi.websocket import WebsocketManager
-from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.utils import _run_on_main_loop
 from supervisely.app.content import DataJson, StateJson
 
 
@@ -58,7 +58,7 @@ class ReloadableArea(DynamicWidget):
         StateJson().send_changes()
 
         html_content = self._content.to_html()
-        run_sync(
+        _run_on_main_loop(
             WebsocketManager().broadcast(
                 {
                     "runAction": {
