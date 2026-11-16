@@ -6,7 +6,7 @@ from typing import List, Union
 
 import magic
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFile
 
 from supervisely import Label, Rectangle, logger
 from supervisely.geometry.oriented_bbox import OrientedBBox
@@ -126,12 +126,18 @@ def convert_to_jpg(path) -> str:
         _register_avif_opener()
 
     new_path = _free_jpeg_path(path)
+    # the SDK loads truncated images by default; pillow-heif then returns an all-black
+    # picture for a truncated HEIC, so fail on it instead and keep the original
+    load_truncated = ImageFile.LOAD_TRUNCATED_IMAGES
+    ImageFile.LOAD_TRUNCATED_IMAGES = False
     try:
         with Image.open(path) as image:
             image.convert("RGB").save(new_path, format="JPEG")
     except Exception:
         silent_remove(new_path)  # do not leave a half-written JPEG behind
         raise
+    finally:
+        ImageFile.LOAD_TRUNCATED_IMAGES = load_truncated
     silent_remove(path)
     return new_path
 

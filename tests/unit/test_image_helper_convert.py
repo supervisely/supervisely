@@ -160,3 +160,23 @@ def test_failed_conversion_leaves_no_partial_jpeg(monkeypatch, tmp_path, no_pill
     assert validate_image(str(path)) is None
     assert path.exists()
     assert not (tmp_path / "img.jpeg").exists()
+
+
+@needs_heif
+@pytest.mark.parametrize("ext", [".heic", ".heif"])
+def test_truncated_heif_is_skipped_not_imported_black(tmp_path, no_pillow_avif, ext):
+    from PIL import ImageFile
+
+    import supervisely.imaging.image  # pylint: disable=unused-import  # sets LOAD_TRUNCATED_IMAGES
+
+    assert ImageFile.LOAD_TRUNCATED_IMAGES
+    full = tmp_path / f"full{ext}"
+    _save_heif(_pixels(), full)
+    data = full.read_bytes()
+    path = tmp_path / f"img{ext}"
+    path.write_bytes(data[: int(len(data) * 0.9)])
+
+    assert validate_image(str(path)) is None
+    assert path.exists()
+    assert not (tmp_path / "img.jpeg").exists()
+    assert ImageFile.LOAD_TRUNCATED_IMAGES
