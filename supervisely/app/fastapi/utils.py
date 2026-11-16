@@ -1,7 +1,8 @@
 import asyncio
 import concurrent.futures
+import contextvars
 import threading
-from typing import Dict, Hashable, Optional
+from typing import Dict, Hashable, Optional, Tuple
 
 from supervisely.sly_logger import logger
 
@@ -18,8 +19,9 @@ _main_loop_blocked = threading.Event()
 _queue_state = threading.Lock()
 # sends handed to the server loop that have not begun yet, by key; later identical ones join them
 _queued: Dict[Hashable, "_QueuedRun"] = {}
-# the last run each thread handed over: a thread's runs begin in the order it handed them over
-_thread_runs = threading.local()
+# runs the caller handed over last: a caller's runs begin in the order it handed them over.
+# A context variable, so that it follows one request rather than a reused worker thread.
+_caller_runs: contextvars.ContextVar = contextvars.ContextVar("_caller_runs", default=())
 
 
 def run_sync(coroutine):
@@ -62,19 +64,19 @@ def _set_main_loop() -> None:
 class _QueuedRun:
     """A coroutine handed to the server loop, shared by the callers that asked for it."""
 
-    def __init__(self, coroutine, key: Optional[Hashable], after: Optional["_QueuedRun"], loop):
+    def __init__(self, coroutine, key: Optional[Hashable], after: Tuple["_QueuedRun", ...], loop):
         self.coroutine = coroutine
         self.key = key
         self.loop = loop
-        # the previous run of the same thread on this loop, begins first
-        self.after = after if after is not None and after.loop is loop else None
+        # the caller's earlier runs on this loop: they begin first
+        self.after = _pending_on(after, loop)
         self.picked_up = False  # the server loop has started handling it
         self.began = False  # the coroutine itself is running
         self.waited = True  # a caller is waiting for the result and gets its error
         self.future: Optional[concurrent.futures.Future] = None
 
     def done(self, future: concurrent.futures.Future):
-        self.after = None
+        self.after = ()
         with _queue_state:
             if self.key is not None and _queued.get(self.key) is self:
                 del _queued[self.key]
@@ -90,13 +92,19 @@ class _QueuedRun:
         )
 
 
+def _pending_on(runs: Tuple[_QueuedRun, ...], loop) -> Tuple[_QueuedRun, ...]:
+    return tuple(
+        r for r in runs if r.loop is loop and r.future is not None and not r.future.done()
+    )
+
+
 async def _run_queued(run: _QueuedRun):
     with _queue_state:
         run.picked_up = True
         _main_loop_blocked.clear()  # the loop is running callbacks again
-    previous = run.after
-    if previous is not None and previous.future is not None and not previous.future.done():
-        await asyncio.wait([asyncio.wrap_future(previous.future)])
+    earlier = [asyncio.wrap_future(r.future) for r in _pending_on(run.after, run.loop)]
+    if earlier:
+        await asyncio.wait(earlier)
     with _queue_state:
         if run.key is not None and _queued.get(run.key) is run:
             del _queued[run.key]
@@ -118,6 +126,9 @@ def _run_sync_bounded(coroutine, timeout: float):
     thread.start()
     thread.join(timeout)
     if thread.is_alive():
+        logger.warning(
+            f"Sending app changes takes longer than {timeout} s; it continues in the background"
+        )
         return None
     error = outcome.get("error")
     if isinstance(error, RuntimeError):
@@ -133,10 +144,11 @@ def _run_on_main_loop(coroutine, key: Optional[Hashable] = None):
     Runs a coroutine on the app server's event loop and waits for its result.
 
     Objects such as websocket connections belong to the loop they were created on, and
-    awaiting them from another loop can wait forever. Runs handed over by one thread begin
-    in the order it handed them over. Returns None without waiting when the server loop does
-    not pick the coroutine up within a second (it is blocked, possibly waiting for the
-    caller): the coroutine stays queued and runs when the loop is free.
+    awaiting them from another loop can wait forever. Runs handed over by one caller (a
+    thread, or a request) begin in the order it handed them over. Returns None without
+    waiting when the server loop does not pick the coroutine up within a second (it is
+    blocked, possibly waiting for the caller): the coroutine stays queued and runs when the
+    loop is free.
 
     A coroutine with the same ``key`` as one queued and not begun yet is dropped in favour
     of it: a send takes its snapshot when it begins, so the queued one sends both changes.
@@ -159,7 +171,7 @@ def _run_on_main_loop(coroutine, key: Optional[Hashable] = None):
     except RuntimeError:
         pass
 
-    previous = getattr(_thread_runs, "last", None)
+    previous = _caller_runs.get()
     scheduled = False
     with _queue_state:
         run = _queued.get(key) if key is not None else None
@@ -183,7 +195,8 @@ def _run_on_main_loop(coroutine, key: Optional[Hashable] = None):
     if scheduled:
         # outside the lock: the callback takes it, and runs here if the run is already done
         run.future.add_done_callback(run.done)
-    _thread_runs.last = run
+    # a run joined from another caller may begin before this caller's earlier ones
+    _caller_runs.set(_pending_on((run,) + (() if scheduled else previous), loop))
 
     future = run.future
     try:
