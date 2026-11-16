@@ -328,6 +328,25 @@ def test_generic_converter_never_takes_a_pcap_as_one_point_cloud(tmp_path):
     assert items == [] and ".pcap" in unsupported
 
 
+def test_semantic_labels_converter_leaves_pcap_files_alone(tmp_path):
+    from supervisely.convert.pointcloud.pcd_semantic_labels.pcd_semantic_labels_converter import (
+        PCDSemanticLabelsConverter,
+    )
+
+    root = tmp_path / "in"
+    root.mkdir()
+    (root / "class_mapping.json").write_text(json.dumps({"1": "car"}))
+    (root / "0001.pcd").write_text(
+        "# .PCD v0.7\nVERSION 0.7\nFIELDS x y z label\nSIZE 4 4 4 4\nTYPE F F F U\n"
+        "COUNT 1 1 1 1\nWIDTH 1\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS 1\nDATA ascii\n0 0 0 1\n"
+    )
+    falcon_capture(root / "a.pcap", [1, 2])
+    capture(root / "dns.pcap", [ethernet(ipv4_udp(b"\x12\x34" + bytes(80)))])
+    converter = PCDSemanticLabelsConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert [os.path.basename(item.path) for item in converter.get_items()] == ["0001.pcd"]
+
+
 def test_remote_folders_of_captures_are_linked():
     manager = types.SimpleNamespace(
         _modality=ProjectType.POINT_CLOUD_EPISODES,
