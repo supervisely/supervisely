@@ -231,3 +231,20 @@ def test_skipped_image_is_logged_by_its_path(monkeypatch, tmp_path, no_pillow_he
 
     assert f"Image {path} failed validation and will be skipped." in warnings
     api.image.upload_paths.assert_not_called()
+
+
+def test_failed_rewrite_keeps_the_original(monkeypatch, tmp_path):
+    path = tmp_path / "img.jpg"
+    _pixels().save(path, format="PNG")
+    original = path.read_bytes()
+
+    def broken_write(p, *args, **kwargs):
+        with open(p, "wb") as f:
+            f.write(b"\x89PNGpartial")
+        raise OSError("No space left on device")
+
+    monkeypatch.setattr(image_helper, "write", broken_write)
+
+    assert validate_image(str(path)) is None
+    assert path.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [path]

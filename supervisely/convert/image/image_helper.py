@@ -39,9 +39,13 @@ def validate_image(path: str) -> tuple:
             if new_name != name:
                 img = read(path, remove_alpha_channel=False)
                 new_path = _free_path(path, get_file_ext(new_name))
+                try:
+                    write(new_path, img, remove_alpha_channel=False)
+                except Exception:
+                    silent_remove(new_path)  # keep the original, leave no partial file
+                    raise
                 silent_remove(path)
                 path = new_path
-                write(path, img, remove_alpha_channel=False)
             elif ext.lower() == ".jfif":
                 # JFIF is JPEG: keep the bytes, only give it the extension the platform stores
                 new_path = _free_path(path, ".jpeg")
