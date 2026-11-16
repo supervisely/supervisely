@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+import supervisely.app.content as content
 import supervisely.app.fastapi.utils as utils
 from supervisely.app.content import DataJson
 from supervisely.app.fastapi.websocket import WebsocketManager
@@ -72,8 +73,22 @@ class _BackpressuredSocket:
 
 
 def _run_in_worker(fn, timeout):
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(fn).result(timeout)
+    """Runs fn in a daemon thread; a call that hangs fails the test instead of hanging it."""
+    outcome = {}
+
+    def target():
+        try:
+            outcome["result"] = fn()
+        except BaseException as exc:  # noqa: B036
+            outcome["error"] = exc
+
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    assert not thread.is_alive(), f"still blocked after {timeout} s"
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["result"]
 
 
 def test_runs_on_server_loop_and_returns_result(server_loop):
@@ -172,3 +187,57 @@ def test_broadcast_drops_broken_and_stalled_clients(server_loop, monkeypatch):
     assert time.monotonic() - started < 3
     assert healthy.sent == [{"data": []}]
     assert manager.active_connections == [healthy]
+
+
+def test_falls_back_when_server_loop_waits_for_caller(server_loop):
+    # the server loop blocks on a thread that sends changes (e.g. joining a worker on stop)
+    async def where():
+        return asyncio.get_running_loop()
+
+    async def join_worker():
+        return _run_in_worker(lambda: utils._run_on_main_loop(where()), 10)
+
+    used = asyncio.run_coroutine_threadsafe(join_worker(), server_loop).result(15)
+    assert used is not server_loop
+    # once the loop has run the abandoned hand-off, sends go back to it
+    deadline = time.monotonic() + 5
+    while utils._main_loop_blocked.is_set() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert _run_in_worker(lambda: utils._run_on_main_loop(where()), 5) is server_loop
+
+
+def test_returns_none_when_server_cancels_it(server_loop):
+    started = threading.Event()
+
+    async def forever():
+        started.set()
+        await asyncio.sleep(3600)
+
+    def cancel_all():
+        for task in asyncio.all_tasks(server_loop):
+            task.cancel()
+
+    def call():
+        return utils._run_on_main_loop(forever())
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(call)
+        assert started.wait(5)
+        server_loop.call_soon_threadsafe(cancel_all)
+        assert future.result(10) is None
+
+
+def test_cancelled_lock_wait_does_not_leave_lock_held(server_loop):
+    lock = threading.Lock()
+    lock.acquire()
+
+    async def take():
+        async with content.async_lock(lock):
+            pass
+
+    task = asyncio.run_coroutine_threadsafe(take(), server_loop)
+    time.sleep(0.05)
+    task.cancel()
+    lock.release()  # the pending acquire attempt may still win the lock
+    time.sleep(0.5)
+    assert not lock.locked()
