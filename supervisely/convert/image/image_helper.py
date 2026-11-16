@@ -19,7 +19,8 @@ from supervisely.io.fs import (
 )
 
 Image.MAX_IMAGE_PIXELS = None
-EXT_TO_CONVERT = [".heic", ".avif", ".heif", ".jfif"]
+EXT_TO_CONVERT = [".heic", ".avif", ".heif"]
+_HEIF_EXTS = [".heic", ".heif"]
 
 
 def validate_image(path: str) -> tuple:
@@ -40,6 +41,11 @@ def validate_image(path: str) -> tuple:
                 silent_remove(path)
                 path = Path(path).with_name(new_name).as_posix()
                 write(path, img, remove_alpha_channel=False)
+            elif ext.lower() == ".jfif":
+                # JFIF is JPEG: keep the bytes, only give it the extension the platform stores
+                new_path = _free_jpeg_path(path)
+                os.rename(path, new_path)
+                path = new_path
         return path
     except Exception as e:
         logger.warning(f"Skip image: {repr(e)}", extra={"file_path": path})
@@ -66,18 +72,66 @@ def validate_mimetypes(name: str, path: str) -> list:
     return new_img_name
 
 
-def convert_to_jpg(path) -> tuple:
-    """Convert image to jpg."""
-
-    # * do not remove folllowing imports, it is used to register avif/heic formats
-    import pillow_avif  # pylint: disable=import-error
-    from pillow_heif import register_heif_opener  # pylint: disable=import-error
-
+def _register_heif_opener() -> None:
+    """Register the HEIC/HEIF opener from pillow-heif, which Pillow does not read on its own."""
+    try:
+        from pillow_heif import register_heif_opener  # pylint: disable=import-error
+    except ImportError as e:
+        raise ImportError(
+            "HEIC/HEIF support is not installed. Install the 'pillow-heif' package."
+        ) from e
     register_heif_opener()
 
-    new_path = Path(path).with_suffix(".jpeg").as_posix()
-    with Image.open(path) as image:
-        image.convert("RGB").save(new_path)
+
+def _register_avif_opener() -> None:
+    """Use pillow-avif-plugin when it is installed, otherwise Pillow's built-in AVIF support."""
+    try:
+        import pillow_avif  # pylint: disable=import-error,unused-import
+
+        return
+    except ImportError:
+        pass
+
+    from PIL import features
+
+    try:
+        has_avif = features.check_module("avif")
+    except ValueError:  # Pillow older than 11.2 does not know the module
+        has_avif = False
+    if not has_avif:
+        raise ImportError(
+            "AVIF support is not installed. Install Pillow 11.2+ with AVIF support "
+            "or the 'pillow-avif-plugin' package."
+        )
+
+
+def _free_jpeg_path(path: str) -> str:
+    """Path for a .jpeg next to `path` that does not overwrite an existing file."""
+    new_path = Path(path).with_suffix(".jpeg")
+    i = 0
+    while new_path.exists():
+        i += 1
+        suffix = ".jpeg" if i == 1 else f"_{i}.jpeg"
+        new_path = Path(f"{path}{suffix}")
+    return new_path.as_posix()
+
+
+def convert_to_jpg(path) -> str:
+    """Convert a HEIC, HEIF or AVIF image to JPEG."""
+
+    ext = get_file_ext(path).lower()
+    if ext in _HEIF_EXTS:
+        _register_heif_opener()
+    elif ext == ".avif":
+        _register_avif_opener()
+
+    new_path = _free_jpeg_path(path)
+    try:
+        with Image.open(path) as image:
+            image.convert("RGB").save(new_path, format="JPEG")
+    except Exception:
+        silent_remove(new_path)  # do not leave a half-written JPEG behind
+        raise
     silent_remove(path)
     return new_path
 
