@@ -466,3 +466,72 @@ def test_cancelled_queued_send_does_not_swallow_later_ones(server_loop):
     server_loop.call_soon_threadsafe(cancel_all)  # e.g. the server stopping
     _wait_for(lambda: "store" not in utils._queued)
     assert _run_in_worker(lambda: utils._run_on_main_loop(value(2), key="store"), 5) == 2
+
+
+def test_joined_send_keeps_the_callers_order(server_loop):
+    # a caller's first send waits for a lock; its second joins another caller's queued run;
+    # its third must still come after the first
+    order = []
+    gate = threading.Event()
+
+    async def record(name, wait=False):
+        if wait:
+            await asyncio.get_running_loop().run_in_executor(None, gate.wait, 5)
+        order.append(name)
+
+    _block(server_loop, 1.2)
+    other = threading.Thread(target=lambda: utils._run_on_main_loop(record("b-state"), key="state"))
+    other.start()
+    time.sleep(0.1)
+
+    def caller():
+        utils._run_on_main_loop(record("a-data", wait=True), key="data")
+        utils._run_on_main_loop(record("a-state"), key="state")  # joins b's run
+        utils._run_on_main_loop(record("a-action"))
+
+    _run_in_worker(caller, 10)
+    other.join(5)
+    time.sleep(0.3)
+    gate.set()
+    _wait_for(lambda: len(order) == 3)
+    assert order.index("a-data") < order.index("a-action")
+
+
+def test_reused_worker_thread_does_not_chain_requests(server_loop):
+    import contextvars
+
+    async def stalled():
+        await asyncio.sleep(3)
+
+    async def quick():
+        return "done"
+
+    _block(server_loop, 1.2)
+    with ThreadPoolExecutor(max_workers=1) as pool:  # like anyio: one context per request
+        first = pool.submit(contextvars.copy_context().run, utils._run_on_main_loop, stalled())
+        assert first.result(5) is None  # returned early, still queued
+        time.sleep(0.5)
+        started = time.monotonic()
+        second = pool.submit(contextvars.copy_context().run, utils._run_on_main_loop, quick())
+        assert second.result(5) == "done"
+        assert time.monotonic() - started < 1
+
+
+def test_new_server_loop_resets_the_queue(server_loop):
+    async def value(v):
+        return v
+
+    _block(server_loop, 1.2)
+    assert _run_in_worker(lambda: utils._run_on_main_loop(value(1), key="store"), 5) is None
+    assert "store" in utils._queued
+    other = asyncio.new_event_loop()
+    thread = threading.Thread(target=other.run_forever, daemon=True)
+    thread.start()
+    try:
+        asyncio.run_coroutine_threadsafe(_register(), other).result(5)
+        assert "store" not in utils._queued
+        assert _run_in_worker(lambda: utils._run_on_main_loop(value(2), key="store"), 5) == 2
+    finally:
+        other.call_soon_threadsafe(other.stop)
+        thread.join(5)
+        other.close()
