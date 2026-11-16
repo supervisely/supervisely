@@ -30,6 +30,8 @@ class DynamicSampler:
         while len(self.dataset) == 0:
             time.sleep(0.1)
 
+        mark_sampled = getattr(self.dataset, "mark_sampled", None)
+
         while True:
             current_len = len(self.dataset)
 
@@ -46,7 +48,11 @@ class DynamicSampler:
                 if self.shuffle:
                     random.shuffle(remaining_indices)
 
-            yield remaining_indices.pop()
+            idx = remaining_indices.pop()
+            if mark_sampled is not None:
+                # Lets the live training track which images were trained on (seed progress)
+                mark_sampled(idx)
+            yield idx
 
     def __len__(self):
         return len(self.dataset)

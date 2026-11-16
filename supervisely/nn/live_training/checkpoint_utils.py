@@ -7,6 +7,8 @@ from supervisely.nn.live_training.helpers import ClassMap
 from supervisely.io.json import load_json_file
 import supervisely as sly
 
+BACKGROUND_CLASS_NAME = "_background_"
+
 
 def validate_classes_exact_match(saved_classes: List[str], current_classes: List[str]):
     """
@@ -39,6 +41,10 @@ def reorder_class_map(saved_classes: List[str], project_meta) -> ClassMap:
     # Create ClassMap from class names in checkpoint order
     obj_classes = []
     for name in saved_classes:
+        if name == BACKGROUND_CLASS_NAME:
+            # Synthetic class of semantic segmentation, not stored in the project meta
+            obj_classes.append(sly.ObjClass(name=BACKGROUND_CLASS_NAME, geometry_type=sly.Bitmap))
+            continue
         obj_class = project_meta.get_obj_class(name)
         if obj_class is None:
             raise ValueError(f"Class '{name}' not found in project metadata")
@@ -173,10 +179,21 @@ def resolve_checkpoint(
             logger.info("Classes differ completely. Starting from checkpoint")
             return local_checkpoint, class_map, None
 
-    # Continue mode - strict matching required
+    # Continue mode - the model keeps the classes it was trained on
     elif checkpoint_mode == "continue":
         logger.info(f"Continue mode: loading from task_id={selected_experiment_task_id}")
-        validate_classes_exact_match(saved_classes, current_classes)
+        # The session may have trained a subset of the project classes (classes chosen on Start),
+        # so the class map is taken from the checkpoint. Every saved class must still exist in the project.
+        missing = [
+            name for name in saved_classes
+            if name != BACKGROUND_CLASS_NAME and project_meta.get_obj_class(name) is None
+        ]
+        if missing:
+            raise ValueError(
+                f"Classes from the checkpoint are not found in the project: {missing}. "
+                f"Saved: {saved_classes}"
+            )
+        class_map = reorder_class_map(saved_classes, project_meta)
 
         # Download state JSON
         state_filename = checkpoint_name.replace('.pth', '_state.json')

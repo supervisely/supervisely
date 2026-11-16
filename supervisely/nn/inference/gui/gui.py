@@ -99,8 +99,16 @@ class InferenceGUI(BaseInferenceGUI):
             import torch
 
             if torch.cuda.is_available():
-                gpus = torch.cuda.device_count()
-                for i in range(gpus):
+                gpus = []
+                for i in range(torch.cuda.device_count()):
+                    try:
+                        free_mem, _ = torch.cuda.mem_get_info(i)
+                    except Exception:
+                        free_mem = 0
+                    gpus.append((i, free_mem))
+                # GPU with the most free memory goes first, so it is preselected
+                gpus.sort(key=lambda gpu: gpu[1], reverse=True)
+                for i, _ in gpus:
                     device_values.append(f"cuda:{i}")
                     device_names.append(f"{torch.cuda.get_device_name(i)} (cuda:{i})")
         except:

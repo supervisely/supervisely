@@ -43,6 +43,8 @@ class LiveEvaluator:
         self.ema_alpha: float = ema_alpha
         self.ignore_index: int = ignore_index
         self.score_thr: float = score_thr
+        # Classes whose GT pixels are excluded from the metric (unselected classes with ignore_unselected)
+        self.ignore_class_names: set = set()
 
         self._predictions: Dict[Any, Tuple[list, Tuple[int, int]]] = {}
 
@@ -117,13 +119,20 @@ class LiveEvaluator:
     def _gt_annotation_to_mask(self, annotation: sly.Annotation, image_shape: Tuple[int,int]) -> np.ndarray:
         """Convert ground truth annotation to segmentation mask."""
         height, width = image_shape
-        mapping = {label.obj_class: label.obj_class for label in annotation.labels}
+        # Labels become Bitmaps: map to Bitmap classes (Polygon classes would fail validation)
+        mapping = {
+            label.obj_class: label.obj_class.clone(geometry_type=sly.Bitmap)
+            for label in annotation.labels
+        }
         ann_nonoverlap = annotation.to_nonoverlapping_masks(mapping)
 
         mask = np.zeros((height, width), dtype=np.int32)
         for label in ann_nonoverlap.labels:
             class_name = label.obj_class.name
-            class_idx = self.class2idx.get(class_name)
+            if class_name in self.ignore_class_names:
+                class_idx = self.ignore_index
+            else:
+                class_idx = self.class2idx.get(class_name)
             if class_idx is not None:
                 try:
                     label.geometry.draw(mask, color=class_idx)
