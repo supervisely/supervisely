@@ -32,12 +32,12 @@ def _content(video_id):
     return bytes([video_id % 256]) * (1000 + video_id)
 
 
-def _video(video_id, updated_at="2026-01-01T00:00:00.000Z"):
+def _video(video_id, updated_at="2026-01-01T00:00:00.000Z", with_size=True):
     return VideoInfo(
         id=video_id,
         name=f"clip_{video_id}.mp4",
         updated_at=updated_at,
-        file_meta={"size": str(len(_content(video_id)))},
+        file_meta={"size": str(len(_content(video_id)))} if with_size else {},
         custom_data={},
     )
 
@@ -148,6 +148,20 @@ def test_resume_without_saved_info_downloads_again(tmp_path, use_async):
     assert sorted(api.downloaded) == [1, 2]
     ds = VideoProject(dest_dir, OpenMode.READ).datasets.get("ds")
     assert sorted(ds.get_items_names()) == ["clip_1.mp4", "clip_2.mp4"]
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+def test_resume_does_not_keep_placeholders_when_size_is_unknown(tmp_path, use_async):
+    """Placeholders from a run without videos are not kept when the server reports no size."""
+    dest_dir = str(tmp_path / "project")
+    api = _FakeApi([_video(1, with_size=False), _video(2, with_size=False)])
+    _download(api, dest_dir, use_async, download_videos=False)
+
+    api.downloaded.clear()
+    _download(api, dest_dir, use_async, resume_download=True)
+
+    assert sorted(api.downloaded) == [1, 2]
+    _assert_matches_server(dest_dir, api.videos)
 
 
 def test_resume_after_async_failed_partway_in_another_dataset(tmp_path):

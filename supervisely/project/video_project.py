@@ -2437,7 +2437,7 @@ def _cached_video_matches(
 
     It matches when its saved item info has the same ``id`` and ``updated_at`` as ``video_info``
     and, if videos are downloaded, its file on disk has the server's size. A video without saved
-    item info never matches.
+    item info, or whose size the server does not report, never matches.
     """
     if not dataset_fs.item_exists(video_info.name):
         return False
@@ -2454,7 +2454,7 @@ def _cached_video_matches(
         if not os.path.isfile(video_path):
             return False
         server_size = (video_info.file_meta or {}).get("size")
-        if server_size is not None and os.path.getsize(video_path) != int(server_size):
+        if server_size is None or os.path.getsize(video_path) != int(server_size):
             return False
     return True
 
