@@ -114,7 +114,9 @@ class _slyProgressBarIO:
                     DataJson()[f"{self.widget_id}"][key] = value
 
                 if synchronize_changes is True:
-                    _run_on_main_loop(DataJson().synchronize_changes())
+                    _run_on_main_loop(
+                        DataJson().synchronize_changes(), key=DataJson()._send_key()
+                    )
 
                 self.prev_state = copy.deepcopy(self.progress)
 

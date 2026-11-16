@@ -252,7 +252,11 @@ class _PatchableJson(dict):
         if sly_env.is_multiuser_mode_enabled():
             user_id = sly_env.user_from_multiuser_app()
         # on the server's loop: websocket sends awaited from a throwaway loop can hang forever
-        _run_on_main_loop(self.synchronize_changes(user_id=user_id))
+        _run_on_main_loop(self.synchronize_changes(user_id=user_id), key=self._send_key(user_id))
+
+    def _send_key(self, user_id: Optional[Union[int, str]] = None):
+        # sends of one store to the same users are interchangeable until one begins
+        return (self._field, id(self), user_id)
 
     def raise_for_key(self, key: str):
         if key in self:

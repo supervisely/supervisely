@@ -1,15 +1,23 @@
 import asyncio
 import concurrent.futures
 import threading
-from typing import Optional
+from typing import Dict, Hashable, Optional, Tuple
+
+from supervisely.sly_logger import logger
 
 # The event loop the app server runs on; set at startup and when a websocket connects.
 _main_loop: Optional[asyncio.AbstractEventLoop] = None
 
-# Seconds to wait for the server loop to start a coroutine before leaving it queued there.
+# Seconds to wait for the server loop to pick up a coroutine before leaving it queued there.
 _MAIN_LOOP_PICKUP_TIMEOUT = 1.0
-# Set while a coroutine handed to the server loop has not been started: the loop is blocked.
+# Set while a coroutine handed to the server loop has not been picked up: the loop is blocked.
 _main_loop_blocked = threading.Event()
+
+_queue_state = threading.Lock()
+# sends handed to the server loop that have not begun yet, by key; later identical ones join them
+_queued: Dict[Hashable, "_QueuedRun"] = {}
+# runs coroutines handed to the server loop one at a time, in the order they were handed over
+_fifo: Optional[Tuple[asyncio.AbstractEventLoop, asyncio.Lock]] = None
 
 
 def run_sync(coroutine):
@@ -45,53 +53,105 @@ def _set_main_loop() -> None:
     _main_loop_blocked.clear()
 
 
-def _run_on_main_loop(coroutine):
+class _QueuedRun:
+    """A coroutine handed to the server loop, shared by the callers that asked for it."""
+
+    def __init__(self, coroutine, key: Optional[Hashable]):
+        self.coroutine = coroutine
+        self.key = key
+        self.picked_up = False  # the server loop has started handling it
+        self.began = False  # the coroutine itself is running
+        self.waited = False  # a caller is waiting for the result and gets its error
+        self.future: Optional[concurrent.futures.Future] = None
+
+    def done(self, future: concurrent.futures.Future):
+        if not self.began:
+            self.coroutine.close()  # cancelled before it ran
+            return
+        if self.waited or future.cancelled() or future.exception() is None:
+            return
+        logger.warning(
+            "Failed to send app changes", exc_info=future.exception(), extra={"key": repr(self.key)}
+        )
+
+
+def _fifo_lock() -> asyncio.Lock:
+    global _fifo
+    loop = asyncio.get_running_loop()
+    if _fifo is None or _fifo[0] is not loop:
+        _fifo = (loop, asyncio.Lock())
+    return _fifo[1]
+
+
+async def _run_queued(run: _QueuedRun):
+    with _queue_state:
+        run.picked_up = True
+        _main_loop_blocked.clear()  # the loop is running callbacks again
+    async with _fifo_lock():
+        with _queue_state:
+            if run.key is not None and _queued.get(run.key) is run:
+                del _queued[run.key]
+            run.began = True
+        return await run.coroutine
+
+
+def _run_on_main_loop(coroutine, key: Optional[Hashable] = None):
     """
     Runs a coroutine on the app server's event loop and waits for its result.
 
     Objects such as websocket connections belong to the loop they were created on, and
-    awaiting them from another loop can wait forever. Falls back to :func:`run_sync` when
-    the server loop is not running yet (or any more), or when the caller is running inside
-    an event loop itself. If the server loop does not start the coroutine in time (it is
-    blocked, possibly waiting for the calling thread), the coroutine stays queued there and
-    this returns None without waiting for it.
+    awaiting them from another loop can wait forever. Coroutines handed over here run one
+    at a time, in order. Returns None without waiting when:
+
+    - the caller is the server loop's own thread: it would wait for itself, so the
+      coroutine runs once the current callback yields;
+    - the server loop does not pick it up within a second (it is blocked, possibly waiting
+      for the caller): the coroutine stays queued and runs when the loop is free.
+
+    A coroutine with the same ``key`` as one queued and not begun yet is dropped in favour
+    of it: a send takes its snapshot when it begins, so the queued one sends both changes.
+    Falls back to :func:`run_sync` before the server loop starts and after it stops.
 
     :param coroutine: coroutine to run
+    :param key: identifies interchangeable sends, e.g. one store's changes
     :returns: result of coroutine
     """
     loop = _main_loop
-    try:
-        asyncio.get_running_loop()
-        in_event_loop = True
-    except RuntimeError:
-        in_event_loop = False
-    if in_event_loop or loop is None or loop.is_closed() or not loop.is_running():
+    if loop is None or loop.is_closed() or not loop.is_running():
         return run_sync(coroutine)
-
-    start_lock = threading.Lock()
-    started = []
-
-    async def _start():
-        with start_lock:
-            started.append(True)
-            _main_loop_blocked.clear()  # the loop is running callbacks again
-        return await coroutine
-
     try:
-        future = asyncio.run_coroutine_threadsafe(_start(), loop)
+        on_loop_thread = asyncio.get_running_loop() is loop
     except RuntimeError:
-        # the loop closed after the check above; the coroutine was not scheduled
-        return run_sync(coroutine)
+        on_loop_thread = False
+
+    with _queue_state:
+        run = _queued.get(key) if key is not None else None
+        if run is not None:
+            coroutine.close()
+        else:
+            run = _QueuedRun(coroutine, key)
+            run.waited = not on_loop_thread
+            try:
+                run.future = asyncio.run_coroutine_threadsafe(_run_queued(run), loop)
+            except RuntimeError:
+                # the loop closed after the check above; the coroutine was not scheduled
+                return run_sync(coroutine)
+            run.future.add_done_callback(run.done)
+            if key is not None:
+                _queued[key] = run
+    if on_loop_thread:
+        return None
+
+    future = run.future
     try:
         if not _main_loop_blocked.is_set():
-            concurrent.futures.wait([future], timeout=_MAIN_LOOP_PICKUP_TIMEOUT)
-        with start_lock:
-            if not started:
-                if future.done():  # cancelled by the server shutting down before it started
-                    coroutine.close()
-                else:
-                    _main_loop_blocked.set()
+            done, _ = concurrent.futures.wait([future], timeout=_MAIN_LOOP_PICKUP_TIMEOUT)
+        with _queue_state:
+            if not run.picked_up and not future.done():
+                _main_loop_blocked.set()
+                run.waited = False  # nobody will see its error: log it instead
                 return None
+            run.waited = True
         while True:
             done, _ = concurrent.futures.wait([future], timeout=1)
             if done:
@@ -102,8 +162,6 @@ def _run_on_main_loop(coroutine):
                 return None
     except concurrent.futures.CancelledError:
         # cancelled by the server shutting down
-        if not started:
-            coroutine.close()
         return None
     except RuntimeError as ex:
         print(repr(ex))
