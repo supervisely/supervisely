@@ -38,12 +38,13 @@ def validate_image(path: str) -> tuple:
             new_name = validate_mimetypes(name, path)
             if new_name != name:
                 img = read(path, remove_alpha_channel=False)
+                new_path = _free_path(path, get_file_ext(new_name))
                 silent_remove(path)
-                path = Path(path).with_name(new_name).as_posix()
+                path = new_path
                 write(path, img, remove_alpha_channel=False)
             elif ext.lower() == ".jfif":
                 # JFIF is JPEG: keep the bytes, only give it the extension the platform stores
-                new_path = _free_jpeg_path(path)
+                new_path = _free_path(path, ".jpeg")
                 os.rename(path, new_path)
                 path = new_path
         return path
@@ -105,13 +106,13 @@ def _register_avif_opener() -> None:
         )
 
 
-def _free_jpeg_path(path: str) -> str:
-    """Path for a .jpeg next to `path` that does not overwrite an existing file."""
-    new_path = Path(path).with_suffix(".jpeg")
+def _free_path(path: str, ext: str) -> str:
+    """Path with extension `ext` next to `path` that does not overwrite an existing file."""
+    new_path = Path(path).with_suffix(ext)
     i = 0
     while new_path.exists():
         i += 1
-        suffix = ".jpeg" if i == 1 else f"_{i}.jpeg"
+        suffix = ext if i == 1 else f"_{i}{ext}"
         new_path = Path(f"{path}{suffix}")
     return new_path.as_posix()
 
@@ -125,7 +126,7 @@ def convert_to_jpg(path) -> str:
     elif ext == ".avif":
         _register_avif_opener()
 
-    new_path = _free_jpeg_path(path)
+    new_path = _free_path(path, ".jpeg")
     # the SDK loads truncated images by default; pillow-heif then returns an all-black
     # picture for a truncated HEIC, so fail on it instead and keep the original
     load_truncated = ImageFile.LOAD_TRUNCATED_IMAGES

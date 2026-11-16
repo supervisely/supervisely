@@ -180,3 +180,19 @@ def test_truncated_heif_is_skipped_not_imported_black(tmp_path, no_pillow_avif, 
     assert path.exists()
     assert not (tmp_path / "img.jpeg").exists()
     assert ImageFile.LOAD_TRUNCATED_IMAGES
+
+
+@pytest.mark.parametrize("name", ["img.jfif", "img.jpg"])
+def test_mislabeled_png_does_not_overwrite_an_existing_png(tmp_path, name):
+    existing = tmp_path / "img.png"
+    _pixels(1).save(existing, format="PNG")
+    existing_bytes = existing.read_bytes()
+    path = tmp_path / name
+    _pixels(2).save(path, format="PNG")
+
+    result = validate_image(str(path))
+
+    assert result == str(tmp_path / f"{name}.png")
+    assert existing.read_bytes() == existing_bytes
+    with Image.open(result) as img:
+        assert np.array_equal(np.asarray(img), np.asarray(_pixels(2)))
