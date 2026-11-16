@@ -18,6 +18,7 @@ from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
+from supervisely.pointcloud.seyond_pcap import PCAP_EXT
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -26,7 +27,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 class PointcloudEpisodeConverter(BaseConverter):
     """Base converter for pointcloud episodes (frame-indexed pointclouds + a shared episode annotation)."""
 
-    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
+    # a pcap capture is never one frame: only SeyondPcapEpisodesConverter imports it
+    allowed_exts = [e for e in ALLOWED_POINTCLOUD_EXTENSIONS if e != PCAP_EXT]
     modality = "pointcloud episodes"
 
     class Item(BaseConverter.BaseItem):
@@ -348,6 +350,11 @@ class PointcloudEpisodeConverter(BaseConverter):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
+                elif ext.lower() == PCAP_EXT:
+                    # a pcap holds a whole lidar recording; only Seyond captures are imported
+                    # (SeyondPcapEpisodesConverter), and a capture is never one frame
+                    only_modality_items = False
+                    unsupported_exts.add(ext)
                 elif ext.lower() in self.allowed_exts:
                     try:
                         validate_pcd_ext(ext)

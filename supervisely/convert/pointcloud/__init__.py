@@ -9,3 +9,6 @@ from supervisely.convert.pointcloud.bag.bag_converter import BagConverter
 from supervisely.convert.pointcloud.lyft.lyft_converter import LyftConverter
 from supervisely.convert.pointcloud.nuscenes_conv.nuscenes_converter import NuscenesConverter
 from supervisely.convert.pointcloud.kitti_3d.kitti_3d_converter import KITTI3DConverter
+from supervisely.convert.pointcloud.seyond_pcap.seyond_pcap_converter import (
+    SeyondPcapConverter,
+)

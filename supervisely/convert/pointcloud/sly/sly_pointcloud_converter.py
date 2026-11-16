@@ -9,6 +9,7 @@ from supervisely.imaging.image import is_valid_ext
 from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
+from supervisely.pointcloud.seyond_pcap import _refuse_pcap_items
 
 
 class SLYPointcloudConverter(PointcloudConverter):
@@ -54,6 +55,7 @@ class SLYPointcloudConverter(PointcloudConverter):
         if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
         pcd_list, ann_dict, rimg_dict, rimg_ann_dict = [], {}, {}, {}
+        key_file_found = False
         for root, _, files in os.walk(self._input_data):
             dir_name = os.path.basename(root)
             for file in files:
@@ -63,6 +65,7 @@ class SLYPointcloudConverter(PointcloudConverter):
                 if file == "meta.json":
                     is_valid = self.validate_key_file(full_path)
                     if is_valid:
+                        key_file_found = True
                         continue
 
                 ext = get_file_ext(full_path)
@@ -116,6 +119,9 @@ class SLYPointcloudConverter(PointcloudConverter):
                         rimg_fig_path = None
                     item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
             self._items.append(item)
+        if sly_ann_detected or key_file_found:
+            # Supervisely data: its capture items would lose their frames (and are refused)
+            _refuse_pcap_items(pcd_list)
         return sly_ann_detected
 
     def to_supervisely(

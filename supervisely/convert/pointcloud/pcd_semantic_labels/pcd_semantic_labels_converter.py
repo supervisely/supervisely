@@ -15,6 +15,7 @@ from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConver
 from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.io.fs import get_file_ext
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
+from supervisely.pointcloud.seyond_pcap import PCAP_EXT
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
@@ -42,6 +43,8 @@ class PCDSemanticLabelsConverter(PointcloudConverter):
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
+                if get_file_ext(full_path).lower() == PCAP_EXT:
+                    continue  # a capture is a whole recording, never one labeled point cloud
                 try:
                     validate_pcd_ext(get_file_ext(full_path))
                     pcd_paths.append(full_path)

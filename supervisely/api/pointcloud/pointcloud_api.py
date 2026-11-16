@@ -39,6 +39,7 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
+from supervisely.pointcloud.seyond_pcap import PCAP_EXT
 from supervisely.sly_logger import logger
 
 POINT_CLOUD_MIME_TYPES = {
@@ -46,6 +47,7 @@ POINT_CLOUD_MIME_TYPES = {
     ".las": "application/vnd.las",
     ".laz": "application/vnd.laz",
     ".ply": "application/x-ply",
+    ".pcap": "application/vnd.tcpdump.pcap",
 }
 from supervisely.imaging import image as sly_image
 
@@ -1074,7 +1076,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 # Point clouds uploaded to Supervisely with IDs: [19618685, 19618686]
         """
 
-        team_files_exts = set(POINT_CLOUD_MIME_TYPES) - {".pcd"}
+        # .pcd and .pcap (a Seyond capture) are uploaded by hash, the rest through Team Files
+        team_files_exts = set(POINT_CLOUD_MIME_TYPES) - {".pcd", ".pcap"}
         tf_indices = [i for i, p in enumerate(paths) if get_file_ext(p).lower() in team_files_exts]
         hash_indices = [i for i in range(len(paths)) if i not in set(tf_indices)]
 
@@ -1340,10 +1343,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
         if os.path.isdir(dir_path) is False:
             raise ValueError(f"Path {dir_path} is not a directory or does not exist")
 
+        # a .pcap is a whole lidar recording, imported frame by frame (Seyond), never one item
+        def _is_single_pointcloud(path: str) -> bool:
+            return is_valid_format(path) and get_file_ext(path).lower() != PCAP_EXT
+
         if recursive:
-            paths = list_files_recursively(dir_path, filter_fn=is_valid_format)
+            paths = list_files_recursively(dir_path, filter_fn=_is_single_pointcloud)
         else:
-            paths = list_files(dir_path, filter_fn=is_valid_format)
+            paths = list_files(dir_path, filter_fn=_is_single_pointcloud)
 
         paths.sort()
 

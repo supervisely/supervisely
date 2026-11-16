@@ -68,6 +68,7 @@ class AvailablePointcloudConverters:
     LYFT = "lyft"
     NUSCENES = "nuscenes"
     KITTI3D = "kitti3d"
+    SEYOND_PCAP = "seyond_pcap"
 
 
 class AvailablePointcloudEpisodesConverters:
@@ -78,6 +79,7 @@ class AvailablePointcloudEpisodesConverters:
     LYFT = "lyft"
     KITTI360 = "kitti360"
     SEMANTIC_KITTI = "semantic_kitti"
+    SEYOND_PCAP = "seyond_pcap"
 
 
 class AvailableMeshConverters:

@@ -85,12 +85,13 @@ def create_classes_from_annotation(
     return meta
 
 def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
-    if renamed_classes:
-        for obj in ann_json["objects"]:
-            obj["classTitle"] = renamed_classes.get(obj["classTitle"], obj["classTitle"])
-            for tag in obj["tags"]:
-                tag["name"] = renamed_tags.get(tag["name"], tag["name"])
-    if renamed_tags:
-        for tag in ann_json["tags"]:
+    renamed_classes = renamed_classes or {}
+    renamed_tags = renamed_tags or {}
+    for obj in ann_json["objects"]:
+        obj["classTitle"] = renamed_classes.get(obj["classTitle"], obj["classTitle"])
+        # object tags follow a renamed tag whether or not their class was renamed
+        for tag in obj.get("tags", []):
             tag["name"] = renamed_tags.get(tag["name"], tag["name"])
+    for tag in ann_json.get("tags", []):
+        tag["name"] = renamed_tags.get(tag["name"], tag["name"])
     return ann_json

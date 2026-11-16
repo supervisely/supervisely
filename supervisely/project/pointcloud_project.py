@@ -23,6 +23,7 @@ from supervisely.io.fs import (
     dir_exists,
     ensure_base_path,
     file_exists,
+    get_file_ext,
     get_file_name,
     get_file_name_with_ext,
     list_files,
@@ -31,6 +32,7 @@ from supervisely.io.fs import (
     touch,
 )
 from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.pointcloud.seyond_pcap import _refuse_pcap_items
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely.project.project import Dataset, OpenMode
@@ -991,6 +993,38 @@ class PointcloudProject(VideoProject):
         raise NotImplementedError("Data versioning is not supported for PointcloudProject.")
 
 
+def _download_pointcloud_file(
+    download_fn: Callable[[int, str], None],
+    pointcloud_info,
+    path: str,
+    downloaded: Dict[str, str],
+) -> None:
+    """Download a point cloud's file, once per capture for the items that share one.
+
+    A lidar capture (``.pcap``) is one file with many frames, and each frame is an item that
+    reuses it. Its file is fetched for the first item only; the others get a hard link to it (a
+    copy where links are not possible), so 600 frames cost one download and one file on disk.
+    Other point clouds are downloaded per item, as before.
+
+    :param download_fn: ``api.pointcloud.download_path`` or ``api.pointcloud_episode.download_path``.
+    :param downloaded: The files fetched so far, by hash or link; updated in place.
+    """
+    key = pointcloud_info.hash or getattr(pointcloud_info, "link", None)
+    shared = key is not None and get_file_ext(pointcloud_info.name).lower() == ".pcap"
+    source = downloaded.get(key) if shared else None
+    if source is not None and os.path.isfile(source):
+        ensure_base_path(path)
+        silent_remove(path)
+        try:
+            os.link(source, path)
+        except OSError:
+            shutil.copyfile(source, path)
+        return
+    download_fn(pointcloud_info.id, path)
+    if shared:
+        downloaded[key] = path
+
+
 def download_pointcloud_project(
     api: Api,
     project_id: int,
@@ -1078,6 +1112,7 @@ def download_pointcloud_project(
     if dataset_ids is not None:
         filter_fn = lambda ds: ds.id in dataset_ids
 
+    downloaded_files: Dict[str, str] = {}  # capture hash or link -> its first downloaded path
     for parents, dataset in api.dataset.tree(project_id):
         if not filter_fn(dataset):
             continue
@@ -1130,7 +1165,12 @@ def download_pointcloud_project(
                 pointcloud_file_path = dataset_fs.generate_item_path(pointcloud_name)
                 if download_items:
                     try:
-                        api.pointcloud.download_path(pointcloud_id, pointcloud_file_path)
+                        _download_pointcloud_file(
+                            api.pointcloud.download_path,
+                            pointcloud_info,
+                            pointcloud_file_path,
+                            downloaded_files,
+                        )
                     except Exception as e:
                         logger.info(
                             "INFO FOR DEBUGGING",
@@ -1283,6 +1323,9 @@ def upload_pointcloud_project(
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
+    _refuse_pcap_items(
+        dataset_fs.get_item_paths(item_name)[0] for dataset_fs in project_fs for item_name in dataset_fs
+    )
     if project_name is None:
         project_name = project_fs.name
 
