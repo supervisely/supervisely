@@ -2599,13 +2599,15 @@ def download_video_project(
 
                 # When resuming, keep a video already in the dataset if it matches the server
                 # and only refresh its annotation and info; download it again otherwise. Its
-                # info is removed first, so a download cut off below leaves it untrusted.
+                # file and info are removed first and its annotation kept, so a download cut
+                # off below leaves the dataset readable and the video untrusted.
                 in_dataset = resume_download and dataset_fs.item_exists(video_name)
                 is_cached = in_dataset and _cached_video_matches(
                     dataset_fs, video_info, download_videos
                 )
                 if in_dataset and not is_cached:
                     silent_remove(dataset_fs.get_item_info_path(video_name))
+                    silent_remove(video_file_path)
 
                 if include_custom_data:
                     CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")
@@ -3006,11 +3008,13 @@ async def _download_project_item_async(
 
     # When resuming, keep a video already in the dataset if it matches the server
     # and only refresh its annotation and info; download it again otherwise. Its
-    # info is removed first, so a download cut off below leaves it untrusted.
+    # file and info are removed first and its annotation kept, so a download cut
+    # off below leaves the dataset readable and the video untrusted.
     in_dataset = resume_download and dataset_fs.item_exists(video.name)
     is_cached = in_dataset and _cached_video_matches(dataset_fs, video, download_videos)
     if in_dataset and not is_cached:
         silent_remove(dataset_fs.get_item_info_path(video.name))
+        silent_remove(video_file_path)
 
     if include_custom_data:
         CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")

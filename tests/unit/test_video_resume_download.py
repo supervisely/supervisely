@@ -32,7 +32,7 @@ VideoInfo = namedtuple(
 
 
 def _content(video_id):
-    return bytes([video_id % 256]) * (1000 + video_id)
+    return bytes([video_id % 256]) * (1000 + video_id % 100)
 
 
 def _video(video_id, updated_at="2026-01-01T00:00:00.000Z", with_size=True):
@@ -211,4 +211,21 @@ def test_resume_after_a_replacement_was_cut_off(tmp_path):
     _download(api, dest_dir, use_async=False, resume_download=True)
 
     assert api.downloaded == [1]
+    _assert_matches_server(dest_dir, api.videos)
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+def test_resume_does_not_keep_a_replaced_video_of_the_same_size(tmp_path, use_async):
+    """A video replaced on the server by one of the same name and size is not kept."""
+    dest_dir = str(tmp_path / "project")
+    api = _FakeApi([_video(1), _video(2)])
+    _download(api, dest_dir, use_async)
+
+    # Same name and byte size as clip_1.mp4, different id and content.
+    api.videos[0] = _video(101)._replace(name="clip_1.mp4")
+    _download(api, dest_dir, use_async, download_videos=False, resume_download=True)
+    api.downloaded.clear()
+    _download(api, dest_dir, use_async, resume_download=True)
+
+    assert api.downloaded == [101]
     _assert_matches_server(dest_dir, api.videos)
