@@ -209,3 +209,25 @@ def test_jfif_that_cannot_be_renamed_is_kept_as_is(monkeypatch, tmp_path):
 
     assert validate_image(str(path)) == str(path)
     assert path.exists()
+
+
+def test_skipped_image_is_logged_by_its_path(monkeypatch, tmp_path, no_pillow_heif):
+    from unittest import mock
+
+    from supervisely.convert.image import image_converter
+    from supervisely.convert.image.image_converter import ImageConverter
+
+    path = tmp_path / "IMG_0001.HEIC"
+    path.write_bytes(b"\x00" * 16)
+    conv = ImageConverter(str(tmp_path))
+    conv._items = [ImageConverter.Item(str(path))]
+    monkeypatch.setattr(conv, "merge_metas_with_conflicts", lambda api, ds: (None, {}, {}))
+    warnings = []
+    monkeypatch.setattr(image_converter.logger, "warning", lambda msg, *a, **k: warnings.append(msg))
+    api = mock.MagicMock()
+    api.image.get_list.return_value = []
+
+    conv.upload_dataset(api, dataset_id=1, log_progress=False)
+
+    assert f"Image {path} failed validation and will be skipped." in warnings
+    api.image.upload_paths.assert_not_called()
