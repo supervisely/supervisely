@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import time
 from typing import Dict, List, Optional, Tuple, Union
@@ -5,11 +6,16 @@ from typing import Dict, List, Optional, Tuple, Union
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 import supervisely.io.env as sly_env
+from supervisely.app.fastapi.utils import _set_main_loop
 from supervisely.app.singleton import Singleton
+from supervisely.sly_logger import logger
 
 
 class WebsocketManager(metaclass=Singleton):
     """Singleton manager for WebSocket connections, broadcasting and user cookie mapping."""
+
+    # a client that has not taken a message within this many seconds is dropped
+    _send_timeout = 60
 
     def __init__(self, path="/sly-app-ws"):
         """
@@ -30,6 +36,7 @@ class WebsocketManager(metaclass=Singleton):
         self.app.add_api_websocket_route(path=self.path, endpoint=self.endpoint)
 
     async def connect(self, websocket: WebSocket):
+        _set_main_loop()
         await websocket.accept()
         user_id = self._resolve_user_id(websocket)
         self.active_connections.append(websocket)
@@ -67,7 +74,18 @@ class WebsocketManager(metaclass=Singleton):
             targets = list(self.active_connections)
 
         for connection in list(targets):
-            await connection.send_json(d)
+            try:
+                await asyncio.wait_for(connection.send_json(d), timeout=self._send_timeout)
+            except Exception as exc:  # one broken client must not stop the others
+                logger.warning(
+                    "Dropping app websocket client that failed to receive changes",
+                    extra={"error": repr(exc)},
+                )
+                self.disconnect(connection)
+                try:
+                    await asyncio.wait_for(connection.close(), timeout=1)
+                except Exception:
+                    pass
 
     async def endpoint(self, websocket: WebSocket):
         await self.connect(websocket)
@@ -75,6 +93,8 @@ class WebsocketManager(metaclass=Singleton):
             while True:
                 data = await websocket.receive_text()
         except WebSocketDisconnect:
+            pass
+        finally:
             self.disconnect(websocket)
 
     def _resolve_user_id(self, websocket: WebSocket) -> Optional[int]:

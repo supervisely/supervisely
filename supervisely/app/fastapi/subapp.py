@@ -46,7 +46,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.app.exceptions import DialogWindowBase
 from supervisely.app.fastapi.custom_static_files import CustomStaticFiles
 from supervisely.app.fastapi.templating import Jinja2Templates
-from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.utils import _set_main_loop, run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
@@ -984,6 +984,8 @@ def create(
                 while True:
                     data = await websocket.receive_text()
             except WebSocketDisconnect:
+                pass
+            finally:
                 WebsocketManager().disconnect(websocket)
 
         import supervisely
@@ -1145,6 +1147,8 @@ def _init(
         app = _MainServer().get_server()
 
     handle_server_errors(app)
+    # widget callbacks send their changes on this loop (see _run_on_main_loop)
+    _add_event_handler(app, "startup", _set_main_loop)
 
     if headless is False:
         if "app_body_padding" not in StateJson():

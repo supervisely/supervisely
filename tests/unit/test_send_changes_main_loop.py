@@ -1,0 +1,174 @@
+"""send_changes() from a worker thread must run on the server's event loop.
+
+Websocket sends wait on loop-bound objects (uvicorn's write-buffer Event). Awaited
+from a throwaway loop, the wakeup set by the server loop never arrives and the
+callback hangs forever, holding the DataJson/StateJson lock.
+"""
+
+import asyncio
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+import pytest
+
+import supervisely.app.fastapi.utils as utils
+from supervisely.app.content import DataJson
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.singleton import Singleton
+
+
+@pytest.fixture(autouse=True)
+def isolated_state(monkeypatch):
+    saved_instances = dict(Singleton._instances)
+    saved_nested = dict(Singleton._nested_instances)
+    Singleton._instances.clear()
+    Singleton._nested_instances.clear()
+    monkeypatch.delenv("SUPERVISELY_MULTIUSER_APP_MODE", raising=False)
+    monkeypatch.setattr(utils, "_main_loop", None)
+    yield
+    Singleton._instances.clear()
+    Singleton._instances.update(saved_instances)
+    Singleton._nested_instances.clear()
+    Singleton._nested_instances.update(saved_nested)
+
+
+@pytest.fixture()
+def server_loop():
+    """A running loop in its own thread, registered the way app startup does it."""
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    asyncio.run_coroutine_threadsafe(_register(), loop).result(5)
+    yield loop
+    if loop.is_running():
+        loop.call_soon_threadsafe(loop.stop)
+    thread.join(5)
+    loop.close()
+
+
+async def _register():
+    utils._set_main_loop()
+
+
+async def _new_event():
+    return asyncio.Event()
+
+
+class _BackpressuredSocket:
+    """Mimics uvicorn: send() waits on an Event the server loop sets once the client drains."""
+
+    def __init__(self, loop):
+        self.loop = loop
+        self.writable = asyncio.run_coroutine_threadsafe(_new_event(), loop).result(5)
+        self.sent = []
+
+    async def send_json(self, d):
+        await self.writable.wait()
+        self.sent.append(d)
+
+    def drain_later(self, delay):
+        self.loop.call_soon_threadsafe(self.loop.call_later, delay, self.writable.set)
+
+
+def _run_in_worker(fn, timeout):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(fn).result(timeout)
+
+
+def test_runs_on_server_loop_and_returns_result(server_loop):
+    async def where():
+        return asyncio.get_running_loop()
+
+    assert _run_in_worker(lambda: utils._run_on_main_loop(where()), 5) is server_loop
+
+
+def test_exception_reaches_caller(server_loop):
+    async def boom():
+        raise ValueError("boom")
+
+    with pytest.raises(ValueError, match="boom"):
+        _run_in_worker(lambda: utils._run_on_main_loop(boom()), 5)
+
+
+def test_falls_back_without_server_loop():
+    async def where():
+        return asyncio.get_running_loop()
+
+    assert _run_in_worker(lambda: utils._run_on_main_loop(where()), 5) is not None
+
+
+def test_falls_back_on_server_loop_thread(server_loop):
+    # an async route calling the sync API: waiting on its own loop would deadlock
+    async def inner():
+        return asyncio.get_running_loop()
+
+    async def caller():
+        return utils._run_on_main_loop(inner()), asyncio.get_running_loop()
+
+    used, own = asyncio.run_coroutine_threadsafe(caller(), server_loop).result(5)
+    assert used is not own
+
+
+def test_returns_when_server_loop_stops(server_loop):
+    started = threading.Event()
+
+    async def forever():
+        started.set()
+        await asyncio.sleep(3600)
+
+    def call():
+        return utils._run_on_main_loop(forever())
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(call)
+        assert started.wait(5)
+        server_loop.call_soon_threadsafe(server_loop.stop)
+        assert future.result(10) is None
+
+
+def test_send_changes_survives_backpressure(server_loop, monkeypatch):
+    socket = _BackpressuredSocket(server_loop)
+    manager = WebsocketManager()
+    monkeypatch.setattr(manager, "active_connections", [socket])
+
+    def push(value):
+        DataJson()["value"] = value
+        DataJson().send_changes()
+
+    socket.drain_later(0.3)
+    _run_in_worker(lambda: push(1), 10)
+    # the lock was released: later pushes go through too
+    _run_in_worker(lambda: push(2), 10)
+    assert [d["data"][0]["value"] for d in socket.sent] == [1, 2]
+
+
+def test_broadcast_drops_broken_and_stalled_clients(server_loop, monkeypatch):
+    class Healthy:
+        def __init__(self):
+            self.sent = []
+
+        async def send_json(self, d):
+            self.sent.append(d)
+
+        async def close(self):
+            pass
+
+    class Broken(Healthy):
+        async def send_json(self, d):
+            raise RuntimeError('Cannot call "send" once a close message has been sent.')
+
+    class Stalled(Healthy):
+        async def send_json(self, d):
+            await asyncio.sleep(3600)
+
+    broken, stalled, healthy = Broken(), Stalled(), Healthy()
+    manager = WebsocketManager()
+    monkeypatch.setattr(manager, "active_connections", [broken, stalled, healthy])
+    monkeypatch.setattr(WebsocketManager, "_send_timeout", 0.2)
+
+    started = time.monotonic()
+    asyncio.run_coroutine_threadsafe(manager.broadcast({"data": []}), server_loop).result(5)
+    assert time.monotonic() - started < 3
+    assert healthy.sent == [{"data": []}]
+    assert manager.active_connections == [healthy]
