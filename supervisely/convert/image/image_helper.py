@@ -1,12 +1,13 @@
 import mimetypes
 import os
 import re
+import threading
 from pathlib import Path
 from typing import List, Union
 
 import magic
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFile
 
 from supervisely import Label, Rectangle, logger
 from supervisely.geometry.oriented_bbox import OrientedBBox
@@ -19,7 +20,9 @@ from supervisely.io.fs import (
 )
 
 Image.MAX_IMAGE_PIXELS = None
-EXT_TO_CONVERT = [".heic", ".avif", ".heif", ".jfif"]
+EXT_TO_CONVERT = [".heic", ".avif", ".heif"]
+_HEIF_EXTS = [".heic", ".heif"]
+_CONVERT_LOCK = threading.Lock()  # convert_to_jpg flips the process-wide LOAD_TRUNCATED_IMAGES
 
 
 def validate_image(path: str) -> tuple:
@@ -37,9 +40,23 @@ def validate_image(path: str) -> tuple:
             new_name = validate_mimetypes(name, path)
             if new_name != name:
                 img = read(path, remove_alpha_channel=False)
+                new_path = _free_path(path, get_file_ext(new_name))
+                try:
+                    write(new_path, img, remove_alpha_channel=False)
+                except Exception:
+                    silent_remove(new_path)  # keep the original, leave no partial file
+                    raise
                 silent_remove(path)
-                path = Path(path).with_name(new_name).as_posix()
-                write(path, img, remove_alpha_channel=False)
+                path = new_path
+            elif ext.lower() == ".jfif":
+                # JFIF is JPEG: keep the bytes, only rename it to .jpeg (the platform
+                # would otherwise store it as <name>.jfif.jpeg)
+                new_path = _free_path(path, ".jpeg")
+                try:
+                    os.rename(path, new_path)
+                    path = new_path
+                except OSError as e:  # e.g. a read-only folder: upload it as .jfif
+                    logger.debug(f"Could not rename {path} to .jpeg: {repr(e)}")
         return path
     except Exception as e:
         logger.warning(f"Skip image: {repr(e)}", extra={"file_path": path})
@@ -66,18 +83,73 @@ def validate_mimetypes(name: str, path: str) -> list:
     return new_img_name
 
 
-def convert_to_jpg(path) -> tuple:
-    """Convert image to jpg."""
-
-    # * do not remove folllowing imports, it is used to register avif/heic formats
-    import pillow_avif  # pylint: disable=import-error
-    from pillow_heif import register_heif_opener  # pylint: disable=import-error
-
+def _register_heif_opener() -> None:
+    """Register the HEIC/HEIF opener from pillow-heif, which Pillow does not read on its own."""
+    try:
+        from pillow_heif import register_heif_opener  # pylint: disable=import-error
+    except ImportError as e:
+        raise ImportError(
+            "HEIC/HEIF support is not installed. Install the 'pillow-heif' package."
+        ) from e
     register_heif_opener()
 
-    new_path = Path(path).with_suffix(".jpeg").as_posix()
-    with Image.open(path) as image:
-        image.convert("RGB").save(new_path)
+
+def _register_avif_opener() -> None:
+    """Use pillow-avif-plugin when it is installed, otherwise Pillow's built-in AVIF support."""
+    try:
+        import pillow_avif  # pylint: disable=import-error,unused-import
+
+        return
+    except ImportError:
+        pass
+
+    from PIL import features
+
+    try:
+        has_avif = features.check_module("avif")
+    except ValueError:  # Pillow older than 11.2 does not know the module
+        has_avif = False
+    if not has_avif:
+        raise ImportError(
+            "AVIF support is not installed. Install Pillow 11.3+ (Python 3.9+) "
+            "or the 'pillow-avif-plugin' package."
+        )
+
+
+def _free_path(path: str, ext: str) -> str:
+    """Path with extension `ext` next to `path` that does not overwrite an existing file."""
+    new_path = Path(path).with_suffix(ext)
+    i = 0
+    while new_path.exists():
+        i += 1
+        suffix = ext if i == 1 else f"_{i}{ext}"
+        new_path = Path(f"{path}{suffix}")
+    return new_path.as_posix()
+
+
+def convert_to_jpg(path) -> str:
+    """Convert a HEIC, HEIF or AVIF image to JPEG."""
+
+    ext = get_file_ext(path).lower()
+    if ext in _HEIF_EXTS:
+        _register_heif_opener()
+    elif ext == ".avif":
+        _register_avif_opener()
+
+    new_path = _free_path(path, ".jpeg")
+    # the SDK loads truncated images by default; pillow-heif then returns an all-black
+    # picture for a truncated HEIC, so fail on it instead and keep the original
+    with _CONVERT_LOCK:
+        load_truncated = ImageFile.LOAD_TRUNCATED_IMAGES
+        ImageFile.LOAD_TRUNCATED_IMAGES = False
+        try:
+            with Image.open(path) as image:
+                image.convert("RGB").save(new_path, format="JPEG")
+        except Exception:
+            silent_remove(new_path)  # do not leave a half-written JPEG behind
+            raise
+        finally:
+            ImageFile.LOAD_TRUNCATED_IMAGES = load_truncated
     silent_remove(path)
     return new_path
 
