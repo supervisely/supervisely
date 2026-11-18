@@ -153,9 +153,10 @@ class ImageConverter(BaseConverter):
             item_metas = []
             valid_batch_items = []
             for item in batch:
+                original_path = item.path
                 item.path = self.validate_image(item.path)
                 if item.path is None:
-                    logger.warning(f"Image {item.path} failed validation and will be skipped.")
+                    logger.warning(f"Image {original_path} failed validation and will be skipped.")
                     continue  # image has failed validation
                 valid_batch_items.append(item)
                 name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
