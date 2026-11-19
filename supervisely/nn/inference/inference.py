@@ -1145,7 +1145,10 @@ class Inference:
             for file_key, file_info in ckpt_files.items():
                 try:
                     content = file_info["content"]
-                    fname = file_info.get("name", f"{file_key}.txt")
+                    # the name comes from the checkpoint content: keep the file name, drop any path
+                    fname = os.path.basename(file_info.get("name", f"{file_key}.txt"))
+                    if fname in ("", ".", ".."):
+                        raise ValueError(f"Invalid file name in checkpoint: {fname!r}")
                     dst_path = os.path.join(self.model_dir, fname)
                     # Overwrite if exists
                     if os.path.exists(dst_path):
@@ -3622,8 +3625,8 @@ class Inference:
 
                 names = []
                 for file in files:
-                    name = file.filename
-                    if name is None or name == "":
+                    name = os.path.basename(file.filename or "")
+                    if name == "":
                         name = rand_str(10)
                     ext = Path(name).suffix
                     img_bytes = b""
@@ -3668,8 +3671,8 @@ class Inference:
 
                 names = []
                 for file in files:
-                    name = file.filename
-                    if name is None or name == "":
+                    name = os.path.basename(file.filename or "")
+                    if name == "":
                         name = rand_str(10)
                     ext = Path(name).suffix
                     img_bytes = b""
@@ -3720,7 +3723,7 @@ class Inference:
             state = json.loads(state)
 
             file = files[0]
-            video_name = files[0].filename
+            video_name = os.path.basename(files[0].filename or "") or rand_str(10)
             video_source = files[0].file
             file_size = file.size
 
@@ -3737,9 +3740,7 @@ class Inference:
             else:
                 video_path = os.path.join(tempfile.gettempdir(), video_name)
                 with open(video_path, "wb") as video_file:
-                    shutil.copyfileobj(
-                        video_source, open(video_path, "wb"), length=(64 * 1024 * 1024)
-                    )
+                    shutil.copyfileobj(video_source, video_file, length=(64 * 1024 * 1024))
 
             inference_request, _ = self.inference_requests_manager.schedule_task(
                 self._inference_video,

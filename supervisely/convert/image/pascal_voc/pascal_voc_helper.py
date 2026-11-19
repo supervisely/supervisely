@@ -316,6 +316,16 @@ def update_meta_from_xml(
     return meta
 
 
+def _class_set_file_name(class_name: str, suffix: str) -> str:
+    """File name of the per-class image set ``ImageSets/Main/<class>_<suffix>.txt``.
+
+    Class names are user data and may contain "/" or "\\" (or be "../.."): path separators
+    become "_", so the file always stays in ``ImageSets/Main``.
+    """
+    file_class_name = class_name.replace("/", "_").replace("\\", "_")
+    return f"{file_class_name}_{suffix}.txt"
+
+
 def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     """
     Converts Supervisely annotation to Pascal VOC format annotation.
@@ -499,9 +509,8 @@ def sly_ds_to_pascal_voc(
             if obj_cls.name == "neutral":
                 continue
             for o in write_objs:
-                with open(
-                    os.path.join(result_main_sets_dir, f'{obj_cls.name}_{o["suffix"]}.txt'), "a"
-                ) as f:
+                set_file_name = _class_set_file_name(obj_cls.name, o["suffix"])
+                with open(os.path.join(result_main_sets_dir, set_file_name), "a") as f:
                     for img_stats in o["imgs"]:
                         v = "1" if obj_cls.name in img_stats["classes"] else "-1"
                         f.write(f'{img_stats["name"]} {v}\n')
