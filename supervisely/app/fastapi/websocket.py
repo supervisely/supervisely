@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import time
 from typing import Dict, List, Optional, Tuple, Union
@@ -5,11 +6,17 @@ from typing import Dict, List, Optional, Tuple, Union
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 import supervisely.io.env as sly_env
+import supervisely.app.fastapi.utils as utils
+from supervisely.app.fastapi.utils import _set_main_loop
 from supervisely.app.singleton import Singleton
+from supervisely.sly_logger import logger
 
 
 class WebsocketManager(metaclass=Singleton):
     """Singleton manager for WebSocket connections, broadcasting and user cookie mapping."""
+
+    # a client that has not taken a message within this many seconds is dropped
+    _send_timeout = 60
 
     def __init__(self, path="/sly-app-ws"):
         """
@@ -22,6 +29,7 @@ class WebsocketManager(metaclass=Singleton):
         self._connection_users: Dict[WebSocket, Optional[Union[int, str]]] = {}
         self._cookie_user_map: Dict[str, Tuple[Union[int, str], float]] = {}
         self._cookie_ttl_seconds = 60 * 60
+        self._closing = set()
 
     def set_app(self, app: FastAPI):
         if self.app is not None:
@@ -30,6 +38,7 @@ class WebsocketManager(metaclass=Singleton):
         self.app.add_api_websocket_route(path=self.path, endpoint=self.endpoint)
 
     async def connect(self, websocket: WebSocket):
+        _set_main_loop()
         await websocket.accept()
         user_id = self._resolve_user_id(websocket)
         self.active_connections.append(websocket)
@@ -66,8 +75,37 @@ class WebsocketManager(metaclass=Singleton):
         else:
             targets = list(self.active_connections)
 
-        for connection in list(targets):
-            await connection.send_json(d)
+        if targets:
+            await asyncio.gather(*(self._send(connection, d) for connection in targets))
+
+    async def _send(self, connection: WebSocket, d: dict):
+        try:
+            await asyncio.wait_for(connection.send_json(d), timeout=self._send_timeout)
+        except Exception as exc:  # one broken client must not stop the others
+            logger.warning(
+                "Dropping app websocket client that failed to receive changes",
+                extra={"error": repr(exc)},
+            )
+            self.disconnect(connection)
+            # the page reconnects only after the close frame reaches it. On the server loop,
+            # close in the background: it waits for the same client. Elsewhere the loop ends
+            # with this call, so give it a moment here.
+            if asyncio.get_running_loop() is utils._main_loop:
+                closing = asyncio.ensure_future(self._close_quietly(connection))
+                self._closing.add(closing)
+                closing.add_done_callback(self._closing.discard)
+            else:
+                try:
+                    await asyncio.wait_for(self._close_quietly(connection), timeout=1)
+                except asyncio.TimeoutError:
+                    pass
+
+    @staticmethod
+    async def _close_quietly(connection: WebSocket):
+        try:
+            await connection.close()
+        except Exception:
+            pass
 
     async def endpoint(self, websocket: WebSocket):
         await self.connect(websocket)
@@ -75,6 +113,8 @@ class WebsocketManager(metaclass=Singleton):
             while True:
                 data = await websocket.receive_text()
         except WebSocketDisconnect:
+            pass
+        finally:
             self.disconnect(websocket)
 
     def _resolve_user_id(self, websocket: WebSocket) -> Optional[int]:

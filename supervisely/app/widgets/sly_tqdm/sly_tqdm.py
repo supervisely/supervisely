@@ -13,7 +13,7 @@ from supervisely import is_development, is_production
 
 # from supervisely import _original_tqdm as tqdm
 from supervisely.app import DataJson
-from supervisely.app.fastapi import run_sync
+from supervisely.app.fastapi.utils import _run_on_main_loop
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import EventType, logger
@@ -114,7 +114,9 @@ class _slyProgressBarIO:
                     DataJson()[f"{self.widget_id}"][key] = value
 
                 if synchronize_changes is True:
-                    run_sync(DataJson().synchronize_changes())
+                    _run_on_main_loop(
+                        DataJson().synchronize_changes(), key=DataJson()._send_key()
+                    )
 
                 self.prev_state = copy.deepcopy(self.progress)
 

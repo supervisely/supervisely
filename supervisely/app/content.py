@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import copy
 import enum
-import functools
 import json
 import os
 import queue
@@ -29,6 +28,7 @@ import supervisely.app.fastapi.multi_user as multi_user
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.fastapi import run_sync
+from supervisely.app.fastapi.utils import _run_on_main_loop
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.singleton import Singleton
 from supervisely.io import env as sly_env
@@ -38,12 +38,27 @@ from supervisely.sly_logger import logger
 _pool = ThreadPoolExecutor()
 
 
+def _release_if_acquired(lock: threading.Lock):
+    def callback(attempt):
+        if not attempt.cancelled() and attempt.exception() is None and attempt.result():
+            lock.release()
+
+    return callback
+
+
 @contextlib.asynccontextmanager
 async def async_lock(lock: threading.Lock):
-    loop = asyncio.get_event_loop()
     # poll with timeout: avoids deadlock when nested locks compete for _pool slots
-    while not await loop.run_in_executor(_pool, functools.partial(lock.acquire, timeout=0.1)):
-        pass
+    while True:
+        attempt = _pool.submit(lock.acquire, timeout=0.1)
+        try:
+            acquired = await asyncio.wrap_future(attempt)
+        except asyncio.CancelledError:
+            # cancelled while the attempt may still succeed: release what nobody will
+            attempt.add_done_callback(_release_if_acquired(lock))
+            raise
+        if acquired:
+            break
     try:
         yield  # the lock is held
     finally:
@@ -236,7 +251,12 @@ class _PatchableJson(dict):
         user_id = None
         if sly_env.is_multiuser_mode_enabled():
             user_id = sly_env.user_from_multiuser_app()
-        run_sync(self.synchronize_changes(user_id=user_id))
+        # on the server's loop: websocket sends awaited from a throwaway loop can hang forever
+        _run_on_main_loop(self.synchronize_changes(user_id=user_id), key=self._send_key(user_id))
+
+    def _send_key(self, user_id: Optional[Union[int, str]] = None):
+        # sends of one store to the same users are interchangeable until one begins
+        return (self._field, id(self), user_id)
 
     def raise_for_key(self, key: str):
         if key in self:

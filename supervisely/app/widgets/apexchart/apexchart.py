@@ -6,7 +6,7 @@ from typing import Any, List, Literal, NamedTuple, Tuple, Union
 
 from supervisely import logger
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.utils import _run_on_main_loop
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.widgets import Widget
 from supervisely.imaging.color import hex2rgb, rgb2hex
@@ -224,7 +224,7 @@ class Apexchart(Widget):
 
     def _force_series_update(self) -> None:
         # necessary for the force rendering of data in apexchart
-        run_sync(
+        _run_on_main_loop(
             WebsocketManager().broadcast(
                 {
                     "runAction": {
