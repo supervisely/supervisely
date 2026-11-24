@@ -1016,3 +1016,18 @@ def test_another_sensors_serial_is_never_skipped_over(tmp_path):
     )
     assert _find_angle_tables(log, {SERIAL}) == [(SERIAL, table_packet(1))]
 
+
+def test_a_table_file_is_its_packet_without_what_follows(tmp_path):
+    root = tmp_path / "in"
+    for minute, extra in ((0, b""), (1, b"\n")):
+        folder = root / f"r{minute}"
+        folder.mkdir(parents=True)
+        robinw_capture(
+            folder / f"v_front_robinW_2026-01-01--00-0{minute}-00.pcap", [1, 2],
+            start=1_700_000_000.0 + minute * 0.04,
+        )
+        (folder / f"{SERIAL}.anglehv").write_bytes(table_packet(1) + extra)
+    converter = SeyondPcapEpisodesConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert set(_tables(converter).values()) == {table_packet(1)}
+    assert [len(items) for _, items in converter._group_items()] == [2]

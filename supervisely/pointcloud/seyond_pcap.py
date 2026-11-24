@@ -443,6 +443,15 @@ def _angle_table_size(data, start: int = 0) -> Optional[int]:
     return size
 
 
+def _angle_table_packet(data: bytes) -> bytes:
+    """A table file's packet without anything after it, when its size field says where it ends.
+
+    The same table then has the same bytes, and hash, whether it was read from a file or a log.
+    """
+    size = _angle_table_size(data)
+    return data[:size] if size is not None else data
+
+
 def _is_angle_table(data: bytes) -> bool:
     """The bytes are a Robin W angle table packet, as the labeling tool reads one from a file.
 

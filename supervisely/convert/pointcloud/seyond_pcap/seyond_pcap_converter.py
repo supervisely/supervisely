@@ -46,6 +46,7 @@ from supervisely.pointcloud.seyond_pcap import (
     PCAP_EXT,
     SeyondPcapError,
     SeyondPcapIndex,
+    _angle_table_packet,
     _find_angle_tables,
     _is_angle_table,
     index_pcap,
@@ -439,7 +440,7 @@ class SeyondPcapConverter(PointcloudConverter):
                 if not _is_angle_table(data):
                     logger.warning(f"'{name}' is not a Robin W angle table, so it is not used.")
                     return {}
-                found = [(get_file_name(path), data)]
+                found = [(get_file_name(path), _angle_table_packet(data))]
             else:
                 logger.info(f"Reading Robin W angle tables from '{name}'...")
                 found = _find_angle_tables(local_path, serials)
