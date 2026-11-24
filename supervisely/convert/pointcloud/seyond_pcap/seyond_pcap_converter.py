@@ -403,7 +403,7 @@ class SeyondPcapConverter(PointcloudConverter):
                 found = [(get_file_name(path), data)]
             else:
                 logger.info(f"Reading Robin W angle tables from '{name}'...")
-                found = _find_angle_tables(local_path)
+                found = _find_angle_tables(local_path, serials)
         finally:
             if temp_path is not None:
                 silent_remove(temp_path)

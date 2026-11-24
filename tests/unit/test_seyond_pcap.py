@@ -959,3 +959,21 @@ def test_a_failure_after_the_table_keeps_it_in_the_target(tmp_path, monkeypatch)
     api.fail_on, api.calls = 0, 0
     _upload(converter, api, monkeypatch)
     assert len(api.added) == 1
+
+
+def test_the_serial_before_a_table_is_one_a_capture_has(tmp_path):
+    # a log that keeps other text between the serial and the table
+    log = tmp_path / "v--2026-01-01--00-00-00.log"
+    log.write_bytes(
+        b"\x01\x00\x00\x00" + SERIAL.encode() + b"\x00\x02\x00\x00\x00hostname-a\x00\x01\x00\x00\x00" + table_packet(1)
+    )
+    assert _find_angle_tables(log) == [("hostname-a", table_packet(1))]
+    assert _find_angle_tables(log, {SERIAL}) == [(SERIAL, table_packet(1))]
+    assert _find_angle_tables(log, {OTHER_SERIAL}) == []
+    root = tmp_path / "in"
+    root.mkdir()
+    log.rename(root / log.name)
+    robinw_capture(root / "v_front_robinW_2026-01-01--00-00-00.pcap", [1])
+    converter = SeyondPcapConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert _tables(converter)["v_front_robinW_2026-01-01--00-00-00.pcap"] == table_packet(1)

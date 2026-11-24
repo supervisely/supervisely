@@ -448,12 +448,16 @@ def _is_angle_table(data: bytes) -> bool:
     return _angle_table_size(data) == len(data)
 
 
-def _find_angle_tables(path: Union[str, os.PathLike]) -> List[Tuple[str, bytes]]:
+def _find_angle_tables(
+    path: Union[str, os.PathLike], serials: Optional[set] = None
+) -> List[Tuple[str, bytes]]:
     """The Robin W angle tables a file records, such as a vehicle log, in the order they appear.
 
     The scan needs no schema: it finds every angle table packet (see :func:`_angle_table_size`)
     and takes the sensor's serial number from the text that ends closest before it, within 512
-    bytes, where a log keeps the record's other fields. A table with no text before it is skipped.
+    bytes, where a log keeps the record's other fields. With ``serials``, the closest text that is
+    one of them: a log may keep other text (a host name) between the serial and the table. A
+    table with no such text before it is skipped.
 
     :returns: ``(serial, packet)`` pairs; a log that records a table again holds it more than once.
     """
@@ -471,8 +475,10 @@ def _find_angle_tables(path: Union[str, os.PathLike]) -> List[Tuple[str, bytes]]
                 position = data.find(magic, position + 1)
                 continue
             window = data[max(0, position - _SERIAL_WINDOW) : position]
-            serials = _SERIAL_BEFORE_TABLE.findall(window)
-            if serials:
-                tables.append((serials[-1].decode("ascii"), data[position : position + size]))
+            texts = [t.decode("ascii") for t in _SERIAL_BEFORE_TABLE.findall(window)]
+            if serials is not None:
+                texts = [t for t in texts if t in serials]
+            if texts:
+                tables.append((texts[-1], data[position : position + size]))
             position = data.find(magic, position + size)
     return tables
