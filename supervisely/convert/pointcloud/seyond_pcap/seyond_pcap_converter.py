@@ -675,6 +675,11 @@ class SeyondPcapConverter(PointcloudConverter):
                 )
             except Exception:
                 self._remove_partial_group(api, dataset, dataset_info, added_ids)
+                if dataset.id == dataset_info.id and any(item.table for item in items):
+                    logger.info(
+                        f"The Robin W angle tables stay in dataset '{dataset.name}' (ID: "
+                        f"{dataset.id}): importing into it again reuses them."
+                    )
                 raise
             logger.info(f"Dataset '{dataset.name}' (ID: {dataset.id}) has been uploaded.")
 
