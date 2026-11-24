@@ -23,12 +23,12 @@ from supervisely.convert.pointcloud.seyond_pcap.seyond_pcap_helper import (
     LABELS_DIR_NAME,
     LABELS_FILE_NAME,
     LABELS_META_NAME,
-    LOG_EXT,
+    _LOG_EXT,
     SENSORS_CONFIG_NAME,
     SensorsConfig,
     _AngleTable,
     parse_capture_name,
-    parse_log_name,
+    _parse_log_name,
     sensor_key,
 )
 from supervisely.convert.pointcloud.sly.sly_pointcloud_helper import rename_in_json
@@ -253,7 +253,7 @@ class SeyondPcapConverter(PointcloudConverter):
                 ext = get_file_ext(file).lower()
                 if ext == PCAP_EXT:
                     pcap_paths.append(path)
-                elif ext in (LOG_EXT, ANGLE_TABLE_EXT) and not file.startswith("._"):
+                elif ext in (_LOG_EXT, ANGLE_TABLE_EXT) and not file.startswith("._"):
                     # where Robin W angle tables come from, never items
                     table_paths.append(path)
                 elif file == SENSORS_CONFIG_NAME and config_path is None:
@@ -349,7 +349,7 @@ class SeyondPcapConverter(PointcloudConverter):
         def source_key(path: str):
             if get_file_ext(path).lower() == ANGLE_TABLE_EXT:
                 return os.path.dirname(path), get_file_name(path)
-            parsed = parse_log_name(path)
+            parsed = _parse_log_name(path)
             if parsed is None:
                 return None
             return os.path.dirname(path), (parsed["device"], parsed["timestamp"])
@@ -420,7 +420,7 @@ class SeyondPcapConverter(PointcloudConverter):
             tables = self._read_tables(path, serials)
             if not tables:
                 continue
-            parsed = parse_log_name(path) if get_file_ext(path).lower() == LOG_EXT else None
+            parsed = _parse_log_name(path) if get_file_ext(path).lower() == _LOG_EXT else None
             recording = (parsed["device"], parsed["timestamp"]) if parsed else None
             sources.append(_TableSource(path, os.path.dirname(path), recording, tables))
         return sources
@@ -483,8 +483,8 @@ class SeyondPcapConverter(PointcloudConverter):
                     item.table = found.get(item.index.serial)
             for serial, table in sorted(found.items()):
                 logger.info(
-                    f"The vehicle log has no angle table for Robin W sensor {serial}: using the "
-                    f"latest one kept for it ({table.source})."
+                    f"The upload has no angle table for Robin W sensor {serial}: using the latest "
+                    f"one kept for it ({table.source})."
                 )
 
         kept = []
@@ -492,15 +492,15 @@ class SeyondPcapConverter(PointcloudConverter):
             if item.index.needs_angle_table and item.table is None:
                 logger.warning(
                     f"Skipped Seyond capture '{os.path.basename(item.path)}': no angle table for "
-                    f"Robin W sensor {item.index.serial}. Upload the vehicle log ({LOG_EXT}) of "
-                    "the recording with its captures."
+                    f"Robin W sensor {item.index.serial} in the upload, the project or the team. "
+                    f"Upload the vehicle log ({_LOG_EXT}) of the recording with its captures."
                 )
                 continue
             kept.append(item)
         if not kept:
             raise RuntimeError(
                 "None of the Seyond captures can be imported: the Robin W sensors' angle tables "
-                f"are missing. Upload the vehicle log ({LOG_EXT}) of each recording with its captures."
+                f"are missing. Upload the vehicle log ({_LOG_EXT}) of each recording with its captures."
             )
         self._items = kept
 

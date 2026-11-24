@@ -28,7 +28,7 @@ _CAPTURE_NAME = re.compile(
 
 
 #: The vehicle log of a recording, next to its captures: where Robin W angle tables are read from.
-LOG_EXT = ".log"
+_LOG_EXT = ".log"
 # {device}--{timestamp}.log, e.g. truck-1--2026-08-26--16-48-00
 _LOG_NAME = re.compile(
     r"^(?P<device>.+)--(?P<timestamp>\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}(?:[.\-]\d+)?)$"
@@ -50,7 +50,7 @@ def parse_capture_name(file_name: str) -> Optional[Dict[str, str]]:
     return match.groupdict()
 
 
-def parse_log_name(file_name: str) -> Optional[Dict[str, str]]:
+def _parse_log_name(file_name: str) -> Optional[Dict[str, str]]:
     """Split ``{device}--{timestamp}.log``; None for any other name."""
     stem = os.path.splitext(os.path.basename(file_name))[0]
     match = _LOG_NAME.match(stem)
