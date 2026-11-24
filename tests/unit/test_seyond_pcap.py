@@ -1005,3 +1005,14 @@ def test_other_logs_are_read_only_for_sensors_still_without_a_table(tmp_path, mo
     assert converter.validate_format()
     assert sorted(read) == ["v--2025-12-31--00-00-00.log", "w--2025-12-31--00-00-00.log"]
     assert _tables(converter)["v_front_robinW_2026-01-01--00-00-00.pcap"] == table_packet(5)
+
+
+def test_another_sensors_serial_is_never_skipped_over(tmp_path):
+    other = "500000000009"  # a sensor that is not in the upload
+    log = tmp_path / "v--2026-01-01--00-00-00.log"
+    log.write_bytes(
+        b"status " + SERIAL.encode() + b"\x00ok\x00" + log_record(other, table_packet(9))
+        + bytes(1000) + log_record(SERIAL, table_packet(1))
+    )
+    assert _find_angle_tables(log, {SERIAL}) == [(SERIAL, table_packet(1))]
+

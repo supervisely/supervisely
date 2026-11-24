@@ -459,6 +459,10 @@ def _is_angle_table(data: bytes) -> bool:
     return len(data) >= _data_header_size(data, 0) + _ANGLE_TABLE_BYTES
 
 
+def _serial_shape(text: str) -> str:
+    return re.sub(r"[A-Za-z]", "a", re.sub(r"[0-9]", "0", text))
+
+
 def _find_angle_tables(
     path: Union[str, os.PathLike], serials: Optional[set] = None
 ) -> List[Tuple[str, bytes]]:
@@ -466,9 +470,11 @@ def _find_angle_tables(
 
     The scan needs no schema: it finds every angle table packet (see :func:`_angle_table_size`)
     and takes the sensor's serial number from the text that ends closest before it, within 512
-    bytes, where a log keeps the record's other fields. With ``serials``, the closest text that is
-    one of them: a log may keep other text (a host name) between the serial and the table. A
-    table with no such text before it is skipped.
+    bytes, where a log keeps the record's other fields. With ``serials``, the closest text shaped
+    like one of them (the same digits and letters in the same places) is the table's serial, and
+    the table is kept only if it is one of them: a log may keep other text (a host name) between
+    the serial and the table, and another sensor's serial is never skipped over. A table with no
+    such text before it is skipped.
 
     :returns: ``(serial, packet)`` pairs; a log that records a table again holds it more than once.
     """
@@ -488,6 +494,8 @@ def _find_angle_tables(
             window = data[max(0, position - _SERIAL_WINDOW) : position]
             texts = [t.decode("ascii") for t in _SERIAL_BEFORE_TABLE.findall(window)]
             if serials is not None:
+                shapes = {_serial_shape(serial) for serial in serials}
+                texts = [t for t in texts if _serial_shape(t) in shapes][-1:]
                 texts = [t for t in texts if t in serials]
             if texts:
                 tables.append((texts[-1], data[position : position + size]))
