@@ -496,6 +496,7 @@ class SeyondPcapConverter(PointcloudConverter):
                 entity[ApiField.HASH],
                 None,
                 f"dataset {entity[ApiField.DATASET_ID]} of project {entity[ApiField.PROJECT_ID]}",
+                entity[ApiField.CREATED_AT],
             )
             for serial, entity in latest.items()
         }
@@ -540,6 +541,8 @@ class SeyondPcapConverter(PointcloudConverter):
                     ApiField.TYPE: ATTACHMENT_ENTITY_TYPE,
                     ApiField.META: {"kind": ANGLE_TABLE_KIND, "serial": serial},
                 }
+                if table.created_at is not None:
+                    entity[ApiField.CREATED_AT] = table.created_at
                 if table.data is None or table.hash in stored:
                     entity[ApiField.HASH] = table.hash
                 else:

@@ -204,6 +204,9 @@ class _AngleTable:
     data: Optional[bytes]
     #: Where it came from, for the log.
     source: str
+    #: When the attachment it is copied from was created: the copy keeps it, so that it never
+    #: passes for a newer table than the one it copies.
+    created_at: Optional[str] = None
 
     @property
     def title(self) -> str:

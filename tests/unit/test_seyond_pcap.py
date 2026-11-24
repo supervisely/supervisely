@@ -903,6 +903,8 @@ def test_a_missing_table_comes_from_the_latest_one_kept(tmp_path, monkeypatch, w
     api = _TablesApi(kept=kept, stored={"OLD", "NEW"})
     _upload(converter, api, monkeypatch)
     assert [(a["meta"]["serial"], a["hash"]) for a in api.added] == [(SERIAL, "NEW")]
+    # the copy keeps the time of the table it copies: it never passes for a newer one
+    assert api.added[0]["createdAt"] == "2026-02-01T00:00:00.000Z"
     # the rear sensor has no table anywhere: its capture is not imported, the others are
     assert any("no angle table for Robin W sensor 500000000002" in w for w in warnings)
     assert sorted(os.path.basename(i.path) for i in converter.get_items()) == [
