@@ -444,8 +444,19 @@ def _angle_table_size(data, start: int = 0) -> Optional[int]:
 
 
 def _is_angle_table(data: bytes) -> bool:
-    """The bytes are one Robin W angle table packet, whole, as the sensor sent it."""
-    return _angle_table_size(data) == len(data)
+    """The bytes are a Robin W angle table packet, as the labeling tool reads one from a file.
+
+    The tool's rule (``AngleHvTable::from_packet``): the data magic, item type 100 and a whole
+    table after the header; it does not read the size field, nor anything after the table.
+    """
+    if not _INNO_DATA_HEADER_SIZE_V1 <= len(data) <= _ANGLE_TABLE_MAX_PACKET:
+        return False
+    if (
+        _U16_LE.unpack_from(data, 0)[0] != INNO_DATA_PACKET_MAGIC
+        or data[_INNO_ITEM_TYPE_OFFSET] != INNO_ITEM_TYPE_ANGLEHV_TABLE
+    ):
+        return False
+    return len(data) >= _data_header_size(data, 0) + _ANGLE_TABLE_BYTES
 
 
 def _find_angle_tables(

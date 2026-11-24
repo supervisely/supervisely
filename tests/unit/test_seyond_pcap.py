@@ -704,14 +704,18 @@ def test_angle_tables_in_a_log(tmp_path):
     "data, expected",
     [
         (table_packet(), True),
-        (table_packet() + b"\x00", False),  # more than the packet
-        (table_packet(size=49000), False),  # too short to hold the table
+        # the tool reads the table after the header and nothing else: a trailing newline, or
+        # the packet cut right after the table, is still the table
+        (table_packet() + b"\n", True),
+        (table_packet()[:50000], True),
+        (table_packet()[:49999], False),  # too short to hold the table
+        (table_packet(size=49000), False),
         (table_packet()[:30000], False),
         (seyond_packet(1), False),
         (b"", False),
     ],
 )
-def test_a_table_file_is_one_whole_table_packet(data, expected):
+def test_a_table_file_is_what_the_tool_reads(data, expected):
     assert _is_angle_table(data) is expected
 
 
