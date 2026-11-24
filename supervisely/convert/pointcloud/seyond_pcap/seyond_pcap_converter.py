@@ -338,15 +338,43 @@ class SeyondPcapConverter(PointcloudConverter):
         A capture left without one gets the latest table the project, then the team, already
         keeps for that sensor when it is uploaded (:meth:`_tables_from_attachments`).
         """
-        serials = {item.index.serial for item in items if item.index.needs_angle_table}
-        sources: List[_TableSource] = []
-        for path in sorted(table_paths):
-            tables = self._read_tables(path, serials)
-            if not tables:
-                continue
-            parsed = parse_log_name(path) if get_file_ext(path).lower() == LOG_EXT else None
+        robinw = [item for item in items if item.index.needs_angle_table]
+        own = set()  # (folder, recording) of each capture, and (folder, serial)
+        for item in robinw:
+            parsed = parse_capture_name(item.path)
+            if parsed is not None:
+                own.add((os.path.dirname(item.path), (parsed["device"], parsed["timestamp"])))
+            own.add((os.path.dirname(item.path), item.index.serial))
+
+        def source_key(path: str):
+            if get_file_ext(path).lower() == ANGLE_TABLE_EXT:
+                return os.path.dirname(path), get_file_name(path)
+            parsed = parse_log_name(path)
+            if parsed is None:
+                return None
+            return os.path.dirname(path), (parsed["device"], parsed["timestamp"])
+
+        # a capture's own log or table file first; other files only for the sensors still without
+        # one, since a log is read whole (and downloaded first, when it is a link)
+        paths = sorted(table_paths)
+        first = [p for p in paths if source_key(p) in own]
+        sources = self._read_sources(first, {item.index.serial for item in robinw})
+        missing = set()
+        for item in robinw:
+            parsed = parse_capture_name(item.path)
             recording = (parsed["device"], parsed["timestamp"]) if parsed else None
-            sources.append(_TableSource(path, os.path.dirname(path), recording, tables))
+            folder = os.path.dirname(item.path)
+            has_own = any(
+                s.folder == folder
+                and item.index.serial in s.tables
+                and (s.recording == recording or s.recording is None)
+                for s in sources
+            )
+            if not has_own:
+                missing.add(item.index.serial)
+        if missing:
+            sources += self._read_sources([p for p in paths if p not in first], missing)
+        sources.sort(key=lambda source: source.path)
 
         used = set()
         for item in items:
@@ -385,6 +413,17 @@ class SeyondPcapConverter(PointcloudConverter):
                     f"The angle table of Robin W sensor {serial} comes from "
                     f"'{os.path.relpath(source.path, self._input_data)}'."
                 )
+
+    def _read_sources(self, paths: List[str], serials: set) -> List[_TableSource]:
+        sources = []
+        for path in paths:
+            tables = self._read_tables(path, serials)
+            if not tables:
+                continue
+            parsed = parse_log_name(path) if get_file_ext(path).lower() == LOG_EXT else None
+            recording = (parsed["device"], parsed["timestamp"]) if parsed else None
+            sources.append(_TableSource(path, os.path.dirname(path), recording, tables))
+        return sources
 
     def _read_tables(self, path: str, serials: set) -> Dict[str, _AngleTable]:
         """The angle tables a log or a table file holds for the given serial numbers."""

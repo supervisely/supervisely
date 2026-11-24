@@ -983,3 +983,25 @@ def test_the_serial_before_a_table_is_one_a_capture_has(tmp_path):
     converter = SeyondPcapConverter(str(root), None, False)
     assert converter.validate_format()
     assert _tables(converter)["v_front_robinW_2026-01-01--00-00-00.pcap"] == table_packet(1)
+
+
+def test_other_logs_are_read_only_for_sensors_still_without_a_table(tmp_path, monkeypatch):
+    root = _robinw_set(tmp_path / "in")
+    (root / "older").mkdir()
+    (root / "older" / "v--2025-12-31--00-00-00.log").write_bytes(log_record(SERIAL, table_packet(5)))
+    (root / "older" / "w--2025-12-31--00-00-00.log").write_bytes(b"a Falcon-only recording")
+    read = []
+    real = SeyondPcapConverter._read_tables
+    monkeypatch.setattr(
+        SeyondPcapConverter, "_read_tables", lambda self, p, s: read.append(os.path.basename(p)) or real(self, p, s)
+    )
+    converter = SeyondPcapEpisodesConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert read == ["v--2026-01-01--00-00-00.log"]
+    # without the recording's own log, the others are read for the sensors it would have given
+    (root / "v--2026-01-01--00-00-00.log").unlink()
+    read.clear()
+    converter = SeyondPcapEpisodesConverter(str(root), None, False)
+    assert converter.validate_format()
+    assert sorted(read) == ["v--2025-12-31--00-00-00.log", "w--2025-12-31--00-00-00.log"]
+    assert _tables(converter)["v_front_robinW_2026-01-01--00-00-00.pcap"] == table_packet(5)
