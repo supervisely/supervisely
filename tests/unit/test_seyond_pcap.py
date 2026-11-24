@@ -622,8 +622,8 @@ from supervisely.pointcloud.seyond_pcap import (
     _is_angle_table,
 )
 
-SERIAL = "532102500133"
-OTHER_SERIAL = "531062600712"
+SERIAL = "500000000001"
+OTHER_SERIAL = "500000000002"
 
 
 def status_packet(serial, size=128):
@@ -904,7 +904,7 @@ def test_a_missing_table_comes_from_the_latest_one_kept(tmp_path, monkeypatch, w
     _upload(converter, api, monkeypatch)
     assert [(a["meta"]["serial"], a["hash"]) for a in api.added] == [(SERIAL, "NEW")]
     # the rear sensor has no table anywhere: its capture is not imported, the others are
-    assert any("no angle table for Robin W sensor 531062600712" in w for w in warnings)
+    assert any("no angle table for Robin W sensor 500000000002" in w for w in warnings)
     assert sorted(os.path.basename(i.path) for i in converter.get_items()) == [
         "v_front_robinW_2026-01-01--00-00-00.pcap",
         "v_left_falcon_2026-01-01--00-00-00.pcap",
