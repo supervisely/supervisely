@@ -512,14 +512,11 @@ class SeyondPcapConverter(PointcloudConverter):
                     result.append(info.id)
         return result
 
-    def _add_tables(
-        self, api: Api, dataset_id: int, items: List[Item], added_table_ids: List[int]
-    ) -> None:
+    def _add_tables(self, api: Api, dataset_id: int, items: List[Item]) -> None:
         """Keep the angle tables of a dataset's Robin W captures with it: one per sensor.
 
         A table the platform already stores is added by its hash; a new one goes through Team
         Files, which the platform requires for a first upload, and is removed from there after.
-        The ids of the attachments added are appended to ``added_table_ids``.
         """
         tables = {}
         for item in items:
@@ -555,11 +552,10 @@ class SeyondPcapConverter(PointcloudConverter):
                     uploaded.append((file_info.team_id, file_info.path))
                     entity[ApiField.TEAM_FILE_ID] = file_info.id
                 entities.append(entity)
-            response = api.post(
+            api.post(
                 "entities.bulk.add",
                 {ApiField.DATASET_ID: dataset_id, ApiField.ENTITIES: entities},
             )
-            added_table_ids.extend(e[ApiField.ID] for e in response.json() if ApiField.ID in e)
         finally:
             for team_id, path in uploaded:
                 try:
@@ -627,8 +623,10 @@ class SeyondPcapConverter(PointcloudConverter):
             dataset = self._target_dataset(api, dataset_info, name, used_names, only_one)
             added_ids: List[int] = []
             try:
-                # the tables first: the tool never finds a Robin W frame without its table
-                self._add_tables(api, dataset.id, items, added_ids)
+                # the tables first: the tool never finds a Robin W frame without its table. A
+                # table stays if the frames fail: removing it would count it off the dataset's
+                # items, which it never was, and a new import into the dataset reuses it
+                self._add_tables(api, dataset.id, items)
                 self._upload_group(
                     api, dataset, items, meta, renamed_classes, renamed_tags, progress_cb, added_ids
                 )

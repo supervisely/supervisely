@@ -941,7 +941,7 @@ def test_a_target_with_another_table_for_the_sensor_gets_a_nested_dataset(tmp_pa
     assert api.datasets == [] and api.added == []
 
 
-def test_a_failure_after_the_table_removes_it_from_the_target(tmp_path, monkeypatch):
+def test_a_failure_after_the_table_keeps_it_in_the_target(tmp_path, monkeypatch):
     root = tmp_path / "in"
     root.mkdir()
     robinw_capture(root / "v_front_robinW_2026-01-01--00-00-00.pcap", [1])
@@ -951,4 +951,11 @@ def test_a_failure_after_the_table_removes_it_from_the_target(tmp_path, monkeypa
     api = _TablesApi(fail_on=2)  # the table is added, the frames fail
     with pytest.raises(RuntimeError, match="network down"):
         _upload(converter, api, monkeypatch)
-    assert api.removed == [("items", [api.added[0]["id"]])]
+    # removing an attachment counts it off the dataset's items, which it never was in
+    assert len(api.added) == 1 and api.removed == []
+    # a new import into the same dataset reuses the table instead of adding a second one
+    converter = SeyondPcapConverter(str(root), None, False)
+    assert converter.validate_format()
+    api.fail_on, api.calls = 0, 0
+    _upload(converter, api, monkeypatch)
+    assert len(api.added) == 1
