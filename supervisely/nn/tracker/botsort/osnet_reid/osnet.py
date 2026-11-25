@@ -538,7 +538,7 @@ def init_pretrained_weights(model, key=""):
     if not os.path.exists(cached_file):
         gdown.download(pretrained_urls[key], cached_file, quiet=False)
 
-    state_dict = torch.load(cached_file)
+    state_dict = torch.load(cached_file, weights_only=True)
     model_dict = model.state_dict()
     new_state_dict = OrderedDict()
     matched_layers, discarded_layers = [], []

@@ -7,6 +7,7 @@ import requests
 
 from supervisely.api.api import Api
 from supervisely.io.fs import (
+    _extractall_safely,
     ensure_base_path,
     get_file_name,
     get_subdirs,
@@ -21,7 +22,7 @@ def download(github_url, dest_dir, github_token=None, version="master", log_prog
     download_tar(github_url, tar_path, github_token, version, log_progress)
 
     with tarfile.open(tar_path) as archive:
-        archive.extractall(dest_dir)
+        _extractall_safely(archive, dest_dir)
 
     subdirs = get_subdirs(dest_dir)
     if len(subdirs) != 1:
