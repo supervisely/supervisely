@@ -2,6 +2,7 @@
 
 import os
 import re
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Union
 
 import numpy as np
@@ -26,10 +27,33 @@ _CAPTURE_NAME = re.compile(
 )
 
 
+#: The vehicle log of a recording, next to its captures: where Robin W angle tables are read from.
+_LOG_EXT = ".log"
+# {device}--{timestamp}.log, e.g. truck-1--2026-08-26--16-48-00
+_LOG_NAME = re.compile(
+    r"^(?P<device>.+)--(?P<timestamp>\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}(?:[.\-]\d+)?)$"
+)
+
+#: An angle table kept with a dataset: an entity of this type, with ``meta.kind`` and
+#: ``meta.serial``. The labeling tool decodes a Robin W capture with the table whose
+#: ``meta.serial`` is the capture's serial number.
+ATTACHMENT_ENTITY_TYPE = "attachment"
+ANGLE_TABLE_KIND = "anglehvTable"
+
+
 def parse_capture_name(file_name: str) -> Optional[Dict[str, str]]:
     """Split ``{device}_{location}_{model}_{timestamp}.pcap``; None for any other name."""
     stem = os.path.splitext(os.path.basename(file_name))[0]
     match = _CAPTURE_NAME.match(stem)
+    if match is None:
+        return None
+    return match.groupdict()
+
+
+def _parse_log_name(file_name: str) -> Optional[Dict[str, str]]:
+    """Split ``{device}--{timestamp}.log``; None for any other name."""
+    stem = os.path.splitext(os.path.basename(file_name))[0]
+    match = _LOG_NAME.match(stem)
     if match is None:
         return None
     return match.groupdict()
@@ -167,3 +191,23 @@ def to_iso_name(seconds: float) -> str:
     from datetime import datetime, timezone
 
     return datetime.fromtimestamp(seconds, tz=timezone.utc).strftime("%Y-%m-%d %H-%M-%S")
+
+
+@dataclass
+class _AngleTable:
+    """A Robin W sensor's angle table, as the dataset keeps it."""
+
+    serial: str
+    #: base64 of the packet's sha256, as the platform hashes files
+    hash: str
+    #: The packet; None when it is copied by ``hash`` from an attachment that already exists.
+    data: Optional[bytes]
+    #: Where it came from, for the log.
+    source: str
+    #: When the attachment it is copied from was created: the copy keeps it, so that it never
+    #: passes for a newer table than the one it copies.
+    created_at: Optional[str] = None
+
+    @property
+    def title(self) -> str:
+        return f"anglehv_{self.serial}.bin"

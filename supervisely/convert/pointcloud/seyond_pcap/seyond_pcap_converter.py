@@ -2,7 +2,7 @@ import copy
 import os
 import tempfile
 import uuid
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
 from supervisely import (
     Api,
@@ -13,15 +13,22 @@ from supervisely import (
     is_development,
     logger,
 )
+from supervisely._utils import get_bytes_hash
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud.seyond_pcap.seyond_pcap_helper import (
+    ANGLE_TABLE_KIND,
+    ATTACHMENT_ENTITY_TYPE,
     LABELS_DIR_NAME,
     LABELS_FILE_NAME,
     LABELS_META_NAME,
+    _LOG_EXT,
     SENSORS_CONFIG_NAME,
     SensorsConfig,
+    _AngleTable,
+    parse_capture_name,
+    _parse_log_name,
     sensor_key,
 )
 from supervisely.convert.pointcloud.sly.sly_pointcloud_helper import rename_in_json
@@ -34,15 +41,33 @@ from supervisely.io.fs import (
 )
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.seyond_pcap import (
+    _ANGLE_TABLE_MAX_PACKET,
+    ANGLE_TABLE_EXT,
     PCAP_EXT,
     SeyondPcapError,
     SeyondPcapIndex,
+    _angle_table_packet,
+    _find_angle_tables,
+    _is_angle_table,
     index_pcap,
 )
 from supervisely.project.project_settings import LabelingInterface
+from supervisely.project.project_type import ProjectType
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 _CLOUD_STORAGE_PREFIXES = ("s3://", "azure://", "google://", "agent://", "fs://")
+# where an angle table waits in Team Files until it is attached to a dataset
+_TABLE_UPLOAD_DIR = "/tmp/supervisely/seyond-angle-tables/"
+
+
+class _TableSource(NamedTuple):
+    """A file in the input that holds angle tables: a vehicle log, or one table saved as a file."""
+
+    path: str
+    folder: str
+    #: (device, timestamp) of a log's recording; None for a table file
+    recording: Optional[Tuple[str, str]]
+    tables: Dict[str, _AngleTable]
 
 
 class SeyondPcapConverter(PointcloudConverter):
@@ -60,6 +85,10 @@ class SeyondPcapConverter(PointcloudConverter):
     - Point cloud episodes (:class:`SeyondPcapEpisodesConverter`): the captures of each sensor are
       chained by time into episodes, ``meta.frame`` continues across them.
     - Labels written next to the captures by the export (``supervisely_labels/``) are re-attached.
+    - A Robin W capture is decoded with its sensor's angle table, which the capture does not hold.
+      The table is read from the vehicle log of the recording (``{device}--{timestamp}.log`` next
+      to the captures) or from ``<serial>.anglehv`` (what the export writes), and is kept with
+      each dataset that has the sensor's frames, as an attachment (see :meth:`_tables_from_input`).
     """
 
     class Item(PointcloudConverter.Item):
@@ -80,6 +109,8 @@ class SeyondPcapConverter(PointcloudConverter):
             self.sensor = sensor
             self.matrix = matrix
             self.remote_path = remote_path
+            #: The sensor's angle table, for a Robin W capture.
+            self.table: Optional[_AngleTable] = None
 
         @property
         def frame_count(self) -> int:
@@ -125,7 +156,9 @@ class SeyondPcapConverter(PointcloudConverter):
         return sum(item.frame_count for item in self._items)
 
     def validate_format(self) -> bool:
-        pcap_paths, config_path, labels_dir, has_sly_project, other_files = self._scan_input()
+        pcap_paths, config_path, labels_dir, has_sly_project, other_files, table_paths = (
+            self._scan_input()
+        )
         if not pcap_paths or has_sly_project:
             # a Supervisely project with pcap items is the Supervisely converter's
             return False
@@ -148,6 +181,11 @@ class SeyondPcapConverter(PointcloudConverter):
                 not_seyond.append((os.path.basename(path), index.unsupported_reason()))
                 continue
             reason = index.unsupported_reason()
+            if reason is None and index.needs_angle_table and index.serial is None:
+                reason = (
+                    "a Robin W capture without status packets: the serial number that picks "
+                    "the sensor's angle table is unknown"
+                )
             if reason is not None:
                 skipped.append((os.path.basename(path), reason))
                 continue
@@ -176,6 +214,9 @@ class SeyondPcapConverter(PointcloudConverter):
                 f"imported ({shown}{more}). Import other point clouds separately."
             )
 
+        if any(item.index.needs_angle_table for item in items):
+            self._tables_from_input(items, table_paths)
+
         self._config = SensorsConfig.load(config_path)
         unmounted = set()
         for item in items:
@@ -201,7 +242,7 @@ class SeyondPcapConverter(PointcloudConverter):
 
     def _scan_input(self):
         pcap_paths, config_path, labels_dir, has_sly_project = [], None, None, False
-        other_files = []
+        other_files, table_paths = [], []
         for root, dirs, files in os.walk(self._input_data):
             dirs.sort()
             if LABELS_DIR_NAME in os.path.relpath(root, self._input_data).split(os.sep):
@@ -210,8 +251,12 @@ class SeyondPcapConverter(PointcloudConverter):
                 continue
             for file in sorted(files):
                 path = os.path.join(root, file)
-                if get_file_ext(file).lower() == PCAP_EXT:
+                ext = get_file_ext(file).lower()
+                if ext == PCAP_EXT:
                     pcap_paths.append(path)
+                elif ext in (_LOG_EXT, ANGLE_TABLE_EXT) and not file.startswith("._"):
+                    # where Robin W angle tables come from, never items
+                    table_paths.append(path)
                 elif file == SENSORS_CONFIG_NAME and config_path is None:
                     config_path = path
                 elif file == "meta.json" and self._is_project_meta(path, self.upload_as_links):
@@ -223,7 +268,7 @@ class SeyondPcapConverter(PointcloudConverter):
                     and not any(part in JUNK_FILES for part in os.path.relpath(root, self._input_data).split(os.sep))
                 ):
                     other_files.append(path)
-        return pcap_paths, config_path, labels_dir, has_sly_project, other_files
+        return pcap_paths, config_path, labels_dir, has_sly_project, other_files, table_paths
 
     @staticmethod
     def _is_project_meta(path: str, linked: bool) -> bool:
@@ -261,6 +306,324 @@ class SeyondPcapConverter(PointcloudConverter):
             if temp_path is not None:
                 silent_remove(temp_path)
 
+    def _local_copy(self, path: str, suffix: str) -> Tuple[str, Optional[str]]:
+        """A local path to read the file from, and the temporary file to remove after, if any.
+
+        A file given as a link is an empty stand-in for the one in the bucket or Team Files.
+        """
+        remote_path = self._remote_path(path)
+        if remote_path is None or os.path.getsize(path) != 0:
+            return path, None
+        fd, temp_path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        try:
+            self._api.storage.download(self._team_id, remote_path, temp_path)
+        except Exception:
+            silent_remove(temp_path)
+            raise
+        return temp_path, temp_path
+
+    # ---- Robin W angle tables ----
+
+    def _tables_from_input(self, items: List[Item], table_paths: List[str]) -> None:
+        """Give each Robin W capture its sensor's angle table from the input, where it has one.
+
+        The table of a sensor can change (a firmware update, a recalibration), so a capture takes
+        the one closest to its own recording, matched by the serial number in its status packets:
+
+        1. the log of the same recording: ``{device}--{timestamp}.log`` in the capture's folder;
+        2. ``<serial>.anglehv`` in the capture's folder;
+        3. any other log or table file in the input: the latest recording that started no later
+           than the capture, else the first one by path.
+
+        A capture left without one gets the latest table the project, then the team, already
+        keeps for that sensor when it is uploaded (:meth:`_tables_from_attachments`).
+        """
+        robinw = [item for item in items if item.index.needs_angle_table]
+        own = set()  # (folder, recording) of each capture, and (folder, serial)
+        for item in robinw:
+            parsed = parse_capture_name(item.path)
+            if parsed is not None:
+                own.add((os.path.dirname(item.path), (parsed["device"], parsed["timestamp"])))
+            own.add((os.path.dirname(item.path), item.index.serial))
+
+        def source_key(path: str):
+            if get_file_ext(path).lower() == ANGLE_TABLE_EXT:
+                return os.path.dirname(path), get_file_name(path)
+            parsed = _parse_log_name(path)
+            if parsed is None:
+                return None
+            return os.path.dirname(path), (parsed["device"], parsed["timestamp"])
+
+        # a capture's own log or table file first; other files only for the sensors still without
+        # one, since a log is read whole (and downloaded first, when it is a link)
+        paths = sorted(table_paths)
+        first = [p for p in paths if source_key(p) in own]
+        sources = self._read_sources(first, {item.index.serial for item in robinw})
+        missing = set()
+        for item in robinw:
+            parsed = parse_capture_name(item.path)
+            recording = (parsed["device"], parsed["timestamp"]) if parsed else None
+            folder = os.path.dirname(item.path)
+            has_own = any(
+                s.folder == folder
+                and item.index.serial in s.tables
+                and (s.recording == recording or s.recording is None)
+                for s in sources
+            )
+            if not has_own:
+                missing.add(item.index.serial)
+        if missing:
+            sources += self._read_sources([p for p in paths if p not in first], missing)
+        sources.sort(key=lambda source: source.path)
+
+        used = set()
+        for item in items:
+            serial = item.index.serial
+            if not item.index.needs_angle_table:
+                continue
+            candidates = [s for s in sources if serial in s.tables]
+            if not candidates:
+                continue
+            parsed = parse_capture_name(item.path)
+            recording = (parsed["device"], parsed["timestamp"]) if parsed else None
+            folder = os.path.dirname(item.path)
+
+            own_log = [
+                s for s in candidates
+                if s.folder == folder and recording is not None and s.recording == recording
+            ]
+            own_file = [
+                s for s in candidates
+                if s.folder == folder and s.recording is None and get_file_name(s.path) == serial
+            ]
+            earlier = [
+                s for s in candidates
+                if recording is not None and s.recording is not None and s.recording[1] <= recording[1]
+            ]
+            if own_log or own_file:
+                source = (own_log or own_file)[0]
+            elif earlier:
+                source = max(earlier, key=lambda s: s.recording[1])
+            else:
+                source = candidates[0]
+            item.table = source.tables[serial]
+            if (serial, source.path) not in used:
+                used.add((serial, source.path))
+                logger.info(
+                    f"The angle table of Robin W sensor {serial} comes from "
+                    f"'{os.path.relpath(source.path, self._input_data)}'."
+                )
+
+    def _read_sources(self, paths: List[str], serials: set) -> List[_TableSource]:
+        sources = []
+        for path in paths:
+            tables = self._read_tables(path, serials)
+            if not tables:
+                continue
+            parsed = _parse_log_name(path) if get_file_ext(path).lower() == _LOG_EXT else None
+            recording = (parsed["device"], parsed["timestamp"]) if parsed else None
+            sources.append(_TableSource(path, os.path.dirname(path), recording, tables))
+        return sources
+
+    def _read_tables(self, path: str, serials: set) -> Dict[str, _AngleTable]:
+        """The angle tables a log or a table file holds for the given serial numbers."""
+        name = os.path.relpath(path, self._input_data)
+        is_table_file = get_file_ext(path).lower() == ANGLE_TABLE_EXT
+        if is_table_file and get_file_name(path) not in serials:
+            return {}
+        local_path, temp_path = self._local_copy(path, get_file_ext(path))
+        try:
+            if is_table_file:
+                with open(local_path, "rb") as f:
+                    data = f.read(_ANGLE_TABLE_MAX_PACKET + 1)
+                if not _is_angle_table(data):
+                    logger.warning(f"'{name}' is not a Robin W angle table, so it is not used.")
+                    return {}
+                found = [(get_file_name(path), _angle_table_packet(data))]
+            else:
+                logger.info(f"Reading Robin W angle tables from '{name}'...")
+                found = _find_angle_tables(local_path, serials)
+        finally:
+            if temp_path is not None:
+                silent_remove(temp_path)
+
+        tables: Dict[str, _AngleTable] = {}
+        changed = set()
+        for serial, data in found:
+            if serial not in serials:
+                continue
+            table = tables.get(serial)
+            if table is None:
+                tables[serial] = _AngleTable(serial, get_bytes_hash(data), data, name)
+            elif table.hash != get_bytes_hash(data) and serial not in changed:
+                changed.add(serial)
+                logger.warning(
+                    f"'{name}' has more than one angle table for Robin W sensor {serial}: "
+                    "the first one is used."
+                )
+        return tables
+
+    def _tables_from_attachments(self, api: Api, project_id: int) -> None:
+        """Give the Robin W captures still without a table the latest one kept for their sensor.
+
+        The project's datasets are looked at first, then those of the team's other point cloud
+        projects. A capture with no table anywhere is not imported: the tool could not show it.
+        """
+        missing = {
+            item.index.serial
+            for item in self._items
+            if item.index.needs_angle_table and item.table is None
+        }
+        if missing:
+            found = self._latest_tables(api, [project_id], missing)
+            if missing - set(found):
+                found.update(self._latest_tables(api, self._team_projects(api, project_id), missing - set(found)))
+            for item in self._items:
+                if item.index.needs_angle_table and item.table is None:
+                    item.table = found.get(item.index.serial)
+            for serial, table in sorted(found.items()):
+                logger.info(
+                    f"The upload has no angle table for Robin W sensor {serial}: using the latest "
+                    f"one kept for it ({table.source})."
+                )
+
+        kept = []
+        for item in self._items:
+            if item.index.needs_angle_table and item.table is None:
+                logger.warning(
+                    f"Skipped Seyond capture '{os.path.basename(item.path)}': no angle table for "
+                    f"Robin W sensor {item.index.serial} in the upload, the project or the team. "
+                    f"Upload the vehicle log ({_LOG_EXT}) of the recording with its captures."
+                )
+                continue
+            kept.append(item)
+        if not kept:
+            raise RuntimeError(
+                "None of the Seyond captures can be imported: the Robin W sensors' angle tables "
+                f"are missing. Upload the vehicle log ({_LOG_EXT}) of each recording with its captures."
+            )
+        self._items = kept
+
+    @staticmethod
+    def _list_tables(api: Api, **where) -> List[dict]:
+        """The angle tables kept with a dataset or a project (``datasetId`` or ``projectId``)."""
+        entities = api.pointcloud.get_list_all_pages(
+            "entities.list",
+            {**where, ApiField.TYPE: ATTACHMENT_ENTITY_TYPE},
+            convert_json_info_cb=lambda entity: entity,
+        )
+        return [
+            e
+            for e in entities
+            if isinstance(e.get(ApiField.META), dict)
+            and e[ApiField.META].get("kind") == ANGLE_TABLE_KIND
+            and e[ApiField.META].get("serial")
+        ]
+
+    def _latest_tables(self, api: Api, project_ids: List[int], serials: set) -> Dict[str, _AngleTable]:
+        latest: Dict[str, dict] = {}
+        for project_id in project_ids:
+            for entity in self._list_tables(api, projectId=project_id):
+                serial = entity[ApiField.META]["serial"]
+                if serial not in serials or not entity.get(ApiField.HASH):
+                    continue
+                if serial not in latest or entity[ApiField.CREATED_AT] > latest[serial][ApiField.CREATED_AT]:
+                    latest[serial] = entity
+        return {
+            serial: _AngleTable(
+                serial,
+                entity[ApiField.HASH],
+                None,
+                f"dataset {entity[ApiField.DATASET_ID]} of project {entity[ApiField.PROJECT_ID]}",
+                entity[ApiField.CREATED_AT],
+            )
+            for serial, entity in latest.items()
+        }
+
+    @staticmethod
+    def _team_projects(api: Api, project_id: int) -> List[int]:
+        """The team's other point cloud and point cloud episodes projects."""
+        project = api.project.get_info_by_id(project_id)
+        types = (str(ProjectType.POINT_CLOUDS), str(ProjectType.POINT_CLOUD_EPISODES))
+        result = []
+        for workspace in api.workspace.get_list(project.team_id):
+            for info in api.project.get_list(workspace.id):
+                if info.id != project_id and info.type in types:
+                    result.append(info.id)
+        return result
+
+    def _add_tables(self, api: Api, dataset_id: int, items: List[Item]) -> None:
+        """Keep the angle tables of a dataset's Robin W captures with it: one per sensor.
+
+        A table the platform already stores is added by its hash; a new one goes through Team
+        Files, which the platform requires for a first upload, and is removed from there after.
+        """
+        tables = {}
+        for item in items:
+            if item.table is not None:
+                tables[item.table.serial] = item.table
+        if not tables:
+            return
+        kept = {e[ApiField.META]["serial"]: e for e in self._list_tables(api, datasetId=dataset_id)}
+        tables = {serial: t for serial, t in tables.items() if serial not in kept}
+        if not tables:
+            return
+        new = [t.hash for t in tables.values() if t.data is not None]
+        stored = set(api.pointcloud.check_existing_hashes(new)) if new else set()
+        team_id = self._dataset_team_id(api, dataset_id) if len(stored) < len(new) else None
+
+        entities, uploaded = [], []
+        try:
+            for serial, table in sorted(tables.items()):
+                entity = {
+                    ApiField.TITLE: table.title,
+                    ApiField.TYPE: ATTACHMENT_ENTITY_TYPE,
+                    ApiField.META: {"kind": ANGLE_TABLE_KIND, "serial": serial},
+                }
+                if table.created_at is not None:
+                    entity[ApiField.CREATED_AT] = table.created_at
+                if table.data is None or table.hash in stored:
+                    entity[ApiField.HASH] = table.hash
+                else:
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        local_path = os.path.join(temp_dir, f"{serial}{ANGLE_TABLE_EXT}")
+                        with open(local_path, "wb") as f:
+                            f.write(table.data)
+                        remote_path = f"{_TABLE_UPLOAD_DIR}{uuid.uuid4().hex}/{serial}{ANGLE_TABLE_EXT}"
+                        file_info = api.file.upload(team_id, local_path, remote_path)
+                    uploaded.append((file_info.team_id, file_info.path))
+                    entity[ApiField.TEAM_FILE_ID] = file_info.id
+                entities.append(entity)
+            api.post(
+                "entities.bulk.add",
+                {ApiField.DATASET_ID: dataset_id, ApiField.ENTITIES: entities},
+            )
+        finally:
+            for team_id, path in uploaded:
+                try:
+                    api.file.remove(team_id, path)
+                except Exception as e:
+                    logger.warning(f"Could not remove the angle table '{path}' from Team Files: {e}")
+        for table in tables.values():
+            table.data = None  # stored now: the next dataset adds it by hash
+
+    @staticmethod
+    def _dataset_team_id(api: Api, dataset_id: int) -> int:
+        dataset = api.dataset.get_info_by_id(dataset_id)
+        return api.project.get_info_by_id(dataset.project_id).team_id
+
+    def _other_tables_in(self, api: Api, dataset_id: int, items: List[Item]) -> bool:
+        """The dataset already keeps a different table for a sensor of these captures."""
+        tables = {item.table.serial: item.table.hash for item in items if item.table is not None}
+        if not tables:
+            return False
+        for entity in self._list_tables(api, datasetId=dataset_id):
+            serial = entity[ApiField.META]["serial"]
+            if serial in tables and entity.get(ApiField.HASH) != tables[serial]:
+                return True
+        return False
+
     def _load_labels(self, labels_dir: str) -> None:
         meta_json = load_json_file(os.path.join(labels_dir, LABELS_META_NAME))
         self._meta = ProjectMeta.from_json(meta_json)
@@ -282,10 +645,13 @@ class SeyondPcapConverter(PointcloudConverter):
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         """Upload each capture once and add one item per frame that reuses it."""
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
-        groups = self._group_items()
         dataset_info = api.dataset.get_info_by_id(dataset_id)
+        self._tables_from_attachments(api, dataset_info.project_id)
+        groups = self._group_items()
+        # a dataset keeps one table per sensor: a target that keeps another one gets a nested dataset
+        only_one = len(groups) == 1 and not self._other_tables_in(api, dataset_id, groups[0][1])
         used_names = set()
-        if len(groups) > 1:
+        if not only_one:
             nested = api.dataset.get_list(dataset_info.project_id, parent_id=dataset_id)
             used_names = {ds.name for ds in nested}
 
@@ -297,14 +663,23 @@ class SeyondPcapConverter(PointcloudConverter):
         for name, items in groups:
             # each dataset is created just before its upload, and a group that fails is taken
             # out again: what an interrupted import leaves is whole episodes and captures only
-            dataset = self._target_dataset(api, dataset_info, name, used_names, len(groups) == 1)
+            dataset = self._target_dataset(api, dataset_info, name, used_names, only_one)
             added_ids: List[int] = []
             try:
+                # the tables first: the tool never finds a Robin W frame without its table. A
+                # table stays if the frames fail: removing it would count it off the dataset's
+                # items, which it never was, and a new import into the dataset reuses it
+                self._add_tables(api, dataset.id, items)
                 self._upload_group(
                     api, dataset, items, meta, renamed_classes, renamed_tags, progress_cb, added_ids
                 )
             except Exception:
                 self._remove_partial_group(api, dataset, dataset_info, added_ids)
+                if dataset.id == dataset_info.id and any(item.table for item in items):
+                    logger.info(
+                        f"The Robin W angle tables stay in dataset '{dataset.name}' (ID: "
+                        f"{dataset.id}): importing into it again reuses them."
+                    )
                 raise
             logger.info(f"Dataset '{dataset.name}' (ID: {dataset.id}) has been uploaded.")
 
@@ -317,7 +692,8 @@ class SeyondPcapConverter(PointcloudConverter):
             if dataset.id != dataset_info.id:
                 api.dataset.remove(dataset.id)
             elif added_ids:
-                api.pointcloud.remove_batch(added_ids)
+                # the point cloud API has no bulk removal; images.bulk.remove takes any entity
+                api.image.remove_batch(added_ids)
         except Exception as e:
             logger.warning(f"Could not remove the partly imported dataset '{dataset.name}': {e}")
 

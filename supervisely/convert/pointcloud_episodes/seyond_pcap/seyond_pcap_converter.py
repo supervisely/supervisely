@@ -13,14 +13,20 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 from supervisely.project.project_settings import LabelingInterface
 
 
+def _table_hash(item: SeyondPcapConverter.Item) -> Optional[str]:
+    return item.table.hash if item.table is not None else None
+
+
 class SeyondPcapEpisodesConverter(SeyondPcapConverter, PointcloudEpisodeConverter):
     """Imports Seyond lidar pcap captures as point cloud episodes.
 
     The captures of each sensor are chained by time: the next capture continues the episode
     when it starts within ``episodes.maxGapSec`` (1 s by default) after the previous one's
     last frame starts, and while the episode stays within ``episodes.maxFrames``
-    (``sensors.json``). Captures that overlap in time start separate episodes. A capture is
-    never split. Each episode is a dataset; one episode goes to the target dataset.
+    (``sensors.json``). Captures that overlap in time start separate episodes, and so does a
+    Robin W capture whose sensor's angle table differs from the previous one's: a dataset keeps one
+    table per sensor. A capture is never split. Each episode is a dataset; one episode goes to the
+    target dataset.
     """
 
     def __init__(
@@ -48,6 +54,8 @@ class SeyondPcapEpisodesConverter(SeyondPcapConverter, PointcloudEpisodeConverte
         # a capture that overlaps the previous one (the same file twice, or a re-recording)
         # never continues it: the tool numbers frames per file
         if not 0 < item.start_time - last.end_time <= self._config.max_gap_sec:
+            return False
+        if _table_hash(last) != _table_hash(item):
             return False
         if self._config.max_frames is None:
             return True

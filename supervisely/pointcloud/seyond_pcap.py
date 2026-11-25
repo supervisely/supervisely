@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Seyond (Innovusion) lidar captures stored as raw libpcap files.
+"""Seyond (Innovusion) lidar captures stored as raw libpcap files, and Robin W angle tables.
 
 A capture is the sensor's own UDP output recorded with tcpdump, so one file holds a whole
 recording: many point cloud frames. Supervisely stores such a file once and adds one item per
@@ -13,23 +13,33 @@ starts. It must find exactly the frames the labeling tool finds, in the same ord
 - link types Ethernet (with VLAN / QinQ tags), raw IP, Linux cooked v1 and v2;
 - IPv4 or IPv6 carrying UDP; a fragmented IPv4 datagram is skipped, not reassembled;
 - a lidar data packet starts with the magic ``0x176a`` and carries its frame index at byte 26;
-  only Falcon sphere point cloud packets (item type 1) make frames;
+  Falcon sphere point cloud packets (item type 1) and Robin W compact point cloud packets
+  (item type 13) make frames;
 - frames are numbered in the order their first packet appears in the file, so a capture that
-  starts or ends mid-frame keeps those partial frames.
+  starts or ends mid-frame keeps those partial frames;
+- the sensor's serial number is the first one its status packets (magic ``0x186b``) carry.
+
+Robin W packets carry no beam directions: the tool decodes them with the sensor's angle table, a
+data packet of item type 100 that the capture does not hold. Vehicle logs record it, and
+:func:`_find_angle_tables` reads it out of such a file.
 
 The packet layout follows Seyond's inno-lidar-sdk (BSD-2-Clause),
-``src/sdk_common/inno_lidar_packet.h``. Only the standard library is used.
+``src/sdk_common/inno_lidar_packet.h``; the rules follow the labeling tool's
+``point-cloud-rs/point-cloud/src/pcap.rs`` and ``robinw.rs``. Only the standard library is used.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import struct
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import BinaryIO, Dict, List, Optional, Union
+from typing import BinaryIO, Dict, List, Optional, Tuple, Union
 
 PCAP_EXT = ".pcap"
+#: A Robin W angle table saved as a file: the sensor's item type 100 packet, unchanged.
+ANGLE_TABLE_EXT = ".anglehv"
 
 _PCAP_GLOBAL_HEADER_SIZE = 24
 _PCAP_RECORD_HEADER_SIZE = 16
@@ -55,15 +65,31 @@ _IP_PROTOCOL_UDP = 17
 _UDP_HEADER_SIZE = 8
 
 INNO_DATA_PACKET_MAGIC = 0x176A
+INNO_STATUS_PACKET_MAGIC = 0x186B
+# InnoStatusPacket.sn: after the common header, the packet index and 4 bytes of state
+_INNO_STATUS_SERIAL = slice(38, 54)
 # InnoDataPacket up to its payload; protocol 1 has no extend_reserved[4]
 _INNO_DATA_HEADER_SIZE_V1 = 54
 _INNO_DATA_HEADER_SIZE = 70
 _INNO_LIDAR_TYPE_OFFSET = 15
 _INNO_FRAME_IDX_OFFSET = 26
 _INNO_ITEM_TYPE_OFFSET = 38
+# InnoCommonHeader.size: the whole packet, header included
+_INNO_SIZE_OFFSET = 10
 
-#: The item type of the packets the labeling tool decodes: Falcon sphere point clouds.
+#: The item type of Falcon sphere point cloud packets.
 INNO_ITEM_TYPE_SPHERE_POINTCLOUD = 1
+#: The item type of Robin W compact point cloud packets, decoded with the sensor's angle table.
+INNO_ITEM_TYPE_ROBINW_COMPACT_POINTCLOUD = 13
+#: The item type of the packet that holds a Robin W angle table.
+INNO_ITEM_TYPE_ANGLEHV_TABLE = 100
+_POINT_CLOUD_ITEM_TYPES = (INNO_ITEM_TYPE_SPHERE_POINTCLOUD, INNO_ITEM_TYPE_ROBINW_COMPACT_POINTCLOUD)
+
+# InnoAngleHVTable: a 2-byte version and an 8-byte id, then (v, h) int16 per
+# [facet 4][step 65][set 6][receiver 8]; the tool reads it right after the packet header
+_ANGLE_TABLE_BYTES = 10 + 4 * 65 * 6 * 8 * 4
+# a table packet is about 50 KB (50,512 B from a Robin W); a larger size field is not one
+_ANGLE_TABLE_MAX_PACKET = 1 << 20
 
 #: ``lidar_type`` in the packet header (inno-lidar-sdk ``InnoLidarType``).
 INNO_LIDAR_TYPES = {
@@ -123,6 +149,10 @@ class SeyondPcapIndex:
     fragmented_packets: int = 0
     #: True when the file ends inside a record (the packets before it are kept).
     truncated: bool = False
+    #: The sensor's serial number, from the first of its status packets that carries one.
+    serial: Optional[str] = None
+    #: True when a frame has Robin W packets: the tool decodes them with the sensor's angle table.
+    needs_angle_table: bool = False
 
     @property
     def frame_count(self) -> int:
@@ -157,7 +187,8 @@ class SeyondPcapIndex:
             details.append(f"{self.fragmented_packets} fragmented IP datagrams")
         return (
             "only Seyond Falcon sphere point cloud packets (item type "
-            f"{INNO_ITEM_TYPE_SPHERE_POINTCLOUD}) are supported, this capture has "
+            f"{INNO_ITEM_TYPE_SPHERE_POINTCLOUD}) and Robin W compact point cloud packets (item "
+            f"type {INNO_ITEM_TYPE_ROBINW_COMPACT_POINTCLOUD}) are supported, this capture has "
             + ", ".join(details)
         )
 
@@ -324,15 +355,25 @@ def index_pcap(
             continue
 
         size = end - start
-        if size < 2 or _U16_LE.unpack_from(frame, start)[0] != INNO_DATA_PACKET_MAGIC:
+        if size < 2:
+            continue
+        magic = _U16_LE.unpack_from(frame, start)[0]
+        if magic == INNO_STATUS_PACKET_MAGIC:
+            if result.serial is None:
+                result.serial = _status_serial(frame[start:end])
+            continue
+        if magic != INNO_DATA_PACKET_MAGIC:
             continue
         result.seyond_packets += 1
         _count_header(result, frame, start, end)
         if size < _INNO_DATA_HEADER_SIZE_V1:
             continue
-        header_size = _INNO_DATA_HEADER_SIZE_V1 if frame[start + 2] == 1 else _INNO_DATA_HEADER_SIZE
-        if size < header_size or frame[start + _INNO_ITEM_TYPE_OFFSET] != INNO_ITEM_TYPE_SPHERE_POINTCLOUD:
+        header_size = _data_header_size(frame, start)
+        item_type = frame[start + _INNO_ITEM_TYPE_OFFSET]
+        if size < header_size or item_type not in _POINT_CLOUD_ITEM_TYPES:
             continue
+        if item_type == INNO_ITEM_TYPE_ROBINW_COMPACT_POINTCLOUD:
+            result.needs_angle_table = True
 
         lidar_frame_idx = _U64_LE.unpack_from(frame, start + _INNO_FRAME_IDX_OFFSET)[0]
         lidar_frame = positions.get(lidar_frame_idx)
@@ -349,6 +390,22 @@ def index_pcap(
     return result
 
 
+def _data_header_size(data: bytes, start: int) -> int:
+    """The size of an ``InnoDataPacket`` header: protocol 1 has no ``extend_reserved[4]``."""
+    return _INNO_DATA_HEADER_SIZE_V1 if data[start + 2] == 1 else _INNO_DATA_HEADER_SIZE
+
+
+def _status_serial(packet: bytes) -> Optional[str]:
+    """The serial number in a status packet, as the tool reads it: UTF-8 up to the first NUL."""
+    if len(packet) < _INNO_STATUS_SERIAL.stop:
+        return None
+    serial = packet[_INNO_STATUS_SERIAL].split(b"\x00", 1)[0]
+    try:
+        return serial.decode("utf-8") or None
+    except UnicodeDecodeError:
+        return None
+
+
 def _count_header(result: SeyondPcapIndex, frame: bytes, start: int, end: int) -> None:
     if end - start > _INNO_ITEM_TYPE_OFFSET:
         item_type = frame[start + _INNO_ITEM_TYPE_OFFSET]
@@ -356,3 +413,100 @@ def _count_header(result: SeyondPcapIndex, frame: bytes, start: int, end: int) -
     if end - start > _INNO_LIDAR_TYPE_OFFSET:
         lidar_type = frame[start + _INNO_LIDAR_TYPE_OFFSET]
         result.lidar_types[lidar_type] = result.lidar_types.get(lidar_type, 0) + 1
+
+
+# ---- Robin W angle tables ----
+
+# the text closest before a table in a vehicle log is the serial of the sensor it belongs to
+_SERIAL_BEFORE_TABLE = re.compile(rb"(?<![0-9A-Za-z\-])([0-9A-Za-z][0-9A-Za-z\-]{5,31})\x00")
+_SERIAL_WINDOW = 512
+
+
+def _angle_table_size(data, start: int = 0) -> Optional[int]:
+    """The size of the angle table packet that starts at ``start``, or None if none starts there.
+
+    The labeling tool's rule (``AngleHvTable::from_packet``): the data magic, item type 100 and a
+    whole table after the header. The packet's own size field says where it ends.
+    """
+    if len(data) - start < _INNO_DATA_HEADER_SIZE_V1:
+        return None
+    if (
+        _U16_LE.unpack_from(data, start)[0] != INNO_DATA_PACKET_MAGIC
+        or data[start + _INNO_ITEM_TYPE_OFFSET] != INNO_ITEM_TYPE_ANGLEHV_TABLE
+    ):
+        return None
+    size = struct.unpack_from("<I", data, start + _INNO_SIZE_OFFSET)[0]
+    if not _data_header_size(data, start) + _ANGLE_TABLE_BYTES <= size <= _ANGLE_TABLE_MAX_PACKET:
+        return None
+    if len(data) - start < size:
+        return None
+    return size
+
+
+def _angle_table_packet(data: bytes) -> bytes:
+    """A table file's packet without anything after it, when its size field says where it ends.
+
+    The same table then has the same bytes, and hash, whether it was read from a file or a log.
+    """
+    size = _angle_table_size(data)
+    return data[:size] if size is not None else data
+
+
+def _is_angle_table(data: bytes) -> bool:
+    """The bytes are a Robin W angle table packet, as the labeling tool reads one from a file.
+
+    The tool's rule (``AngleHvTable::from_packet``): the data magic, item type 100 and a whole
+    table after the header; it does not read the size field, nor anything after the table.
+    """
+    if not _INNO_DATA_HEADER_SIZE_V1 <= len(data) <= _ANGLE_TABLE_MAX_PACKET:
+        return False
+    if (
+        _U16_LE.unpack_from(data, 0)[0] != INNO_DATA_PACKET_MAGIC
+        or data[_INNO_ITEM_TYPE_OFFSET] != INNO_ITEM_TYPE_ANGLEHV_TABLE
+    ):
+        return False
+    return len(data) >= _data_header_size(data, 0) + _ANGLE_TABLE_BYTES
+
+
+def _serial_shape(text: str) -> str:
+    return re.sub(r"[A-Za-z]", "a", re.sub(r"[0-9]", "0", text))
+
+
+def _find_angle_tables(
+    path: Union[str, os.PathLike], serials: Optional[set] = None
+) -> List[Tuple[str, bytes]]:
+    """The Robin W angle tables a file records, such as a vehicle log, in the order they appear.
+
+    The scan needs no schema: it finds every angle table packet (see :func:`_angle_table_size`)
+    and takes the sensor's serial number from the text that ends closest before it, within 512
+    bytes, where a log keeps the record's other fields. With ``serials``, the closest text shaped
+    like one of them (the same digits and letters in the same places) is the table's serial, and
+    the table is kept only if it is one of them: a log may keep other text (a host name) between
+    the serial and the table, and another sensor's serial is never skipped over. A table with no
+    such text before it is skipped.
+
+    :returns: ``(serial, packet)`` pairs; a log that records a table again holds it more than once.
+    """
+    import mmap
+
+    tables = []
+    if os.path.getsize(path) == 0:
+        return tables
+    with open(path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as data:
+        magic = struct.pack("<H", INNO_DATA_PACKET_MAGIC)
+        position = data.find(magic)
+        while position >= 0:
+            size = _angle_table_size(data, position)
+            if size is None:
+                position = data.find(magic, position + 1)
+                continue
+            window = data[max(0, position - _SERIAL_WINDOW) : position]
+            texts = [t.decode("ascii") for t in _SERIAL_BEFORE_TABLE.findall(window)]
+            if serials is not None:
+                shapes = {_serial_shape(serial) for serial in serials}
+                texts = [t for t in texts if _serial_shape(t) in shapes][-1:]
+                texts = [t for t in texts if t in serials]
+            if texts:
+                tables.append((texts[-1], data[position : position + size]))
+            position = data.find(magic, position + size)
+    return tables
