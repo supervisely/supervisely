@@ -13,6 +13,17 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
 
+def _drop_tracebacks(exc: BaseException) -> None:
+    """Detach the frames of `exc` and of every exception chained to it."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        exc.__traceback__ = None
+        if exc.__cause__ is not None:
+            _drop_tracebacks(exc.__cause__)
+        exc = exc.__context__
+
+
 class InferenceRequest:
     """State container for a single inference run (progress, results queue, lifecycle stage and cancellation)."""
 
@@ -181,10 +192,15 @@ class InferenceRequest:
 
     @exception.setter
     def exception(self, exc: Exception):
-        self._exception = exc
         self._exception_traceback = "".join(
             traceback.format_exception(type(exc), exc, exc.__traceback__)
         )
+        # The request outlives the failure (up to its TTL), and a live traceback keeps every
+        # frame of the failed call alive, including their GPU tensors. Keep the text above,
+        # drop the frames: after a CUDA OOM they would otherwise pin the memory and fail
+        # every following request.
+        _drop_tracebacks(exc)
+        self._exception = exc
         self.set_stage(InferenceRequest.Stage.ERROR)
         self._updated()
 
@@ -476,7 +492,11 @@ class InferenceRequestsManager:
 
     def run(self, func, *args, **kwargs):
         inference_request, future = self.schedule_task(func, *args, **kwargs)
-        future.result()
-        if inference_request.exception is not None:
-            raise inference_request.exception
-        return inference_request.pop_pending_results()
+        try:
+            future.result()
+            if inference_request.exception is not None:
+                raise inference_request.exception
+            return inference_request.pop_pending_results()
+        finally:
+            # Nobody can poll a synchronous request, so it is not kept until its TTL.
+            self.remove(inference_request.uuid)
