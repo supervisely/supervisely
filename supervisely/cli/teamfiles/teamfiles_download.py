@@ -15,12 +15,14 @@ def download_directory_run(
     local_dir: str,
     filter: str = None,
     ignore_if_not_exists: bool = False,
+    api=None,
 ) -> bool:
     console = Console()
 
-    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if api is False:
-        return False
+    if api is None:
+        api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+        if api is False:
+            return False
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(

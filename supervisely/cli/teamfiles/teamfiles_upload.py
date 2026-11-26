@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import os
 
 
-def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
+def upload_directory_run(team_id: int, local_dir: str, remote_dir: str, api=None) -> bool:
     class MyTqdm(tqdm):
         """tqdm progress wrapper that tracks per-file upload progress from a byte monitor."""
 
@@ -35,9 +35,10 @@ def upload_directory_run(team_id: int, local_dir: str, remote_dir: str) -> bool:
 
     console = Console()
 
-    api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
-    if api is False:
-        return False
+    if api is None:
+        api = sly._handle_creds_error_to_console(sly.Api.from_env, console.print)
+        if api is False:
+            return False
 
     if api.team.get_info_by_id(team_id) is None:
         console.print(
