@@ -127,6 +127,17 @@ def test_failed_ffmpeg_removes_partial_output_and_keeps_source(tmp_path, monkeyp
     assert not out.exists()
 
 
+def test_failed_ffmpeg_keeps_existing_file_it_did_not_write(tmp_path, monkeypatch):
+    existing = tmp_path / "clip_h264.mp4"  # e.g. a user's own video next to clip.mov
+    existing.write_bytes(b"user video")
+    monkeypatch.setattr(vc.subprocess, "call", lambda args: 1)  # fails before opening output
+    conv = _converter(tmp_path)
+
+    with pytest.raises(RuntimeError):
+        conv._convert(str(tmp_path / "clip.mov"), str(existing), True, False)
+    assert existing.read_bytes() == b"user video"
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
 @pytest.mark.parametrize(
     "size, pix_fmt_in, pix_fmt_out",

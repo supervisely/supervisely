@@ -58,6 +58,15 @@ def _read_cpu_quota() -> Optional[float]:
     return None
 
 
+def _file_stamp(path: str) -> Optional[Tuple[int, int]]:
+    """(mtime_ns, size) of a file, or None if it does not exist."""
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
+
+
 def _get_ffmpeg_threads() -> int:
     """Thread count for ffmpeg: the container's CPU quota, capped, since ffmpeg and x264
     otherwise size their threads (and frame buffers) from the host's CPU count."""
@@ -370,6 +379,7 @@ class VideoConverter(BaseConverter):
             if self._has_even_dimensions(video_meta):
                 # 8-bit 4:2:0 plays in every browser; 10-bit and 4:4:4 H.264 do not
                 video_args += ["-pix_fmt", "yuv420p"]
+        previous_output = _file_stamp(output_path)
         logger.info("Converting video...")
         returncode = subprocess.call(
             [
@@ -389,8 +399,10 @@ class VideoConverter(BaseConverter):
             ]
         )
         if returncode != 0:
-            # a failed or killed ffmpeg can leave a truncated file behind
-            silent_remove(output_path)
+            # a failed or killed ffmpeg can leave a truncated file behind;
+            # a file that was already there and that ffmpeg never opened is not ours
+            if _file_stamp(output_path) != previous_output:
+                silent_remove(output_path)
             raise RuntimeError(
                 f"Failed to convert video {get_file_name_with_ext(input_path)}: "
                 f"ffmpeg exited with code {returncode}."
