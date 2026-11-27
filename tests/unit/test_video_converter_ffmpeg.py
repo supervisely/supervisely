@@ -45,6 +45,7 @@ def cgroup(tmp_path, monkeypatch):
         ("1600000 100000\n", 4),
         ("max 100000\n", 2),
         ("garbage\n", 2),
+        ("100000 0\n", 2),
     ],
 )
 def test_threads_from_cgroup_v2(cgroup, cpu_max, threads):

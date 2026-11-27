@@ -39,7 +39,7 @@ def _read_cpu_quota() -> Optional[float]:
     try:  # cgroup v2
         with open(_CGROUP_V2_CPU_MAX) as f:
             quota, period = f.read().split()[:2]
-        if quota == "max":
+        if quota == "max" or int(period) <= 0:
             return None
         return int(quota) / int(period)
     except (OSError, ValueError):
