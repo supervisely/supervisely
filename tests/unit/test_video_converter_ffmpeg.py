@@ -179,13 +179,19 @@ def test_real_ffmpeg(tmp_path, size, pix_fmt_in, pix_fmt_out):
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
-def test_real_ffmpeg_odd_size_without_metadata(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "size, pix_fmt_in, pix_fmt_out",
+    [("640x480", "yuv420p10le", "yuv420p"), ("641x481", "yuv444p", "yuv444p")],
+)
+def test_real_ffmpeg_without_metadata(tmp_path, monkeypatch, size, pix_fmt_in, pix_fmt_out):
+    """get_info can fail (no duration in a piped .mkv, a killed ffprobe); the size is then
+    read from the header so that 10-bit still becomes 8-bit and odd sizes still convert."""
     src = tmp_path / "clip.mov"
     subprocess.run(
         [
             "ffmpeg", "-nostdin", "-loglevel", "error", "-y",
-            "-f", "lavfi", "-i", "testsrc=size=641x481:rate=30:duration=1",
-            "-c:v", "libx264", "-pix_fmt", "yuv444p", str(src),
+            "-f", "lavfi", "-i", f"testsrc=size={size}:rate=30:duration=1",
+            "-c:v", "libx264", "-pix_fmt", pix_fmt_in, str(src),
         ],
         check=True,
     )  # fmt: skip
@@ -195,5 +201,17 @@ def test_real_ffmpeg_odd_size_without_metadata(tmp_path, monkeypatch):
 
     monkeypatch.setattr(vc, "get_info", unreadable)
     _, out = _converter(tmp_path).convert_to_mp4_if_needed(str(src))
-    assert os.path.getsize(out) > 0
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=pix_fmt,width,height", "-of", "default=nw=1", out,
+        ],
+        capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
+    width, height = size.split("x")
+    assert dict(line.split("=", 1) for line in probe.split()) == {
+        "pix_fmt": pix_fmt_out,
+        "width": width,
+        "height": height,
+    }
     assert not src.exists()

@@ -376,7 +376,7 @@ class VideoConverter(BaseConverter):
             threads = str(_get_ffmpeg_threads())
             input_args = ["-threads", threads]
             video_args = ["-threads", threads, "-preset", "veryfast"]
-            if self._has_even_dimensions(video_meta):
+            if self._has_even_dimensions(input_path, video_meta):
                 # 8-bit 4:2:0 plays in every browser; 10-bit and 4:4:4 H.264 do not
                 video_args += ["-pix_fmt", "yuv420p"]
         previous_output = _file_stamp(output_path)
@@ -409,18 +409,38 @@ class VideoConverter(BaseConverter):
             )
 
     @staticmethod
-    def _has_even_dimensions(video_meta) -> bool:
-        """4:2:0 needs even width and height; False when the size is unknown."""
-        if not video_meta:
-            return False
-        for stream in video_meta.get("streams", []):
+    def _has_even_dimensions(input_path, video_meta) -> bool:
+        """4:2:0 needs even width and height; False when the size cannot be read."""
+        width = height = None
+        for stream in (video_meta or {}).get("streams", []):
             if stream.get("codecType") == "video":
                 width = stream.get("originalWidth", stream.get("width"))
                 height = stream.get("originalHeight", stream.get("height"))
-                if isinstance(width, int) and isinstance(height, int):
-                    return width % 2 == 0 and height % 2 == 0
+                break
+        if not (isinstance(width, int) and isinstance(height, int)):
+            # metadata is missing: read the size from the header, without decoding
+            try:
+                result = subprocess.run(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-select_streams",
+                        "v:0",
+                        "-show_entries",
+                        "stream=width,height",
+                        "-of",
+                        "csv=p=0",
+                        f"{input_path}",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+                width, height = (int(v) for v in result.stdout.split()[0].split(",")[:2])
+            except (OSError, ValueError, IndexError, subprocess.SubprocessError):
                 return False
-        return False
+        return width % 2 == 0 and height % 2 == 0
 
     def _check_video_file_size(self, file_size):
         return file_size > 20 * 1024 * 1024  # 20 MB
