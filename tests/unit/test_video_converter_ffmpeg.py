@@ -102,6 +102,11 @@ def test_convert_args(tmp_path, monkeypatch, cgroup):
     conv._convert("in.mov", "out.mp4", True, False, video_meta=rotated)
     assert "-pix_fmt" in calls[-1]
 
+    # metadata could not be read: the size may be odd, so do not force 4:2:0
+    conv._convert("in.mkv", "out.mp4", True, False, video_meta=None)
+    assert "-pix_fmt" not in calls[-1]
+    assert calls[-1].index("-threads") < calls[-1].index("-i")
+
 
 def test_failed_ffmpeg_removes_partial_output_and_keeps_source(tmp_path, monkeypatch):
     src = tmp_path / "clip.mov"
@@ -159,3 +164,24 @@ def test_real_ffmpeg(tmp_path, size, pix_fmt_in, pix_fmt_out):
         "nb_frames": "30",
     }
     assert os.path.getsize(out) > 0
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+def test_real_ffmpeg_odd_size_without_metadata(tmp_path, monkeypatch):
+    src = tmp_path / "clip.mov"
+    subprocess.run(
+        [
+            "ffmpeg", "-nostdin", "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "testsrc=size=641x481:rate=30:duration=1",
+            "-c:v", "libx264", "-pix_fmt", "yuv444p", str(src),
+        ],
+        check=True,
+    )  # fmt: skip
+
+    def unreadable(path):
+        raise KeyError("duration")
+
+    monkeypatch.setattr(vc, "get_info", unreadable)
+    _, out = _converter(tmp_path).convert_to_mp4_if_needed(str(src))
+    assert os.path.getsize(out) > 0
+    assert not src.exists()

@@ -398,17 +398,17 @@ class VideoConverter(BaseConverter):
 
     @staticmethod
     def _has_even_dimensions(video_meta) -> bool:
-        """4:2:0 needs even width and height; unknown dimensions are assumed even."""
+        """4:2:0 needs even width and height; False when the size is unknown."""
         if not video_meta:
-            return True
+            return False
         for stream in video_meta.get("streams", []):
             if stream.get("codecType") == "video":
                 width = stream.get("originalWidth", stream.get("width"))
                 height = stream.get("originalHeight", stream.get("height"))
                 if isinstance(width, int) and isinstance(height, int):
                     return width % 2 == 0 and height % 2 == 0
-                return True
-        return True
+                return False
+        return False
 
     def _check_video_file_size(self, file_size):
         return file_size > 20 * 1024 * 1024  # 20 MB
