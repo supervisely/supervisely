@@ -1,3 +1,4 @@
+import math
 import os
 import subprocess
 from typing import Dict, Optional, Tuple, Union
@@ -25,6 +26,54 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
+
+
+_FFMPEG_DEFAULT_THREADS = 2
+_FFMPEG_MAX_THREADS = 4
+_CGROUP_V2_CPU_MAX = "/sys/fs/cgroup/cpu.max"
+_CGROUP_V1_CPU_DIRS = ("/sys/fs/cgroup/cpu", "/sys/fs/cgroup/cpu,cpuacct")
+
+
+def _read_cpu_quota() -> Optional[float]:
+    """CPUs allowed by the container's cgroup CPU quota, or None if there is no quota."""
+    try:  # cgroup v2
+        with open(_CGROUP_V2_CPU_MAX) as f:
+            quota, period = f.read().split()[:2]
+        if quota == "max" or int(period) <= 0:
+            return None
+        return int(quota) / int(period)
+    except (OSError, ValueError):
+        pass
+    for cgroup_dir in _CGROUP_V1_CPU_DIRS:  # cgroup v1
+        try:
+            with open(os.path.join(cgroup_dir, "cpu.cfs_quota_us")) as f:
+                quota = int(f.read())
+            with open(os.path.join(cgroup_dir, "cpu.cfs_period_us")) as f:
+                period = int(f.read())
+        except (OSError, ValueError):
+            continue
+        if quota <= 0 or period <= 0:
+            return None
+        return quota / period
+    return None
+
+
+def _file_stamp(path: str) -> Optional[Tuple[int, int]]:
+    """(mtime_ns, size) of a file, or None if it does not exist."""
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
+
+
+def _get_ffmpeg_threads() -> int:
+    """Thread count for ffmpeg: the container's CPU quota, capped, since ffmpeg and x264
+    otherwise size their threads (and frame buffers) from the host's CPU count."""
+    cpus = _read_cpu_quota()
+    if cpus is None or cpus <= 0:
+        return _FFMPEG_DEFAULT_THREADS
+    return max(1, min(_FFMPEG_MAX_THREADS, math.ceil(cpus)))
 
 
 class VideoConverter(BaseConverter):
@@ -266,6 +315,7 @@ class VideoConverter(BaseConverter):
         output_video_path = os.path.splitext(video_path)[0] + "_h264" + self.base_video_extension
 
         # read video meta_data
+        vid_meta = None
         try:
             vid_meta = get_info(video_path)
             need_video_transc, need_audio_transc = self._check_codecs(vid_meta)
@@ -293,6 +343,7 @@ class VideoConverter(BaseConverter):
             output_path=output_video_path,
             need_video_transc=need_video_transc,
             need_audio_transc=need_audio_transc,
+            video_meta=vid_meta,
         )
         if os.path.exists(output_video_path):
             logger.info(f"Video {video_name} has been converted.")
@@ -315,23 +366,81 @@ class VideoConverter(BaseConverter):
                 need_audio_transc = True
         return need_video_transc, need_audio_transc
 
-    def _convert(self, input_path, output_path, need_video_transc, need_audio_transc):
+    def _convert(
+        self, input_path, output_path, need_video_transc, need_audio_transc, video_meta=None
+    ):
         video_codec = "libx264" if need_video_transc else "copy"
         audio_codec = "aac" if need_audio_transc else "copy"
+        input_args, video_args = [], []
+        if need_video_transc:
+            threads = str(_get_ffmpeg_threads())
+            input_args = ["-threads", threads]
+            video_args = ["-threads", threads, "-preset", "veryfast"]
+            if self._has_even_dimensions(input_path, video_meta):
+                # 8-bit 4:2:0 plays in every browser; 10-bit and 4:4:4 H.264 do not
+                video_args += ["-pix_fmt", "yuv420p"]
+        previous_output = _file_stamp(output_path)
         logger.info("Converting video...")
-        subprocess.call(
+        returncode = subprocess.call(
             [
                 "ffmpeg",
                 "-y",
+                *input_args,
                 "-i",
                 f"{input_path}",
                 "-c:v",
                 f"{video_codec}",
+                *video_args,
                 "-c:a",
                 f"{audio_codec}",
+                "-movflags",
+                "+faststart",
                 f"{output_path}",
             ]
         )
+        if returncode != 0:
+            # a failed or killed ffmpeg can leave a truncated file behind;
+            # a file that was already there and that ffmpeg never opened is not ours
+            if _file_stamp(output_path) != previous_output:
+                silent_remove(output_path)
+            raise RuntimeError(
+                f"Failed to convert video {get_file_name_with_ext(input_path)}: "
+                f"ffmpeg exited with code {returncode}."
+            )
+
+    @staticmethod
+    def _has_even_dimensions(input_path, video_meta) -> bool:
+        """4:2:0 needs even width and height; False when the size cannot be read."""
+        width = height = None
+        for stream in (video_meta or {}).get("streams", []):
+            if stream.get("codecType") == "video":
+                width = stream.get("originalWidth", stream.get("width"))
+                height = stream.get("originalHeight", stream.get("height"))
+                break
+        if not (isinstance(width, int) and isinstance(height, int)):
+            # metadata is missing: read the size from the header, without decoding
+            try:
+                result = subprocess.run(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-select_streams",
+                        "v:0",
+                        "-show_entries",
+                        "stream=width,height",
+                        "-of",
+                        "csv=p=0",
+                        f"{input_path}",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+                width, height = (int(v) for v in result.stdout.split()[0].split(",")[:2])
+            except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+                return False
+        return width % 2 == 0 and height % 2 == 0
 
     def _check_video_file_size(self, file_size):
         return file_size > 20 * 1024 * 1024  # 20 MB
