@@ -145,6 +145,13 @@ jobs:
     with:
       tag_version: ${{ github.ref_name }}
 
+  base-py-sdk-cuda-light:
+    name: Build base-py-sdk-cuda-light
+    needs: publish-pypi
+    uses: ./.github/workflows/build_base_py_sdk_cuda_light.yml
+    with:
+      tag_version: ${{ github.ref_name }}
+
   collaboration:
     name: Build collaboration
     needs: base-py-sdk
