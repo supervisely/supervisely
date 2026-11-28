@@ -10,6 +10,8 @@ class ImageAnnotationToolAction(StrEnum):
 
     SET_FIGURE = "figures/setFigure"
     """"""
+    SET_FIGURE_CLASS = "figures/setFigureClass"
+    """"""
     NEXT_IMAGE = "images/nextImage"
     """"""
     PREV_IMAGE = "images/prevImage"
@@ -40,6 +42,24 @@ class ImageAnnotationToolApi(ModuleApiBase):
         :type figure_id: int"""
         return self._act(
             session_id, ImageAnnotationToolAction.SET_FIGURE, {ApiField.FIGURE_ID: figure_id}
+        )
+
+    def set_figure_class(self, session_id: str, local_figure_id: str, class_id: int):
+        """Changes the class of a figure that exists only in the annotation tool, for example one
+        just created by the Smart Tool and not yet saved, so it has no server figure id.
+
+        The class must have the same shape as the figure (or be ``any`` shape).
+
+        :param session_id: Annotation tool session id.
+        :type session_id: str
+        :param local_figure_id: Local figure id in the annotation tool.
+        :type local_figure_id: str
+        :param class_id: Project class id.
+        :type class_id: int"""
+        return self._act(
+            session_id,
+            ImageAnnotationToolAction.SET_FIGURE_CLASS,
+            {ApiField.LOCAL_FIGURE_ID: local_figure_id, ApiField.CLASS_ID: class_id},
         )
 
     def next_image(self, session_id: str, *args, **kwargs):
