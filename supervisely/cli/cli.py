@@ -1,16 +1,17 @@
 import sys
+
 import click
 
 
 from supervisely.cli.project import download_run, upload_run, get_project_name_run
 from supervisely.cli.task import set_output_directory_run
+from supervisely.cli.import_run import DEFAULT_ENV_FILE, DEFAULT_IMPORT_IMAGE, import_run
 from supervisely.cli.teamfiles import (
     remove_file_run,
     remove_directory_run,
     upload_directory_run,
     download_directory_run,
 )
-
 
 @click.group()
 def cli():
@@ -69,6 +70,80 @@ def release(path, sub_app, slug, y, release_version, release_description, share)
     except KeyboardInterrupt:
         print("Aborting...")
         print("App not released")
+        sys.exit(1)
+
+
+@cli.command(name="import", help="Import local data to Supervisely using the Auto Import Docker image")
+@click.argument("src", type=click.Path(exists=True))
+@click.option(
+    "--project-id",
+    required=True,
+    type=int,
+    help="Destination Supervisely project ID",
+)
+@click.option(
+    "--dataset-id",
+    required=False,
+    type=int,
+    help="[Optional] Destination Supervisely dataset ID",
+)
+@click.option(
+    "--dataset-name",
+    required=False,
+    type=str,
+    help="[Optional] Dataset name when a new dataset is created",
+)
+@click.option(
+    "--import-as-links",
+    is_flag=True,
+    help="[Optional] Upload supported entities as links",
+)
+@click.option(
+    "--image",
+    required=False,
+    default=DEFAULT_IMPORT_IMAGE,
+    show_default=True,
+    help="[Optional] Auto Import CLI Docker image",
+)
+@click.option(
+    "--env-file",
+    required=False,
+    default=DEFAULT_ENV_FILE,
+    show_default=True,
+    help="[Optional] Path to Supervisely credentials env file",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="[Optional] Print Docker command without running it",
+)
+def import_data(
+    src: str,
+    project_id: int,
+    dataset_id: int,
+    dataset_name: str,
+    import_as_links: bool,
+    image: str,
+    env_file: str,
+    dry_run: bool,
+) -> None:
+    try:
+        success = import_run(
+            src=src,
+            project_id=project_id,
+            dataset_id=dataset_id,
+            dataset_name=dataset_name,
+            import_as_links=import_as_links,
+            image=image,
+            env_file=env_file,
+            dry_run=dry_run,
+        )
+        if success:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nImport aborted\n")
         sys.exit(1)
 
 
