@@ -19,14 +19,17 @@ class Editor(Widget):
         restore_default_button: Optional[bool] = True,
         widget_id: Optional[int] = None,
         auto_format: bool = False,
+        min_lines: Optional[int] = None,
     ):
         """
         :param initial_text: Initial content.
         :type initial_text: Optional[str]
-        :param height_px: Height in pixels.
+        :param height_px: Height in pixels. Ignored when height_lines is set.
         :type height_px: Optional[int]
-        :param height_lines: Height in lines (overrides height_px; >=1000 shows all).
+        :param height_lines: Maximum height in lines before a scrollbar appears (overrides height_px; >=1000 shows all).
         :type height_lines: Optional[int]
+        :param min_lines: Minimum height in lines, kept even when the text is shorter. Use with height_lines to set the minimum size of an auto-sized editor.
+        :type min_lines: Optional[int]
         :param language_mode: Language mode of the editor, one of: json, html, plain_text, yaml, python.
         :type language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]]
         :param readonly: Read-only mode.
@@ -53,6 +56,7 @@ class Editor(Widget):
         self._current_code = initial_text
         self._height_px = height_px
         self._height_lines = height_lines
+        self._min_lines = min_lines
         self._language_mode = language_mode
         self._readonly = readonly
         self._show_line_numbers = show_line_numbers
@@ -76,11 +80,12 @@ class Editor(Widget):
 
         Dictionary contains the following fields:
             - editor_options: Dictionary with editor options
-                - height: Height of the editor in pixels
+                - height: Height of the editor in pixels. Ignored if maxLines is specified
                 - mode: Language mode of the editor, one of: json, html, plain_text, yaml, python
                 - readOnly: If True, editor will be readonly
                 - showGutter: If True, line numbers will be shown
-                - maxLines: Overwrites height if specified. If >= 1000, all lines will be displayed
+                - maxLines: Number of lines shown before a scrollbar appears. Overwrites height if specified. If >= 1000, all lines will be displayed
+                - minLines: Number of lines the editor keeps even when the text is shorter
                 - highlightActiveLine: If True, active line will be highlighted
 
         :returns: Dictionary with widget data
@@ -93,6 +98,7 @@ class Editor(Widget):
                 "readOnly": self._readonly,
                 "showGutter": self._show_line_numbers,
                 "maxLines": self._height_lines,
+                "minLines": self._min_lines,
                 "highlightActiveLine": self._highlight_active_line,
                 "formatJsonOnInit": self._auto_format,
             },
