@@ -66,7 +66,9 @@ class InteractiveSegmentation(Inference):
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
         self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(ttl=_fast_cache_ttl)
-        self._init_mask_cache = LRUCache(maxsize=100)  # cache of sly.Bitmaps
+        # Geometry of the figure each Smart Tool session started from, by figure id: the
+        # tool sends it with the first request only.
+        self._init_mask_cache = LRUCache(maxsize=100)
 
         if not self._use_gui:
             try:
@@ -183,26 +185,16 @@ class InteractiveSegmentation(Inference):
                 image_np = self._inference_image_cache.get(hash_str)
 
             # Crop the image
+            image_size = image_np.shape[:2]
             image_np = functional.crop_image(crop, image_np)
             image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
             sly_image.write(image_path, image_np)
 
-            # Prepare init_mask (only for images)
-            figure_id = smtool_state.get("figure_id")
-            image_id = smtool_state.get("image_id")
-            if smtool_state.get("init_figure") is True and image_id is not None:
-                # Download and save in Cache
-                init_mask = functional.download_init_mask(api, figure_id, image_id)
-                self._init_mask_cache[figure_id] = init_mask
-            elif self._init_mask_cache.get(figure_id) is not None:
-                # Load from Cache
-                init_mask = self._init_mask_cache[figure_id]
-            else:
-                init_mask = None
+            # Prepare init_mask: the figure the session is editing, if there is one
+            init_mask = functional.get_smart_tool_init_mask(
+                smtool_state, image_size, api=api, cache=self._init_mask_cache
+            )
             if init_mask is not None:
-                img_info = api.image.get_info_by_id(image_id)
-                h, w = img_info.height, img_info.width
-                init_mask = functional.bitmap_to_mask(init_mask, h, w)
                 init_mask = functional.crop_image(crop, init_mask)
                 assert init_mask.shape[:2] == image_np.shape[:2]
             settings["init_mask"] = init_mask
@@ -311,26 +303,16 @@ class InteractiveSegmentation(Inference):
                     image_np = self._inference_image_cache.get(hash_str)
 
                 # Crop the image
+                image_size = image_np.shape[:2]
                 image_np = functional.crop_image(crop, image_np)
                 image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
                 sly_image.write(image_path, image_np)
 
-                # Prepare init_mask (only for images)
-                figure_id = smtool_state.get("figure_id")
-                image_id = smtool_state.get("image_id")
-                if smtool_state.get("init_figure") is True and image_id is not None:
-                    # Download and save in Cache
-                    init_mask = functional.download_init_mask(api, figure_id, image_id)
-                    self._init_mask_cache[figure_id] = init_mask
-                elif self._init_mask_cache.get(figure_id) is not None:
-                    # Load from Cache
-                    init_mask = self._init_mask_cache[figure_id]
-                else:
-                    init_mask = None
+                # Prepare init_mask: the figure the session is editing, if there is one
+                init_mask = functional.get_smart_tool_init_mask(
+                    smtool_state, image_size, api=api, cache=self._init_mask_cache
+                )
                 if init_mask is not None:
-                    img_info = api.image.get_info_by_id(image_id)
-                    h, w = img_info.height, img_info.width
-                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
                     init_mask = functional.crop_image(crop, init_mask)
                     assert init_mask.shape[:2] == image_np.shape[:2]
                 settings["init_mask"] = init_mask
@@ -431,16 +413,14 @@ class InteractiveSegmentation(Inference):
                 image_np = sly_image.read_bytes(file.file.read())
                 hash_str = functional.get_hash_from_context(smtool_state)
                 self._inference_image_cache.set(hash_str, image_np)
+                image_size = image_np.shape[:2]
                 image_np = functional.crop_image(crop, image_np)
                 image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
                 sly_image.write(image_path, image_np)
 
-                # Prepare init_mask (only for images)
-                geom_data = smtool_state.get("geometry")
-                init_mask = Bitmap.from_json(geom_data) if geom_data is not None else None
+                # Prepare init_mask: the figure the session is editing, if there is one
+                init_mask = functional.get_smart_tool_init_mask(smtool_state, image_size)
                 if init_mask is not None:
-                    h, w = image_np.shape[:2]
-                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
                     init_mask = functional.crop_image(crop, init_mask)
                     assert init_mask.shape[:2] == image_np.shape[:2]
                 inf_settings["init_mask"] = init_mask
